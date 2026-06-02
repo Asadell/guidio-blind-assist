@@ -37,56 +37,58 @@ class _TuntunScreenState extends State<TuntunScreen> {
     final dets  = det.detections;
     final rz    = det.riskZone;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Kamera fullscreen
-        if (cam.isInitialized && cam.controller != null)
-          Positioned.fill(
-            child: CameraPreview(cam.controller!),
-          )
-        else
-          const ColoredBox(color: Colors.black),
+    return SafeArea(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Kamera fullscreen
+          if (cam.isInitialized && cam.controller != null)
+            Positioned.fill(
+              child: CameraPreview(cam.controller!),
+            )
+          else
+            const ColoredBox(color: Colors.black),
 
-        // Mode badge
-        Positioned(
-          top: top + 12, left: 16,
-          child: _badge('Mode: Deteksi Objek'),
-        ),
-
-        // Camera health banner
-        if (cam.healthMessage != null)
+          // Mode badge
           Positioned(
-            top: top + 52, left: 16, right: 16,
-            child: CameraHealthBanner(message: cam.healthMessage!),
+            top: 12, left: 16,
+            child: _badge('Mode: Deteksi Objek'),
           ),
 
-        // Risk zone warning
-        if (rz != null)
-          Positioned(
-            top: top + 52 + (cam.healthMessage != null ? 48 : 0),
-            left: 16, right: 16,
-            child: CameraHealthBanner(
-              message: rz.warning,
-              color: Colors.red.shade700,
+          // Camera health banner
+          if (cam.healthMessage != null)
+            Positioned(
+              top: 52, left: 16, right: 16,
+              child: CameraHealthBanner(message: cam.healthMessage!),
             ),
-          ),
 
-        // Detection cards — maks 2 (sudah difilter oleh DetectionFilter)
-        if (dets.isNotEmpty)
-          Positioned(
-            bottom: 100, left: 16, right: 16,
-            child: Column(
-              children: dets.map((d) => DetectionCard(detection: d)).toList(),
+          // Risk zone warning
+          if (rz != null)
+            Positioned(
+              top: 52 + (cam.healthMessage != null ? 48 : 0),
+              left: 16, right: 16,
+              child: CameraHealthBanner(
+                message: rz.warning,
+                color: Colors.red.shade700,
+              ),
             ),
-          ),
 
-        // Bottom bar
-        Positioned(
-          bottom: 0, left: 0, right: 0,
-          child: const BottomBar(),
-        ),
-      ],
+          // Detection cards — maks 2 (sudah difilter oleh DetectionFilter)
+          if (dets.isNotEmpty)
+            Positioned(
+              bottom: 100, left: 16, right: 16,
+              child: Column(
+                children: dets.map((d) => DetectionCard(detection: d)).toList(),
+              ),
+            ),
+
+          // Bottom bar
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: const BottomBar(),
+          ),
+        ],
+      ),
     );
   }
 

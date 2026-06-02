@@ -13,55 +13,55 @@ class VoiceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final voice  = context.watch<VoiceProvider>();
     final cam    = context.watch<CameraProvider>();
-    final top    = MediaQuery.of(context).padding.top;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Kamera background
-        if (cam.isInitialized && cam.controller != null)
-          Positioned.fill(child: CameraPreview(cam.controller!))
-        else
-          const ColoredBox(color: Colors.black),
-
-        // Mode badge
-        Positioned(
-          top: top + 12, left: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black54, borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Mode: Asisten Suara',
-              style: TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ),
-        ),
-
-        // Response card — muncul saat ada state apapun kecuali idle
-        if (voice.state != VoiceState.idle)
+    return SafeArea(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Kamera background
+          if (cam.isInitialized && cam.controller != null)
+            Positioned.fill(child: CameraPreview(cam.controller!))
+          else
+            const ColoredBox(color: Colors.black),
+  
+          // Mode badge
           Positioned(
-            left: 16, right: 16,
-            top: top + 60,
-            child: _GuidioCard(voice: voice),
+            top: 12, left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black54, borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Mode: Asisten Suara',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
           ),
-
-        // Bottom bar — mic toggle
-        Positioned(
-          bottom: 0, left: 0, right: 0,
-          child: BottomBar(
-            onMicPressed: () async {
-              final v = context.read<VoiceProvider>();
-              if (v.isListening) {
-                await v.stopListening();
-              } else {
-                await v.startListening();
-              }
-            },
+  
+          // Response card — muncul saat ada state apapun kecuali idle
+          if (voice.state != VoiceState.idle)
+            Positioned(
+              left: 16, right: 16,
+              top: 60,
+              child: _GuidioCard(voice: voice),
+            ),
+  
+          // Bottom bar — mic toggle
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: BottomBar(
+              onMicPressed: () async {
+                final v = context.read<VoiceProvider>();
+                if (v.isListening) {
+                  await v.stopListening();
+                } else {
+                  await v.startListening();
+                }
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

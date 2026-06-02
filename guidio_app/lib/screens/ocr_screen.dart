@@ -77,44 +77,44 @@ class _OcrScreenState extends State<OcrScreen> {
   @override
   Widget build(BuildContext context) {
     final cam    = context.watch<CameraProvider>();
-    final top    = MediaQuery.of(context).padding.top;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Kamera fullscreen
-        if (cam.isInitialized && cam.controller != null)
-          Positioned.fill(child: _cameraWithOverlay(cam))
-        else
-          const ColoredBox(color: Colors.black),
-
-        // Mode badge
-        Positioned(
-          top: top + 12, left: 16,
-          child: _badge(),
-        ),
-
-        // Hasil OCR card dari bawah
-        if (_hasResult)
+    return SafeArea(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Kamera fullscreen
+          if (cam.isInitialized && cam.controller != null)
+            Positioned.fill(child: _cameraWithOverlay(cam))
+          else
+            const ColoredBox(color: Colors.black),
+  
+          // Mode badge
           Positioned(
-            left: 0, right: 0, bottom: 90,
-            child: _ResultCard(
-              lines:    _lines,
-              onRepeat: _repeat,
-              onCopy:   _copy,
-            ),
+            top: 12, left: 16,
+            child: _badge(),
           ),
-
-        // Loading indicator
-        if (_scanning)
-          const Center(child: CircularProgressIndicator(color: Colors.white)),
-
-        // Bottom bar — tombol kamera = scan
-        Positioned(
-          bottom: 0, left: 0, right: 0,
-          child: BottomBar(onCameraPressed: _scan),
-        ),
-      ],
+  
+          // Hasil OCR card dari bawah
+          if (_hasResult)
+            Positioned(
+              left: 0, right: 0, bottom: 90,
+              child: _ResultCard(
+                lines:    _lines,
+                onRepeat: _repeat,
+                onCopy:   _copy,
+              ),
+            ),
+  
+          // Loading indicator
+          if (_scanning)
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+  
+          // Bottom bar — tombol kamera = scan
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: BottomBar(onCameraPressed: _scan),
+          ),
+        ],
+      ),
     );
   }
 

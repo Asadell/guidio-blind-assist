@@ -43,47 +43,47 @@ class _NavigasiScreenState extends State<NavigasiScreen> {
     final nav  = context.watch<NavigationProvider>();
     final det  = context.watch<DetectionProvider>();
     final cam  = context.watch<CameraProvider>();
-    final top  = MediaQuery.of(context).padding.top;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Kamera sebagai background
-        if (cam.isInitialized && cam.controller != null)
-          Positioned.fill(child: CameraPreview(cam.controller!))
-        else
-          const ColoredBox(color: Colors.black),
-
-        // Nav card atau input tujuan
-        Positioned(
-          top: top + 8, left: 16, right: 16,
-          child: nav.isNavigating && nav.currentStep != null
-              ? _NavCard(
-                  step:   nav.currentStep!,
-                  onStop: () => context.read<NavigationProvider>().stopNavigation(),
-                )
-              : _DestInput(
-                  ctrl:      _destCtrl,
-                  onStart:   _startNav,
-                  favorites: nav.favorites,
-                ),
-        ),
-
-        // Obstacle warnings dari YOLO
-        if (det.detections.isNotEmpty)
+    return SafeArea(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Kamera sebagai background
+          if (cam.isInitialized && cam.controller != null)
+            Positioned.fill(child: CameraPreview(cam.controller!))
+          else
+            const ColoredBox(color: Colors.black),
+  
+          // Nav card atau input tujuan
           Positioned(
-            bottom: 100, left: 16, right: 16,
-            child: Column(
-              children: det.detections.map((d) => DetectionCard(detection: d)).toList(),
-            ),
+            top: 8, left: 16, right: 16,
+            child: nav.isNavigating && nav.currentStep != null
+                ? _NavCard(
+                    step:   nav.currentStep!,
+                    onStop: () => context.read<NavigationProvider>().stopNavigation(),
+                  )
+                : _DestInput(
+                    ctrl:      _destCtrl,
+                    onStart:   _startNav,
+                    favorites: nav.favorites,
+                  ),
           ),
-
-        // Bottom bar
-        Positioned(
-          bottom: 0, left: 0, right: 0,
-          child: const BottomBar(),
-        ),
-      ],
+  
+          // Obstacle warnings dari YOLO
+          if (det.detections.isNotEmpty)
+            Positioned(
+              bottom: 100, left: 16, right: 16,
+              child: Column(
+                children: det.detections.map((d) => DetectionCard(detection: d)).toList(),
+              ),
+            ),
+  
+          // Bottom bar
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: const BottomBar(),
+          ),
+        ],
+      ),
     );
   }
 }
