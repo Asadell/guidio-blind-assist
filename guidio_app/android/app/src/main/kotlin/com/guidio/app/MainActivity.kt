@@ -1,4 +1,4 @@
-package com.example.guidio_app
+package com.guidio.app
 
 import io.flutter.embedding.android.FlutterActivity
 

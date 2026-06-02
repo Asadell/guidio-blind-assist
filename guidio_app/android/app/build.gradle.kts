@@ -6,9 +6,9 @@ plugins {
 }
 
 android {
-    namespace = "com.example.guidio_app"
+    namespace = "com.guidio.app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.3.13750724"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -21,11 +21,11 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.guidio_app"
+        applicationId = "com.guidio.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 26
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
