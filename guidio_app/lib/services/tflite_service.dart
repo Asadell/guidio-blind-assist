@@ -111,8 +111,12 @@ class TFLiteService {
     return _postProcess(output[0], image.width, image.height);
   }
 
-  /// Konversi YUV420 → RGB → resize 320×320 → Float32List normalized [0.0, 1.0]
-  Float32List? _prepareInput(CameraImage image) {
+  /// Konversi YUV420 → RGB → resize 320×320 → nested List [1][320][320][3]
+  ///
+  /// TFLite Flutter membutuhkan input sebagai nested List yang persis sesuai
+  /// shape tensor model ([1, 320, 320, 3]), bukan flat Float32List.
+  /// Jika dikirim flat, PAD kernel akan gagal dengan "dims mismatch".
+  List<List<List<List<double>>>>? _prepareInput(CameraImage image) {
     try {
       final int width  = image.width;
       final int height = image.height;
@@ -132,41 +136,44 @@ class TFLiteService {
 
       for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-          final int yIndex = y * yPlane.bytesPerRow + x;
-          final int uvIndex =
-              (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStr;
+          final int yIndex  = y * yPlane.bytesPerRow + x;
+          final int uvIndex = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStr;
 
           final int yVal = yBytes[yIndex] & 0xFF;
           final int uVal = (uBytes.length > uvIndex ? uBytes[uvIndex] : 128) & 0xFF;
           final int vVal = (vBytes.length > uvIndex ? vBytes[uvIndex] : 128) & 0xFF;
 
-          // YUV → RGB conversion formula
-          int r = (yVal + 1.402 * (vVal - 128)).round().clamp(0, 255);
-          int g = (yVal - 0.344 * (uVal - 128) - 0.714 * (vVal - 128)).round().clamp(0, 255);
-          int b = (yVal + 1.772 * (uVal - 128)).round().clamp(0, 255);
+          final int r = (yVal + 1.402 * (vVal - 128)).round().clamp(0, 255);
+          final int g = (yVal - 0.344 * (uVal - 128) - 0.714 * (vVal - 128)).round().clamp(0, 255);
+          final int b = (yVal + 1.772 * (uVal - 128)).round().clamp(0, 255);
 
           rgbImage.setPixelRgb(x, y, r, g, b);
         }
       }
 
       // Resize ke 320×320
-      final resized = img.copyResize(rgbImage,
-          width: _inputSize, height: _inputSize,
-          interpolation: img.Interpolation.linear);
+      final resized = img.copyResize(
+        rgbImage,
+        width:         _inputSize,
+        height:        _inputSize,
+        interpolation: img.Interpolation.linear,
+      );
 
-      // Normalisasi ke [0.0, 1.0] dan flatten ke Float32List [1, 320, 320, 3]
-      final input = Float32List(_inputSize * _inputSize * 3);
-      int idx = 0;
-      for (int y = 0; y < _inputSize; y++) {
-        for (int x = 0; x < _inputSize; x++) {
-          final pixel = resized.getPixel(x, y);
-          input[idx++] = pixel.r / 255.0;
-          input[idx++] = pixel.g / 255.0;
-          input[idx++] = pixel.b / 255.0;
-        }
-      }
+      // Build nested List [1][H][W][3] — wajib untuk TFLite Flutter
+      // agar shape tensor terbaca benar oleh allocateTensors()
+      final input = List.generate(1, (_) =>
+        List.generate(_inputSize, (y) =>
+          List.generate(_inputSize, (x) {
+            final pixel = resized.getPixel(x, y);
+            return [
+              pixel.r / 255.0,
+              pixel.g / 255.0,
+              pixel.b / 255.0,
+            ];
+          }),
+        ),
+      );
 
-      // Reshape ke [1, 320, 320, 3]
       return input;
     } catch (_) {
       return null;
