@@ -1,19 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
-void main() {
-  runApp(const MainApp());
+import 'providers/index.dart';
+import 'screens/index.dart';
+import 'services/tts_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Portrait-only — sesuai PRD
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Init TTS di awal
+  await TTSService.instance.init();
+
+  runApp(const GuidioApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class GuidioApp extends StatelessWidget {
+  const GuidioApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
+    return MultiProvider(
+      providers: [
+        // AppMode — tidak ada dependency
+        ChangeNotifierProvider(create: (_) => AppModeProvider()),
+
+        // InferenceProvider — tidak ada dependency
+        ChangeNotifierProvider(create: (_) => InferenceProvider()),
+
+        // CameraProvider — tidak ada dependency
+        ChangeNotifierProvider(create: (_) => CameraProvider()),
+
+        // TtsProvider — tidak ada dependency
+        ChangeNotifierProvider(create: (_) => TtsProvider()),
+
+        // NavigationProvider — tidak ada dependency
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
+
+        // DetectionProvider — butuh InferenceProvider + CameraProvider
+        ChangeNotifierProxyProvider2<InferenceProvider, CameraProvider, DetectionProvider>(
+          create: (ctx) => DetectionProvider(
+            ctx.read<InferenceProvider>(),
+            ctx.read<CameraProvider>(),
+          ),
+          update: (ctx, inf, cam, prev) =>
+              prev ?? DetectionProvider(inf, cam),
         ),
+
+        // VoiceProvider — butuh CameraProvider + DetectionProvider
+        ChangeNotifierProxyProvider2<CameraProvider, DetectionProvider, VoiceProvider>(
+          create: (ctx) => VoiceProvider(
+            ctx.read<CameraProvider>(),
+            ctx.read<DetectionProvider>(),
+          ),
+          update: (ctx, cam, det, prev) =>
+              prev ?? VoiceProvider(cam, det),
+        ),
+      ],
+      child: MaterialApp(
+        title:           'Guidio',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme:  ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
+        ),
+        home: const MainScreen(),
       ),
     );
   }

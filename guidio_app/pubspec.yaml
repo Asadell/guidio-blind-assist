@@ -1,20 +1,60 @@
 name: guidio_app
-description: "A new Flutter project."
+description: Guidio - AI Navigation Assistant untuk Tunanetra
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.4
+  sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  change_app_package_name: ^1.5.0
+
+  # State Management
+  provider: ^6.1.2
+
+  # Kamera
+  camera: ^0.11.0+2
+
+  # TFLite on-device inference
+  tflite_flutter: ^0.12.1
+
+  # Text-to-Speech (Bahasa Indonesia)
+  flutter_tts: ^4.0.2
+
+  # Speech-to-Text (Voice Assistant)
+  speech_to_text: ^7.0.0
+
+  # WebSocket ke server
+  web_socket_channel: ^3.0.1
+
+  # HTTP untuk REST (OCR, single-shot detect, narasi)
+  http: ^1.2.1
+
+  # Sensor accelerometer (camera health check posisi)
+  sensors_plus: ^7.0.0
+
+  # Izin kamera, mikrofon
+  permission_handler: ^11.3.1
+
+  # Haptic feedback (getar saat mic aktif)
+  vibration: ^2.0.0
+
+  # Local storage untuk lokasi favorit (tanpa login)
+  shared_preferences: ^2.3.2
+
+  # Konversi YUV420 → JPEG untuk server stream
+  image: ^4.1.7
+
+  # Icon
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/models/
