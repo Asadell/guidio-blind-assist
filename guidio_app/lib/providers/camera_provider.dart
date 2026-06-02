@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
+import 'package:permission_handler/permission_handler.dart';
 import '../services/camera_health_service.dart';
 import '../services/tts_service.dart';
 
@@ -31,6 +32,15 @@ class CameraProvider extends ChangeNotifier {
   Function(CameraImage)? onFrameReady;
 
   Future<void> initCamera() async {
+    // Request camera permission sebelum initialize — mencegah CameraAccessDenied
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      debugPrint('[CameraProvider] Camera permission denied: $status');
+      _initialized = false;
+      notifyListeners();
+      return;
+    }
+
     final cameras = await availableCameras();
     if (cameras.isEmpty) return;
 

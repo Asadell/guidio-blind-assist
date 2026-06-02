@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../providers/index.dart';
 import '../screens/index.dart';
@@ -21,25 +22,49 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _init() async {
-    // Parallel: init kamera + init inference (TFLite + server)
-    await Future.wait([
-      context.read<CameraProvider>().initCamera(),
-      context.read<InferenceProvider>().initialize(),
-      context.read<VoiceProvider>().init(),
-    ]);
-    if (mounted) {
-      setState(() => _booting = false);
-      
-      final inf = context.read<InferenceProvider>();
-      if (!inf.serverReady) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Backend tidak terhubung. Berjalan di Mode Lokal (TFLite). Fitur Voice & OCR mungkin tidak tersedia.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 4),
+    // [1] Request permission kamera lebih dulu (sequential) — hindari
+    //     "Can request only one set of permissions at a time" warning
+    await Permission.camera.request();
+
+    // [2] Init paralel: kamera + inference + voice
+    try {
+      await Future.wait([
+        context.read<CameraProvider>().initCamera(),
+        context.read<InferenceProvider>().initialize(),
+        context.read<VoiceProvider>().init(),
+      ]);
+    } catch (e) {
+      debugPrint('[MainScreen] Init error: $e');
+      // Lanjut meski ada error — biarkan UI menampilkan state yang ada
+    }
+
+    if (!mounted) return;
+    setState(() => _booting = false);
+
+    final cam = context.read<CameraProvider>();
+    final inf = context.read<InferenceProvider>();
+
+    if (!cam.isInitialized) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Izin kamera ditolak. Fitur kamera tidak tersedia.'),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Pengaturan',
+            textColor: Colors.white,
+            onPressed: openAppSettings,
           ),
-        );
-      }
+        ),
+      );
+    } else if (!inf.serverReady) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Backend tidak terhubung. Berjalan di Mode Lokal (TFLite). Fitur Voice & OCR mungkin tidak tersedia.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -74,22 +99,24 @@ class _BootScreen extends StatelessWidget {
 
     return const Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: Colors.blue),
-            SizedBox(height: 24),
-            Text(
-              'Memulai Guidio...',
-              style: TextStyle(color: Colors.white, fontSize: 18),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Menyiapkan kamera dan AI',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
-            ),
-          ],
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.blue),
+              SizedBox(height: 24),
+              Text(
+                'Memulai Guidio...',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Menyiapkan kamera dan AI',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+            ],
+          ),
         ),
       ),
     );
