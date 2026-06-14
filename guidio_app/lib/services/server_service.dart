@@ -136,6 +136,25 @@ class ServerService {
     return RiskZone.fromJson(json['risk_zone'] as Map<String, dynamic>);
   }
 
+  /// LLM intent routing untuk Voice Assistant.
+  /// Return: 'describe_scene' | 'ocr' | 'navigation' | 'chitchat'
+  /// Fallback ke 'describe_scene' jika server tidak tersedia atau timeout.
+  Future<String> routeIntent(String text) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_httpBase/api/route-intent'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': text}),
+      ).timeout(const Duration(seconds: 2));
+
+      if (res.statusCode != 200) return 'describe_scene';
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      return json['intent'] as String? ?? 'describe_scene';
+    } catch (_) {
+      return 'describe_scene'; // offline atau timeout → fallback aman
+    }
+  }
+
   void disconnect() {
     _channel?.sink.close();
     _connected = false;

@@ -70,30 +70,61 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// Intent routing berbasis keyword.
+  /// Intent routing 2-lapis.
+  ///
+  /// Layer 1: keyword lokal (0ms latency, aman saat server offline).
+  ///   Mendeteksi intent yang jelas tanpa ambiguitas.
+  ///
+  /// Layer 2: LLM routing via Claude Haiku (max_tokens=10, temperature=0.0).
+  ///   Hanya dipanggil jika Layer 1 tidak match. Total latency < 1.5s.
+  ///   Fallback ke describe_scene jika server gagal/timeout.
   Future<void> _processText(String text) async {
     _setState(VoiceState.processing);
+    if (text.trim().isEmpty) {
+      _setState(VoiceState.idle);
+      return;
+    }
+
     final lower = text.toLowerCase();
 
-    if (lower.contains('ada apa') ||
-        lower.contains('sekitar') ||
-        lower.contains('di depan')) {
-      await _handleDescribeScene();
-    } else if (lower.contains('baca') ||
+    // Layer 1: keyword lokal — langsung dispatch, tidak butuh server
+    if (lower.contains('baca') ||
         lower.contains('tulisan') ||
         lower.contains('teks')) {
-      _respond('Membuka mode baca teks');
-      // Screen akan memantau state dan switch mode
-    } else if (lower.contains('pergi') ||
-        lower.contains('navigasi') ||
-        lower.contains('ke ')) {
-      _respond('Membuka mode navigasi');
-    } else {
-      await _respond('Maaf, belum mengerti. Coba ucapkan: ada apa di sekitar, atau baca teks.');
+      await _respond('Membuka mode baca teks');
+      _setState(VoiceState.idle);
+      return;
+    }
+    if (lower.contains('pergi ke') ||
+        lower.contains('navigasi ke') ||
+        lower.contains('antar ke')) {
+      await _respond('Membuka mode navigasi');
+      _setState(VoiceState.idle);
+      return;
+    }
+
+    // Layer 2: LLM routing untuk kasus ambigu
+    final intent = await ServerService.instance.routeIntent(text);
+    switch (intent) {
+      case 'describe_scene':
+        await _handleDescribeScene();
+        break;
+      case 'ocr':
+        await _respond('Membuka mode baca teks');
+        break;
+      case 'navigation':
+        await _respond('Membuka mode navigasi');
+        break;
+      case 'chitchat':
+        await _handleChitchat();
+        break;
+      default:
+        await _handleDescribeScene();
     }
 
     _setState(VoiceState.idle);
   }
+
 
   /// Fix dari doc 5 masalah 3 — implementasi penuh.
   Future<void> _handleDescribeScene() async {
@@ -116,6 +147,12 @@ class VoiceProvider extends ChangeNotifier {
     } catch (e) {
       await _respond('Gagal menganalisis sekitar. Coba lagi.');
     }
+  }
+
+  Future<void> _handleChitchat() async {
+    await _respond(
+      'Maaf, saya hanya bisa membantu navigasi dan mendeskripsikan sekitar.',
+    );
   }
 
   Future<void> _respond(String message) async {

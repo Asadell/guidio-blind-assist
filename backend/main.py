@@ -8,7 +8,7 @@ from loguru import logger
 from services.yolo_service import YOLOService
 from services.ocr_service import OCRService
 from services.risk_zone_service import RiskZoneService
-from routers import websocket, detect, ocr, risk_zone, narasi
+from routers import websocket, detect, ocr, risk_zone, narasi, voice_router
 
 load_dotenv()
 
@@ -59,6 +59,7 @@ app.include_router(detect.router)
 app.include_router(ocr.router)
 app.include_router(risk_zone.router)
 app.include_router(narasi.router)
+app.include_router(voice_router.router)
 
 
 @app.get("/health")
