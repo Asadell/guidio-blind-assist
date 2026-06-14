@@ -10,13 +10,6 @@ class DetectionFilter {
   final Map<String, DateTime> _lastAnnounced = {};
   final Map<String, int>      _streak        = {};
 
-  // Cooldown per tier (dari Netra AI — divalidasi meningkatkan comprehension 52%→78%)
-  static const Map<String, Duration> _cooldownPerTier = {
-    'critical': Duration(seconds: 2),
-    'warning':  Duration(seconds: 3),
-    'info':     Duration(seconds: 5),
-  };
-
   static const int    _streakRequired = 3;
   static const double _maxDistance    = 4.0;
   static const double _minConfidence  = 0.5;
@@ -44,8 +37,9 @@ class DetectionFilter {
       // [4] Stability check — skip tapi streak sudah di-increment (objek sedang "diantre")
       if ((_streak[det.labelEn] ?? 0) < _streakRequired) continue;
 
-      // [5] Cooldown per tier — skip jika masih dalam cooldown
-      final cooldown = _cooldownPerTier[det.dangerLevel] ?? _cooldownPerTier['info']!;
+      // [5] Cooldown per tier — skip jika masih dalam cooldown.
+      //     Jika objek mendekat (isApproaching), cooldown dipotong 50%.
+      final cooldown = _cooldownFor(det);
       final last     = _lastAnnounced[det.labelEn];
       final now      = DateTime.now();
       if (last != null && now.difference(last) < cooldown) continue;
@@ -72,6 +66,20 @@ class DetectionFilter {
         'warning'  => 1,
         _          => 2,
       };
+
+  /// Cooldown berbeda per tier, dipotong 50% jika objek sedang mendekat.
+  /// Ref: Netra AI paper — critical=2s, warning=3s, info=5s sebagai base.
+  Duration _cooldownFor(Detection det) {
+    final base = switch (det.dangerLevel) {
+      'critical' => const Duration(seconds: 2),
+      'warning'  => const Duration(seconds: 3),
+      _          => const Duration(seconds: 5),
+    };
+    if (det.isApproaching) {
+      return Duration(milliseconds: base.inMilliseconds ~/ 2);
+    }
+    return base;
+  }
 
   void reset() {
     _lastAnnounced.clear();
