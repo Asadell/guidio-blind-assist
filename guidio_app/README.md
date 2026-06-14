@@ -1,6 +1,6 @@
 # Guidio App — Flutter Mobile (Android)
 
-Aplikasi mobile Guidio adalah komponen utama sistem Guidio: "mata" dan "telinga" pengguna tunanetra. Seluruh deteksi rintangan real-time berjalan **langsung di perangkat** tanpa internet, menggunakan YOLO11n via TFLite. Aplikasi ini dikhususkan untuk **Android**.
+Aplikasi mobile Guidio adalah komponen utama sistem Guidio: "mata" dan "telinga" pengguna tunanetra. Seluruh deteksi rintangan real-time berjalan **langsung di perangkat** tanpa internet, menggunakan YOLO11l via TFLite. Aplikasi ini dikhususkan untuk **Android**.
 
 ---
 
@@ -71,10 +71,10 @@ App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil 
 
 | Parameter | Nilai |
 |---|---|
-| Model | YOLO11n (Nano) |
+| Model | YOLO11l (Large) |
 | Format | TFLite float32 |
 | Input size | 320×320 px |
-| Ukuran file | ~6.2 MB |
+| Ukuran file | ~175 MB |
 | Input tensor | `[1, 320, 320, 3]` — nested List, bukan flat array |
 | Output tensor | `[1, 84, 2100]` — 84=(4 bbox + 80 class), 2100=anchor boxes |
 | Target latensi | 55–110 ms di smartphone Android kelas menengah |
@@ -302,14 +302,14 @@ lib/
 
 assets/
 └── models/
-    └── yolo11n.tflite              # ← TIDAK DI-COMMIT, lihat bagian 7
+    └── yolo11l_float32.tflite              # ← TIDAK DI-COMMIT, lihat bagian 7
 ```
 
 ---
 
 ## 7. Persyaratan Model TFLite
 
-Model YOLO11n TFLite **tidak disertakan di repositori** (ukuran ~6.2 MB, tidak efisien untuk Git). Export sendiri via Google Colab:
+Model YOLO11l TFLite **tidak disertakan di repositori** (ukuran sangat besar, tidak efisien untuk Git). Export sendiri via Google Colab:
 
 ```python
 # Jalankan di Google Colab (gratis, tanpa membebani storage lokal)
@@ -317,23 +317,23 @@ Model YOLO11n TFLite **tidak disertakan di repositori** (ukuran ~6.2 MB, tidak e
 from ultralytics import YOLO
 
 # Export ke TFLite float32 — imgsz=320 menghasilkan 2100 anchor boxes
-YOLO("yolo11n.pt").export(format="tflite", imgsz=320, half=False, int8=False)
+YOLO("yolo11l.pt").export(format="tflite", imgsz=320, half=False, int8=False)
 
-# File output: yolo11n_float32.tflite
-# Download dari sidebar Colab, rename menjadi yolo11n.tflite
+# File output: yolo11l_float32.tflite
+# Download dari sidebar Colab dan masukkan ke folder models
 ```
 
 > ⚠️ **Penting:** Export TFLite membutuhkan **Python ≤ 3.12**. TensorFlow tidak mendukung Python 3.13+. Jika dilakukan lokal, butuh ~5 GB disk (CUDA dependencies). **Sangat disarankan pakai Google Colab.**
 
 **Letakkan file di:**
 ```
-guidio_app/assets/models/yolo11n.tflite
+guidio_app/assets/models/yolo11l_float32.tflite
 ```
 
 **Spec model yang sudah diverifikasi bekerja:**
 - `imgsz=320` → input tensor `[1, 320, 320, 3]`, output `[1, 84, 2100]`
 - `half=False`, `int8=False` → float32 (lebih stabil, akurasi lebih baik)
-- File size: ~6.2 MB di perangkat
+- File size: ~175 MB di perangkat
 
 ---
 
@@ -354,7 +354,7 @@ cd guidio_app
 flutter pub get
 
 # 3. Pastikan model sudah ada
-ls assets/models/yolo11n.tflite
+ls assets/models/yolo11l_float32.tflite
 
 # 4. Jalankan (pastikan device tersambung)
 flutter run
