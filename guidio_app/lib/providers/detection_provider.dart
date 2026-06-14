@@ -7,6 +7,8 @@ import '../models/risk_zone.dart';
 import '../providers/inference_provider.dart';
 import '../providers/camera_provider.dart';
 import '../services/detection_filter.dart';
+import '../services/haptic_service.dart';
+import '../services/object_tracker.dart';
 import '../services/server_service.dart';
 import '../services/tflite_service.dart';
 import '../services/tts_service.dart';
@@ -17,7 +19,8 @@ class DetectionProvider extends ChangeNotifier {
 
   DetectionProvider(this._inferenceProvider, this._cameraProvider);
 
-  final _filter = DetectionFilter();
+  final _filter  = DetectionFilter();
+  final _tracker = ObjectTracker(); // SORT tracker untuk isApproaching
   StreamSubscription? _serverSub;
   bool _realtimeActive = false;
 
@@ -52,6 +55,7 @@ class DetectionProvider extends ChangeNotifier {
     _cameraProvider.onFrameReady = null;
     _serverSub?.cancel();
     _serverSub = null;
+    _tracker.reset(); // bersihkan semua track saat mode berganti
     _detections = [];
     _riskZone   = null;
     notifyListeners();
@@ -60,8 +64,23 @@ class DetectionProvider extends ChangeNotifier {
   /// TFLite path — inference langsung di isolate
   Future<void> _processFrameTflite(CameraImage image) async {
     if (!_realtimeActive) return;
-    final raw      = await TFLiteService.instance.runInference(image);
-    final filtered = _filter.process(raw);
+    final raw     = await TFLiteService.instance.runInference(image);
+
+    // Update SORT tracker — dapat TrackedObject dengan info isApproaching
+    final tracked = _tracker.update(raw);
+
+    // Enrich setiap Detection dengan isApproaching dari tracker-nya
+    final enriched = raw.map((det) {
+      final t = tracked.firstWhere(
+        (t) => t.label == det.labelEn,
+        orElse: () => TrackedObject(
+          id: -1, label: '', cx: 0, cy: 0, w: 0, h: 0,
+        ),
+      );
+      return det.copyWith(isApproaching: t.isApproaching);
+    }).toList();
+
+    final filtered = _filter.process(enriched);
     _updateAndSpeak(filtered);
   }
 
@@ -90,6 +109,8 @@ class DetectionProvider extends ChangeNotifier {
         det.ttsMessage,
         interrupt: det.isCritical, // critical selalu interrupt TTS lain
       );
+      // Haptic berdampingan TTS — primary signal di lingkungan bising
+      HapticService.instance.fromDangerLevel(det.dangerLevel);
     }
   }
 
