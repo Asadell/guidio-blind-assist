@@ -1,4 +1,5 @@
 import 'dart:isolate';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
@@ -69,6 +70,14 @@ class TFLiteService {
 
   // Model bytes disimpan agar bisa dikirim ke isolate
   Uint8List? _modelBytes;
+
+  // Tilt correction — sudut kemiringan kamera dari accelerometer (radian)
+  double _lastTiltAngle = 0.0;
+
+  /// Dipanggil CameraProvider setiap 30 frame saat orientasi di-check.
+  void updateTilt(double angleRadians) {
+    _lastTiltAngle = angleRadians;
+  }
 
   Future<bool> tryLoad() async {
     try {
@@ -289,7 +298,15 @@ class TFLiteService {
   double _estimateDistance(String label, int boxH) {
     if (boxH <= 0) return 999.0;
     final realH = _realHeightsCm[label] ?? 100;
-    return (realH * _focalLengthPx) / (boxH * 100);
+    double dist = (realH * _focalLengthPx) / (boxH * 100);
+
+    // Tilt correction: jika HP miring > 15° (0.26 rad), koreksi jarak.
+    // cos(tilt) < 1 → jarak aktual lebih pendek dari hasil Similar Triangle.
+    if (_lastTiltAngle.abs() > 0.26) {
+      dist = dist * cos(_lastTiltAngle.abs());
+    }
+
+    return dist;
   }
 
   String _getDirection(double cx, int width) {

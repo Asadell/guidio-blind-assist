@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math'; // untuk atan2()
 import 'package:sensors_plus/sensors_plus.dart';
 
 class CameraHealthResult {
@@ -56,5 +57,13 @@ class CameraHealthService {
     }
 
     return const CameraHealthResult(ok: true, message: 'OK');
+  }
+
+  /// Sudut kemiringan kamera ke depan/belakang dalam radian.
+  /// Dipakai TFLiteService untuk tilt correction estimasi jarak.
+  /// Return 0.0 jika belum ada data accelerometer.
+  double get lastTiltAngle {
+    if (_lastAccel == null) return 0.0;
+    return atan2(_lastAccel!.x, _lastAccel!.z);
   }
 }

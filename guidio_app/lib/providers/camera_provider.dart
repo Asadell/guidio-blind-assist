@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import '../services/camera_health_service.dart';
+import '../services/tflite_service.dart';
 import '../services/tts_service.dart';
 
 /// CameraProvider — kelola kamera, stream, dan capture.
@@ -80,6 +81,10 @@ class CameraProvider extends ChangeNotifier {
 
       // [2] Cek orientasi dari accelerometer setiap 30 frame
       if (_frameCount % 30 == 0) {
+        // Kirim tilt ke TFLiteService untuk koreksi estimasi jarak
+        TFLiteService.instance.updateTilt(
+          CameraHealthService.instance.lastTiltAngle,
+        );
         final health = CameraHealthService.instance.checkOrientation();
         if (!health.ok) {
           if (_healthMessage != health.message) {
