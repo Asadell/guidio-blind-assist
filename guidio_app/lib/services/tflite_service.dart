@@ -82,7 +82,7 @@ class TFLiteService {
   Future<bool> tryLoad() async {
     try {
       // Load model bytes via rootBundle (hanya bisa di main thread)
-      final byteData  = await rootBundle.load('assets/models/yolo11n.tflite');
+      final byteData  = await rootBundle.load('assets/models/yolo11l_float32.tflite');
       _modelBytes     = byteData.buffer.asUint8List();
 
       final options   = InterpreterOptions()..threads = 4;
@@ -110,7 +110,7 @@ class TFLiteService {
     final inputTensor = _prepareInput(image);
     if (inputTensor == null) return [];
 
-    // Output tensor YOLO11n (imgsz=320): [1, 84, 2100]
+    // Output tensor YOLO11l (imgsz=320): [1, 84, 2100]
     // 84 = 4 bbox coords (cx,cy,w,h) + 80 class scores
     final output = List.generate(1, (_) =>
         List.generate(84, (_) => List.filled(2100, 0.0)));
@@ -189,7 +189,7 @@ class TFLiteService {
     }
   }
 
-  /// Post-process output tensor YOLO11n [84, 8400] → List<Detection>
+  /// Post-process output tensor YOLO11l [84, 8400] → List<Detection>
   /// 84 = 4 bbox (cx,cy,w,h normalized) + 80 class scores
   List<Detection> _postProcess(
     List<List<double>> output,
