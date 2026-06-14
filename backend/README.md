@@ -30,6 +30,8 @@ Flutter App
     │
     ├── POST /api/narasi     ──▶ Claude Haiku  ──▶ kalimat natural (1-2 kalimat BI)
     │
+    ├── POST /api/route-intent ─▶ Claude Haiku  ──▶ intent string (max_tokens=10)
+    │
     ├── POST /api/ocr        ──▶ Tesseract     ──▶ teks hasil baca
     │
     └── GET  /api/risk-zone  ──▶ In-memory store ──▶ zona bahaya terdekat
@@ -40,6 +42,7 @@ Flutter App
 - ❌ Tidak menyimpan queue TTS
 - ❌ Tidak menentukan apakah objek perlu diumumkan atau tidak
 - ❌ Tidak menerima gambar untuk Claude (input LLM selalu teks terstruktur)
+- ❌ Tidak menjalankan SORT tracker (ada di Flutter)
 
 ---
 
@@ -195,6 +198,25 @@ Cek zona bahaya di sekitar koordinat GPS pengguna.
 
 ---
 
+### `POST /api/route-intent`
+Intent routing untuk Voice Assistant menggunakan Claude Haiku. Dipanggil oleh `voice_provider.dart` Layer 2 (setelah keyword lokal tidak match).
+
+**Request:**
+```json
+{ "text": "Apa yang ada di depan saya?" }
+```
+
+**Response:**
+```json
+{ "intent": "describe_scene", "fallback_used": false }
+```
+
+**Intent yang valid:** `describe_scene` | `ocr` | `navigation` | `chitchat`  
+**Fallback:** jika Claude error/timeout → `{"intent": "describe_scene", "fallback_used": true}`  
+**Latensi:** < 300ms (max_tokens=10, temperature=0.0)
+
+---
+
 ## 3. Penggunaan LLM: Claude Haiku
 
 ### Kapan Claude Dipanggil?
@@ -203,6 +225,7 @@ Cek zona bahaya di sekitar koordinat GPS pengguna.
 |---|---|
 | Mode Tuntun real-time (tiap frame) | ❌ Tidak — pakai template sederhana |
 | Voice Assistant ("ada apa?") | ✅ Ya — via `/api/narasi` |
+| Voice Assistant intent routing | ✅ Ya — via `/api/route-intent` (max_tokens=10) |
 | OCR (baca teks) | ❌ Tidak — Tesseract langsung |
 | Navigasi obstacle warning | ❌ Tidak — pakai template |
 
@@ -302,7 +325,8 @@ backend/
 │   ├── detect.py               # /api/detect — single shot inference
 │   ├── narasi.py               # /api/narasi — Claude Haiku narasi
 │   ├── ocr.py                  # /api/ocr — Tesseract
-│   └── risk_zone.py            # /api/risk-zone — zona bahaya GPS
+│   ├── risk_zone.py            # /api/risk-zone — zona bahaya GPS
+│   └── voice_router.py         # [NEW] /api/route-intent — LLM intent classifier
 │
 ├── services/
 │   ├── yolo_service.py         # YOLOService: load model, infer, estimate distance

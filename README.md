@@ -48,7 +48,17 @@ Kamera aktif terus-menerus. YOLO11n berjalan di perangkat (TFLite), mendeteksi o
 **Filter cerdas mencegah spam suara:**
 - Hanya objek dalam radius **≤ 4 meter** yang dilaporkan
 - Objek yang sama tidak diulang lebih cepat dari cooldown per tier (2s / 3s / 5s)
+- Jika objek **mendekat** (bbox area tumbuh >20%), cooldown dipotong 50% — peringatan lebih cepat
 - Maksimal **2 pesan** dalam antrian TTS sekaligus (dari riset Netra AI: meningkatkan pemahaman dari 52% → 78%)
+
+**Haptic feedback mendampingi TTS:**
+Setiap peringatan suara disertai getaran yang berbeda pola — primary signal di lingkungan bising (pasar, jalan raya):
+- Critical: triple pulse cepat `[0, 100, 50, 100, 50, 100]`
+- Warning: double pulse sedang `[0, 200, 100, 200]`
+- Info: single pulse panjang `[0, 300]`
+
+**SORT Object Tracking (pure Dart):**
+Setiap objek diberi ID unik antar frame — mengeliminasi flickering (tidak dianggap objek baru tiap frame), dan mendeteksi objek yang mendekat untuk early warning.
 
 ### 📖 Mode OCR — Membaca Teks
 Arahkan kamera ke teks (menu, rambu, label obat), tekan tombol kamera — Guidio membaca tulisan tersebut dengan suara.
@@ -60,6 +70,10 @@ Peringatan rintangan dari Mode Tuntun tetap aktif, ditambah instruksi navigasi t
 Tekan mikrofon, tanya: *"Ada apa di sekitar saya?"* — Guidio menjalankan YOLO, lalu mengirim **teks** hasil deteksi (bukan gambar) ke Claude Haiku dan membalas dengan kalimat natural:
 
 > *"Di depan kamu ada seseorang yang cukup dekat, sekitar satu meter. Ada motor di sebelah kananmu. Jalur kiri tampak lebih aman."*
+
+**Intent routing 2-lapis:**
+1. Layer 1 — keyword lokal (0ms, offline-safe): deteksi intent jelas seperti "baca", "pergi ke"
+2. Layer 2 — LLM routing via Claude Haiku (`max_tokens=10`, `temperature=0.0`): untuk kalimat ambigu seperti *"Apa yang ada di depan saya?"* — latency routing < 300ms
 
 ---
 
@@ -109,13 +123,15 @@ Terinspirasi dari paper *Feedback-Enhanced YOLO + VLM* (arXiv 2025) dan *Neural 
 - Jauh lebih murah (input ~100 token vs kirim gambar)
 - Lebih cepat (tidak perlu encode/decode base64)
 
-**4. Sistem Audio 3-Tier (dari Netra AI)**
+**4. Sistem Audio 3-Tier + Haptic (dari Netra AI)**
 
-| Tier | Objek | Cooldown | Behavior |
-|---|---|---|---|
-| Critical | orang, motor, mobil, bus, truk, anjing | 2 detik | Interupsi TTS yang sedang jalan |
-| Warning | sepeda, kursi, meja, anak tangga | 3 detik | Masuk antrian normal |
-| Info | tas, payung, tanaman | 5 detik | Hanya jika antrian kosong |
+| Tier | Objek | Cooldown | TTS Behavior | Haptic Pattern |
+|---|---|---|---|---|
+| Critical | orang, motor, mobil, bus, truk, anjing | 2 detik | Interupsi TTS lain | Triple pulse `[0,100,50,100,50,100]` |
+| Warning | sepeda, kursi, meja, anak tangga | 3 detik | Masuk antrian normal | Double pulse `[0,200,100,200]` |
+| Info | tas, payung, tanaman | 5 detik | Hanya jika antrian kosong | Single pulse `[0,300]` |
+
+Jika objek mendekat (SORT tracker: `isApproaching = true`), cooldown dipotong **50%** — early warning aktif.
 
 ### Alur Lengkap: Frame Kamera → Suara ke Pengguna
 
@@ -133,17 +149,25 @@ YOLO11n inference
         │  2100 = anchor boxes untuk imgsz=320
         │
 post-process: NMS + confidence threshold > 0.5
++ tilt correction (cos(angle) jika HP miring > 15°)
         │
         ▼ List<Detection>
+[ObjectTracker — SORT pure Dart]
+  ├─ Greedy IoU matching antar frame (threshold 0.3)
+  ├─ isApproaching = bbox area tumbuh > 20%
+  └─ Track hilang > 5 frame → hapus
+        │
+        ▼ List<Detection> enriched (isApproaching)
 [DetectionFilter]
   ├─ distance > 4m → buang
   ├─ confidence < 0.5 → buang
   ├─ streak < 3 frame → skip (belum stabil)
   ├─ masih dalam cooldown tier → skip
+  │   (cooldown 50% lebih pendek jika isApproaching)
   └─ lolos → sort by priority, maks 2
         │
         ▼
-[TtsProvider] → flutter_tts → Suara ke pengguna
+[TTS + Haptic] → suara + getaran ke pengguna
 ```
 
 ### Camera Health Check (On-Device, Sebelum Inference)
@@ -264,16 +288,18 @@ Claude Haiku dipilih karena biayanya sangat rendah untuk output singkat (1-2 kal
 
 | Layer | Teknologi |
 |---|---|
-| Mobile App | Flutter (Dart), Provider pattern |
+| Mobile App | Flutter (Dart), Provider pattern, **Android only** |
 | On-Device AI | YOLO11n via TFLite Flutter (imgsz=320, float32) |
+| Object Tracking | SORT (Simple Online Realtime Tracking) — pure Dart, tanpa library |
 | Server AI | YOLOv8m via ONNX |
 | LLM Narasi | Claude Haiku (`claude-haiku-4-5`) — input teks, bukan gambar |
+| LLM Routing | Claude Haiku — `max_tokens=10`, `temperature=0.0` (<300ms) |
 | OCR | Tesseract via server |
-| Speech-to-Text | Google STT (`speech_to_text` package) |
+| Speech-to-Text | Google STT (`speech_to_text` package, `id_ID`) |
 | Text-to-Speech | flutter_tts (`id-ID`) |
+| Haptic Feedback | `vibration` package — tri-tier pattern |
 | Backend Framework | FastAPI (Python) |
 | Real-time | WebSocket (`/ws/detect`) |
-| Database | PostgreSQL + PostGIS (Risk Zone) |
 | Komunikasi | REST + WebSocket |
 
 ---
@@ -296,21 +322,28 @@ Guidio dibangun di atas 4 paper peer-reviewed/preprint:
 ```
 project/
 ├── README.md                    ← (ini)
-├── guidio_app/                  ← Flutter mobile app
+├── guidio_app/                  ← Flutter mobile app (Android)
 │   ├── README.md                ← Panduan mobile + TFLite detail
 │   ├── lib/
-│   │   ├── models/              ← Detection data class
-│   │   ├── services/            ← TFLite, Server, TTS, Filter, Camera Health
-│   │   ├── providers/           ← State management (Camera, Inference, TTS, Voice, Navigation)
+│   │   ├── models/              ← Detection data class (isApproaching, copyWith, bbox getters)
+│   │   ├── services/            ← TFLite, Server, TTS, Filter, Camera Health, Haptic, Tracker
+│   │   ├── providers/           ← Camera, Inference, Detection, TTS, Voice, Navigation
 │   │   ├── screens/             ← Tuntun, OCR, Navigasi, Voice, Main
 │   │   └── widgets/             ← BottomBar, DetectionCard, CameraHealthBanner
 │   └── assets/models/           ← yolo11n.tflite (tidak di-commit, lihat README mobile)
 ├── backend/                     ← FastAPI server
 │   ├── README.md                ← Panduan backend + API reference
 │   ├── main.py                  ← Entry point FastAPI
-│   ├── routers/                 ← detect, websocket, narasi, ocr, risk_zone
+│   ├── routers/                 ← detect, websocket, narasi, ocr, risk_zone, voice_router
 │   ├── services/                ← YOLOService, camera_health
 │   └── utils/                   ← image_utils
+└── context/                     ← Dokumentasi teknis lengkap untuk AI/developer
+    ├── README.md
+    ├── 01_guidio_current_state.md
+    ├── 02_opensource_summary.md
+    ├── 03_feature_comparison.md
+    ├── 04_technical_deep_dive.md
+    └── 05_ai_context.md
 ```
 
 ---
@@ -378,8 +411,11 @@ flutter run
 - **Claude Haiku menerima TEKS, bukan gambar** — jangan kirim base64 image
 - **TFLite inference HARUS di Isolate** — jangan jalankan di main thread (UI freeze)
 - **Critical obstacle SELALU interrupt TTS lain** — tidak pernah antri
+- **Haptic selalu mendampingi TTS** — tidak menggantikan, keduanya aktif bersamaan
+- **SORT tracker reset saat mode berganti** — panggil `_tracker.reset()` di `stopRealtime()`
 - **Semua TTS dalam Bahasa Indonesia** — flutter_tts set ke `id-ID`
 - **Server tidak boleh crash jika Claude API gagal** — ada fallback ke template sederhana
+- **Android only** — iOS tidak ditarget untuk saat ini
 
 ---
 

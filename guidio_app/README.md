@@ -1,6 +1,6 @@
-# Guidio App — Flutter Mobile
+# Guidio App — Flutter Mobile (Android)
 
-Aplikasi mobile Guidio adalah komponen utama sistem Guidio: "mata" dan "telinga" pengguna tunanetra. Seluruh deteksi rintangan real-time berjalan **langsung di perangkat** tanpa internet, menggunakan YOLO11n via TFLite.
+Aplikasi mobile Guidio adalah komponen utama sistem Guidio: "mata" dan "telinga" pengguna tunanetra. Seluruh deteksi rintangan real-time berjalan **langsung di perangkat** tanpa internet, menggunakan YOLO11n via TFLite. Aplikasi ini dikhususkan untuk **Android**.
 
 ---
 
@@ -38,16 +38,16 @@ App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil 
 │        │          │  1. distance > 4m → buang                 │  │
 │        │          │  2. confidence < 0.5 → buang              │  │
 │        │          │  3. streak < 3 frame → skip               │  │
-│        │          │  4. cooldown per tier → skip              │  │
+│        │          │  4. cooldown tier (50% jika approaching)  │  │
 │        │          │  5. sort critical→warning→info            │  │
 │        │          │  6. maks 2 pesan per cycle                │  │
 │        │          └──────────────┬────────────────────────────┘  │
 │        │                         │ filtered List<Detection>      │
 │        │          ┌──────────────▼────────────────────────────┐  │
-│        │          │           TtsProvider                     │  │
-│        │          │  Critical → interrupt + speak segera      │  │
-│        │          │  Warning/Info → antrian maks 2            │  │
-│        │          │  flutter_tts, bahasa id-ID                │  │
+│        │          │       TTS + HapticService                 │  │
+│        │          │  Critical → interrupt + triple pulse      │  │
+│        │          │  Warning/Info → antrian + pattern sesuai  │  │
+│        │          │  flutter_tts + vibration package          │  │
 │        │          └───────────────────────────────────────────┘  │
 │        │                                                         │
 │   captureJpeg ──────────────────────────────────── /api/ocr      │
@@ -59,6 +59,8 @@ App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil 
 **Prinsip utama:**
 - Filter pipeline **hanya di Flutter** — server hanya kirim raw detections
 - TFLite **di Isolate** — tidak pernah di main thread (UI tidak freeze)
+- SORT tracker **pure Dart** — tidak ada library eksternal, ~0ms overhead
+- Haptic **mendampingi** TTS — tidak menggantikan, keduanya aktif bersamaan
 - Tidak ada LLM di mobile — semua peringatan pakai template kalimat lokal
 
 ---
@@ -144,12 +146,19 @@ Konversi bbox: normalized (cx,cy,w,h) → pixel (x1,y1,x2,y2)
 Non-Maximum Suppression (NMS, IoU threshold 0.45)
         │
         ▼
-Estimasi jarak (Similar Triangle):
-  jarak = (tinggi_nyata_cm × focal_length_px) / (tinggi_bbox_pixel × 100)
+Estimasi jarak (Similar Triangle + Tilt Correction):
+  jarak_raw = (tinggi_nyata_cm × focal_length_px) / (tinggi_bbox_pixel × 100)
+  jika HP miring > 15° → jarak = jarak_raw × cos(tilt_angle)
   focal_length_px = 615 (kalibrasi default)
         │
         ▼
-List<Detection>
+[ObjectTracker — SORT pure Dart]
+  ├─ Greedy IoU matching label-aware (threshold 0.3)
+  ├─ isApproaching = bbox area tumbuh > 20%
+  └─ Track hilang > 5 frame → hapus
+        │
+        ▼
+List<Detection> enriched (isApproaching)
 ```
 
 ---
@@ -190,7 +199,7 @@ Filter pipeline membuang deteksi dalam kondisi berikut:
 | Terlalu jauh | `distance > 4.0 meter` |
 | Confidence rendah | `confidence < 0.5` |
 | Belum stabil | Terdeteksi < 3 frame berturut-turut (streak) |
-| Cooldown aktif | Objek sama sudah dilaporkan dalam 2–5 detik terakhir |
+| Cooldown aktif | Objek sama sudah dilaporkan dalam cooldown terakhir (dipotong 50% jika mendekat) |
 | Antrian penuh | Sudah ada 2 pesan di antrian TTS |
 
 ### D. Status Sistem & Koneksi
@@ -205,9 +214,10 @@ Filter pipeline membuang deteksi dalam kondisi berikut:
 
 | Pertanyaan Pengguna | Alur | Output |
 |---|---|---|
-| *"Ada apa di sekitar saya?"* | YOLO snapshot → teks → `/api/narasi` → Claude Haiku | Kalimat deskriptif natural dalam BI |
-| *"Bacakan teks ini"* | captureJpeg → `/api/ocr` → flutter_tts | Teks terbacakan |
-| *"Pergi ke halte"* | Intent routing → NavigationProvider | Instruksi navigasi |
+| *"Ada apa di sekitar saya?"* | Keyword miss → LLM routing → YOLO snapshot → teks → `/api/narasi` → Claude Haiku | Kalimat deskriptif natural dalam BI |
+| *"Bacakan teks ini"* | Keyword "baca" → Layer 1 langsung → captureJpeg → `/api/ocr` → flutter_tts | Teks terbacakan |
+| *"Pergi ke halte"* | Keyword "pergi ke" → Layer 1 langsung → NavigationProvider | Instruksi navigasi |
+| Kalimat ambigu | Keyword miss → Layer 2 Claude Haiku (`max_tokens=10`) → intent → dispatch | Sesuai intent | 
 
 ---
 
@@ -261,32 +271,34 @@ TtsProvider.enqueue() → flutter_tts speak
 lib/
 ├── main.dart
 ├── models/
-│   └── detection.dart              # data class Detection (labelEn, labelId, distance, direction, danger)
+│   └── detection.dart              # Detection: isApproaching, copyWith(), bboxCx/Cy/W/H/Area
 ├── services/
-│   ├── tflite_service.dart         # load model, YUV→tensor, inference di Isolate, postprocess
-│   ├── server_service.dart         # WebSocket stream + REST call ke backend
-│   ├── detection_filter.dart       # filter pipeline (dipanggil untuk TFLite & server)
+│   ├── tflite_service.dart         # load model, YUV→tensor, inference di Isolate, tilt correction
+│   ├── server_service.dart         # WebSocket stream + REST + routeIntent()
+│   ├── detection_filter.dart       # filter pipeline + approach-aware cooldown
 │   ├── tts_service.dart            # flutter_tts wrapper + speakAndWait (Completer)
-│   └── camera_health_service.dart  # validasi posisi kamera via accelerometer
+│   ├── haptic_service.dart         # [NEW] tri-tier vibration pattern (Critical/Warning/Info)
+│   ├── object_tracker.dart         # [NEW] SORT tracker pure Dart — isApproaching detection
+│   └── camera_health_service.dart  # validasi posisi kamera + lastTiltAngle getter
 ├── providers/
 │   ├── app_mode_provider.dart      # mode aktif
 │   ├── inference_provider.dart     # routing TFLite vs server
-│   ├── detection_provider.dart     # orkestrasi deteksi + filter + TTS trigger
+│   ├── detection_provider.dart     # orkestrasi: tracker → filter → TTS + haptic
 │   ├── tts_provider.dart           # antrian TTS maks 2, priority system
-│   ├── camera_provider.dart        # kamera + brightness check + captureJpeg
-│   ├── voice_provider.dart         # STT → intent → API → TTS
+│   ├── camera_provider.dart        # kamera + brightness check + tilt update tiap 30 frame
+│   ├── voice_provider.dart         # STT → 2-layer routing (keyword + LLM) → TTS
 │   └── navigation_provider.dart    # step navigasi GPS
 ├── screens/
-│   ├── main_screen.dart            # boot screen + routing mode
-│   ├── tuntun_screen.dart          # Mode Tuntun (kamera fullscreen + detection overlay)
-│   ├── ocr_screen.dart             # Mode OCR (scan overlay + hasil baca)
-│   ├── navigasi_screen.dart        # Mode Navigasi (map + obstacle warning)
-│   └── voice_screen.dart           # Mode Voice Assistant (card STT/response)
+│   ├── main_screen.dart
+│   ├── tuntun_screen.dart
+│   ├── ocr_screen.dart
+│   ├── navigasi_screen.dart
+│   └── voice_screen.dart
 └── widgets/
-    ├── bottom_bar.dart             # 3 tombol: kamera, mic (besar), mode
-    ├── detection_card.dart         # card overlay deteksi
-    ├── camera_health_banner.dart   # banner peringatan kondisi kamera
-    └── mode_sheet.dart             # bottom sheet pilih mode
+    ├── bottom_bar.dart
+    ├── detection_card.dart
+    ├── camera_health_banner.dart
+    └── mode_sheet.dart
 
 assets/
 └── models/
@@ -376,25 +388,30 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # State Management
+  provider: ^6.1.2
+
   # Kamera & AI
-  camera: ^0.11.0              # CameraController + ImageStream (YUV420)
-  tflite_flutter: ^0.10.4      # IsolateInterpreter untuk inference non-blocking
+  camera: ^0.11.0+2            # CameraController + ImageStream (YUV420)
+  tflite_flutter: ^0.12.1      # IsolateInterpreter untuk inference non-blocking
   image: ^4.1.7                # YUV420 → RGB conversion, resize
 
   # Komunikasi Backend
-  web_socket_channel: ^2.4.0   # WebSocket stream ke /ws/detect
-  http: ^1.2.0                 # REST call ke /api/narasi, /api/ocr
+  web_socket_channel: ^3.0.1   # WebSocket stream ke /ws/detect
+  http: ^1.2.1                 # REST call ke /api/narasi, /api/ocr, /api/route-intent
 
-  # State Management
-  provider: ^6.1.2             # ChangeNotifier + ProxyProvider
-
-  # Audio
+  # Audio & Feedback
   flutter_tts: ^4.0.2          # Text-to-Speech (id-ID)
-  speech_to_text: ^6.6.0       # Speech-to-Text Google STT
-  vibration: ^2.1.0            # Haptic feedback saat mic aktif
+  speech_to_text: ^7.0.0       # Speech-to-Text Google STT
+  vibration: ^2.0.0            # Haptic feedback tri-tier (Critical/Warning/Info)
 
-  # Sensor & Lokasi
-  sensors_plus: ^4.0.2         # Accelerometer untuk camera health check
-  geolocator: ^12.0.0          # GPS untuk Risk Zone & navigasi
-  permission_handler: ^11.4.0  # Request runtime permission (kamera, lokasi)
+  # Sensor
+  sensors_plus: ^7.0.0         # Accelerometer untuk camera health + tilt correction
+
+  # Izin & Storage
+  permission_handler: ^11.3.1  # Request runtime permission (kamera, mikrofon)
+  shared_preferences: ^2.3.2   # Local storage lokasi favorit
+
+  # Icon
+  cupertino_icons: ^1.0.8
 ```
