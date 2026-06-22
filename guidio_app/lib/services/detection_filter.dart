@@ -11,9 +11,10 @@ class DetectionFilter {
   final Map<String, DateTime> _lastAnnounced = {};
   final Map<String, int>      _streak        = {};
 
-  // streakRequired=1: SSD MobileNet tidak konsisten — score fluktuatif.
-  // Cooldown per tier (2s/3s/5s) sudah cukup mencegah spam TTS.
-  static const int    _streakRequired = 1;
+  // streakRequired=2: SSD MobileNet tidak konsisten antar frame (objek bisa
+  // flash 1 frame lalu hilang). Minimal 2 frame berturut-turut memastikan
+  // deteksi stabil sebelum popup muncul dan TTS disuarakan.
+  static const int    _streakRequired = 2;
   static const double _maxDistance    = 10.0; // dinaikkan dari 4.0 — SSD kurang presisi jarak
   static const double _minConfidence  = 0.5;  // SSD lebih noisy, threshold lebih tinggi dari YOLO
 
