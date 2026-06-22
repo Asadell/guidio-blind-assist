@@ -1,117 +1,13 @@
 
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
 
-// Label COCO — 80 kelas lengkap
-const Map<int, String> _cocoLabels = {
-  // Orang
-  0:  'person',
-
-  // Kendaraan
-  1:  'bicycle',
-  2:  'car',
-  3:  'motorcycle',
-  4:  'airplane',
-  5:  'bus',
-  6:  'train',
-  7:  'truck',
-  8:  'boat',
-
-  // Outdoor / Jalanan
-  9:  'traffic light',
-  10: 'fire hydrant',
-  11: 'stop sign',
-  12: 'parking meter',
-  13: 'bench',
-
-  // Hewan
-  14: 'bird',
-  15: 'cat',
-  16: 'dog',
-  17: 'horse',
-  18: 'sheep',
-  19: 'cow',
-  20: 'elephant',
-  21: 'bear',
-  22: 'zebra',
-  23: 'giraffe',
-
-  // Aksesoris
-  24: 'backpack',
-  25: 'umbrella',
-  26: 'handbag',
-  27: 'tie',
-  28: 'suitcase',
-
-  // Olahraga
-  29: 'frisbee',
-  30: 'skis',
-  31: 'snowboard',
-  32: 'sports ball',
-  33: 'kite',
-  34: 'baseball bat',
-  35: 'baseball glove',
-  36: 'skateboard',
-  37: 'surfboard',
-  38: 'tennis racket',
-
-  // Dapur / Makanan
-  39: 'bottle',
-  40: 'wine glass',
-  41: 'cup',
-  42: 'fork',
-  43: 'knife',
-  44: 'spoon',
-  45: 'bowl',
-  46: 'banana',
-  47: 'apple',
-  48: 'sandwich',
-  49: 'orange',
-  50: 'broccoli',
-  51: 'carrot',
-  52: 'hot dog',
-  53: 'pizza',
-  54: 'donut',
-  55: 'cake',
-
-  // Furnitur / Ruangan
-  56: 'chair',
-  57: 'couch',
-  58: 'potted plant',
-  59: 'bed',
-  60: 'dining table',
-  61: 'toilet',
-
-  // Elektronik
-  62: 'tv',
-  63: 'laptop',
-  64: 'mouse',
-  65: 'remote',
-  66: 'keyboard',
-  67: 'cell phone',
-
-  // Peralatan Rumah
-  68: 'microwave',
-  69: 'oven',
-  70: 'toaster',
-  71: 'sink',
-  72: 'refrigerator',
-
-  // Lain-lain
-  73: 'book',
-  74: 'clock',
-  75: 'vase',
-  76: 'scissors',
-  77: 'teddy bear',
-  78: 'hair drier',
-  79: 'toothbrush',
-};
-
+// Label Bahasa Indonesia — kunci adalah label Inggris dari labelmap.txt
 const Map<String, String> _labelId = {
   // Orang
   'person':         'orang',
@@ -220,10 +116,7 @@ const Set<String> _dangerHigh   = {'person', 'motorcycle', 'car', 'bus', 'truck'
 const Set<String> _dangerMedium = {'bicycle', 'chair', 'dining table'};
 
 const Map<String, int> _realHeightsCm = {
-  // Orang
   'person':           170,
-
-  // Kendaraan
   'bicycle':          100,
   'car':              150,
   'motorcycle':       120,
@@ -232,15 +125,11 @@ const Map<String, int> _realHeightsCm = {
   'train':            350,
   'truck':            280,
   'boat':             150,
-
-  // Outdoor / Jalanan
   'traffic light':    250,
   'fire hydrant':      60,
   'stop sign':        200,
   'parking meter':    130,
   'bench':             90,
-
-  // Hewan
   'bird':              20,
   'cat':               25,
   'dog':               60,
@@ -251,15 +140,11 @@ const Map<String, int> _realHeightsCm = {
   'bear':             150,
   'zebra':            150,
   'giraffe':          450,
-
-  // Aksesoris
   'backpack':          50,
   'umbrella':         100,
   'handbag':           30,
   'tie':               15,
   'suitcase':          70,
-
-  // Olahraga
   'frisbee':            3,
   'skis':             150,
   'snowboard':        150,
@@ -270,8 +155,6 @@ const Map<String, int> _realHeightsCm = {
   'skateboard':        15,
   'surfboard':         60,
   'tennis racket':     70,
-
-  // Dapur / Makanan
   'bottle':            25,
   'wine glass':        20,
   'cup':               10,
@@ -289,31 +172,23 @@ const Map<String, int> _realHeightsCm = {
   'pizza':              5,
   'donut':              5,
   'cake':              15,
-
-  // Furnitur / Ruangan
   'chair':             90,
   'couch':             90,
   'potted plant':      50,
   'bed':               60,
   'dining table':      75,
   'toilet':            80,
-
-  // Elektronik
   'tv':                60,
-  'laptop':            30,  // tinggi layar saat terbuka
-  'mouse':              4,  // tinggi fisik mouse
+  'laptop':            30,
+  'mouse':              4,
   'remote':            20,
-  'keyboard':           4,  // flat, tinggi bodi
+  'keyboard':           4,
   'cell phone':        15,
-
-  // Peralatan Rumah
   'microwave':         35,
   'oven':              60,
   'toaster':           20,
   'sink':              25,
   'refrigerator':     175,
-
-  // Lain-lain
   'book':              25,
   'clock':             30,
   'vase':              30,
@@ -322,18 +197,23 @@ const Map<String, int> _realHeightsCm = {
   'hair drier':        25,
   'toothbrush':        20,
 };
+
+// Focal length piksel (kalibrasi default)
 const int _focalLengthPx = 615;
-const int _inputSize     = 320; // imgsz saat export TFLite
+
+// SSD MobileNet: input 300×300
+const int _inputSize = 300;
 
 class TFLiteService {
   static final TFLiteService instance = TFLiteService._();
   TFLiteService._();
 
-  // IsolateInterpreter dari tflite_flutter — lebih simple dari spawn isolate manual
-  // Berdasarkan Context7 docs: Interpreter.fromAsset + IsolateInterpreter.create
   IsolateInterpreter? _isolateInterpreter;
   bool _loaded = false;
   bool get isLoaded => _loaded;
+
+  // Labels dimuat dinamis dari labelmap.txt
+  List<String> _labels = [];
 
   // Model bytes disimpan agar bisa dikirim ke isolate
   Uint8List? _modelBytes;
@@ -348,20 +228,22 @@ class TFLiteService {
 
   Future<bool> tryLoad() async {
     try {
-      // Load model bytes via rootBundle (hanya bisa di main thread)
-      final byteData    = await rootBundle.load('assets/models/yolo11l_float32.tflite');
+      // Load model SSD MobileNet
+      final byteData    = await rootBundle.load('assets/models/ssd_mobilenet.tflite');
       _modelBytes       = byteData.buffer.asUint8List();
+
+      // Load labelmap dinamis dari file teks
+      final labelRaw = await rootBundle.loadString('assets/models/labelmap.txt');
+      _labels = labelRaw.trim().split('\n').map((l) => l.trim()).toList();
+      debugPrint('[TFLite] Loaded ${_labels.length} labels dari labelmap.txt');
 
       final options     = InterpreterOptions()..threads = 4;
       final interpreter = Interpreter.fromBuffer(_modelBytes!, options: options);
 
-      // Debug: verifikasi shape tensor sesuai ekspektasi model export
-      // Input  harus: [1, 320, 320, 3]
-      // Output harus: [1, 84, 2100]  ← layout asli YOLO NCHW (bukan onnx2tf transpose)
+      // Debug: verifikasi shape tensor
+      // SSD MobileNet: input [1, 300, 300, 3]
       final inputShape  = interpreter.getInputTensor(0).shape;
-      final outputShape = interpreter.getOutputTensor(0).shape;
-      print('[TFLite] input shape:  $inputShape');   // [1, 320, 320, 3]
-      print('[TFLite] output shape: $outputShape');  // [1, 2100, 84]
+      debugPrint('[TFLite] input shape: $inputShape');  // [1, 300, 300, 3]
 
       // Bungkus di IsolateInterpreter agar inference tidak freeze UI
       _isolateInterpreter = await IsolateInterpreter.create(
@@ -371,7 +253,7 @@ class TFLiteService {
       _loaded = true;
       return true;
     } catch (e) {
-      print('[TFLite] load error: $e');
+      debugPrint('[TFLite] load error: $e');
       _loaded = false;
       return false;
     }
@@ -382,28 +264,42 @@ class TFLiteService {
   Future<List<Detection>> runInference(CameraImage image) async {
     if (!_loaded || _isolateInterpreter == null) return [];
 
-    // Konversi YUV420 → RGB → resize 320×320 → Float32 normalized
+    // Konversi YUV420 → RGB → resize 300×300 → nested List [1][300][300][3]
     final inputTensor = _prepareInput(image);
     if (inputTensor == null) return [];
 
-    // Output tensor YOLO11l (imgsz=320): [1, 84, 2100]
-    // Shape dikonfirmasi dari debug log — model ini BUKAN hasil onnx2tf,
-    // sehingga TIDAK ada transpose. Layout tetap [channel, anchor]:
-    //   output[0..3][i] = bbox (cx,cy,w,h)
-    //   output[4..83][i] = class scores
-    final output = List.generate(1, (_) =>
-        List.generate(84, (_) => List.filled(2100, 0.0)));
+    // SSD MobileNet output 4 tensor terpisah:
+    //   tensor[0]: locations [1][10][4]   — [ymin, xmin, ymax, xmax] normalized
+    //   tensor[1]: classes   [1][10]      — class index (float)
+    //   tensor[2]: scores    [1][10]      — confidence score
+    //   tensor[3]: count     [1]          — jumlah deteksi valid
+    final outputLocations = List.generate(1, (_) => List.generate(10, (_) => List.filled(4, 0.0)));
+    final outputClasses   = List.generate(1, (_) => List.filled(10, 0.0));
+    final outputScores    = List.generate(1, (_) => List.filled(10, 0.0));
+    final outputCount     = List.filled(1, 0.0);
 
-    await _isolateInterpreter!.run(inputTensor, output);
+    final outputs = {
+      0: outputLocations,
+      1: outputClasses,
+      2: outputScores,
+      3: outputCount,
+    };
 
-    return _postProcess(output[0], image.width, image.height);
+    await _isolateInterpreter!.runForMultipleInputs([inputTensor], outputs);
+
+    return _postProcess(
+      outputLocations[0],
+      outputClasses[0],
+      outputScores[0],
+      image.width,
+      image.height,
+    );
   }
 
-  /// Konversi YUV420 → RGB → resize 320×320 → nested List [1][320][320][3]
+  /// Konversi YUV420 → RGB → resize 300×300 → nested List [1][300][300][3]
   ///
-  /// TFLite Flutter membutuhkan input sebagai nested List yang persis sesuai
-  /// shape tensor model ([1, 320, 320, 3]), bukan flat Float32List.
-  /// Jika dikirim flat, PAD kernel akan gagal dengan "dims mismatch".
+  /// SSD MobileNet membutuhkan pixel range 0..255 (BUKAN 0..1 seperti YOLO).
+  /// TFLite Flutter membutuhkan nested List sesuai shape tensor [1, 300, 300, 3].
   List<List<List<List<double>>>>? _prepareInput(CameraImage image) {
     try {
       final int width  = image.width;
@@ -439,7 +335,7 @@ class TFLiteService {
         }
       }
 
-      // Resize ke 320×320
+      // Resize ke 300×300 (SSD MobileNet input size)
       final resized = img.copyResize(
         rgbImage,
         width:         _inputSize,
@@ -447,16 +343,15 @@ class TFLiteService {
         interpolation: img.Interpolation.linear,
       );
 
-      // Build nested List [1][H][W][3] — wajib untuk TFLite Flutter
-      // agar shape tensor terbaca benar oleh allocateTensors()
+      // Build nested List [1][H][W][3] — pixel range 0..255 (tidak dinormalisasi)
       final input = List.generate(1, (_) =>
         List.generate(_inputSize, (y) =>
           List.generate(_inputSize, (x) {
             final pixel = resized.getPixel(x, y);
             return [
-              pixel.r / 255.0,
-              pixel.g / 255.0,
-              pixel.b / 255.0,
+              pixel.r.toDouble(),  // 0..255 — sesuai spesifikasi SSD MobileNet
+              pixel.g.toDouble(),
+              pixel.b.toDouble(),
             ];
           }),
         ),
@@ -468,131 +363,72 @@ class TFLiteService {
     }
   }
 
-  /// Post-process output tensor YOLO11l [84, 2100] → List<Detection>
-  /// Layout asli (BUKAN onnx2tf): [channel][anchor]
-  ///   output[0..3][i] = cx, cy, w, h (normalized)
-  ///   output[4..83][i] = class scores (80 kelas COCO)
+  /// Post-process output SSD MobileNet → List<Detection>
+  ///
+  /// Output tensor SSD:
+  ///   locations[i] = [ymin, xmin, ymax, xmax] normalized 0..1
+  ///   classes[i]   = class index (float, bukan int)
+  ///   scores[i]    = confidence score
+  ///
+  /// NMS sudah dilakukan di dalam model — tidak perlu NMS manual.
   List<Detection> _postProcess(
-    List<List<double>> output,   // shape: [84][2100]
+    List<List<double>> locations, // [10][4]: ymin, xmin, ymax, xmax
+    List<double> classes,
+    List<double> scores,
     int origWidth,
     int origHeight,
   ) {
-    // conf 0.15 — filter utama ada di DetectionFilter (cooldown per tier)
-    // Model YOLO11l di 320x320 sering return 0.2-0.3 untuk objek valid
-    const double confThreshold = 0.25;
-    const double iouThreshold  = 0.45;
+    const double confThreshold = 0.5;
+    final List<Detection> results = [];
 
-    final List<_RawDet> candidates = [];
+    for (int i = 0; i < scores.length; i++) {
+      if (scores[i] < confThreshold) continue;
 
-    // Debug: track score tertinggi per frame
-    double debugMaxScore = 0;
-    int    debugMaxClass = -1;
+      final classIdx = classes[i].toInt();
+      if (classIdx < 0 || classIdx >= _labels.length) continue;
 
-    // Loop 2100 anchors — tiap kolom = 1 anchor
-    for (int i = 0; i < 2100; i++) {
-      // Ambil class scores (index 4..83)
-      double maxScore = 0;
-      int    maxClass = -1;
-      for (int c = 4; c < 84; c++) {
-        if (output[c][i] > maxScore) {
-          maxScore = output[c][i];
-          maxClass = c - 4;
-        }
-      }
+      final labelEn = _labels[classIdx];
+      // Skip entry '???' di labelmap — bukan kelas valid
+      if (labelEn == '???') continue;
 
-      // Simpan score tertinggi global untuk debug
-      if (maxScore > debugMaxScore) {
-        debugMaxScore = maxScore;
-        debugMaxClass = maxClass;
-      }
+      final labelId = _labelId[labelEn] ?? labelEn;
 
-      if (maxScore < confThreshold) continue;
-      if (!_cocoLabels.containsKey(maxClass)) continue;
+      // SSD output: [ymin, xmin, ymax, xmax] normalized 0..1
+      final ymin = locations[i][0];
+      final xmin = locations[i][1];
+      final ymax = locations[i][2];
+      final xmax = locations[i][3];
 
-      // Bbox: cx, cy, w, h (normalized 0..1)
-      final cx = output[0][i];
-      final cy = output[1][i];
-      final bw = output[2][i];
-      final bh = output[3][i];
+      // Konversi ke pixel koordinat, clamp ke batas frame
+      final x1 = (xmin * origWidth).clamp(0.0, (origWidth - 1).toDouble()).toInt();
+      final y1 = (ymin * origHeight).clamp(0.0, (origHeight - 1).toDouble()).toInt();
+      final x2 = (xmax * origWidth).clamp(0.0, (origWidth - 1).toDouble()).toInt();
+      final y2 = (ymax * origHeight).clamp(0.0, (origHeight - 1).toDouble()).toInt();
 
-      // Konversi ke pixel koordinat
-      final x1 = ((cx - bw / 2) * origWidth).clamp(0, origWidth - 1).toInt();
-      final y1 = ((cy - bh / 2) * origHeight).clamp(0, origHeight - 1).toInt();
-      final x2 = ((cx + bw / 2) * origWidth).clamp(0, origWidth - 1).toInt();
-      final y2 = ((cy + bh / 2) * origHeight).clamp(0, origHeight - 1).toInt();
+      final boxH = y2 - y1;
+      final cx   = (x1 + x2) / 2.0;
+      final cy   = (y1 + y2) / 2.0;
 
-      candidates.add(_RawDet(
-        classIdx:   maxClass,
-        confidence: maxScore,
-        x1: x1, y1: y1, x2: x2, y2: y2,
-      ));
-    }
+      final dist   = _estimateDistance(labelEn, boxH);
+      final dir    = _getDirection(cx, cy, origWidth, origHeight);
+      final danger = _getDanger(labelEn, dist);
 
-    // Debug: log score tertinggi per ~30 frame untuk diagnosa
-    // Jika debugMaxScore selalu < 0.1, berarti model tidak mengenali objek sama sekali
-    if (debugMaxClass >= 0) {
-      final label = _cocoLabels[debugMaxClass] ?? 'class$debugMaxClass';
-      print('[Inference] best score: ${debugMaxScore.toStringAsFixed(3)} → $label '
-          '(candidates: ${candidates.length})');
-    }
+      // Debug: log tiap deteksi yang lolos threshold
+      debugPrint('[Inference] ${scores[i].toStringAsFixed(2)} → $labelEn | $dir | ${dist.toStringAsFixed(1)}m | $danger');
 
-    // NMS — Non-Maximum Suppression
-    final nmsResult = _applyNms(candidates, iouThreshold);
-
-    // Konversi ke Detection model
-    return nmsResult.map((raw) {
-      final labelEn  = _cocoLabels[raw.classIdx]!;
-      final labelId  = _labelId[labelEn] ?? labelEn;
-      final boxH     = raw.y2 - raw.y1;
-      final dist     = _estimateDistance(labelEn, boxH);
-      final dir      = _getDirection((raw.x1 + raw.x2) / 2, origWidth);
-      final danger   = _getDanger(labelEn, dist);
-
-      return Detection(
+      results.add(Detection(
         labelEn:       labelEn,
         labelId:       labelId,
-        confidence:    raw.confidence,
+        confidence:    scores[i],
         distanceMeter: dist,
         direction:     dir,
         dangerLevel:   danger,
-        bbox:          {'x1': raw.x1, 'y1': raw.y1, 'x2': raw.x2, 'y2': raw.y2},
+        bbox:          {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2},
         inferenceMs:   0, // tidak diukur di sini
-      );
-    }).toList();
-  }
-
-  List<_RawDet> _applyNms(List<_RawDet> dets, double iouThreshold) {
-    dets.sort((a, b) => b.confidence.compareTo(a.confidence));
-    final result  = <_RawDet>[];
-    final removed = <int>{};
-
-    for (int i = 0; i < dets.length; i++) {
-      if (removed.contains(i)) continue;
-      result.add(dets[i]);
-      for (int j = i + 1; j < dets.length; j++) {
-        if (removed.contains(j)) continue;
-        if (_iou(dets[i], dets[j]) > iouThreshold) {
-          removed.add(j);
-        }
-      }
+      ));
     }
-    return result;
-  }
 
-  double _iou(_RawDet a, _RawDet b) {
-    final ix1 = a.x1 > b.x1 ? a.x1 : b.x1;
-    final iy1 = a.y1 > b.y1 ? a.y1 : b.y1;
-    final ix2 = a.x2 < b.x2 ? a.x2 : b.x2;
-    final iy2 = a.y2 < b.y2 ? a.y2 : b.y2;
-
-    final iw = (ix2 - ix1).clamp(0, double.maxFinite.toInt());
-    final ih = (iy2 - iy1).clamp(0, double.maxFinite.toInt());
-    final inter = iw * ih;
-    if (inter == 0) return 0;
-
-    final areaA = (a.x2 - a.x1) * (a.y2 - a.y1);
-    final areaB = (b.x2 - b.x1) * (b.y2 - b.y1);
-    return inter / (areaA + areaB - inter);
+    return results;
   }
 
   double _estimateDistance(String label, int boxH) {
@@ -601,7 +437,6 @@ class TFLiteService {
     double dist = (realH * _focalLengthPx) / (boxH * 100);
 
     // Tilt correction: jika HP miring > 15° (0.26 rad), koreksi jarak.
-    // cos(tilt) < 1 → jarak aktual lebih pendek dari hasil Similar Triangle.
     if (_lastTiltAngle.abs() > 0.26) {
       dist = dist * cos(_lastTiltAngle.abs());
     }
@@ -609,11 +444,23 @@ class TFLiteService {
     return dist;
   }
 
-  String _getDirection(double cx, int width) {
-    final t = width / 3;
-    if (cx < t)      return 'kiri';
-    if (cx < t * 2)  return 'depan';
-    return 'kanan';
+  /// Tentukan arah berdasarkan posisi horizontal DAN vertikal bounding box.
+  ///
+  /// Horizontal: kiri / depan / kanan (trisection horizontal)
+  /// Vertikal: atas / tengah / bawah (trisection vertikal)
+  ///
+  /// Jika vertikal = tengah → kembalikan arah horizontal saja ("depan")
+  /// Jika vertikal != tengah → gabungkan: "kiri atas", "depan bawah", dll.
+  String _getDirection(double cx, double cy, int width, int height) {
+    final hThird = width / 3;
+    final vThird = height / 3;
+
+    final horiz = cx < hThird ? 'kiri' : cx < hThird * 2 ? 'depan' : 'kanan';
+    final vert  = cy < vThird ? 'atas' : cy < vThird * 2 ? 'tengah' : 'bawah';
+
+    // Jika objek di zona tengah vertikal, cukup sebut arah horizontal
+    if (vert == 'tengah') return horiz;
+    return '$horiz $vert';
   }
 
   String _getDanger(String label, double dist) {
@@ -631,19 +478,4 @@ class TFLiteService {
     _isolateInterpreter?.close();
     _loaded = false;
   }
-}
-
-/// Helper internal untuk NMS
-class _RawDet {
-  final int    classIdx;
-  final double confidence;
-  final int    x1, y1, x2, y2;
-  const _RawDet({
-    required this.classIdx,
-    required this.confidence,
-    required this.x1,
-    required this.y1,
-    required this.x2,
-    required this.y2,
-  });
 }
