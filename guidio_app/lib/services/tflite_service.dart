@@ -1,4 +1,4 @@
-import 'dart:isolate';
+
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
@@ -7,53 +7,320 @@ import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
 
-// Label COCO yang diprioritaskan Guidio (15 kelas navigasi)
+// Label COCO — 80 kelas lengkap
 const Map<int, String> _cocoLabels = {
+  // Orang
   0:  'person',
+
+  // Kendaraan
   1:  'bicycle',
   2:  'car',
   3:  'motorcycle',
+  4:  'airplane',
   5:  'bus',
+  6:  'train',
   7:  'truck',
+  8:  'boat',
+
+  // Outdoor / Jalanan
+  9:  'traffic light',
+  10: 'fire hydrant',
+  11: 'stop sign',
+  12: 'parking meter',
+  13: 'bench',
+
+  // Hewan
+  14: 'bird',
   15: 'cat',
   16: 'dog',
+  17: 'horse',
+  18: 'sheep',
+  19: 'cow',
+  20: 'elephant',
+  21: 'bear',
+  22: 'zebra',
+  23: 'giraffe',
+
+  // Aksesoris
   24: 'backpack',
-  26: 'umbrella',
+  25: 'umbrella',
+  26: 'handbag',
+  27: 'tie',
+  28: 'suitcase',
+
+  // Olahraga
+  29: 'frisbee',
+  30: 'skis',
+  31: 'snowboard',
+  32: 'sports ball',
+  33: 'kite',
+  34: 'baseball bat',
+  35: 'baseball glove',
+  36: 'skateboard',
+  37: 'surfboard',
+  38: 'tennis racket',
+
+  // Dapur / Makanan
+  39: 'bottle',
+  40: 'wine glass',
+  41: 'cup',
+  42: 'fork',
+  43: 'knife',
+  44: 'spoon',
+  45: 'bowl',
+  46: 'banana',
+  47: 'apple',
+  48: 'sandwich',
+  49: 'orange',
+  50: 'broccoli',
+  51: 'carrot',
+  52: 'hot dog',
+  53: 'pizza',
+  54: 'donut',
+  55: 'cake',
+
+  // Furnitur / Ruangan
   56: 'chair',
   57: 'couch',
+  58: 'potted plant',
   59: 'bed',
   60: 'dining table',
+  61: 'toilet',
+
+  // Elektronik
   62: 'tv',
+  63: 'laptop',
+  64: 'mouse',
+  65: 'remote',
+  66: 'keyboard',
+  67: 'cell phone',
+
+  // Peralatan Rumah
+  68: 'microwave',
+  69: 'oven',
+  70: 'toaster',
+  71: 'sink',
+  72: 'refrigerator',
+
+  // Lain-lain
+  73: 'book',
+  74: 'clock',
+  75: 'vase',
+  76: 'scissors',
+  77: 'teddy bear',
+  78: 'hair drier',
+  79: 'toothbrush',
 };
 
 const Map<String, String> _labelId = {
-  'person':       'orang',
-  'bicycle':      'sepeda',
-  'car':          'mobil',
-  'motorcycle':   'motor',
-  'bus':          'bus',
-  'truck':        'truk',
-  'cat':          'kucing',
-  'dog':          'anjing',
-  'chair':        'kursi',
-  'dining table': 'meja',
-  'backpack':     'tas',
-  'umbrella':     'payung',
+  // Orang
+  'person':         'orang',
+
+  // Kendaraan
+  'bicycle':        'sepeda',
+  'car':            'mobil',
+  'motorcycle':     'motor',
+  'airplane':       'pesawat',
+  'bus':            'bus',
+  'train':          'kereta',
+  'truck':          'truk',
+  'boat':           'perahu',
+
+  // Outdoor / Jalanan
+  'traffic light':  'lampu lalu lintas',
+  'fire hydrant':   'hidran',
+  'stop sign':      'rambu berhenti',
+  'parking meter':  'meteran parkir',
+  'bench':          'bangku',
+
+  // Hewan
+  'bird':           'burung',
+  'cat':            'kucing',
+  'dog':            'anjing',
+  'horse':          'kuda',
+  'sheep':          'domba',
+  'cow':            'sapi',
+  'elephant':       'gajah',
+  'bear':           'beruang',
+  'zebra':          'zebra',
+  'giraffe':        'jerapah',
+
+  // Aksesoris
+  'backpack':       'tas ransel',
+  'umbrella':       'payung',
+  'handbag':        'tas tangan',
+  'tie':            'dasi',
+  'suitcase':       'koper',
+
+  // Olahraga
+  'frisbee':        'frisbee',
+  'skis':           'ski',
+  'snowboard':      'snowboard',
+  'sports ball':    'bola olahraga',
+  'kite':           'layang-layang',
+  'baseball bat':   'pemukul baseball',
+  'baseball glove': 'sarung tangan baseball',
+  'skateboard':     'skateboard',
+  'surfboard':      'papan selancar',
+  'tennis racket':  'raket tenis',
+
+  // Dapur / Makanan
+  'bottle':         'botol',
+  'wine glass':     'gelas anggur',
+  'cup':            'cangkir',
+  'fork':           'garpu',
+  'knife':          'pisau',
+  'spoon':          'sendok',
+  'bowl':           'mangkuk',
+  'banana':         'pisang',
+  'apple':          'apel',
+  'sandwich':       'sandwich',
+  'orange':         'jeruk',
+  'broccoli':       'brokoli',
+  'carrot':         'wortel',
+  'hot dog':        'hot dog',
+  'pizza':          'pizza',
+  'donut':          'donat',
+  'cake':           'kue',
+
+  // Furnitur / Ruangan
+  'chair':          'kursi',
+  'couch':          'sofa',
+  'potted plant':   'tanaman pot',
+  'bed':            'tempat tidur',
+  'dining table':   'meja makan',
+  'toilet':         'toilet',
+
+  // Elektronik
+  'tv':             'televisi',
+  'laptop':         'laptop',
+  'mouse':          'tetikus',
+  'remote':         'remote',
+  'keyboard':       'keyboard',
+  'cell phone':     'ponsel',
+
+  // Peralatan Rumah
+  'microwave':      'microwave',
+  'oven':           'oven',
+  'toaster':        'pemanggang roti',
+  'sink':           'wastafel',
+  'refrigerator':   'kulkas',
+
+  // Lain-lain
+  'book':           'buku',
+  'clock':          'jam',
+  'vase':           'vas',
+  'scissors':       'gunting',
+  'teddy bear':     'boneka beruang',
+  'hair drier':     'pengering rambut',
+  'toothbrush':     'sikat gigi',
 };
 
 const Set<String> _dangerHigh   = {'person', 'motorcycle', 'car', 'bus', 'truck', 'dog'};
 const Set<String> _dangerMedium = {'bicycle', 'chair', 'dining table'};
 
 const Map<String, int> _realHeightsCm = {
-  'person':     170,
-  'motorcycle': 120,
-  'car':        150,
-  'bicycle':    100,
-  'bus':        300,
-  'truck':      280,
-  'dog':         60,
-  'cat':         25,
-  'chair':       90,
+  // Orang
+  'person':           170,
+
+  // Kendaraan
+  'bicycle':          100,
+  'car':              150,
+  'motorcycle':       120,
+  'airplane':         400,
+  'bus':              300,
+  'train':            350,
+  'truck':            280,
+  'boat':             150,
+
+  // Outdoor / Jalanan
+  'traffic light':    250,
+  'fire hydrant':      60,
+  'stop sign':        200,
+  'parking meter':    130,
+  'bench':             90,
+
+  // Hewan
+  'bird':              20,
+  'cat':               25,
+  'dog':               60,
+  'horse':            160,
+  'sheep':             80,
+  'cow':              140,
+  'elephant':         280,
+  'bear':             150,
+  'zebra':            150,
+  'giraffe':          450,
+
+  // Aksesoris
+  'backpack':          50,
+  'umbrella':         100,
+  'handbag':           30,
+  'tie':               15,
+  'suitcase':          70,
+
+  // Olahraga
+  'frisbee':            3,
+  'skis':             150,
+  'snowboard':        150,
+  'sports ball':       22,
+  'kite':              50,
+  'baseball bat':     100,
+  'baseball glove':    30,
+  'skateboard':        15,
+  'surfboard':         60,
+  'tennis racket':     70,
+
+  // Dapur / Makanan
+  'bottle':            25,
+  'wine glass':        20,
+  'cup':               10,
+  'fork':               2,
+  'knife':              3,
+  'spoon':              2,
+  'bowl':              10,
+  'banana':            15,
+  'apple':             10,
+  'sandwich':          10,
+  'orange':            10,
+  'broccoli':          20,
+  'carrot':            20,
+  'hot dog':           10,
+  'pizza':              5,
+  'donut':              5,
+  'cake':              15,
+
+  // Furnitur / Ruangan
+  'chair':             90,
+  'couch':             90,
+  'potted plant':      50,
+  'bed':               60,
+  'dining table':      75,
+  'toilet':            80,
+
+  // Elektronik
+  'tv':                60,
+  'laptop':            30,  // tinggi layar saat terbuka
+  'mouse':              4,  // tinggi fisik mouse
+  'remote':            20,
+  'keyboard':           4,  // flat, tinggi bodi
+  'cell phone':        15,
+
+  // Peralatan Rumah
+  'microwave':         35,
+  'oven':              60,
+  'toaster':           20,
+  'sink':              25,
+  'refrigerator':     175,
+
+  // Lain-lain
+  'book':              25,
+  'clock':             30,
+  'vase':              30,
+  'scissors':          20,
+  'teddy bear':        30,
+  'hair drier':        25,
+  'toothbrush':        20,
 };
 const int _focalLengthPx = 615;
 const int _inputSize     = 320; // imgsz saat export TFLite
@@ -82,11 +349,19 @@ class TFLiteService {
   Future<bool> tryLoad() async {
     try {
       // Load model bytes via rootBundle (hanya bisa di main thread)
-      final byteData  = await rootBundle.load('assets/models/yolo11l_float32.tflite');
-      _modelBytes     = byteData.buffer.asUint8List();
+      final byteData    = await rootBundle.load('assets/models/yolo11l_float32.tflite');
+      _modelBytes       = byteData.buffer.asUint8List();
 
-      final options   = InterpreterOptions()..threads = 4;
+      final options     = InterpreterOptions()..threads = 4;
       final interpreter = Interpreter.fromBuffer(_modelBytes!, options: options);
+
+      // Debug: verifikasi shape tensor sesuai ekspektasi model export
+      // Input  harus: [1, 320, 320, 3]
+      // Output harus: [1, 84, 2100]  ← layout asli YOLO NCHW (bukan onnx2tf transpose)
+      final inputShape  = interpreter.getInputTensor(0).shape;
+      final outputShape = interpreter.getOutputTensor(0).shape;
+      print('[TFLite] input shape:  $inputShape');   // [1, 320, 320, 3]
+      print('[TFLite] output shape: $outputShape');  // [1, 2100, 84]
 
       // Bungkus di IsolateInterpreter agar inference tidak freeze UI
       _isolateInterpreter = await IsolateInterpreter.create(
@@ -96,6 +371,7 @@ class TFLiteService {
       _loaded = true;
       return true;
     } catch (e) {
+      print('[TFLite] load error: $e');
       _loaded = false;
       return false;
     }
@@ -111,7 +387,10 @@ class TFLiteService {
     if (inputTensor == null) return [];
 
     // Output tensor YOLO11l (imgsz=320): [1, 84, 2100]
-    // 84 = 4 bbox coords (cx,cy,w,h) + 80 class scores
+    // Shape dikonfirmasi dari debug log — model ini BUKAN hasil onnx2tf,
+    // sehingga TIDAK ada transpose. Layout tetap [channel, anchor]:
+    //   output[0..3][i] = bbox (cx,cy,w,h)
+    //   output[4..83][i] = class scores
     final output = List.generate(1, (_) =>
         List.generate(84, (_) => List.filled(2100, 0.0)));
 
@@ -189,29 +468,42 @@ class TFLiteService {
     }
   }
 
-  /// Post-process output tensor YOLO11l [84, 8400] → List<Detection>
-  /// 84 = 4 bbox (cx,cy,w,h normalized) + 80 class scores
+  /// Post-process output tensor YOLO11l [84, 2100] → List<Detection>
+  /// Layout asli (BUKAN onnx2tf): [channel][anchor]
+  ///   output[0..3][i] = cx, cy, w, h (normalized)
+  ///   output[4..83][i] = class scores (80 kelas COCO)
   List<Detection> _postProcess(
-    List<List<double>> output,
+    List<List<double>> output,   // shape: [84][2100]
     int origWidth,
     int origHeight,
   ) {
-    const double confThreshold = 0.5;
+    // conf 0.15 — filter utama ada di DetectionFilter (cooldown per tier)
+    // Model YOLO11l di 320x320 sering return 0.2-0.3 untuk objek valid
+    const double confThreshold = 0.25;
     const double iouThreshold  = 0.45;
 
     final List<_RawDet> candidates = [];
 
-    // Loop 2100 anchors
+    // Debug: track score tertinggi per frame
+    double debugMaxScore = 0;
+    int    debugMaxClass = -1;
+
+    // Loop 2100 anchors — tiap kolom = 1 anchor
     for (int i = 0; i < 2100; i++) {
       // Ambil class scores (index 4..83)
       double maxScore = 0;
       int    maxClass = -1;
       for (int c = 4; c < 84; c++) {
-        final score = output[c][i];
-        if (score > maxScore) {
-          maxScore = score;
+        if (output[c][i] > maxScore) {
+          maxScore = output[c][i];
           maxClass = c - 4;
         }
+      }
+
+      // Simpan score tertinggi global untuk debug
+      if (maxScore > debugMaxScore) {
+        debugMaxScore = maxScore;
+        debugMaxClass = maxClass;
       }
 
       if (maxScore < confThreshold) continue;
@@ -234,6 +526,14 @@ class TFLiteService {
         confidence: maxScore,
         x1: x1, y1: y1, x2: x2, y2: y2,
       ));
+    }
+
+    // Debug: log score tertinggi per ~30 frame untuk diagnosa
+    // Jika debugMaxScore selalu < 0.1, berarti model tidak mengenali objek sama sekali
+    if (debugMaxClass >= 0) {
+      final label = _cocoLabels[debugMaxClass] ?? 'class$debugMaxClass';
+      print('[Inference] best score: ${debugMaxScore.toStringAsFixed(3)} → $label '
+          '(candidates: ${candidates.length})');
     }
 
     // NMS — Non-Maximum Suppression

@@ -64,7 +64,17 @@ class DetectionProvider extends ChangeNotifier {
   /// TFLite path — inference langsung di isolate
   Future<void> _processFrameTflite(CameraImage image) async {
     if (!_realtimeActive) return;
-    final raw     = await TFLiteService.instance.runInference(image);
+    final raw = await TFLiteService.instance.runInference(image);
+
+    // Debug: log hasil raw inference (hanya jika ada deteksi)
+    if (raw.isNotEmpty) {
+      debugPrint(
+        '[Detection] raw (${raw.length}): '
+        '${raw.map((d) => '${d.labelEn} '
+          '${d.distanceMeter.toStringAsFixed(1)}m '
+          '(${d.dangerLevel})').join(' | ')}',
+      );
+    }
 
     // Update SORT tracker — dapat TrackedObject dengan info isApproaching
     final tracked = _tracker.update(raw);
@@ -81,6 +91,15 @@ class DetectionProvider extends ChangeNotifier {
     }).toList();
 
     final filtered = _filter.process(enriched);
+
+    // Debug: log apa yang akhirnya lolos ke TTS
+    if (filtered.isNotEmpty) {
+      debugPrint(
+        '[Detection] lolos filter (${filtered.length}): '
+        '${filtered.map((d) => '${d.labelEn}(${d.dangerLevel})').join(' | ')}',
+      );
+    }
+
     _updateAndSpeak(filtered);
   }
 

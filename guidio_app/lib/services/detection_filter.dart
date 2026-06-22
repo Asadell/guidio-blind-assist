@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/detection.dart';
 
 /// Filter pipeline — dipanggil oleh BOTH TFLite dan Server result.
@@ -10,41 +11,61 @@ class DetectionFilter {
   final Map<String, DateTime> _lastAnnounced = {};
   final Map<String, int>      _streak        = {};
 
-  static const int    _streakRequired = 3;
+  // streakRequired=1: model YOLO11l tidak konsisten — score fluktuatif, banyak frame kosong
+  // antara frame deteksi. Cooldown per tier (2s/3s/5s) sudah cukup mencegah spam TTS.
+  static const int    _streakRequired = 1;
   static const double _maxDistance    = 4.0;
-  static const double _minConfidence  = 0.5;
+  static const double _minConfidence  = 0.25; // filter awal sebelum cooldown
 
   List<Detection> process(List<Detection> raw) {
     final currentLabels = raw.map((d) => d.labelEn).toSet();
 
-    // Reset streak untuk label yang tidak muncul di frame ini
+    // Remove streak entry untuk label yang hilang dari frame ini
     for (final label in _streak.keys.toList()) {
-      if (!currentLabels.contains(label)) _streak[label] = 0;
+      if (!currentLabels.contains(label)) {
+        _streak.remove(label);
+      }
     }
 
     final approved = <Detection>[];
 
     for (final det in raw) {
-      // [1] Distance filter — buang dulu, JANGAN increment streak
-      if (det.distanceMeter > _maxDistance) continue;
+      // [1] Distance filter
+      if (det.distanceMeter > _maxDistance) {
+        debugPrint('[Filter] DROP ${det.labelEn}: '
+            'jarak ${det.distanceMeter.toStringAsFixed(1)}m > ${_maxDistance}m');
+        continue;
+      }
 
-      // [2] Confidence filter — buang dulu, JANGAN increment streak
-      if (det.confidence < _minConfidence) continue;
+      // [2] Confidence filter
+      if (det.confidence < _minConfidence) {
+        debugPrint('[Filter] DROP ${det.labelEn}: '
+            'confidence ${det.confidence.toStringAsFixed(2)} < $_minConfidence');
+        continue;
+      }
 
       // [3] Increment streak HANYA untuk yang lolos distance + confidence
       _streak[det.labelEn] = (_streak[det.labelEn] ?? 0) + 1;
 
-      // [4] Stability check — skip tapi streak sudah di-increment (objek sedang "diantre")
-      if ((_streak[det.labelEn] ?? 0) < _streakRequired) continue;
+      // [4] Stability check
+      if ((_streak[det.labelEn] ?? 0) < _streakRequired) {
+        debugPrint('[Filter] STREAK ${det.labelEn}: '
+            '${_streak[det.labelEn]}/$_streakRequired frame');
+        continue;
+      }
 
-      // [5] Cooldown per tier — skip jika masih dalam cooldown.
-      //     Jika objek mendekat (isApproaching), cooldown dipotong 50%.
+      // [5] Cooldown per tier
       final cooldown = _cooldownFor(det);
       final last     = _lastAnnounced[det.labelEn];
       final now      = DateTime.now();
-      if (last != null && now.difference(last) < cooldown) continue;
+      if (last != null && now.difference(last) < cooldown) {
+        final sisa = cooldown - now.difference(last);
+        debugPrint('[Filter] COOLDOWN ${det.labelEn}: '
+            'sisa ${sisa.inMilliseconds}ms');
+        continue;
+      }
 
-      // [6] Lolos semua — set lastAnnounced, tambah ke approved
+      // [6] Lolos semua
       _lastAnnounced[det.labelEn] = now;
       approved.add(det);
     }
