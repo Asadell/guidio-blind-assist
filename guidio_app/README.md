@@ -1,6 +1,6 @@
 # Guidio App — Flutter Mobile (Android)
 
-Aplikasi mobile Guidio adalah komponen utama sistem Guidio: "mata" dan "telinga" pengguna tunanetra. Seluruh deteksi rintangan real-time berjalan **langsung di perangkat** tanpa internet, menggunakan YOLO11l via TFLite. Aplikasi ini dikhususkan untuk **Android**.
+Aplikasi mobile Guidio adalah komponen utama sistem Guidio: "mata" dan "telinga" pengguna tunanetra. Seluruh deteksi rintangan real-time berjalan **langsung di perangkat** tanpa internet, menggunakan SSD MobileNet via TFLite. Aplikasi ini dikhususkan untuk **Android**.
 
 ---
 
@@ -71,13 +71,13 @@ App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil 
 
 | Parameter | Nilai |
 |---|---|
-| Model | YOLO11l (Large) |
+| Model | SSD MobileNet |
 | Format | TFLite float32 |
-| Input size | 320×320 px |
-| Ukuran file | ~175 MB |
-| Input tensor | `[1, 320, 320, 3]` — nested List, bukan flat array |
-| Output tensor | `[1, 84, 2100]` — 84=(4 bbox + 80 class), 2100=anchor boxes |
-| Target latensi | 55–110 ms di smartphone Android kelas menengah |
+| Input size | 300×300 px |
+| Ukuran file | ~4 MB |
+| Input tensor | `[1, 300, 300, 3]` — nested List, pixel range **0..255** (tidak dinormalisasi) |
+| Output tensor | 4 tensor: `locations[1][10][4]`, `classes[1][10]`, `scores[1][10]`, `count[1]` |
+| Target latensi | ~30 ms di smartphone Android kelas menengah |
 | Dijalankan di | Dart Isolate (background thread) via `IsolateInterpreter` |
 
 ### Objek yang Bisa Dideteksi (Subset COCO)
@@ -113,17 +113,17 @@ Konversi YUV → RGB menggunakan rumus:
   B = Y + 1.772 × (U - 128)
         │
         ▼
-Resize ke 320×320 (interpolasi linear)
+Resize ke 300×300 (interpolasi linear)
         │
         ▼
-Normalisasi: nilai piksel [0, 255] → [0.0, 1.0]
+Pixel value tetap 0..255 (SSD MobileNet TIDAK dinormalisasi ke 0..1)
         │
         ▼
-Struktur: nested List [1][320][320][3]
+Struktur: nested List [1][300][300][3]
 (TFLite Flutter WAJIB nested list, bukan flat Float32List)
         │
         ▼
-IsolateInterpreter.run(input, output)
+IsolateInterpreter.runForMultipleInputs(input, outputs)
 ```
 
 > ⚠️ **Catatan penting:** `tflite_flutter` membutuhkan input sebagai **nested list**, bukan `Float32List` flat. Jika dikirim flat, PAD kernel akan crash dengan error `dims 4 != 1`.
@@ -131,25 +131,33 @@ IsolateInterpreter.run(input, output)
 ### Post-processing Output Tensor
 
 ```
-Output tensor [1][84][2100]
+Output tensor SSD MobileNet
         │
-Loop 2100 anchor boxes:
-  ├─ Ambil 4 bbox coords (cx, cy, w, h) — normalized
-  ├─ Ambil 80 class scores
-  ├─ Ambil class dengan score tertinggi
-  └─ Filter: skip jika score < 0.5
+        │  tensor[0]: locations [1][10][4] — [ymin, xmin, ymax, xmax] normalized
+        │  tensor[1]: classes   [1][10]    — class index (float)
+        │  tensor[2]: scores    [1][10]    — confidence score
+        │  tensor[3]: count     [1]        — jumlah deteksi valid
+        │
+Loop maks 10 kandidat:
+  ├─ Skip jika score < 0.5
+  ├─ Skip jika label '???'
+  └─ Konversi bbox [ymin,xmin,ymax,xmax] normalized → pixel x1,y1,x2,y2
         │
         ▼
-Konversi bbox: normalized (cx,cy,w,h) → pixel (x1,y1,x2,y2)
-        │
-        ▼
-Non-Maximum Suppression (NMS, IoU threshold 0.45)
+(NMS sudah di dalam model — tidak perlu NMS manual)
         │
         ▼
 Estimasi jarak (Similar Triangle + Tilt Correction):
   jarak_raw = (tinggi_nyata_cm × focal_length_px) / (tinggi_bbox_pixel × 100)
   jika HP miring > 15° → jarak = jarak_raw × cos(tilt_angle)
   focal_length_px = 615 (kalibrasi default)
+        │
+        ▼
+Arah deteksi (horizontal + vertikal):
+  Horizontal: kiri / depan / kanan (trisection lebar frame)
+  Vertikal:   atas / tengah / bawah (trisection tinggi frame)
+  Jika tengah → sebut horizontal saja
+  Jika tidak → gabung: "kiri atas", "depan bawah", dll.
         │
         ▼
 [ObjectTracker — SORT pure Dart]
@@ -172,10 +180,10 @@ Berikut kemungkinan output yang diterima pengguna berdasarkan kondisi nyata:
 | Kondisi | Output TTS |
 |---|---|
 | Orang 0.8m di depan | *"Bahaya! Ada orang kurang dari 1 meter di depan"* |
-| Motor 2m di kanan | *"Hati-hati, ada motor di kanan"* |
-| Kursi 1.5m di kiri | *"Hati-hati, ada kursi di kiri"* |
+| Motor 2m di kanan atas | *"Hati-hati, ada motor di kanan atas"* |
+| Kursi 1.5m di kiri bawah | *"Hati-hati, ada kursi di kiri bawah"* |
 | Anjing 1m di depan | *"Bahaya! Ada anjing 1 meter di depan"* |
-| Objek >4m | *(tidak dilaporkan)* |
+| Objek > 10m | *(tidak dilaporkan)* |
 
 ### B. Camera Health Check — Kondisi Kamera Bermasalah
 
@@ -196,7 +204,7 @@ Filter pipeline membuang deteksi dalam kondisi berikut:
 
 | Alasan Dibuang | Kondisi |
 |---|---|
-| Terlalu jauh | `distance > 4.0 meter` |
+| Terlalu jauh | `distance > 10.0 meter` |
 | Confidence rendah | `confidence < 0.5` |
 | Belum stabil | Terdeteksi < 3 frame berturut-turut (streak) |
 | Cooldown aktif | Objek sama sudah dilaporkan dalam cooldown terakhir (dipotong 50% jika mendekat) |
@@ -309,31 +317,20 @@ assets/
 
 ## 7. Persyaratan Model TFLite
 
-Model YOLO11l TFLite **tidak disertakan di repositori** (ukuran sangat besar, tidak efisien untuk Git). Export sendiri via Google Colab:
-
-```python
-# Jalankan di Google Colab (gratis, tanpa membebani storage lokal)
-!pip install ultralytics
-from ultralytics import YOLO
-
-# Export ke TFLite float32 — imgsz=320 menghasilkan 2100 anchor boxes
-YOLO("yolo11l.pt").export(format="tflite", imgsz=320, half=False, int8=False)
-
-# File output: yolo11l_float32.tflite
-# Download dari sidebar Colab dan masukkan ke folder models
-```
-
-> ⚠️ **Penting:** Export TFLite membutuhkan **Python ≤ 3.12**. TensorFlow tidak mendukung Python 3.13+. Jika dilakukan lokal, butuh ~5 GB disk (CUDA dependencies). **Sangat disarankan pakai Google Colab.**
+Model SSD MobileNet (`ssd_mobilenet.tflite`) dan labelmap (`labelmap.txt`) **sudah disertakan di repositori** karena ukurannya kecil (~4 MB).
 
 **Letakkan file di:**
 ```
-guidio_app/assets/models/yolo11l_float32.tflite
+guidio_app/assets/models/ssd_mobilenet.tflite
+guidio_app/assets/models/labelmap.txt
 ```
 
-**Spec model yang sudah diverifikasi bekerja:**
-- `imgsz=320` → input tensor `[1, 320, 320, 3]`, output `[1, 84, 2100]`
-- `half=False`, `int8=False` → float32 (lebih stabil, akurasi lebih baik)
-- File size: ~175 MB di perangkat
+**Spec model yang digunakan:**
+- Input: `[1, 300, 300, 3]` float32, pixel range **0..255**
+- Output: 4 tensor — locations, classes, scores, count (maks 10 deteksi per frame)
+- NMS sudah built-in di model
+- Labelmap: 90 baris (termasuk `???` untuk slot kosong COCO)
+- File size: ~4 MB
 
 ---
 

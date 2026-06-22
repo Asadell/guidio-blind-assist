@@ -38,15 +38,15 @@ Guidio mengisi celah ini: **satu-satunya** yang menggabungkan peringatan rintang
 ## 2. Fitur Utama
 
 ### 🛡️ Mode Tuntun — Deteksi Rintangan Real-time
-Kamera aktif terus-menerus. YOLO11n berjalan di perangkat (TFLite), mendeteksi objek berbahaya dan memberi peringatan suara **secara otomatis** tanpa pengguna perlu melakukan apa-apa.
+Kamera aktif terus-menerus. SSD MobileNet berjalan di perangkat (TFLite), mendeteksi objek berbahaya dan memberi peringatan suara **secara otomatis** tanpa pengguna perlu melakukan apa-apa.
 
 **Contoh output suara:**
 - *"Bahaya! Ada orang kurang dari 1 meter di depan"*
-- *"Hati-hati, ada motor di kanan"*
-- *"Jalur kiri aman"*
+- *"Hati-hati, ada motor di kanan atas"*
+- *"Kursi di kiri bawah"*
 
 **Filter cerdas mencegah spam suara:**
-- Hanya objek dalam radius **≤ 4 meter** yang dilaporkan
+- Hanya objek dalam radius **≤ 10 meter** yang dilaporkan
 - Objek yang sama tidak diulang lebih cepat dari cooldown per tier (2s / 3s / 5s)
 - Jika objek **mendekat** (bbox area tumbuh >20%), cooldown dipotong 50% — peringatan lebih cepat
 - Maksimal **2 pesan** dalam antrian TTS sekaligus (dari riset Netra AI: meningkatkan pemahaman dari 52% → 78%)
@@ -85,9 +85,9 @@ Tekan mikrofon, tanya: *"Ada apa di sekitar saya?"* — Guidio menjalankan YOLO,
 ┌─────────────────────────────────────────────────────────────────┐
 │                     MOBILE (Flutter + Provider)                  │
 │                                                                  │
-│   Kamera ──▶ YOLO11n TFLite ──▶ DetectionFilter ──▶ TTS        │
-│              (imgsz=320, 6.2MB)   (stability, dedup, priority)  │
-│              < 100ms latency       cooldown per tier             │
+│   Kamera ──▶ SSD MobileNet TFLite ──▶ DetectionFilter ──▶ TTS  │
+│              (imgsz=300, ~4MB)        (stability, dedup, prio)  │
+│              ~30ms latency            cooldown per tier          │
 │                   │                                              │
 │                   │ (jika server terhubung, paralel)             │
 │                   ▼                                              │
@@ -99,10 +99,10 @@ Tekan mikrofon, tanya: *"Ada apa di sekitar saya?"* — Guidio menjalankan YOLO,
 ┌──────────────────────────────▼───────────────────────────────────┐
 │                      SERVER (FastAPI)                            │
 │                                                                  │
-│   /ws/detect    ──▶ YOLOv8m ONNX ──▶ raw detections             │
-│   /api/narasi   ──▶ Claude Haiku  ──▶ kalimat natural            │
-│   /api/ocr      ──▶ Tesseract     ──▶ teks hasil baca            │
-│   /api/risk-zone──▶ PostgreSQL+PostGIS ──▶ zona bahaya           │
+│   /ws/detect    ──▶ YOLO ONNX    ──▶ raw detections             │
+│   /api/narasi   ──▶ Claude Haiku ──▶ kalimat natural            │
+│   /api/ocr      ──▶ Tesseract    ──▶ teks hasil baca            │
+│   /api/risk-zone──▶ in-memory grid ──▶ zona bahaya              │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,7 +110,7 @@ Tekan mikrofon, tanya: *"Ada apa di sekitar saya?"* — Guidio menjalankan YOLO,
 
 **1. Mengapa TFLite di mobile, bukan hanya server?**
 
-Peringatan keselamatan **tidak boleh bergantung pada internet**. Sinyal di jalan bisa tidak stabil. TFLite (YOLO11n, 6.2 MB) berjalan lokal dengan latensi 55–110ms — sudah divalidasi oleh paper Netra AI (TechRxiv 2025) pada smartphone Android kelas menengah.
+Peringatan keselamatan **tidak boleh bergantung pada internet**. Sinyal di jalan bisa tidak stabil. TFLite (SSD MobileNet, ~4 MB) berjalan lokal dengan latensi ~30ms — lebih ringan dan lebih cepat dibanding model yang lebih besar.
 
 **2. Mengapa server tidak memfilter deteksi?**
 
@@ -139,17 +139,21 @@ Jika objek mendekat (SORT tracker: `isApproaching = true`), cooldown dipotong **
 CameraImage (YUV420)
         │
         ▼ [TFLiteService — di Isolate, non-blocking]
-YUV420 → RGB → resize 320×320 → normalize [0,1]
+YUV420 → RGB → resize 300×300 → pixel 0..255 (tidak dinormalisasi)
         │
-        ▼ nested List [1][320][320][3]
-YOLO11n inference
+        ▼ nested List [1][300][300][3]
+SSD MobileNet inference (runForMultipleInputs)
         │
-        ▼ output tensor [1][84][2100]
-        │  84 = 4 bbox (cx,cy,w,h) + 80 class scores
-        │  2100 = anchor boxes untuk imgsz=320
+        ▼ 4 output tensor:
+        │  locations[1][10][4]  — [ymin, xmin, ymax, xmax] normalized
+        │  classes[1][10]       — class index (float)
+        │  scores[1][10]        — confidence
+        │  count[1]             — jumlah deteksi valid
         │
-post-process: NMS + confidence threshold > 0.5
+post-process: filter score < 0.5, skip label '???'
++ konversi bbox → pixel, estimasi jarak, arah 2D
 + tilt correction (cos(angle) jika HP miring > 15°)
+(NMS sudah built-in di model — tidak perlu manual)
         │
         ▼ List<Detection>
 [ObjectTracker — SORT pure Dart]
@@ -159,15 +163,16 @@ post-process: NMS + confidence threshold > 0.5
         │
         ▼ List<Detection> enriched (isApproaching)
 [DetectionFilter]
-  ├─ distance > 4m → buang
+  ├─ distance > 10m → buang
   ├─ confidence < 0.5 → buang
-  ├─ streak < 3 frame → skip (belum stabil)
+  ├─ streak < 1 frame → skip
   ├─ masih dalam cooldown tier → skip
   │   (cooldown 50% lebih pendek jika isApproaching)
   └─ lolos → sort by priority, maks 2
         │
         ▼
 [TTS + Haptic] → suara + getaran ke pengguna
+(arah kini 2D: "kiri atas", "depan bawah", dll.)
 ```
 
 ### Camera Health Check (On-Device, Sebelum Inference)
@@ -261,9 +266,9 @@ Claude Haiku dipilih karena biayanya sangat rendah untuk output singkat (1-2 kal
 
 ```
 [On-Device — tidak butuh internet]
-1. YUV420 frame → YOLO11n TFLite → bounding boxes
-2. NMS + confidence filter (> 0.5)
-3. Estimasi jarak via Similar Triangle
+1. YUV420 frame → SSD MobileNet TFLite → bounding boxes
+2. Filter score < 0.5, skip label '???'
+3. Estimasi jarak via Similar Triangle + arah 2D (horizontal + vertikal)
 4. DetectionFilter: stability + dedup + priority
 
    Untuk Mode Tuntun:
@@ -272,15 +277,15 @@ Claude Haiku dipilih karena biayanya sangat rendah untuk output singkat (1-2 kal
    Untuk Voice Assistant (saat user tanya):
 5b. Format deteksi ke teks:
     "- orang, 1.2m, depan, critical
-     - motor, 2.8m, kanan, warning"
+     - motor, 2.8m, kanan atas, warning"
 6. POST /api/narasi → Claude Haiku
    (INPUT: teks, bukan gambar)
 7. Response: kalimat natural BI
 8. TTS → selesai
 ```
 
-**Total latensi Voice Assistant:** ~800ms–1.5s (YOLO 100ms + network + Claude ~500ms + TTS)  
-**Total latensi Mode Tuntun:** ~100ms (hanya YOLO + template, tidak ada API call)
+**Total latensi Voice Assistant:** ~600ms–1.2s (SSD ~30ms + network + Claude ~500ms + TTS)  
+**Total latensi Mode Tuntun:** ~30ms (hanya SSD + template, tidak ada API call)
 
 ---
 
@@ -289,7 +294,7 @@ Claude Haiku dipilih karena biayanya sangat rendah untuk output singkat (1-2 kal
 | Layer | Teknologi |
 |---|---|
 | Mobile App | Flutter (Dart), Provider pattern, **Android only** |
-| On-Device AI | YOLO11n via TFLite Flutter (imgsz=320, float32) |
+| On-Device AI | SSD MobileNet via TFLite Flutter (imgsz=300, float32, pixel 0..255) |
 | Object Tracking | SORT (Simple Online Realtime Tracking) — pure Dart, tanpa library |
 | Server AI | YOLOv8m via ONNX |
 | LLM Narasi | Claude Haiku (`claude-haiku-4-5`) — input teks, bukan gambar |
@@ -330,7 +335,7 @@ project/
 │   │   ├── providers/           ← Camera, Inference, Detection, TTS, Voice, Navigation
 │   │   ├── screens/             ← Tuntun, OCR, Navigasi, Voice, Main
 │   │   └── widgets/             ← BottomBar, DetectionCard, CameraHealthBanner
-│   └── assets/models/           ← yolo11n.tflite (tidak di-commit, lihat README mobile)
+│   └── assets/models/           ← ssd_mobilenet.tflite + labelmap.txt
 ├── backend/                     ← FastAPI server
 │   ├── README.md                ← Panduan backend + API reference
 │   ├── main.py                  ← Entry point FastAPI
@@ -358,19 +363,19 @@ project/
 
 ### Langkah 1 — Siapkan Model TFLite
 
-Model tidak di-commit ke repo karena ukurannya. Export via Google Colab:
+Model **sudah disertakan di repositori** (`ssd_mobilenet.tflite`, ~4 MB) — tidak perlu download atau export. Pastikan file berikut ada:
 
-```python
-# Di Google Colab (gratis, tidak membebani storage lokal)
-!pip install ultralytics
-from ultralytics import YOLO
-YOLO("yolo11n.pt").export(format="tflite", imgsz=320, half=False, int8=False)
-# Download: yolo11n_float32.tflite → rename → yolo11n.tflite
+```
+guidio_app/assets/models/ssd_mobilenet.tflite
+guidio_app/assets/models/labelmap.txt
 ```
 
-Letakkan di: `guidio_app/assets/models/yolo11n.tflite`
-
-> ⚠️ **Penting:** Export TFLite **wajib Python ≤ 3.12** (TensorFlow tidak support 3.13+). Gunakan Google Colab agar tidak memenuhi disk lokal (~5 GB dependency CUDA).
+Jika file tidak ada, salin dari referensi:
+```bash
+# File sudah tersedia di assets/models/
+ls guidio_app/assets/models/
+# ssd_mobilenet.tflite  labelmap.txt
+```
 
 ### Langkah 2 — Jalankan Backend
 
