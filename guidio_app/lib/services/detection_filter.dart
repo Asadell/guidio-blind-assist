@@ -11,11 +11,11 @@ class DetectionFilter {
   final Map<String, DateTime> _lastAnnounced = {};
   final Map<String, int>      _streak        = {};
 
-  // streakRequired=1: model YOLO11l tidak konsisten — score fluktuatif, banyak frame kosong
-  // antara frame deteksi. Cooldown per tier (2s/3s/5s) sudah cukup mencegah spam TTS.
+  // streakRequired=1: SSD MobileNet tidak konsisten — score fluktuatif.
+  // Cooldown per tier (2s/3s/5s) sudah cukup mencegah spam TTS.
   static const int    _streakRequired = 1;
-  static const double _maxDistance    = 4.0;
-  static const double _minConfidence  = 0.25; // filter awal sebelum cooldown
+  static const double _maxDistance    = 10.0; // dinaikkan dari 4.0 — SSD kurang presisi jarak
+  static const double _minConfidence  = 0.5;  // SSD lebih noisy, threshold lebih tinggi dari YOLO
 
   List<Detection> process(List<Detection> raw) {
     final currentLabels = raw.map((d) => d.labelEn).toSet();
