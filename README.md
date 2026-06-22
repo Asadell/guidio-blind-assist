@@ -213,8 +213,8 @@ Ini tidak dipakai Guidio, karena:
 Guidio membalik urutan ini:
 
 ```
-[Langkah 1 — di Mobile, lokal, < 100ms]
-Kamera → YOLO11n TFLite → Deteksi terverifikasi:
+[Langkah 1 — di Mobile, lokal, ~30ms]
+Kamera → SSD MobileNet TFLite → Deteksi terverifikasi:
   {
     "orang": jarak 1.2m, posisi depan, danger: critical
     "motor": jarak 2.8m, posisi kanan, danger: warning

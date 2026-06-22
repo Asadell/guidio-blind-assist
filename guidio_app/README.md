@@ -35,9 +35,9 @@ App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil 
 │        │                         │ raw List<Detection>           │
 │        │          ┌──────────────▼────────────────────────────┐  │
 │        │          │           DetectionFilter                 │  │
-│        │          │  1. distance > 4m → buang                 │  │
+│        │          │  1. distance > 10m → buang                │  │
 │        │          │  2. confidence < 0.5 → buang              │  │
-│        │          │  3. streak < 3 frame → skip               │  │
+│        │          │  3. streak < 1 frame → skip               │  │
 │        │          │  4. cooldown tier (50% jika approaching)  │  │
 │        │          │  5. sort critical→warning→info            │  │
 │        │          │  6. maks 2 pesan per cycle                │  │
@@ -52,7 +52,7 @@ App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil 
 │        │                                                         │
 │   captureJpeg ──────────────────────────────────── /api/ocr      │
 │                                                                  │
-│   Voice: STT → intent → YOLO snapshot → teks → /api/narasi → TTS │
+│   Voice: STT → intent → SSD snapshot → teks → /api/narasi → TTS  │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -310,7 +310,8 @@ lib/
 
 assets/
 └── models/
-    └── yolo11l_float32.tflite              # ← TIDAK DI-COMMIT, lihat bagian 7
+    ├── ssd_mobilenet.tflite               # model SSD MobileNet
+    └── labelmap.txt                        # 90 label COCO
 ```
 
 ---
@@ -351,7 +352,7 @@ cd guidio_app
 flutter pub get
 
 # 3. Pastikan model sudah ada
-ls assets/models/yolo11l_float32.tflite
+ls assets/models/ssd_mobilenet.tflite assets/models/labelmap.txt
 
 # 4. Jalankan (pastikan device tersambung)
 flutter run
