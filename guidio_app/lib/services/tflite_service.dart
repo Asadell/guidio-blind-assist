@@ -91,9 +91,9 @@ const Map<String, String> _labelId = {
   // Elektronik
   'tv':             'televisi',
   'laptop':         'laptop',
-  'mouse':          'tetikus',
-  'remote':         'remote',
-  'keyboard':       'keyboard',
+  'mouse':          'mouse',
+  'remote':         'remote kontrol',
+  'keyboard':       'papan ketik',
   'cell phone':     'ponsel',
 
   // Peralatan Rumah
