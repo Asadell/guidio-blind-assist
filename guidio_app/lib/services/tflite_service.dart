@@ -1,4 +1,5 @@
 
+import 'dart:io';
 import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -296,11 +297,12 @@ class TFLiteService {
     );
   }
 
-  /// Konversi YUV420 → RGB → resize 300×300 → nested List [1][300][300][3]
+  /// Konversi YUV420 → RGB → resize 300×300 → nested List[1][H][W][3]
   ///
-  /// SSD MobileNet membutuhkan pixel range 0..255 (BUKAN 0..1 seperti YOLO).
-  /// TFLite Flutter membutuhkan nested List sesuai shape tensor [1, 300, 300, 3].
-  List<List<List<List<double>>>>? _prepareInput(CameraImage image) {
+  /// SSD MobileNet membutuhkan uint8 (integer 0..255), bukan float.
+  /// TFLite Flutter memetakan List<num> (integer) → uint8 tensor secara otomatis.
+  /// Pastikan TIDAK menggunakan .toDouble() agar tidak menjadi float64.
+  List<List<List<List<num>>>>? _prepareInput(CameraImage image) {
     try {
       final int width  = image.width;
       final int height = image.height;
@@ -336,23 +338,26 @@ class TFLiteService {
       }
 
       // Resize ke 300×300 (SSD MobileNet input size)
-      final resized = img.copyResize(
+      img.Image resized = img.copyResize(
         rgbImage,
         width:         _inputSize,
         height:        _inputSize,
         interpolation: img.Interpolation.linear,
       );
 
-      // Build nested List [1][H][W][3] — pixel range 0..255 (tidak dinormalisasi)
+      // Rotasi 90° untuk Android karena kamera CameraX default landscape
+      if (Platform.isAndroid) {
+        resized = img.copyRotate(resized, angle: 90);
+      }
+
+      // Build nested List [1][H][W][3] dengan tipe num (integer)
+      // PENTING: gunakan pixel.r/g/b sebagai num, BUKAN .toDouble()
+      // TFLite akan mapping num integer → uint8 tensor secara otomatis
       final input = List.generate(1, (_) =>
         List.generate(_inputSize, (y) =>
           List.generate(_inputSize, (x) {
             final pixel = resized.getPixel(x, y);
-            return [
-              pixel.r.toDouble(),  // 0..255 — sesuai spesifikasi SSD MobileNet
-              pixel.g.toDouble(),
-              pixel.b.toDouble(),
-            ];
+            return [pixel.r, pixel.g, pixel.b]; // num integer, bukan double
           }),
         ),
       );
