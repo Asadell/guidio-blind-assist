@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import '../models/detection.dart';
@@ -66,15 +65,19 @@ class DetectionProvider extends ChangeNotifier {
     if (!_realtimeActive) return;
     final raw = await TFLiteService.instance.runInference(image);
 
-    // Debug: log hasil raw inference (hanya jika ada deteksi)
-    if (raw.isNotEmpty) {
-      debugPrint(
-        '[Detection] raw (${raw.length}): '
-        '${raw.map((d) => '${d.labelEn} '
-          '${d.distanceMeter.toStringAsFixed(1)}m '
-          '(${d.dangerLevel})').join(' | ')}',
-      );
-    }
+    // Jika frame tidak menghasilkan deteksi apapun, skip filter sepenuhnya.
+    // PENTING: jangan panggil _filter.process([]) — currentLabels akan kosong
+    // dan semua streak akan di-reset, termasuk objek yang masih terdeteksi
+    // di frame berikutnya. Ini penyebab streak selalu stuck di 1/2.
+    if (raw.isEmpty) return;
+
+    // Debug: log hasil raw inference
+    debugPrint(
+      '[Detection] raw (${raw.length}): '
+      '${raw.map((d) => '${d.labelEn} '
+        '${d.distanceMeter.toStringAsFixed(1)}m '
+        '(${d.dangerLevel})').join(' | ')}',
+    );
 
     // Update SORT tracker — dapat TrackedObject dengan info isApproaching
     final tracked = _tracker.update(raw);
