@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'providers/index.dart';
 import 'screens/index.dart';
 import 'services/tts_service.dart';
+import 'theme/index.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,10 +64,7 @@ class GuidioApp extends StatelessWidget {
       child: MaterialApp(
         title:           'Guidio',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme:  ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.light,
         home: const MainScreen(),
       ),
     );

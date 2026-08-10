@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../providers/index.dart';
 import '../screens/index.dart';
+import '../theme/index.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -46,10 +47,10 @@ class _MainScreenState extends State<MainScreen> {
 
     if (!cam.isInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Izin kamera ditolak. Fitur kamera tidak tersedia.'),
-          backgroundColor: Colors.red.shade700,
-          duration: const Duration(seconds: 5),
+        const SnackBar(
+          content: Text('Izin kamera ditolak. Fitur kamera tidak tersedia.'),
+          backgroundColor: AppColors.criticalLabel,
+          duration: Duration(seconds: 5),
           action: SnackBarAction(
             label: 'Pengaturan',
             textColor: Colors.white,
@@ -61,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Backend tidak terhubung. Berjalan di Mode Lokal (TFLite). Fitur Voice & OCR mungkin tidak tersedia.'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warningLabel,
           duration: Duration(seconds: 4),
         ),
       );
@@ -95,25 +96,23 @@ class _BootScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inf = context.watch<InferenceProvider>();
-
-    return const Scaffold(
-      backgroundColor: Colors.black,
+    return Scaffold(
+      backgroundColor: AppColors.ink1,
       body: SafeArea(
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Colors.blue),
-              SizedBox(height: 24),
-              Text(
-                'Memulai Guidio...',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+              const CircularProgressIndicator(
+                color: AppColors.actionFill,
+                strokeWidth: 3,
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.s6),
+              Text('Memulai Vinara…', style: AppTypography.title(color: Colors.white)),
+              const SizedBox(height: AppSpacing.s2),
               Text(
                 'Menyiapkan kamera dan AI',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+                style: AppTypography.body(color: Colors.white.withValues(alpha: .6)),
               ),
             ],
           ),

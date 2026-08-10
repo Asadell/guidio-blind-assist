@@ -1,10 +1,10 @@
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/index.dart';
 import '../services/index.dart';
+import '../theme/index.dart';
 import '../widgets/index.dart';
 
 class OcrScreen extends StatefulWidget {
@@ -15,10 +15,10 @@ class OcrScreen extends StatefulWidget {
 }
 
 class _OcrScreenState extends State<OcrScreen> {
-  bool         _scanning  = false;
-  bool         _hasResult = false;
-  String       _fullText  = '';
-  List<String> _lines     = [];
+  bool   _scanning = false;
+  bool   _speaking = false;
+  bool   _failed   = false;
+  String _fullText = '';
 
   @override
   void initState() {
@@ -36,32 +36,40 @@ class _OcrScreenState extends State<OcrScreen> {
 
   Future<void> _scan() async {
     if (_scanning) return;
-    setState(() { _scanning = true; _hasResult = false; });
+    setState(() { _scanning = true; _failed = false; });
 
     try {
       final jpeg   = await context.read<CameraProvider>().captureJpeg();
       final result = await ServerService.instance.readText(jpeg);
-
       _fullText = result['text'] as String? ?? '';
-      _lines    = List<String>.from(result['lines'] as List? ?? []);
 
-      setState(() { _hasResult = true; });
+      if (!mounted) return;
+      setState(() { _scanning = false; });
 
       if (_fullText.isNotEmpty) {
+        setState(() => _speaking = true);
         await TTSService.instance.speak(_fullText);
+        if (mounted) setState(() => _speaking = false);
       } else {
         await TTSService.instance.speak('Tidak ada teks yang terdeteksi');
       }
     } catch (e) {
+      if (!mounted) return;
+      setState(() { _scanning = false; _failed = true; });
       await TTSService.instance.speak('Gagal membaca teks, coba lagi');
-    } finally {
-      setState(() { _scanning = false; });
     }
   }
 
-  Future<void> _repeat() async {
+  Future<void> _replay() async {
     if (_fullText.isEmpty) return;
+    setState(() => _speaking = true);
     await TTSService.instance.speak(_fullText);
+    if (mounted) setState(() => _speaking = false);
+  }
+
+  Future<void> _stopSpeaking() async {
+    await TTSService.instance.stop();
+    if (mounted) setState(() => _speaking = false);
   }
 
   Future<void> _copy() async {
@@ -76,144 +84,72 @@ class _OcrScreenState extends State<OcrScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cam    = context.watch<CameraProvider>();
-    return SafeArea(
-      child: Stack(
+    final cam = context.watch<CameraProvider>();
+    final media = MediaQuery.of(context);
+    final topInset = media.padding.top;
+    final bottomInset = media.padding.bottom;
+    final hasResult = _fullText.isNotEmpty || _failed;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
         fit: StackFit.expand,
         children: [
-          // Kamera fullscreen
           if (cam.isInitialized && cam.controller != null)
-            Positioned.fill(child: _cameraWithOverlay(cam))
+            Positioned.fill(child: _cameraWithGuide(cam))
           else
             const ColoredBox(color: Colors.black),
-  
-          // Mode badge
+
           Positioned(
-            top: 12, left: 16,
-            child: _badge(),
+            top: topInset + AppSpacing.s2,
+            left: AppSpacing.screenMargin,
+            child: const ModeBadge(mode: AppMode.ocr),
           ),
-  
-          // Hasil OCR card dari bawah
-          if (_hasResult)
+
+          if (hasResult)
             Positioned(
-              left: 0, right: 0, bottom: 90,
-              child: _ResultCard(
-                lines:    _lines,
-                onRepeat: _repeat,
-                onCopy:   _copy,
+              left: AppSpacing.screenMargin,
+              right: AppSpacing.screenMargin,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+              child: ResultPanel(
+                text: _fullText,
+                speaking: _speaking,
+                failed: _failed,
+                onReplay: _replay,
+                onTogglePlayback: _speaking ? _stopSpeaking : _replay,
+                onRetry: _scan,
+                secondaryLabel: _fullText.isNotEmpty ? 'Salin teks' : null,
+                onSecondary: _copy,
               ),
             ),
-  
-          // Loading indicator
+
           if (_scanning)
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-  
-          // Bottom bar — tombol kamera = scan
+            const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+
           Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: BottomBar(onCameraPressed: _scan),
+            left: 0, right: 0, bottom: 0,
+            child: BottomActionBar(onCameraPressed: _scan, cameraLabel: 'Baca teks'),
           ),
         ],
       ),
     );
   }
 
-  Widget _cameraWithOverlay(CameraProvider cam) {
+  Widget _cameraWithGuide(CameraProvider cam) {
     return Stack(
       fit: StackFit.expand,
       children: [
         Positioned.fill(child: CameraPreview(cam.controller!)),
-        // Kotak scan di tengah layar
         Center(
-          child: Container(
-            width: 280, height: 120,
-            decoration: BoxDecoration(
-              border:       Border.all(color: Colors.blueAccent, width: 2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.only(top: 140),
-            child: Text(
-              'Arahkan ke teks lalu tekan tombol kamera',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
-            ),
+          child: SizedBox(
+            width: 280,
+            height: 190,
+            child: GuideFrame(fit: _scanning ? FrameFit.fit : FrameFit.empty),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _badge() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black54, borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Text(
-          'Mode: Baca Teks',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      );
-}
-
-class _ResultCard extends StatelessWidget {
-  final List<String> lines;
-  final VoidCallback onRepeat;
-  final VoidCallback onCopy;
-  const _ResultCard({required this.lines, required this.onRepeat, required this.onCopy});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:        Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow:    [const BoxShadow(color: Colors.black26, blurRadius: 12)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'HASIL BACAAN',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
-          ),
-          const SizedBox(height: 8),
-          ...lines.take(4).map((line) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(line, style: const TextStyle(fontSize: 15)),
-              )),
-          const SizedBox(height: 4),
-          const Row(
-            children: [
-              Icon(Icons.volume_up, size: 14, color: Colors.blueAccent),
-              SizedBox(width: 4),
-              Text('Sedang dibacakan...', style: TextStyle(fontSize: 12, color: Colors.blueAccent)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onRepeat,
-                  child: const Text('Ulangi'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: onCopy,
-                  child: const Text('Salin Teks'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

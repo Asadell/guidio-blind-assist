@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
 import '../providers/index.dart';
+import '../theme/index.dart';
 import '../widgets/index.dart';
 
 class NavigasiScreen extends StatefulWidget {
@@ -40,48 +41,58 @@ class _NavigasiScreenState extends State<NavigasiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final nav  = context.watch<NavigationProvider>();
-    final det  = context.watch<DetectionProvider>();
-    final cam  = context.watch<CameraProvider>();
-    return SafeArea(
-      child: Stack(
+    final nav = context.watch<NavigationProvider>();
+    final det = context.watch<DetectionProvider>();
+    final cam = context.watch<CameraProvider>();
+    final media = MediaQuery.of(context);
+    final topInset = media.padding.top;
+    final bottomInset = media.padding.bottom;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
         fit: StackFit.expand,
         children: [
-          // Kamera sebagai background
           if (cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
             const ColoredBox(color: Colors.black),
-  
-          // Nav card atau input tujuan
+
           Positioned(
-            top: 8, left: 16, right: 16,
+            top: topInset + AppSpacing.s2,
+            left: AppSpacing.screenMargin,
+            child: const ModeBadge(mode: AppMode.navigasi),
+          ),
+
+          // Kartu instruksi navigasi, atau input tujuan
+          Positioned(
+            top: topInset + AppSizes.modeBadgeHeight + AppSpacing.s4,
+            left: AppSpacing.screenMargin,
+            right: AppSpacing.screenMargin,
             child: nav.isNavigating && nav.currentStep != null
                 ? _NavCard(
-                    step:   nav.currentStep!,
+                    step: nav.currentStep!,
                     onStop: () => context.read<NavigationProvider>().stopNavigation(),
                   )
                 : _DestInput(
-                    ctrl:      _destCtrl,
-                    onStart:   _startNav,
+                    ctrl: _destCtrl,
+                    onStart: _startNav,
                     favorites: nav.favorites,
                   ),
           ),
-  
-          // Obstacle warnings dari YOLO
+
+          // Rintangan dari YOLO — tumpukan AlertCard di atas BottomActionBar
           if (det.detections.isNotEmpty)
             Positioned(
-              bottom: 100, left: 16, right: 16,
-              child: Column(
-                children: det.detections.map((d) => DetectionCard(detection: d)).toList(),
+              left: AppSpacing.screenMargin,
+              right: AppSpacing.screenMargin,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+              child: AlertCardStack(
+                cards: det.detections.map((d) => DetectionCard(detection: d)).toList(),
               ),
             ),
-  
-          // Bottom bar
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: const BottomBar(),
-          ),
+
+          const Positioned(left: 0, right: 0, bottom: 0, child: BottomActionBar()),
         ],
       ),
     );
@@ -90,30 +101,33 @@ class _NavigasiScreenState extends State<NavigasiScreen> {
 
 class _NavCard extends StatelessWidget {
   final NavigationStep step;
-  final VoidCallback   onStop;
+  final VoidCallback onStop;
   const _NavCard({required this.step, required this.onStop});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:        Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow:    [const BoxShadow(color: Colors.black26, blurRadius: 12)],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.navigation, color: Colors.blue, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              step.instruction,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+    return Semantics(
+      liveRegion: true,
+      label: step.instruction,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.s4),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: AppRadius.card,
+          boxShadow: AppElevation.card,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.explore_rounded, color: AppColors.actionLabel, size: 28),
+            const SizedBox(width: AppSpacing.s3),
+            Expanded(child: Text(step.instruction, style: AppTypography.bodyStrong())),
+            Semantics(
+              button: true,
+              label: 'Hentikan navigasi',
+              child: IconButton(icon: const Icon(Icons.close, color: AppColors.ink2), onPressed: onStop),
             ),
-          ),
-          IconButton(icon: const Icon(Icons.close), onPressed: onStop),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -121,52 +135,79 @@ class _NavCard extends StatelessWidget {
 
 class _DestInput extends StatelessWidget {
   final TextEditingController ctrl;
-  final VoidCallback           onStart;
-  final Map<String, String>    favorites;
+  final VoidCallback onStart;
+  final Map<String, String> favorites;
   const _DestInput({required this.ctrl, required this.onStart, required this.favorites});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:        Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow:    [const BoxShadow(color: Colors.black26, blurRadius: 12)],
+      padding: const EdgeInsets.all(AppSpacing.s4),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceCard,
+        borderRadius: AppRadius.card,
+        boxShadow: AppElevation.card,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: ctrl,
-                  decoration: const InputDecoration(
-                    hintText:   'Mau ke mana?',
-                    border:     InputBorder.none,
-                    prefixIcon: Icon(Icons.search),
+                  style: AppTypography.body(),
+                  decoration: InputDecoration(
+                    hintText: 'Mau ke mana?',
+                    hintStyle: AppTypography.body(color: AppColors.ink2),
+                    prefixIcon: const Icon(Icons.search, color: AppColors.ink2),
                   ),
                 ),
               ),
-              ElevatedButton(onPressed: onStart, child: const Text('Mulai')),
+              const SizedBox(width: AppSpacing.s2),
+              Semantics(
+                button: true,
+                label: 'Mulai navigasi',
+                child: GestureDetector(
+                  onTap: onStart,
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    decoration: const BoxDecoration(color: AppColors.actionLabel, borderRadius: AppRadius.pillShape),
+                    child: Center(child: Text('Mulai', style: AppTypography.label(color: Colors.white))),
+                  ),
+                ),
+              ),
             ],
           ),
           if (favorites.isNotEmpty) ...[
-            const Divider(),
-            const Align(
+            const Divider(height: AppSpacing.s6),
+            Align(
               alignment: Alignment.centerLeft,
-              child: Text('Favorit',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              child: Text('FAVORIT', style: AppTypography.eyebrow()),
             ),
+            const SizedBox(height: AppSpacing.s2),
             ...favorites.entries.map(
-              (e) => ListTile(
-                leading:  const Icon(Icons.star, color: Colors.amber),
-                title:    Text(e.key),
-                dense:    true,
-                onTap: () {
-                  ctrl.text = e.key;
-                  onStart();
-                },
+              (e) => Semantics(
+                button: true,
+                label: 'Navigasi ke ${e.key}',
+                child: InkWell(
+                  onTap: () {
+                    ctrl.text = e.key;
+                    onStart();
+                  },
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.star_rounded, color: AppColors.warningFill, size: 20),
+                        const SizedBox(width: AppSpacing.s3),
+                        Text(e.key, style: AppTypography.body()),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ],

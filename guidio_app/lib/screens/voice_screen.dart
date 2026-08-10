@@ -2,54 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
 import '../providers/index.dart';
+import '../theme/index.dart';
 import '../widgets/index.dart';
 
 /// VoiceScreen — UI only, semua logic di VoiceProvider.
-/// Fix dari doc 5 masalah 11: Screen hanya tampilkan state dari Provider.
 class VoiceScreen extends StatelessWidget {
   const VoiceScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final voice  = context.watch<VoiceProvider>();
-    final cam    = context.watch<CameraProvider>();
-    return SafeArea(
-      child: Stack(
+    final voice = context.watch<VoiceProvider>();
+    final cam = context.watch<CameraProvider>();
+    final media = MediaQuery.of(context);
+    final topInset = media.padding.top;
+    final bottomInset = media.padding.bottom;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
         fit: StackFit.expand,
         children: [
-          // Kamera background
           if (cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
             const ColoredBox(color: Colors.black),
-  
-          // Mode badge
+
           Positioned(
-            top: 12, left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black54, borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Mode: Asisten Suara',
-                style: TextStyle(color: Colors.white, fontSize: 12),
+            top: topInset + AppSpacing.s2,
+            left: AppSpacing.screenMargin,
+            child: const ModeBadge(mode: AppMode.voice),
+          ),
+
+          // Orb — pusat perhatian utama saat idle, terselip di atas kartu saat aktif
+          if (voice.state == VoiceState.idle)
+            Center(
+              child: VoiceOrb(
+                state: voice.isListening ? VoiceOrbState.listening : VoiceOrbState.idle,
               ),
             ),
-          ),
-  
-          // Response card — muncul saat ada state apapun kecuali idle
+
           if (voice.state != VoiceState.idle)
             Positioned(
-              left: 16, right: 16,
-              top: 60,
-              child: _GuidioCard(voice: voice),
+              left: AppSpacing.screenMargin,
+              right: AppSpacing.screenMargin,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+              child: _ChatBubble(voice: voice),
             ),
-  
-          // Bottom bar — mic toggle
+
           Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: BottomBar(
+            left: 0, right: 0, bottom: 0,
+            child: BottomActionBar(
               onMicPressed: () async {
                 final v = context.read<VoiceProvider>();
                 if (v.isListening) {
@@ -66,64 +68,59 @@ class VoiceScreen extends StatelessWidget {
   }
 }
 
-class _GuidioCard extends StatelessWidget {
+/// Adaptasi ChatBubble (F12) untuk satu jawaban VoiceProvider.
+class _ChatBubble extends StatelessWidget {
   final VoiceProvider voice;
-  const _GuidioCard({required this.voice});
+  const _ChatBubble({required this.voice});
+
+  String get _eyebrow => switch (voice.state) {
+        VoiceState.listening  => 'Mendengarkan…',
+        VoiceState.processing => 'Memproses…',
+        VoiceState.responding => 'Vinara menjawab',
+        VoiceState.idle       => '',
+      };
+
+  String get _body => switch (voice.state) {
+        VoiceState.listening  => voice.lastText.isEmpty ? 'Silakan berbicara…' : voice.lastText,
+        VoiceState.processing => 'Menyusun jawaban…',
+        VoiceState.responding => voice.response,
+        VoiceState.idle       => '',
+      };
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:        Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow:    [const BoxShadow(color: Colors.black26, blurRadius: 12)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _headerText,
-            style: const TextStyle(
-              fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _bodyText,
-            style: const TextStyle(fontSize: 15),
-          ),
-          if (voice.state == VoiceState.responding) ...[
-            const SizedBox(height: 8),
-            const Row(
+    return Semantics(
+      liveRegion: true,
+      label: '$_eyebrow $_body',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: AppRadius.card,
+          boxShadow: AppElevation.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
               children: [
-                Icon(Icons.volume_up, size: 14, color: Colors.blueAccent),
-                SizedBox(width: 4),
-                Text(
-                  'Sedang dibacakan...',
-                  style: TextStyle(fontSize: 12, color: Colors.blueAccent),
-                ),
+                if (voice.state == VoiceState.processing) ...[
+                  const SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.actionLabel),
+                  ),
+                  const SizedBox(width: AppSpacing.s2),
+                ],
+                Text(_eyebrow, style: AppTypography.eyebrow(color: AppColors.actionLabel)),
               ],
             ),
+            const SizedBox(height: AppSpacing.s2),
+            Text(_body, style: AppTypography.body()),
           ],
-        ],
+        ),
       ),
     );
   }
-
-  String get _headerText => switch (voice.state) {
-        VoiceState.listening   => 'Mendengarkan...',
-        VoiceState.processing  => 'Memproses...',
-        VoiceState.responding  => 'Guidio menjawab',
-        VoiceState.idle        => '',
-      };
-
-  String get _bodyText => switch (voice.state) {
-        VoiceState.listening   => voice.lastText.isEmpty
-            ? 'Silakan berbicara...'
-            : voice.lastText,
-        VoiceState.processing  => 'Sedang menganalisis...',
-        VoiceState.responding  => voice.response,
-        VoiceState.idle        => '',
-      };
 }

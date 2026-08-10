@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
 import '../providers/index.dart';
-import '../models/index.dart';
+import '../theme/index.dart';
 import '../widgets/index.dart';
 
 class TuntunScreen extends StatefulWidget {
@@ -31,76 +31,57 @@ class _TuntunScreenState extends State<TuntunScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cam   = context.watch<CameraProvider>();
-    final det   = context.watch<DetectionProvider>();
-    final top   = MediaQuery.of(context).padding.top;
-    final dets  = det.detections;
-    final rz    = det.riskZone;
+    final cam = context.watch<CameraProvider>();
+    final det = context.watch<DetectionProvider>();
+    final media = MediaQuery.of(context);
+    final topInset = media.padding.top;
+    final bottomInset = media.padding.bottom;
+    final dets = det.detections;
+    final rz = det.riskZone;
 
-    return SafeArea(
-      child: Stack(
+    final banner = rz != null
+        ? StatusBanner(tier: AlertTier.critical, message: rz.warning)
+        : cam.healthMessage != null
+            ? StatusBanner(tier: AlertTier.warning, message: cam.healthMessage!)
+            : null;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
         fit: StackFit.expand,
         children: [
-          // Kamera fullscreen
+          // z0 — kamera adalah lantai, full bleed
           if (cam.isInitialized && cam.controller != null)
-            Positioned.fill(
-              child: CameraPreview(cam.controller!),
-            )
+            Positioned.fill(child: CameraPreview(cam.controller!))
           else
             const ColoredBox(color: Colors.black),
 
-          // Mode badge
+          // z70 — StatusBanner, kondisional, di atas segalanya kecuali sheet
+          if (banner != null)
+            Positioned(top: topInset, left: 0, right: 0, child: banner),
+
+          // z25 — ModeBadge band
           Positioned(
-            top: 12, left: 16,
-            child: _badge('Mode: Deteksi Objek'),
+            top: topInset + (banner != null ? AppSizes.statusBannerHeight : 0) + AppSpacing.s2,
+            left: AppSpacing.screenMargin,
+            child: const ModeBadge(mode: AppMode.tuntun),
           ),
 
-          // Camera health banner
-          if (cam.healthMessage != null)
-            Positioned(
-              top: 52, left: 16, right: 16,
-              child: CameraHealthBanner(message: cam.healthMessage!),
-            ),
-
-          // Risk zone warning
-          if (rz != null)
-            Positioned(
-              top: 52 + (cam.healthMessage != null ? 48 : 0),
-              left: 16, right: 16,
-              child: CameraHealthBanner(
-                message: rz.warning,
-                color: Colors.red.shade700,
-              ),
-            ),
-
-          // Detection cards — maks 2 (sudah difilter oleh DetectionFilter)
+          // z40 — tumpukan AlertCard, maks 2, menempel ke atas BottomActionBar
           if (dets.isNotEmpty)
             Positioned(
-              bottom: 100, left: 16, right: 16,
-              child: Column(
-                children: dets.map((d) => DetectionCard(detection: d)).toList(),
+              left: AppSpacing.screenMargin,
+              right: AppSpacing.screenMargin,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+              child: AlertCardStack(
+                cards: dets.map((d) => DetectionCard(detection: d)).toList(),
               ),
             ),
 
-          // Bottom bar
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: const BottomBar(),
-          ),
+          // z60 — BottomActionBar, selalu ada, selalu di tempat yang sama
+          const Positioned(left: 0, right: 0, bottom: 0, child: BottomActionBar()),
         ],
       ),
     );
   }
-
-  Widget _badge(String text) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color:        Colors.black54,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      );
 }

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
