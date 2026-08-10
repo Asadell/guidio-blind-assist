@@ -37,7 +37,7 @@ App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil 
 │        │          │           DetectionFilter                 │  │
 │        │          │  1. distance > 10m → buang                │  │
 │        │          │  2. confidence < 0.5 → buang              │  │
-│        │          │  3. streak < 1 frame → skip               │  │
+│        │          │  3. streak < 2 frame → skip               │  │
 │        │          │  4. cooldown tier (50% jika approaching)  │  │
 │        │          │  5. sort critical→warning→info            │  │
 │        │          │  6. maks 2 pesan per cycle                │  │
@@ -206,7 +206,7 @@ Filter pipeline membuang deteksi dalam kondisi berikut:
 |---|---|
 | Terlalu jauh | `distance > 10.0 meter` |
 | Confidence rendah | `confidence < 0.5` |
-| Belum stabil | Terdeteksi < 3 frame berturut-turut (streak) |
+| Belum stabil | Terdeteksi < 2 frame berturut-turut (streak) — mencegah objek flash 1 frame langsung disuarakan |
 | Cooldown aktif | Objek sama sudah dilaporkan dalam cooldown terakhir (dipotong 50% jika mendekat) |
 | Antrian penuh | Sudah ada 2 pesan di antrian TTS |
 

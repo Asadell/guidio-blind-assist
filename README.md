@@ -99,7 +99,7 @@ Tekan mikrofon, tanya: *"Ada apa di sekitar saya?"* — Guidio menjalankan YOLO,
 ┌──────────────────────────────▼───────────────────────────────────┐
 │                      SERVER (FastAPI)                            │
 │                                                                  │
-│   /ws/detect    ──▶ YOLO ONNX    ──▶ raw detections             │
+│   /ws/detect    ──▶ YOLO PyTorch ──▶ raw detections             │
 │   /api/narasi   ──▶ Claude Haiku ──▶ kalimat natural            │
 │   /api/ocr      ──▶ Tesseract    ──▶ teks hasil baca            │
 │   /api/risk-zone──▶ in-memory grid ──▶ zona bahaya              │
@@ -165,7 +165,7 @@ post-process: filter score < 0.5, skip label '???'
 [DetectionFilter]
   ├─ distance > 10m → buang
   ├─ confidence < 0.5 → buang
-  ├─ streak < 1 frame → skip
+  ├─ streak < 2 frame → skip (objek flash 1 frame diabaikan)
   ├─ masih dalam cooldown tier → skip
   │   (cooldown 50% lebih pendek jika isApproaching)
   └─ lolos → sort by priority, maks 2
@@ -296,7 +296,7 @@ Claude Haiku dipilih karena biayanya sangat rendah untuk output singkat (1-2 kal
 | Mobile App | Flutter (Dart), Provider pattern, **Android only** |
 | On-Device AI | SSD MobileNet via TFLite Flutter (imgsz=300, float32, pixel 0..255) |
 | Object Tracking | SORT (Simple Online Realtime Tracking) — pure Dart, tanpa library |
-| Server AI | YOLOv8m via ONNX |
+| Server AI | YOLOv8m/YOLO11n via PyTorch (.pt) |
 | LLM Narasi | Claude Haiku (`claude-haiku-4-5`) — input teks, bukan gambar |
 | LLM Routing | Claude Haiku — `max_tokens=10`, `temperature=0.0` (<300ms) |
 | OCR | Tesseract via server |

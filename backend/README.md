@@ -24,9 +24,9 @@ Backend Guidio menangani pemrosesan yang membutuhkan akurasi tinggi atau compute
 ```
 Flutter App
     │
-    ├── WebSocket /ws/detect ──▶ YOLOv8m ONNX ──▶ raw detections (stream)
+    ├── WebSocket /ws/detect ──▶ YOLO PyTorch ──▶ raw detections (stream)
     │
-    ├── POST /api/detect     ──▶ YOLOv8m ONNX ──▶ raw detections (1 shot)
+    ├── POST /api/detect     ──▶ YOLO PyTorch ──▶ raw detections (1 shot)
     │
     ├── POST /api/narasi     ──▶ Claude Haiku  ──▶ kalimat natural (1-2 kalimat BI)
     │
@@ -280,12 +280,12 @@ def _template_fallback(detections):
 
 ## 4. YOLO Server-Side vs TFLite Mobile
 
-| Aspek | TFLite (Mobile) | YOLOv8m ONNX (Server) |
+| Aspek | TFLite (Mobile) | YOLO Server (PyTorch) |
 |---|---|---|
-| Model | YOLO11n Nano | YOLOv8m Medium |
-| Ukuran | ~6.2 MB | ~50 MB |
-| Input size | 320×320 | 640×640 |
-| Latensi | 55–110 ms | 200–500 ms |
+| Model | SSD MobileNet | YOLOv8m / YOLO11n |
+| Ukuran | ~4.0 MB | ~50 MB / ~11 MB |
+| Input size | 300×300 | 640×640 |
+| Latensi | ~30 ms | 200–500 ms |
 | Butuh internet | ❌ Tidak | ✅ Ya |
 | Dipakai untuk | Real-time warning (Mode Tuntun) | Fallback + Voice Assistant |
 | Akurasi | Cukup untuk obstacle | Lebih detail & presisi |
@@ -402,8 +402,8 @@ Buat file `.env` di folder `backend/`:
 # WAJIB — untuk endpoint /api/narasi
 ANTHROPIC_API_KEY=sk-ant-api03-...
 
-# Opsional — default ke yolov8m.pt
-YOLO_MODEL=yolov8m.pt
+# Opsional — disarankan yolo11n.pt karena sudah ada di repo (default: yolov8m.pt)
+YOLO_MODEL=yolo11n.pt
 
 # Opsional — auto = deteksi GPU/CPU otomatis
 DEVICE=auto
