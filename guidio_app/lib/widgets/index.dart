@@ -1,4 +1,12 @@
-export 'bottom_bar.dart';
+export 'alert_card.dart';
+export 'bottom_action_bar.dart';
 export 'detection_card.dart';
-export 'mode_sheet.dart';
-export 'camera_health_banner.dart';
+export 'distance_pill.dart';
+export 'guide_frame.dart';
+export 'mode_badge.dart';
+export 'mode_picker_sheet.dart';
+export 'result_panel.dart';
+export 'status_banner.dart';
+export 'tier_icon.dart';
+export 'voice_orb.dart';
+export 'zone_indicator.dart';
