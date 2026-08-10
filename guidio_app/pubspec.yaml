@@ -49,6 +49,9 @@ dependencies:
   # Icon
   cupertino_icons: ^1.0.8
 
+  # Font — IBM Plex Sans / IBM Plex Mono (design system Vinara)
+  google_fonts: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
