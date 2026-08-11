@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+mobileclip_blt.ts
+yoloe-11s-seg.pt
+# Bobot model besar — jangan di-commit (unduh ulang lewat ultralytics)
+mobileclip_blt.ts
+yoloe-11s-seg.pt
+yolo11n.pt
+yolo11n.onnx
+models/*.onnx
+models/*.tflite
