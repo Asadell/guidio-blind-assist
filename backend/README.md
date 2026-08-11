@@ -1,445 +1,428 @@
-# Guidio Backend — FastAPI Server
+# Vinara Backend (FastAPI)
 
-Backend Guidio menangani pemrosesan yang membutuhkan akurasi tinggi atau compute besar yang tidak efisien dijalankan di perangkat mobile: OCR, narasi AI via LLM, dan deteksi server-side sebagai fallback.
+Server untuk Vinara. Menangani pekerjaan yang tidak masuk akal dikerjakan di
+ponsel: membaca tulisan, memahami perintah suara yang rumit, mencari barang
+dari kalimat bebas, dan membaca jalur trotoar.
 
-> **Prinsip utama:** Backend hanya mengirim **raw detections** — tidak ada filter di sini. Semua pipeline filter ada di Flutter (mobile).
-
----
-
-## Daftar Isi
-
-1. [Gambaran Arsitektur Backend](#1-gambaran-arsitektur-backend)
-2. [Endpoint API Reference](#2-endpoint-api-reference)
-3. [Penggunaan LLM: Claude Haiku](#3-penggunaan-llm-claude-haiku)
-4. [YOLO Server-Side vs TFLite Mobile](#4-yolo-server-side-vs-tflite-mobile)
-5. [Struktur Folder](#5-struktur-folder)
-6. [Instalasi & Menjalankan Server](#6-instalasi--menjalankan-server)
-7. [Konfigurasi Environment](#7-konfigurasi-environment)
-8. [Export Model TFLite (Opsional)](#8-export-model-tflite-opsional)
+**Hal pertama yang perlu dipahami:** dua dari enam mode **tidak pernah
+memanggil server ini sama sekali**, yaitu Deteksi Objek dan Kenali Uang.
+Itu keputusan sengaja, bukan kekurangan. Keduanya menyangkut keselamatan dan
+uang, dan dipakai di tempat yang sinyalnya sering buruk seperti jalan raya,
+pasar, dan warung. Fitur yang mati saat tidak ada internet berarti fitur yang
+gagal di saat paling dibutuhkan.
 
 ---
 
-## 1. Gambaran Arsitektur Backend
+## Daftar isi
 
-```
-Flutter App
-    │
-    ├── WebSocket /ws/detect ──▶ YOLO PyTorch ──▶ raw detections (stream)
-    │
-    ├── POST /api/detect     ──▶ YOLO PyTorch ──▶ raw detections (1 shot)
-    │
-    ├── POST /api/narasi     ──▶ Claude Haiku  ──▶ kalimat natural (1-2 kalimat BI)
-    │
-    ├── POST /api/route-intent ─▶ Claude Haiku  ──▶ intent string (max_tokens=10)
-    │
-    ├── POST /api/ocr        ──▶ Tesseract     ──▶ teks hasil baca
-    │
-    └── GET  /api/risk-zone  ──▶ In-memory store ──▶ zona bahaya terdekat
-```
-
-**Yang TIDAK dilakukan backend:**
-- ❌ Tidak memfilter deteksi berdasarkan jarak atau confidence
-- ❌ Tidak menyimpan queue TTS
-- ❌ Tidak menentukan apakah objek perlu diumumkan atau tidak
-- ❌ Tidak menerima gambar untuk Claude (input LLM selalu teks terstruktur)
-- ❌ Tidak menjalankan SORT tracker (ada di Flutter)
+1. [Menjalankan](#1-menjalankan)
+2. [Enam fitur dan pembagian tugasnya](#2-enam-fitur-dan-pembagian-tugasnya)
+3. [Rujukan endpoint](#3-rujukan-endpoint)
+4. [Basis data](#4-basis-data)
+5. [Prinsip yang dipegang server ini](#5-prinsip-yang-dipegang-server-ini)
+6. [Struktur folder](#6-struktur-folder)
+7. [Keterbatasan yang perlu diketahui](#7-keterbatasan-yang-perlu-diketahui)
+8. [Uji cepat](#8-uji-cepat)
 
 ---
 
-## 2. Endpoint API Reference
+## 1. Menjalankan
 
-### `GET /health`
-Health check — cek apakah server dan YOLO sudah siap.
+### Prasyarat
 
-**Response:**
-```json
-{
-  "status": "ok",
-  "service": "Guidio Vision API",
-  "yolo_loaded": true
-}
+**Tesseract**, mesin pembaca tulisan. Ini program sistem, bukan paket Python:
+
+```bash
+sudo dnf install -y tesseract tesseract-langpack-ind tesseract-langpack-eng
 ```
+
+Paket `tesseract-langpack-ind` penting, karena kode memanggil OCR dengan
+bahasa `ind+eng`. Tanpa data bahasa Indonesia, hasil bacaannya buruk.
+
+**PostgreSQL** yang sedang berjalan, lalu buat basis datanya sekali saja:
+
+```bash
+createdb -h localhost -U postgres vinara_dev
+```
+
+### Langkah menjalankan
+
+```bash
+cd backend
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+
+cp .env.example .env      # isi kredensial PostgreSQL dan kunci Anthropic
+
+venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Tabel basis data dibuat otomatis saat startup (aman diulang berkali kali),
+lalu data rujukan diisi: 52 label objek, 20 intent suara beserta 61 varian
+ucapan, 7 denominasi uang, dan manifest model.
+
+Dokumentasi endpoint interaktif: `http://localhost:8000/docs`
+
+**Kalau PostgreSQL mati, server tetap jalan.** Endpoint yang membutuhkan
+basis data membalas dengan pesan yang menyebutkan apa yang masih berfungsi,
+bukan sekadar kode error kosong.
 
 ---
 
-### `WebSocket /ws/detect`
-Stream deteksi real-time. Flutter mengirim frame JPEG secara terus-menerus, server membalas dengan raw detections.
+## 2. Enam fitur dan pembagian tugasnya
 
-**Flutter kirim:** binary JPEG bytes  
-**Server balas (JSON):**
+| Fitur | Diproses di mana | Endpoint |
+|---|---|---|
+| Deteksi Objek | **Ponsel**, server hanya pembanding | `WS /ws/detect`, `POST /api/detect` |
+| Kenali Uang | **Ponsel**, tidak pernah ke server | `POST /api/uang` (opsional) |
+| Baca Teks | Server | `POST /api/ocr` |
+| Asisten Suara | Server, ada cadangan lokal | `POST /api/intent`, `/api/narasi` |
+| Cari Objek | Server | `POST /api/cari-objek` |
+| Navigasi jalur | Server, rintangan tetap di ponsel | `POST /api/navigasi` |
 
-```json
-{
-  "type": "detections",
-  "frame_id": 42,
-  "detections": [
-    {
-      "label_en": "person",
-      "label_id": "orang",
-      "confidence": 0.87,
-      "distance_meter": 1.2,
-      "direction": "depan",
-      "danger_level": "critical",
-      "bbox": {"x1": 120, "y1": 80, "x2": 300, "y2": 420},
-      "inference_ms": 45.3
-    }
-  ]
-}
-```
+### Cari Objek: kenapa memakai YOLOE
 
-**Jika kamera bermasalah (camera health check):**
-```json
-{
-  "type": "camera_error",
-  "msg": "Kamera terlalu gelap"
-}
-```
+Model pengenalan benda biasa hanya bisa mengenali daftar benda yang sudah
+ditentukan saat pelatihan. Masalahnya, target pencarian datang dari ucapan
+pengguna dan bisa apa saja: "dompet", "kunci motor", "tas merah".
 
-**Catatan:** Server hanya memproses setiap **3 frame** (sample rate) untuk efisiensi.
+YOLOE menerima **prompt teks bebas**, jadi bisa mencari benda yang tidak
+pernah diajarkan secara khusus. Nama barang Bahasa Indonesia diterjemahkan
+dulu ke Inggris memakai tabel `object_labels` ditambah kamus bawaan berisi
+83 nama barang sehari hari.
 
----
+Model dimuat **saat permintaan pertama**, bukan saat startup, karena
+berkasnya ratusan megabita dan mode ini jarang dipakai dibanding deteksi
+rintangan. Panggilan pertama memakan sekitar 2 detik, sesudahnya cepat.
 
-### `POST /api/detect`
-Single-shot inference untuk Voice Assistant (1 request = 1 response, bukan stream).
+Balasan `found: false` dengan alasan `not_in_frame` **bukan error**. Itu
+kondisi normal: barangnya memang belum terlihat, dan aplikasi akan menyuruh
+pengguna memutar badan lalu memanggil endpoint ini lagi.
 
-**Request:** `Content-Type: application/octet-stream` (raw JPEG bytes)  
-**Response:**
-```json
-{
-  "detections": [...],
-  "total": 3
-}
-```
+### Navigasi: tiga zona jalur
 
----
+Gambar dari kamera dibagi menjadi tiga bagian (kiri, tengah, kanan), lalu
+masing masing dinilai seberapa layak dilewati.
 
-### `POST /api/narasi`
-Generate kalimat natural dari hasil deteksi YOLO menggunakan Claude Haiku.
+Model utamanya PIDNet-S. Kalau berkas modelnya belum ada, server memakai
+**cadangan berbasis pengolahan citra biasa**: permukaan yang bisa dijalani
+umumnya rata, yaitu sedikit garis tepi dan warnanya konsisten dengan area
+tepat di depan kaki pengguna.
 
-**Request:**
-```json
-{
-  "detections": [
-    {
-      "label_id": "orang",
-      "distance_meter": 1.2,
-      "direction": "depan",
-      "danger_level": "critical"
-    },
-    {
-      "label_id": "motor",
-      "distance_meter": 2.8,
-      "direction": "kanan",
-      "danger_level": "warning"
-    }
-  ],
-  "context": "voice"
-}
-```
+Bentuk balasannya sama persis untuk kedua jalur, dan jalur mana yang sedang
+dipakai selalu disebutkan di kolom `source`. Jadi tidak ada klaim palsu, dan
+mengganti cadangan dengan model sungguhan nanti tidak mengubah satu baris pun
+di sisi aplikasi.
 
-**Response:**
-```json
-{
-  "narasi": "Di depan kamu ada seseorang yang cukup dekat, sekitar satu meter. Ada motor di sebelah kananmu. Jalur kiri tampak lebih aman."
-}
-```
+Cek jalur yang sedang aktif lewat `GET /api/navigasi/status`.
 
-**Fallback jika Claude API gagal** (tidak crash):
-```json
-{
-  "narasi": "Ada orang di depan, sangat dekat, dan motor di kanan, sekitar 3 meter."
-}
-```
-
-**Konteks yang didukung:**
-- `"voice"` — pengguna tanya *"ada apa di sekitar?"*
-- `"tuntun"` — deskripsi otomatis Mode Tuntun
-- `"navigasi"` — deskripsi scene saat navigasi
+> Mode Navigasi **tidak pernah dimatikan saat offline.** Deteksi rintangannya
+> berjalan di ponsel dan tetap hidup. Mematikan seluruh mode hanya karena
+> segmentasi jalur tidak tersedia sama saja mencabut fungsi keselamatan yang
+> sebenarnya masih bekerja. Status terburuknya adalah `limited`.
 
 ---
 
-### `POST /api/ocr`
-Membaca teks dari gambar menggunakan Tesseract.
+## 3. Rujukan endpoint
 
-**Request:** `Content-Type: application/octet-stream` (JPEG bytes)  
-**Response:**
+### Fitur utama
+
+#### `POST /api/ocr`
+
+Membaca tulisan dari gambar. Kirim JPEG mentah sebagai isi permintaan.
+
 ```json
 {
-  "text": "Selamat Datang di Rumah Sakit XYZ",
-  "lines": [
-    "Selamat Datang",
-    "di Rumah Sakit XYZ"
-  ]
+  "text": "Menu Warung Bu Sari\nAyam goreng 15000",
+  "lines": ["Menu Warung Bu Sari", "Ayam goreng 15000"],
+  "confidence": 0.96,
+  "word_count": 15,
+  "estimated_seconds": 6.9,
+  "estimated_spoken": "sekitar 7 detik",
+  "is_long": false,
+  "is_very_long": false
 }
 ```
 
----
+Estimasi durasi bacaan disertakan karena aplikasi harus menyebutkan perkiraan
+waktu **sebelum** mulai membacakan teks panjang, supaya pengguna bisa memilih
+mendengar ringkasannya saja.
 
-### `GET /api/risk-zone?lat={lat}&lng={lng}`
-Cek zona bahaya di sekitar koordinat GPS pengguna.
+#### `POST /api/cari-objek`
 
-**Response (jika ada zona bahaya):**
+Kirim `target` (nama barang Bahasa Indonesia) dan `file` (gambar JPEG).
+
 ```json
 {
-  "risk_zone": {
-    "id": "rz_001",
-    "warning": "Area ini sering ada hambatan di trotoar, hati-hati",
-    "distance_meter": 45.2
-  }
+  "found": true,
+  "message": "dompet di kiri, sekitar satu meter.",
+  "total_match": 1,
+  "nearest": {
+    "direction": "kiri",
+    "distance_meter": 1.1,
+    "confidence": 0.72
+  },
+  "prompt_en": "wallet"
 }
 ```
 
-**Response (aman):**
+`GET /api/cari-objek/targets` mengembalikan daftar barang yang dikenali.
+
+#### `POST /api/navigasi`
+
+Kirim `file` (gambar JPEG), opsional `lat` dan `lng`.
+
 ```json
 {
-  "risk_zone": null
+  "ok": true,
+  "source": "heuristic",
+  "zones": {
+    "kiri":   {"status": "caution", "walkable_ratio": 0.466},
+    "tengah": {"status": "safe",    "walkable_ratio": 0.998},
+    "kanan":  {"status": "caution", "walkable_ratio": 0.469}
+  },
+  "recommended": "tengah",
+  "message": "Tetap di tengah."
 }
 ```
 
----
+Kalau `lat` dan `lng` diisi, balasan bisa memuat `risk_zone`, yaitu peringatan
+dari laporan pengguna lain di lokasi itu. Itu informasi yang tidak terlihat
+kamera.
 
-### `POST /api/route-intent`
-Intent routing untuk Voice Assistant menggunakan Claude Haiku. Dipanggil oleh `voice_provider.dart` Layer 2 (setelah keyword lokal tidak match).
+#### `POST /api/intent`
 
-**Request:**
+Memahami perintah suara yang tidak dikenali parser lokal di ponsel.
+
+Urutan usahanya: **cocokkan frasa persis, lalu kemiripan kata dan nama
+barang, baru LLM.**
+
+Yang menarik: kalau ada **dua kemungkinan yang sama sama masuk akal**, server
+sengaja **tidak** memanggil LLM dan langsung bertanya balik.
+
 ```json
-{ "text": "Apa yang ada di depan saya?" }
+POST {"text": "kenal kunci"}
+
+{
+  "resolved": false,
+  "reason": "ambiguous",
+  "message": "Saya dengar kenal kunci. Maksudmu cari kunci, atau kenali uang?"
+}
 ```
 
-**Response:**
-```json
-{ "intent": "describe_scene", "fallback_used": false }
-```
+Alasannya: menebak salah lebih mahal daripada satu pertanyaan, karena
+penggunanya tidak bisa melihat layar untuk mengoreksi. Perintah untuk LLM pun
+secara eksplisit menyuruhnya menjawab "tidak tahu" saat ragu.
 
-**Intent yang valid:** `describe_scene` | `ocr` | `navigation` | `chitchat`  
-**Fallback:** jika Claude error/timeout → `{"intent": "describe_scene", "fallback_used": true}`  
-**Latensi:** < 300ms (max_tokens=10, temperature=0.0)
+#### `POST /api/narasi`
 
----
-
-## 3. Penggunaan LLM: Claude Haiku
-
-### Kapan Claude Dipanggil?
-
-| Situasi | Claude dipanggil? |
-|---|---|
-| Mode Tuntun real-time (tiap frame) | ❌ Tidak — pakai template sederhana |
-| Voice Assistant ("ada apa?") | ✅ Ya — via `/api/narasi` |
-| Voice Assistant intent routing | ✅ Ya — via `/api/route-intent` (max_tokens=10) |
-| OCR (baca teks) | ❌ Tidak — Tesseract langsung |
-| Navigasi obstacle warning | ❌ Tidak — pakai template |
-
-Claude **hanya dipanggil saat pengguna secara aktif meminta deskripsi**. Tidak pernah per-frame.
-
-### Input ke Claude: Teks, Bukan Gambar
-
-Ini keputusan kritis. Claude **tidak pernah menerima gambar/base64**. Input selalu berupa teks terstruktur dari hasil YOLO:
+Mengubah hasil deteksi menjadi kalimat natural memakai Claude Haiku.
+Masukannya **teks terstruktur, bukan gambar**:
 
 ```
-System:
-Kamu adalah asisten navigasi bernama Guidio untuk penyandang tunanetra.
-Tugasmu: ubah data deteksi objek menjadi 1-2 kalimat Bahasa Indonesia yang natural...
-
-User:
-Objek terdeteksi kamera saat ini:
 - orang, jarak 1.2 meter, posisi depan, bahaya: critical
 - motor, jarak 2.8 meter, posisi kanan, bahaya: warning
-
-Konteks: mode voice. Deskripsikan situasi ini untuk pengguna tunanetra.
 ```
 
-**Kenapa teks, bukan gambar?**
-Terinspirasi dari paper *Feedback-Enhanced YOLO + VLM* (arXiv 2025) dan *Neural Baby Talk* (CVPR 2018):
-- Mencegah hallucination visual (Claude tidak bisa "salah lihat" objek yang tidak ada)
-- Jauh lebih murah: ~100 token input vs kirim base64 gambar
-- Lebih cepat: tidak perlu encode/decode
-- Lebih akurat: LLM hanya merangkai kalimat dari fakta yang sudah diverifikasi YOLO
+Ini mencegah AI "salah lihat" benda yang tidak ada, jauh lebih murah, dan
+lebih cepat. Kalau Claude gagal atau kuncinya tidak diisi, endpoint ini
+otomatis memakai template sederhana dan tidak pernah membuat server berhenti.
 
-### Estimasi Biaya
+#### `POST /api/uang` (opsional)
 
-Dengan `max_tokens=150` dan ~100 token input per request:
+Jalur utama fitur ini ada di ponsel. Endpoint ini hanya untuk pembanding.
+Kalau model server tidak ada, balasannya jujur:
 
-| Skenario | Frekuensi | Perkiraan biaya |
-|---|---|---|
-| Voice Assistant | ~20x per hari per user | Sangat murah |
-| Deskripsi navigasi | ~10x per hari per user | Sangat murah |
-
-Claude Haiku adalah model paling hemat Anthropic — cocok untuk output singkat 1-2 kalimat.
-
-### Fallback jika Claude Gagal
-
-Jika `ANTHROPIC_API_KEY` tidak diset atau Claude API timeout/error, endpoint `/api/narasi` **tidak crash** — ia mengembalikan template sederhana:
-
-```python
-def _template_fallback(detections):
-    # Contoh output: "Ada orang di depan, sangat dekat, dan motor di kanan, sekitar 3 meter."
-    ...
+```json
+{
+  "detected": false,
+  "reason": "model_unavailable",
+  "message": "Pengenalan uang di server belum aktif. Mode Kenali Uang berjalan di perangkat tanpa internet."
+}
 ```
+
+Endpoint ini **tidak pernah menebak nominal**.
+
+### Endpoint penunjang
+
+Semuanya lahir dari kebutuhan tampilan yang sudah dirancang, bukan dari
+kebiasaan umum membuat API.
+
+| Endpoint | Kegunaan |
+|---|---|
+| `GET /health` | Cek server hidup, sekaligus melaporkan waktu tempuh |
+| `GET /api/capabilities` | Mode mana yang hidup, ditanyakan **sebelum** tombol ditekan |
+| `GET /api/labels` | Kamus nama benda dalam Bahasa Indonesia |
+| `GET /api/models/manifest` | Versi model yang ada di ponsel |
+| `POST /api/models/rescan` | Pindai folder `models/`, hitung sidik jari berkas |
+| `POST /api/events` | Telemetri alur pemakaian |
+| `GET /api/events/summary` | Ringkasan telemetri |
+| `POST /api/crash-report` | Laporan aplikasi berhenti mendadak |
+| `GET /api/crash-report/last-mode` | Mode terakhir sebelum berhenti, untuk dipulihkan |
+| `POST /api/queue/flush` | Kirim ulang gambar yang tertahan saat offline |
+| `GET /api/intent/catalog` | 20 perintah suara beserta variannya |
+| `POST /api/asisten/turn` | Simpan satu giliran percakapan |
+| `GET /api/asisten/history` | Ambil riwayat percakapan |
+
+#### Kenapa `/api/capabilities` penting
+
+Tanpa endpoint ini, pengguna baru tahu server mati **setelah** menekan tombol
+dan menunggu. Bagi orang yang tidak melihat layar, itu berarti menunggu dalam
+ketidakpastian lalu mendengar kabar gagal.
+
+Dengan endpoint ini, menu mode sudah bisa menandai fitur yang sedang terbatas
+sejak awal, dan tombol yang nonaktif bisa langsung menyebutkan alasannya.
+
+#### Kenapa antrean offline butuh kunci idempotensi
+
+`POST /api/queue/flush` mewajibkan `idempotency_key`. Kalau permintaan dengan
+kunci yang sama dikirim dua kali, server mengembalikan hasil yang sudah
+tersimpan tanpa memproses ulang gambarnya.
+
+Ini penting karena aplikasi mengirim ulang antrean secara otomatis begitu
+internet kembali, dan tanpa penjaga ini satu foto bisa terproses berkali kali.
+
+#### Telemetri untuk apa
+
+Bukan untuk pemasaran. Yang diukur adalah target desain yang bisa dibuktikan:
+berapa gestur yang dibutuhkan untuk membayar di warung (targetnya di bawah
+4), berapa lama dari membuka aplikasi sampai deteksi aktif (targetnya di
+bawah 2 detik), dan berapa sering perintah suara tidak dikenali.
 
 ---
 
-## 4. YOLO Server-Side vs TFLite Mobile
+## 4. Basis data
 
-| Aspek | TFLite (Mobile) | YOLO Server (PyTorch) |
-|---|---|---|
-| Model | SSD MobileNet | YOLOv8m / YOLO11n |
-| Ukuran | ~4.0 MB | ~50 MB / ~11 MB |
-| Input size | 300×300 | 640×640 |
-| Latensi | ~30 ms | 200–500 ms |
-| Butuh internet | ❌ Tidak | ✅ Ya |
-| Dipakai untuk | Real-time warning (Mode Tuntun) | Fallback + Voice Assistant |
-| Akurasi | Cukup untuk obstacle | Lebih detail & presisi |
+Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi**: identifikasi
+cukup memakai `device_id` anonim yang dibuat aplikasi sendiri.
 
-**Prinsip penggunaan:**
-- Mode Tuntun (real-time): **TFLite di mobile** (utama)
-- Server WebSocket: **fallback** jika TFLite gagal
-- Voice Assistant (1 shot): **server** untuk akurasi lebih tinggi
-- OCR: **selalu server** (TFLite tidak bisa OCR)
+Tidak ada satu pun layar dalam rancangan yang membutuhkan login, jadi
+menambahkan sistem akun berarti memaksa hadirnya layar yang tidak pernah
+dirancang, dan itu justru menambah langkah bagi pengguna.
 
-### Camera Health Check di Server
+| Tabel | Isi |
+|---|---|
+| `risk_zones` | Lokasi yang sering dilaporkan ada hambatan |
+| `object_labels` | Nama benda dalam Bahasa Indonesia, tinggi nyata, tingkat bahaya |
+| `voice_intents`, `intent_phrases` | 20 perintah suara dan variannya |
+| `model_manifest` | Versi model yang dipakai ponsel |
+| `telemetry_events` | Telemetri alur |
+| `crash_reports` | Laporan aplikasi berhenti mendadak |
+| `upload_queue` | Antrean unggah offline |
+| `assistant_sessions`, `assistant_turns` | Riwayat percakapan |
+| `money_denominations` | Pecahan uang, kata terbilang, urutan kelas model |
+| `capability_overrides` | Paksa status fitur, untuk demo atau perawatan |
 
-Server juga melakukan pengecekan kondisi kamera sebelum menjalankan inference (via WebSocket):
-
-| Kondisi | Cara Deteksi | Respons ke Flutter |
-|---|---|---|
-| Frame invalid/null | `cv2.imdecode` return `None` | `{"type": "error", "msg": "Frame invalid"}` |
-| Lensa tertutup | >90% piksel < 10 brightness | `"Lensa kamera tertutup"` |
-| Terlalu gelap | `gray.mean() < 30` | `"Kamera terlalu gelap"` |
-| Gambar buram | Laplacian variance < 50 | `"Gambar terlalu buram"` |
-| Kamera menghadap bawah | bottom_mean > top_mean × 1.8 | `"Arahkan kamera ke depan"` |
+Catatan: `risk_zones` dulu hanya disimpan di memori dan hilang setiap server
+dinyalakan ulang, artinya zona bahaya tidak pernah benar benar terbentuk.
+Sekarang tersimpan permanen, dan perhitungan jaraknya dilakukan langsung di
+dalam kueri SQL.
 
 ---
 
-## 5. Struktur Folder
+## 5. Prinsip yang dipegang server ini
+
+**Server tidak menyaring deteksi.** Ia mengirim hasil mentah. Seluruh
+penyaringan ada di aplikasi, supaya hasil dari model di ponsel dan hasil dari
+server melewati aturan yang sama persis.
+
+**Tidak ada jalan buntu.** Setiap kegagalan membawa pesan yang menyebutkan
+apa yang masih berfungsi, lalu satu tindakan berikutnya. Contohnya, saat
+basis data mati: *"Deteksi objek dan kenali uang tetap jalan karena keduanya
+on-device. Penyimpanan di server sedang tidak bisa dipakai."*
+
+**Tidak ada kegagalan yang menjatuhkan server.** Model gagal dimuat, basis
+data mati, kunci LLM kosong: semuanya dilaporkan lewat `/api/capabilities`,
+dan server tetap melayani sisanya.
+
+**Jujur soal kemampuan.** Kalau segmentasi jalur sedang memakai cadangan
+sederhana, itu disebutkan di kolom `source`. Tidak ada yang berpura pura
+memakai model sungguhan.
+
+---
+
+## 6. Struktur folder
 
 ```
 backend/
-├── main.py                     # Entry point FastAPI, register routers, lifespan
-├── requirements.txt            # Dependencies Python
-├── .env                        # API Keys (TIDAK di-commit)
-├── .env.example                # Template .env
-├── export_tflite.py            # Script export YOLO ke TFLite (opsional)
-│
+├── main.py                  Titik masuk, memuat semua service saat startup
+├── .env                     Konfigurasi (tidak ikut ke git)
+├── .env.example             Contoh konfigurasi
+├── db/
+│   ├── database.py          Koneksi PostgreSQL
+│   ├── schema.sql           Definisi tabel
+│   └── seed.py              Data rujukan: label, intent, denominasi
 ├── routers/
-│   ├── websocket.py            # /ws/detect — real-time stream YUV→YOLO
-│   ├── detect.py               # /api/detect — single shot inference
-│   ├── narasi.py               # /api/narasi — Claude Haiku narasi
-│   ├── ocr.py                  # /api/ocr — Tesseract
-│   ├── risk_zone.py            # /api/risk-zone — zona bahaya GPS
-│   └── voice_router.py         # [NEW] /api/route-intent — LLM intent classifier
-│
+│   ├── websocket.py         Deteksi aliran waktu nyata
+│   ├── detect.py            Deteksi sekali jalan
+│   ├── ocr.py               Baca teks
+│   ├── narasi.py            Kalimat natural dari LLM
+│   ├── cari_objek.py        Pencarian barang dengan prompt teks
+│   ├── navigasi.py          Segmentasi jalur tiga zona
+│   ├── uang.py              Pengenalan uang (opsional)
+│   ├── asisten.py           Perintah suara dan riwayat percakapan
+│   ├── risk_zone.py         Zona rawan
+│   └── support.py           Kemampuan, label, manifest, telemetri, antrean
 ├── services/
-│   ├── yolo_service.py         # YOLOService: load model, infer, estimate distance
-│   ├── ocr_service.py          # OCRService: Tesseract wrapper
-│   ├── risk_zone_service.py    # RiskZoneService: in-memory store (v1)
-│   └── camera_health.py        # check_camera_health(): 4 kondisi kamera
-│
+│   ├── yolo_service.py         Deteksi rintangan
+│   ├── find_object_service.py  YOLOE prompt teks
+│   ├── segmentation_service.py PIDNet dan cadangan heuristik
+│   ├── ocr_service.py          Tesseract dan estimasi durasi baca
+│   ├── intent_service.py       Pencocokan perintah suara
+│   ├── uang_service.py         Pengenalan uang di server
+│   ├── risk_zone_service.py    Zona rawan
+│   ├── camera_health.py        Pemeriksaan kondisi kamera
+│   └── repository.py           Seluruh akses basis data
 └── utils/
-    └── image_utils.py          # bytes_to_numpy(): JPEG bytes → OpenCV frame
+    └── image_utils.py       Bantuan konversi gambar
 ```
 
 ---
 
-## 6. Instalasi & Menjalankan Server
+## 7. Keterbatasan yang perlu diketahui
 
-### Prasyarat
-- Python 3.10–3.12 (3.13+ tidak direkomendasikan karena TensorFlow)
-- `ANTHROPIC_API_KEY` dari [console.anthropic.com](https://console.anthropic.com)
-- Model YOLO: `yolo11n.onnx` atau `yolov8m.pt` (sudah tersedia di repo)
+1. **Model PIDNet-S belum ada.** Navigasi memakai cadangan heuristik yang
+   membaca gambar sungguhan dan cukup untuk menguji seluruh tampilan, tetapi
+   ketelitiannya di bawah model terlatih. Letakkan
+   `models/pidnet_s_3zona.onnx` untuk mengaktifkan jalur model.
 
-### Langkah-langkah
+2. **Model uang di server memang tidak ada, dan itu disengaja.** Jalur utama
+   fitur ini di ponsel.
+
+3. **Model uang di ponsel hanya mengenali 6 pecahan emisi 2016.** Rp1.000
+   belum dikenali. Untuk emisi 2022, model perlu dilatih ulang; struktur API
+   dan tabel denominasinya sudah siap menampung.
+
+4. **`ANTHROPIC_API_KEY` tersimpan apa adanya di `.env`.** Berkas itu sudah
+   dikecualikan dari git, tetapi sebaiknya kuncinya diganti sebelum
+   repositori dibagikan.
+
+5. **Berkas model besar tidak ikut ke git** (`mobileclip_blt.ts`,
+   `yoloe-11s-seg.pt`, dan berkas `.pt` serta `.onnx` lainnya). Ultralytics
+   mengunduhnya otomatis saat pertama dipakai.
+
+---
+
+## 8. Uji cepat
 
 ```bash
-# 1. Masuk ke direktori backend
-cd backend
+B=http://localhost:8000
 
-# 2. Buat virtual environment
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+curl -s $B/health
+curl -s $B/api/capabilities
+curl -s "$B/api/labels?lang=id"
 
-# 3. Install dependencies (ringan, ~150-200 MB)
-pip install -r requirements.txt
+# Perintah ambigu: seharusnya bertanya balik, bukan menebak
+curl -s -X POST $B/api/intent -H 'Content-Type: application/json' \
+     -d '{"text":"kenal kunci"}'
 
-# 4. Konfigurasi environment
-cp .env.example .env
-# Edit .env dan isi ANTHROPIC_API_KEY
+# Baca teks
+curl -s -X POST $B/api/ocr --data-binary "@foto.jpg" \
+     -H "Content-Type: application/octet-stream"
 
-# 5. Jalankan server
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Cari barang (panggilan pertama memuat model, sekitar 2 detik)
+curl -s -X POST $B/api/cari-objek -F "target=dompet" -F "file=@foto.jpg"
+
+# Jalur tiga zona
+curl -s -X POST $B/api/navigasi -F "file=@foto.jpg" -F "lat=0" -F "lng=0"
 ```
-
-Server berjalan di `http://0.0.0.0:8000`. Flutter terhubung via IP lokal perangkat (pastikan HP dan laptop dalam jaringan WiFi yang sama).
-
-### Akses API Docs
-
-FastAPI auto-generate dokumentasi interaktif:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-### Troubleshooting
-
-**Server gagal load YOLO:**
-```
-YOLO gagal di-load! Server tetap jalan tapi deteksi tidak aktif.
-```
-Server tetap berjalan. OCR dan narasi tetap berfungsi. Pastikan file model ada di direktori `backend/`.
-
-**Claude API tidak tersedia:**
-Endpoint `/api/narasi` otomatis fallback ke template sederhana tanpa crash.
-
-**Flutter tidak bisa konek ke server:**
-- Pastikan laptop dan HP dalam jaringan WiFi yang sama
-- Cek IP lokal laptop: `ip addr show` (Linux) atau `ipconfig` (Windows)
-- Update IP di `lib/services/server_service.dart`
-
----
-
-## 7. Konfigurasi Environment
-
-Buat file `.env` di folder `backend/`:
-
-```env
-# WAJIB — untuk endpoint /api/narasi
-ANTHROPIC_API_KEY=sk-ant-api03-...
-
-# Opsional — disarankan yolo11n.pt karena sudah ada di repo (default: yolov8m.pt)
-YOLO_MODEL=yolo11n.pt
-
-# Opsional — auto = deteksi GPU/CPU otomatis
-DEVICE=auto
-
-# Opsional
-PORT=8000
-```
-
-**Mendapatkan API Key:**
-1. Daftar di [console.anthropic.com](https://console.anthropic.com)
-2. Buat API Key baru
-3. Tempel di `.env` sebagai `ANTHROPIC_API_KEY`
-
-Jika API Key tidak diset, endpoint `/api/narasi` tetap berfungsi dengan output template (bukan kalimat natural dari Claude).
-
----
-
-## 8. Export Model TFLite (Opsional)
-
-Script `export_tflite.py` tersedia untuk mengkonversi model YOLO ke format TFLite yang dibutuhkan aplikasi mobile.
-
-> ⚠️ **Peringatan storage:** Proses export men-download TensorFlow + PyTorch + CUDA (~5 GB). **Sangat disarankan menggunakan Google Colab** daripada laptop lokal.
-
-```bash
-# Jika ingin export di lokal (pastikan ada 5 GB disk kosong)
-python3 export_tflite.py
-```
-
-**Atau via Google Colab (direkomendasikan):**
-```python
-!pip install ultralytics
-from ultralytics import YOLO
-# imgsz=320 → output tensor [1, 84, 2100] — sesuai yang dibutuhkan app Flutter
-YOLO("yolo11n.pt").export(format="tflite", imgsz=320, half=False, int8=False)
-```
-
-**Persyaratan Python:**
-- Export TFLite: **Python ≤ 3.12** (TensorFlow tidak support 3.13+)
-- Menjalankan server FastAPI: Python 3.10–3.14 (semua versi aman)

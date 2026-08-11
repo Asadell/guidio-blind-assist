@@ -1,415 +1,337 @@
-# Guidio App — Flutter Mobile (Android)
+# Vinara Mobile (guidio_app)
 
-Aplikasi mobile Guidio adalah komponen utama sistem Guidio: "mata" dan "telinga" pengguna tunanetra. Seluruh deteksi rintangan real-time berjalan **langsung di perangkat** tanpa internet, menggunakan SSD MobileNet via TFLite. Aplikasi ini dikhususkan untuk **Android**.
+Aplikasi Flutter untuk Android. Inilah bagian yang dipegang pengguna, dan
+bagian yang paling menentukan apakah sistem ini benar benar bisa dipakai
+orang yang tidak melihat layar.
 
----
-
-## Daftar Isi
-
-1. [Gambaran Arsitektur Mobile](#1-gambaran-arsitektur-mobile)
-2. [TFLite On-Device — Kemampuan & Batasan](#2-tflite-on-device--kemampuan--batasan)
-3. [Skenario Output ke Pengguna](#3-skenario-output-ke-pengguna)
-4. [State Management: Provider Pattern](#4-state-management-provider-pattern)
-5. [Kapan TFLite, Kapan Server](#5-kapan-tflite-kapan-server)
-6. [Struktur Folder](#6-struktur-folder)
-7. [Persyaratan Model TFLite](#7-persyaratan-model-tflite)
-8. [Cara Menjalankan](#8-cara-menjalankan)
-9. [Dependencies](#9-dependencies)
+Dua fitur berjalan penuh di dalam ponsel tanpa internet: peringatan
+rintangan dan pengenalan uang.
 
 ---
 
-## 1. Gambaran Arsitektur Mobile
+## Daftar isi
 
-App ini **tidak menggunakan LLM di mobile**. LLM (Claude Haiku) hanya dipanggil dari server saat pengguna secara aktif meminta deskripsi (Mode Voice Assistant). Untuk peringatan real-time, semua berjalan lokal.
+1. [Cara kerja singkat](#1-cara-kerja-singkat)
+2. [Enam mode dan layarnya](#2-enam-mode-dan-layarnya)
+3. [Dua model AI di dalam ponsel](#3-dua-model-ai-di-dalam-ponsel)
+4. [Sistem desain: token dan komponen](#4-sistem-desain-token-dan-komponen)
+5. [Aturan tata letak yang mengikat](#5-aturan-tata-letak-yang-mengikat)
+6. [Antrean suara bertingkat](#6-antrean-suara-bertingkat)
+7. [Panel debug untuk menguji semua state](#7-panel-debug-untuk-menguji-semua-state)
+8. [Aksesibilitas](#8-aksesibilitas)
+9. [Struktur folder](#9-struktur-folder)
+10. [Menjalankan](#10-menjalankan)
+
+---
+
+## 1. Cara kerja singkat
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│ MOBILE — Flutter (Provider Pattern)                              │
-│                                                                  │
-│  ┌────────────┐   ┌───────────────────────────────────────────┐  │
-│  │  Camera    │   │         InferenceProvider (Router)        │  │
-│  │  Provider  │──▶│  Mode Tuntun/Navigasi → TFLite (utama)   │  │
-│  │  (stream)  │   │  TFLite gagal/offline  → Server (fallback)│  │
-│  └────────────┘   │  Voice Assistant       → Server (REST)    │  │
-│        │          └──────────────┬────────────────────────────┘  │
-│        │                         │ raw List<Detection>           │
-│        │          ┌──────────────▼────────────────────────────┐  │
-│        │          │           DetectionFilter                 │  │
-│        │          │  1. distance > 10m → buang                │  │
-│        │          │  2. confidence < 0.5 → buang              │  │
-│        │          │  3. streak < 2 frame → skip               │  │
-│        │          │  4. cooldown tier (50% jika approaching)  │  │
-│        │          │  5. sort critical→warning→info            │  │
-│        │          │  6. maks 2 pesan per cycle                │  │
-│        │          └──────────────┬────────────────────────────┘  │
-│        │                         │ filtered List<Detection>      │
-│        │          ┌──────────────▼────────────────────────────┐  │
-│        │          │       TTS + HapticService                 │  │
-│        │          │  Critical → interrupt + triple pulse      │  │
-│        │          │  Warning/Info → antrian + pattern sesuai  │  │
-│        │          │  flutter_tts + vibration package          │  │
-│        │          └───────────────────────────────────────────┘  │
-│        │                                                         │
-│   captureJpeg ──────────────────────────────────── /api/ocr      │
-│                                                                  │
-│   Voice: STT → intent → SSD snapshot → teks → /api/narasi → TTS  │
-└──────────────────────────────────────────────────────────────────┘
+Kamera menyala terus
+        │
+        ▼
+Gambar diubah jadi angka yang bisa dibaca model AI
+(dikerjakan di thread terpisah agar layar tidak tersendat)
+        │
+        ▼
+Model SSD MobileNet mengenali benda dan posisinya
+        │
+        ▼
+Perkiraan jarak, arah (kiri, depan, kanan), dan tingkat bahaya
+        │
+        ▼
+Penyaring: buang yang terlalu jauh, buang yang cuma muncul sekilas,
+jangan ulangi benda yang sama terlalu sering
+        │
+        ▼
+Suara + getar ke pengguna
 ```
 
-**Prinsip utama:**
-- Filter pipeline **hanya di Flutter** — server hanya kirim raw detections
-- TFLite **di Isolate** — tidak pernah di main thread (UI tidak freeze)
-- SORT tracker **pure Dart** — tidak ada library eksternal, ~0ms overhead
-- Haptic **mendampingi** TTS — tidak menggantikan, keduanya aktif bersamaan
-- Tidak ada LLM di mobile — semua peringatan pakai template kalimat lokal
+Penyaring itu penting. Tanpa penyaring, ponsel akan bicara tanpa henti
+setiap kali kamera bergeser sedikit, dan pengguna justru berhenti
+mendengarkan.
+
+### Aturan penyaring
+
+- Benda lebih jauh dari 10 meter diabaikan.
+- Benda yang cuma muncul di satu frame diabaikan (harus terlihat minimal
+  dua kali berturut turut).
+- Benda yang sama tidak diumumkan ulang sebelum jeda tertentu: 2 detik untuk
+  bahaya, 3 detik untuk hati hati, 5 detik untuk informasi biasa.
+- Kalau benda terdeteksi **mendekat**, jeda dipotong setengah supaya
+  peringatan datang lebih cepat.
+- Maksimal 2 pesan sekaligus. Lebih dari itu, manusia tidak sanggup
+  memprosesnya sambil berjalan.
 
 ---
 
-## 2. TFLite On-Device — Kemampuan & Batasan
+## 2. Enam mode dan layarnya
 
-### Model yang Digunakan
+Aplikasi terbuka langsung ke Mode Deteksi Objek yang sudah aktif. Tidak ada
+layar beranda, karena setiap layar perantara berarti penundaan sebelum
+pengguna mendapat informasi keselamatan.
 
-| Parameter | Nilai |
-|---|---|
-| Model | SSD MobileNet |
-| Format | TFLite float32 |
-| Input size | 300×300 px |
-| Ukuran file | ~4 MB |
-| Input tensor | `[1, 300, 300, 3]` — nested List, pixel range **0..255** (tidak dinormalisasi) |
-| Output tensor | 4 tensor: `locations[1][10][4]`, `classes[1][10]`, `scores[1][10]`, `count[1]` |
-| Target latensi | ~30 ms di smartphone Android kelas menengah |
-| Dijalankan di | Dart Isolate (background thread) via `IsolateInterpreter` |
-
-### Objek yang Bisa Dideteksi (Subset COCO)
-
-TFLite hanya melaporkan kelas yang **relevan untuk navigasi tunanetra**:
-
-| Kelas (EN) | Label (ID) | Tier |
+| Mode | Berkas layar | Butuh internet? |
 |---|---|---|
-| person | orang | Critical |
-| motorcycle | motor | Critical |
-| car | mobil | Critical |
-| bus | bus | Critical |
-| truck | truk | Critical |
-| dog | anjing | Critical |
-| bicycle | sepeda | Warning |
-| chair | kursi | Warning |
-| dining table | meja | Warning |
-| cat | kucing | Info |
+| Deteksi Objek | `screens/tuntun_screen.dart` | Tidak |
+| Kenali Uang | `screens/money_screen.dart` | Tidak |
+| Baca Teks | `screens/ocr_screen.dart` | Ya |
+| Navigasi | `screens/navigasi_screen.dart` | Sebagian |
+| Asisten Suara | `screens/voice_screen.dart` | Ya |
+| Cari Objek | `screens/find_object_screen.dart` | Ya |
 
-Kelas COCO lain (e.g., *kite*, *tennis racket*, *toothbrush*) **diabaikan** — tidak relevan untuk konteks navigasi.
+Layar penunjang: splash, panduan awal 3 langkah, permintaan izin, dan
+pengaturan berisi 8 opsi yang tersimpan permanen.
 
-### Preprocessing: YUV420 → Input Tensor
+Berpindah mode ada dua jalan: mengucapkan namanya (satu langkah), atau lewat
+tombol Pilih Mode di kanan bawah (dua langkah). Menu adalah cadangan untuk
+situasi pengguna tidak bisa bicara, misalnya di tempat yang sangat bising.
 
-Kamera Android menghasilkan frame format YUV420. Pipeline konversi:
+### Satu satunya konfirmasi di seluruh aplikasi
 
-```
-CameraImage (YUV420)
-        │
-        ▼ [di Isolate — tidak block UI]
-Konversi YUV → RGB menggunakan rumus:
-  R = Y + 1.402 × (V - 128)
-  G = Y − 0.344 × (U - 128) − 0.714 × (V - 128)
-  B = Y + 1.772 × (U - 128)
-        │
-        ▼
-Resize ke 300×300 (interpolasi linear)
-        │
-        ▼
-Pixel value tetap 0..255 (SSD MobileNet TIDAK dinormalisasi ke 0..1)
-        │
-        ▼
-Struktur: nested List [1][300][300][3]
-(TFLite Flutter WAJIB nested list, bukan flat Float32List)
-        │
-        ▼
-IsolateInterpreter.runForMultipleInputs(input, outputs)
-```
-
-> ⚠️ **Catatan penting:** `tflite_flutter` membutuhkan input sebagai **nested list**, bukan `Float32List` flat. Jika dikirim flat, PAD kernel akan crash dengan error `dims 4 != 1`.
-
-### Post-processing Output Tensor
-
-```
-Output tensor SSD MobileNet
-        │
-        │  tensor[0]: locations [1][10][4] — [ymin, xmin, ymax, xmax] normalized
-        │  tensor[1]: classes   [1][10]    — class index (float)
-        │  tensor[2]: scores    [1][10]    — confidence score
-        │  tensor[3]: count     [1]        — jumlah deteksi valid
-        │
-Loop maks 10 kandidat:
-  ├─ Skip jika score < 0.5
-  ├─ Skip jika label '???'
-  └─ Konversi bbox [ymin,xmin,ymax,xmax] normalized → pixel x1,y1,x2,y2
-        │
-        ▼
-(NMS sudah di dalam model — tidak perlu NMS manual)
-        │
-        ▼
-Estimasi jarak (Similar Triangle + Tilt Correction):
-  jarak_raw = (tinggi_nyata_cm × focal_length_px) / (tinggi_bbox_pixel × 100)
-  jika HP miring > 15° → jarak = jarak_raw × cos(tilt_angle)
-  focal_length_px = 615 (kalibrasi default)
-        │
-        ▼
-Arah deteksi (horizontal + vertikal):
-  Horizontal: kiri / depan / kanan (trisection lebar frame)
-  Vertikal:   atas / tengah / bawah (trisection tinggi frame)
-  Jika tengah → sebut horizontal saja
-  Jika tidak → gabung: "kiri atas", "depan bawah", dll.
-        │
-        ▼
-[ObjectTracker — SORT pure Dart]
-  ├─ Greedy IoU matching label-aware (threshold 0.3)
-  ├─ isApproaching = bbox area tumbuh > 20%
-  └─ Track hilang > 5 frame → hapus
-        │
-        ▼
-List<Detection> enriched (isApproaching)
-```
+Keluar dari Mode Navigasi saat pengguna terdeteksi masih berjalan akan
+memunculkan dialog konfirmasi. Selain itu, semua perpindahan mode langsung
+jalan tanpa bertanya. Konfirmasi yang terlalu sering membuat pengguna
+menekan "ya" secara refleks, dan itu justru berbahaya.
 
 ---
 
-## 3. Skenario Output ke Pengguna
+## 3. Dua model AI di dalam ponsel
 
-Berikut kemungkinan output yang diterima pengguna berdasarkan kondisi nyata:
+### Model deteksi rintangan
 
-### A. Deteksi Normal (Mode Tuntun aktif)
-
-| Kondisi | Output TTS |
+| Hal | Nilai |
 |---|---|
-| Orang 0.8m di depan | *"Bahaya! Ada orang kurang dari 1 meter di depan"* |
-| Motor 2m di kanan atas | *"Hati-hati, ada motor di kanan atas"* |
-| Kursi 1.5m di kiri bawah | *"Hati-hati, ada kursi di kiri bawah"* |
-| Anjing 1m di depan | *"Bahaya! Ada anjing 1 meter di depan"* |
-| Objek > 10m | *(tidak dilaporkan)* |
+| Berkas | `assets/models/ssd_mobilenet.tflite` |
+| Ukuran | sekitar 4 MB |
+| Ukuran masukan | 300 x 300 piksel |
+| Nilai piksel | 0 sampai 255, tidak dinormalkan |
+| Kecepatan | sekitar 30 milidetik per gambar |
+| Dijalankan di | thread terpisah, supaya layar tidak macet |
 
-### B. Camera Health Check — Kondisi Kamera Bermasalah
+Catatan penting: di folder `assets/models/` ada juga `yolo11l_float32.tflite`
+dan `yolo11n.tflite`. **Keduanya tidak dipakai** oleh kode saat ini dan hanya
+sisa percobaan. Yang benar benar dimuat adalah `ssd_mobilenet.tflite`.
 
-Sebelum inference dijalankan, sistem memeriksa kondisi kamera. Jika ada masalah, frame dibuang dan pengguna diberi tahu:
+### Model pengenalan uang
 
-| Kondisi Terdeteksi | Cara Deteksi | Output TTS |
-|---|---|---|
-| **Kamera terlalu gelap** | avg brightness plane-Y < 30/255 (sampling 100 piksel) | *"Kamera terlalu gelap"* |
-| **Lensa tertutup** | >90% piksel bernilai sangat gelap | *"Lensa kamera tertutup"* |
-| **Gambar buram** | Laplacian variance < threshold | *"Gambar buram, bersihkan lensa"* |
-| **Kamera menghadap bawah** | Accelerometer: kemiringan > 70° dari horizontal | *"Arahkan kamera ke depan"* |
-
-> 💡 Pengecekan brightness dilakukan **setiap frame** menggunakan plane-Y dari YUV420 (sangat ringan: O(100) operasi). Pengecekan accelerometer dilakukan terpisah via `camera_health_service.dart`.
-
-### C. Deteksi Difilter / Tidak Dilaporkan
-
-Filter pipeline membuang deteksi dalam kondisi berikut:
-
-| Alasan Dibuang | Kondisi |
+| Hal | Nilai |
 |---|---|
-| Terlalu jauh | `distance > 10.0 meter` |
-| Confidence rendah | `confidence < 0.5` |
-| Belum stabil | Terdeteksi < 2 frame berturut-turut (streak) — mencegah objek flash 1 frame langsung disuarakan |
-| Cooldown aktif | Objek sama sudah dilaporkan dalam cooldown terakhir (dipotong 50% jika mendekat) |
-| Antrian penuh | Sudah ada 2 pesan di antrian TTS |
+| Berkas | `assets/models/uang_rupiah.tflite` |
+| Arsitektur | MobileNetV2, dilatih ulang untuk uang rupiah |
+| Ukuran masukan | 224 x 224 piksel |
+| Nilai piksel | dibagi 255, sesuai cara model dilatih |
+| Jumlah kelas | 6 pecahan, emisi 2016 |
 
-### D. Status Sistem & Koneksi
+Urutan kelas **wajib** persis seperti saat model dilatih:
 
-| Kondisi | Output ke Pengguna |
+```
+100.000 = 0    10.000 = 1    20.000 = 2
+  2.000 = 3    50.000 = 4     5.000 = 5
+```
+
+Urutan itu ada di `MoneyTFLiteService.classValues`. Kalau model diganti,
+urutan ini dan kolom `class_index` di basis data server harus diubah
+bersamaan, kalau tidak nominal akan tertukar.
+
+**Keterbatasan yang harus disebut jujur:** model ini tidak mengenali pecahan
+Rp1.000, dan belum mengenali emisi 2022.
+
+**Aturan yang tidak bisa ditawar:** kalau keyakinan model di bawah 0,85,
+aplikasi **tidak menampilkan angka sama sekali**, hanya instruksi perbaikan
+seperti *"Belum yakin, dekatkan sedikit dan tahan diam"*. Menyebut nominal
+yang salah kepada orang yang tidak bisa memeriksa sendiri berarti kerugian
+uang nyata. Lebih baik mengaku ragu daripada menebak.
+
+Nominal selalu ditampilkan dan dibacakan dalam **dua bentuk**: angka
+(Rp50.000) dan kata (lima puluh ribu rupiah).
+
+---
+
+## 4. Sistem desain: token dan komponen
+
+Semua warna, ukuran huruf, dan jarak diambil dari satu sumber di
+`lib/theme/`. Tidak ada layar yang menulis nilai warna atau ukuran secara
+langsung. Tujuannya supaya perubahan satu token langsung berlaku menyeluruh.
+
+### Aturan warna yang penting
+
+Warna terang seperti hijau dan kuning **tidak boleh** menjadi latar teks
+putih, karena kontrasnya gagal untuk pengguna low vision. Karena itu setiap
+tingkat bahaya punya dua warna: satu untuk ikon dan bidang besar, satu lagi
+yang lebih pekat khusus untuk teks.
+
+Warna juga tidak pernah menjadi satu satunya penanda. Setiap tingkat bahaya
+punya **bentuk ikon berbeda**:
+
+| Tingkat | Bentuk ikon | Kata di kartu |
+|---|---|---|
+| Bahaya | segi delapan | "Bahaya" |
+| Hati hati | segitiga | "Hati-hati" |
+| Informasi | persegi membulat | "Info" |
+| Aman | lingkaran | "Aman" |
+
+Jadi pengguna buta warna tetap bisa membedakannya, dan pembaca layar tetap
+mendapat kata yang jelas.
+
+### 16 komponen
+
+Berada di `lib/widgets/`, semuanya memakai token di atas.
+
+`ModeBadge`, `AlertCard`, `BottomActionBar`, `FullScreenButton`,
+`ModePickerSheet`, `VoiceOrb`, `StatusBanner`, `ZoneIndicator`,
+`ResultPanel`, `CameraHealthToast`, `GuideFrame`, `ChatBubble`,
+`NominalCard`, `TargetChip`, `SpeakingIndicator`, `PermissionCard`.
+
+---
+
+## 5. Aturan tata letak yang mengikat
+
+Layar dibagi menjadi zona dari atas ke bawah. **Tidak ada elemen yang boleh
+menimpa elemen lain.** Kalau dua elemen meminta ruang yang sama, yang
+prioritasnya lebih rendah digeser atau diperingkas, bukan ditumpuk.
+
+| Zona | Tinggi | Aturan |
+|---|---|---|
+| Area aman atas | 32 dp | Tidak pernah diisi |
+| Banner status | 0, 56, atau 64 dp | **Maksimum satu di layar** |
+| Badge mode | 40 dp | Turun otomatis saat banner muncul |
+| Konten dan kamera | fleksibel | Menyusut, tidak pernah mendorong zona lain |
+| Tumpukan kartu | maksimal 2 kartu | Kartu ketiga menjadi baris "dan 2 objek lain" |
+| Bar tombol bawah | 112 dp | **Tetap**, tidak boleh tertutup apa pun |
+
+Kalau dua masalah global terjadi bersamaan (misalnya offline dan baterai
+kritis), keduanya digabung menjadi **satu** banner dengan tingkat tertinggi,
+bukan dua banner bertumpuk.
+
+Tiga tombol bawah tidak pernah berubah posisi, jumlah, maupun urutannya:
+Ambil gambar di kiri, Bicara di tengah, Pilih mode di kanan. Bagi pengguna
+yang tidak melihat layar, posisi tetap itu satu satunya peta yang mereka
+punya.
+
+---
+
+## 6. Antrean suara bertingkat
+
+Ada di `lib/core/speech/tts_queue.dart`.
+
+| Tingkat | Perilaku |
 |---|---|
-| Backend tidak terhubung | SnackBar: *"Backend tidak terhubung. Berjalan di Mode Lokal (TFLite). Fitur Voice & OCR mungkin tidak tersedia."* |
-| Izin kamera ditolak | SnackBar: *"Izin kamera ditolak..."* + tombol "Pengaturan" |
-| TFLite belum load | Inference dilewati, tidak ada output (silent fallback) |
+| Critical | Memotong semua suara, dan tidak bisa dipotong pengguna |
+| Warning | Memotong Info, boleh dipotong pengguna |
+| Info | Mengantre, dibuang kalau sudah menunggu lebih dari 2 detik |
 
-### E. Voice Assistant (membutuhkan backend)
+Info sengaja dibuang saat basi. Informasi tentang benda yang sudah terlewat
+tiga detik lalu bukan cuma tidak berguna, tapi juga menghalangi peringatan
+yang lebih baru.
 
-| Pertanyaan Pengguna | Alur | Output |
-|---|---|---|
-| *"Ada apa di sekitar saya?"* | Keyword miss → LLM routing → YOLO snapshot → teks → `/api/narasi` → Claude Haiku | Kalimat deskriptif natural dalam BI |
-| *"Bacakan teks ini"* | Keyword "baca" → Layer 1 langsung → captureJpeg → `/api/ocr` → flutter_tts | Teks terbacakan |
-| *"Pergi ke halte"* | Keyword "pergi ke" → Layer 1 langsung → NavigationProvider | Instruksi navigasi |
-| Kalimat ambigu | Keyword miss → Layer 2 Claude Haiku (`max_tokens=10`) → intent → dispatch | Sesuai intent | 
-
----
-
-## 4. State Management: Provider Pattern
-
-```
-main.dart
-├── AppModeProvider         — mode aktif (tuntun/ocr/navigasi/voice)
-├── CameraProvider          — controller kamera, stream, captureJpeg, brightness check
-├── InferenceProvider       — routing TFLite vs server, manage koneksi WebSocket
-├── DetectionProvider       — hasil deteksi + memanggil DetectionFilter + trigger TTS
-├── TtsProvider             — antrian TTS maks 2, priority interrupt
-├── VoiceProvider           — STT → intent detection → API call → TTS
-└── NavigationProvider      — step navigasi, GPS, favorit tempat
-```
-
-**Alur data:**
-```
-CameraProvider.stream
-        │
-InferenceProvider (routing)
-        │
-        ├── TFLiteService.runInference() → di Isolate
-        └── ServerService.detectionsStream → WebSocket
-        │
-DetectionProvider.onDetections()
-        │
-DetectionFilter.process() [filter, sort, deduplicate]
-        │
-TtsProvider.enqueue() → flutter_tts speak
-```
+Getar selalu mendampingi suara, bukan menggantikannya. Di lingkungan bising
+seperti pasar atau jalan raya, getar sering menjadi sinyal utama yang
+benar benar sampai.
 
 ---
 
-## 5. Kapan TFLite, Kapan Server
+## 7. Panel debug untuk menguji semua state
 
-| Mode | Engine | Alasan |
-|---|---|---|
-| Mode Tuntun (default) | **TFLite** | Real-time, offline, < 100ms |
-| Mode Tuntun (TFLite gagal) | Server WebSocket | Fallback otomatis |
-| Mode Navigasi (obstacle warning) | **TFLite** | Real-time wajib, tidak boleh lag |
-| Voice Assistant ("ada apa?") | Server REST `/api/narasi` | 1 shot, butuh kalimat natural LLM |
-| OCR (baca teks) | Server REST `/api/ocr` | TFLite tidak bisa OCR |
-| Offline penuh | TFLite only | Voice & OCR tidak tersedia, peringatan tetap jalan |
+Ketuk **5 kali** pada badge mode di kiri atas untuk membuka daftar state.
+Memilih satu state memaksa layar ke kondisi itu.
+
+Gunanya: seluruh kondisi tampilan bisa diperiksa tanpa perlu benar benar
+menghadirkan situasinya. Misalnya kondisi "baterai 9 persen", "empat objek
+sekaligus", atau "server mati" bisa dilihat langsung tanpa harus menunggu
+baterai habis atau mematikan server.
+
+Data tiruan untuk keperluan ini ada di `lib/mock/`.
 
 ---
 
-## 6. Struktur Folder
+## 8. Aksesibilitas
+
+Aplikasi ini harus bisa dipakai dengan layar mati total. Beberapa aturan yang
+diterapkan di kode:
+
+- **Urutan fokus** mengikuti zona dari atas ke bawah. Elemen yang sedang
+  tidak ada dilewati tanpa mengubah urutan sisanya.
+- **Live region** dipakai untuk teks yang berubah sendiri, supaya pembaca
+  layar mengumumkannya tanpa pengguna perlu mencari.
+- Hanya empat hal yang boleh memotong pembacaan: peringatan bahaya, zona
+  jalur berbahaya, nominal uang, dan kegagalan izin. Sisanya sopan menunggu.
+- **Label menyebut aksi, bukan alat**: "Ambil gambar", bukan "Kamera".
+- **Label tidak pernah menyebut lokasi layar**. Tidak ada "tombol di kanan
+  bawah", karena pengguna tidak melihat tata letaknya.
+- Tombol yang sedang nonaktif **menyebutkan alasannya**: "Baca teks, tidak
+  tersedia, butuh internet".
+- Elemen dekoratif seperti bingkai panduan dan kotak deteksi disembunyikan
+  dari pembaca layar, karena maknanya sudah dibawa teks lain.
+
+### Ukuran huruf 200 persen
+
+Pengaturan ukuran teks sampai 200 persen berlaku ke seluruh aplikasi. Saat
+teks membesar, tata letak berubah dari mendatar menjadi menurun, dan target
+sentuh membesar dari 48 menjadi 56 dp. Angka nominal uang tidak dibesarkan
+lagi karena sudah 56 sp.
+
+---
+
+## 9. Struktur folder
 
 ```
 lib/
-├── main.dart
-├── models/
-│   └── detection.dart              # Detection: isApproaching, copyWith(), bboxCx/Cy/W/H/Area
+├── main.dart                 Titik masuk, mendaftarkan seluruh provider
+├── core/
+│   ├── layout/               Ukuran zona dan aturan pergeseran
+│   ├── speech/               Antrean suara bertingkat
+│   ├── state/                Penggabungan kondisi global jadi satu banner
+│   └── voice/                20 intent perintah suara dan pemarsingnya
+├── theme/                    Warna, tipografi, jarak, tema
+├── widgets/                  16 komponen sistem desain
+├── providers/                State per mode, pengaturan, kondisi global
 ├── services/
-│   ├── tflite_service.dart         # load model, YUV→tensor, inference di Isolate, tilt correction
-│   ├── server_service.dart         # WebSocket stream + REST + routeIntent()
-│   ├── detection_filter.dart       # filter pipeline + approach-aware cooldown
-│   ├── tts_service.dart            # flutter_tts wrapper + speakAndWait (Completer)
-│   ├── haptic_service.dart         # [NEW] tri-tier vibration pattern (Critical/Warning/Info)
-│   ├── object_tracker.dart         # [NEW] SORT tracker pure Dart — isApproaching detection
-│   └── camera_health_service.dart  # validasi posisi kamera + lastTiltAngle getter
-├── providers/
-│   ├── app_mode_provider.dart      # mode aktif
-│   ├── inference_provider.dart     # routing TFLite vs server
-│   ├── detection_provider.dart     # orkestrasi: tracker → filter → TTS + haptic
-│   ├── tts_provider.dart           # antrian TTS maks 2, priority system
-│   ├── camera_provider.dart        # kamera + brightness check + tilt update tiap 30 frame
-│   ├── voice_provider.dart         # STT → 2-layer routing (keyword + LLM) → TTS
-│   └── navigation_provider.dart    # step navigasi GPS
-├── screens/
-│   ├── main_screen.dart
-│   ├── tuntun_screen.dart
-│   ├── ocr_screen.dart
-│   ├── navigasi_screen.dart
-│   └── voice_screen.dart
-└── widgets/
-    ├── bottom_bar.dart
-    ├── detection_card.dart
-    ├── camera_health_banner.dart
-    └── mode_sheet.dart
-
-assets/
-└── models/
-    ├── ssd_mobilenet.tflite               # model SSD MobileNet
-    └── labelmap.txt                        # 90 label COCO
+│   ├── tflite_service.dart       Deteksi rintangan on-device
+│   ├── money_tflite_service.dart Pengenalan uang on-device
+│   ├── server_service.dart       Semua panggilan ke backend
+│   ├── tts_service.dart          Mesin suara
+│   ├── detection_filter.dart     Penyaring anti banjir suara
+│   ├── object_tracker.dart       Pelacak SORT
+│   └── haptic_service.dart       Pola getar
+├── screens/                  6 mode + splash, panduan, izin, pengaturan
+└── mock/                     Data tiruan untuk panel debug
 ```
 
 ---
 
-## 7. Persyaratan Model TFLite
-
-Model SSD MobileNet (`ssd_mobilenet.tflite`) dan labelmap (`labelmap.txt`) **sudah disertakan di repositori** karena ukurannya kecil (~4 MB).
-
-**Letakkan file di:**
-```
-guidio_app/assets/models/ssd_mobilenet.tflite
-guidio_app/assets/models/labelmap.txt
-```
-
-**Spec model yang digunakan:**
-- Input: `[1, 300, 300, 3]` float32, pixel range **0..255**
-- Output: 4 tensor — locations, classes, scores, count (maks 10 deteksi per frame)
-- NMS sudah built-in di model
-- Labelmap: 90 baris (termasuk `???` untuk slot kosong COCO)
-- File size: ~4 MB
-
----
-
-## 8. Cara Menjalankan
-
-### Prasyarat
-- Flutter SDK ≥ 3.x (`flutter --version`)
-- Android device nyata (bukan emulator) — TFLite inference jauh lebih cepat di real hardware
-- Backend sudah menyala (opsional — app tetap jalan di Mode Lokal tanpa backend)
-
-### Langkah-langkah
+## 10. Menjalankan
 
 ```bash
-# 1. Masuk ke direktori
-cd guidio_app
-
-# 2. Install dependencies
 flutter pub get
-
-# 3. Pastikan model sudah ada
-ls assets/models/ssd_mobilenet.tflite assets/models/labelmap.txt
-
-# 4. Jalankan (pastikan device tersambung)
 flutter run
-
-# 5. Untuk debug lebih lanjut
-flutter run --verbose
 ```
 
-### Tips Development
+Aplikasi tetap jalan tanpa backend. Deteksi rintangan dan pengenalan uang
+berfungsi penuh; mode lain akan menyebut sendiri keterbatasannya.
 
-```bash
-# Hot reload (perubahan UI kecil)
-# Tekan 'r' di terminal saat flutter run aktif
+Alamat server bawaan `10.0.2.2:8000` (untuk emulator Android). Untuk
+perangkat fisik, ubah lewat layar Pengaturan di dalam aplikasi, atau lewat
+`lib/services/server_service.dart`.
 
-# Hot restart (perubahan state/logic)
-# Tekan 'R' di terminal
+### Delapan pengaturan yang tersimpan permanen
 
-# Lihat log lebih detail
-flutter logs
+1. Kecepatan bicara
+2. Tingkat kecerewetan (ringkas, sedang, detail)
+3. Getar (aktif, hanya bahaya, mati)
+4. Ambang jarak peringatan (1 sampai 5 meter)
+5. Tema (terang, gelap, kontras tinggi)
+6. Ukuran teks (normal sampai 200 persen)
+7. Ulangi panduan awal
+8. Alamat server
 
-# Build APK untuk testing
-flutter build apk --debug
-```
+### Catatan pengembangan
 
----
-
-## 9. Dependencies
-
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-
-  # State Management
-  provider: ^6.1.2
-
-  # Kamera & AI
-  camera: ^0.11.0+2            # CameraController + ImageStream (YUV420)
-  tflite_flutter: ^0.12.1      # IsolateInterpreter untuk inference non-blocking
-  image: ^4.1.7                # YUV420 → RGB conversion, resize
-
-  # Komunikasi Backend
-  web_socket_channel: ^3.0.1   # WebSocket stream ke /ws/detect
-  http: ^1.2.1                 # REST call ke /api/narasi, /api/ocr, /api/route-intent
-
-  # Audio & Feedback
-  flutter_tts: ^4.0.2          # Text-to-Speech (id-ID)
-  speech_to_text: ^7.0.0       # Speech-to-Text Google STT
-  vibration: ^2.0.0            # Haptic feedback tri-tier (Critical/Warning/Info)
-
-  # Sensor
-  sensors_plus: ^7.0.0         # Accelerometer untuk camera health + tilt correction
-
-  # Izin & Storage
-  permission_handler: ^11.3.1  # Request runtime permission (kamera, mikrofon)
-  shared_preferences: ^2.3.2   # Local storage lokasi favorit
-
-  # Icon
-  cupertino_icons: ^1.0.8
-```
+- Penyaring deteksi **hanya** boleh ada di Flutter, jangan ditambahkan di
+  server, supaya tidak terjadi penyaringan ganda.
+- Model TFLite **wajib** dijalankan di thread terpisah, jangan di thread
+  utama, karena layar akan macet.
+- Peringatan bahaya **selalu** memotong suara lain, tidak pernah mengantre.
+- Pelacak SORT harus direset saat berganti mode.
+- Semua suara memakai Bahasa Indonesia (`id-ID`).
+- Aplikasi ini menargetkan Android; iOS belum diuji.
