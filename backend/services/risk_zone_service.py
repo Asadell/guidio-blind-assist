@@ -1,70 +1,63 @@
-import math
-from datetime import datetime
+"""Risk Zone: lokasi yang sering dilaporkan ada hambatan.
+
+Dikumpulkan anonim dari semua pengguna (tanpa auth, cukup koordinat).
+Sejak versi ini datanya PERSISTEN di PostgreSQL — sebelumnya dict in-memory
+yang hilang tiap server restart, jadi zona bahaya tidak pernah benar-benar
+terbentuk.
+
+Kalau database mati, service diam-diam menonaktifkan diri: fitur ini
+pelengkap, dan matinya tidak boleh menjatuhkan Mode Navigasi yang deteksi
+rintangannya on-device.
+"""
+
 from loguru import logger
 
-# In-memory store untuk v1.
-# Untuk production: ganti dengan PostgreSQL + PostGIS.
-_risk_zones: dict[str, dict] = {}
+from db.database import is_available
+from services import repository as repo
 
 
 class RiskZoneService:
-    """
-    Risk Zone: lokasi yang sering dilaporkan ada hambatan.
-    Data dikumpulkan dari semua pengguna (anonim, tanpa auth).
-    """
-
-    RADIUS_METER = 30   # radius cek zona bahaya
-    MIN_COUNT    = 3    # minimum laporan sebelum dianggap zona bahaya
+    RADIUS_METER = 30.0  # radius cek zona bahaya
+    MIN_COUNT = 3        # minimum laporan sebelum dianggap zona bahaya
+    GRID_PRECISION = 4   # 4 desimal ≈ 11 meter per sel
 
     def __init__(self):
-        logger.info("RiskZoneService init (in-memory)")
+        logger.info(
+            "RiskZoneService init (PostgreSQL)"
+            if is_available()
+            else "RiskZoneService init — DB mati, fitur zona rawan nonaktif"
+        )
 
     def report(self, lat: float, lng: float, label: str) -> None:
-        """
-        Laporkan deteksi rintangan di koordinat ini.
-        Dipanggil tiap kali ada deteksi 'critical' atau 'warning'.
-        """
-        zone_key = self._to_grid_key(lat, lng)
-        if zone_key not in _risk_zones:
-            _risk_zones[zone_key] = {
-                "lat":       lat,
-                "lng":       lng,
-                "count":     0,
-                "labels":    {},
-                "last_seen": None,
-            }
-        zone = _risk_zones[zone_key]
-        zone["count"]  += 1
-        zone["labels"][label] = zone["labels"].get(label, 0) + 1
-        zone["last_seen"]     = datetime.utcnow().isoformat()
+        """Laporkan rintangan di koordinat ini. Dipanggil tiap deteksi
+        'critical' atau 'warning' saat koordinat tersedia."""
+        if not is_available():
+            return
+        try:
+            repo.risk_zone_report(self._grid_key(lat, lng), lat, lng, label)
+        except Exception as e:
+            logger.warning(f"Gagal menyimpan laporan zona: {e}")
 
     def check_nearby(self, lat: float, lng: float) -> dict | None:
-        """
-        Cek apakah ada zona bahaya dekat koordinat ini.
-        Return None jika tidak ada, atau dict info zona jika ada.
-        """
-        for zone_key, zone in _risk_zones.items():
-            dist = self._haversine(lat, lng, zone["lat"], zone["lng"])
-            if dist <= self.RADIUS_METER and zone["count"] >= self.MIN_COUNT:
-                most_common = max(zone["labels"], key=zone["labels"].get)
-                return {
-                    "distance_meter": round(dist, 1),
-                    "count":          zone["count"],
-                    "common_label":   most_common,
-                    "warning":        "Area ini sering ada hambatan, hati-hati",
-                }
-        return None
+        """Zona bahaya di sekitar koordinat ini, atau None."""
+        if not is_available():
+            return None
+        try:
+            zone = repo.risk_zone_nearby(lat, lng, self.RADIUS_METER, self.MIN_COUNT)
+            if not zone or zone["distance_m"] > self.RADIUS_METER:
+                return None
+            labels = zone["labels"] or {}
+            common = max(labels, key=labels.get) if labels else ""
+            return {
+                "distance_meter": round(float(zone["distance_m"]), 1),
+                "count": zone["report_count"],
+                "common_label": common,
+                "warning": "Area ini sering ada hambatan, hati-hati",
+            }
+        except Exception as e:
+            logger.warning(f"Gagal cek zona rawan: {e}")
+            return None
 
-    def _to_grid_key(self, lat: float, lng: float) -> str:
-        # Grid ~30 meter per cell (4 desimal ≈ 11 meter)
-        return f"{round(lat, 4)}_{round(lng, 4)}"
-
-    def _haversine(self, lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-        """Jarak dua koordinat dalam meter (Haversine formula)."""
-        R  = 6_371_000
-        p1 = math.radians(lat1)
-        p2 = math.radians(lat2)
-        dp = math.radians(lat2 - lat1)
-        dl = math.radians(lng2 - lng1)
-        a  = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    def _grid_key(self, lat: float, lng: float) -> str:
+        p = self.GRID_PRECISION
+        return f"{round(lat, p)}_{round(lng, p)}"

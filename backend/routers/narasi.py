@@ -75,8 +75,12 @@ async def generate_narasi(body: NarasiRequest):
 
     try:
         import anthropic
-        client   = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
+
+        # AsyncAnthropic + await: versi sinkron memblokir event loop FastAPI
+        # selama panggilan ke Claude, jadi permintaan narasi kedua mengantre
+        # di belakang yang pertama.
+        client   = anthropic.AsyncAnthropic(api_key=api_key)
+        response = await client.messages.create(
             model      = "claude-haiku-4-5-20251001",
             max_tokens = 150,
             system     = SYSTEM_PROMPT,

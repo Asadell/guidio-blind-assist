@@ -25,7 +25,7 @@ class OCRService:
             arr   = np.frombuffer(image_bytes, np.uint8)
             frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             if frame is None:
-                return {"text": "", "lines": [], "confidence": 0.0, "error": "Gambar tidak valid"}
+                return self._empty("Gambar tidak valid")
 
             processed = self._preprocess(frame)
 
@@ -39,16 +39,64 @@ class OCRService:
                     output_type=pytesseract.Output.DICT,
                 )
                 text, lines, confidence = self._parse_tesseract(data)
-                return {"text": text, "lines": lines, "confidence": round(confidence, 2)}
-            else:
                 return {
-                    "text": "", "lines": [], "confidence": 0.0,
-                    "error": "OCR engine tidak tersedia (install pytesseract + tesseract-ocr)",
+                    "text": text,
+                    "lines": lines,
+                    "confidence": round(confidence, 2),
+                    **self._reading_estimate(text, lines),
                 }
+            return self._empty(
+                "OCR engine tidak tersedia. Pasang paket sistem tesseract-ocr "
+                "beserta bahasa Indonesia (tesseract-langpack-ind)."
+            )
 
         except Exception as e:
             logger.error(f"OCR error: {e}")
-            return {"text": "", "lines": [], "confidence": 0.0, "error": str(e)}
+            return self._empty(str(e))
+
+    def _empty(self, error: str) -> dict:
+        """Balasan kosong dengan bentuk yang SAMA seperti balasan berhasil,
+        supaya sisi aplikasi tidak perlu menebak field mana yang ada."""
+        return {
+            "text": "",
+            "lines": [],
+            "confidence": 0.0,
+            "error": error,
+            **self._reading_estimate("", []),
+        }
+
+    # Kecepatan TTS Bahasa Indonesia pada setelan bawaan aplikasi.
+    # Dipakai BT-08: perkiraan durasi HARUS disebut sebelum pembacaan
+    # dimulai, supaya pengguna bisa memilih ringkasan atau bagian tertentu.
+    WORDS_PER_MINUTE = 130
+    LONG_READ_SECONDS = 90
+
+    def _reading_estimate(self, text: str, lines: list[str]) -> dict:
+        words = len(text.split())
+        seconds = round(words / self.WORDS_PER_MINUTE * 60, 1) if words else 0.0
+        return {
+            "word_count": words,
+            "line_count": len(lines),
+            "estimated_seconds": seconds,
+            "estimated_spoken": self._duration_words(seconds),
+            # BT-07 vs BT-06: hasil lebih dari 2 baris memakai panel panjang.
+            "is_long": len(lines) > 2,
+            # BT-08: di atas 90 detik, tawarkan ringkasan / penuh / pilih bagian.
+            "is_very_long": seconds > self.LONG_READ_SECONDS,
+        }
+
+    @staticmethod
+    def _duration_words(seconds: float) -> str:
+        """Durasi dalam kata, bukan angka desimal — aturan penulisan copy."""
+        if seconds <= 0:
+            return "kurang dari satu detik"
+        if seconds < 60:
+            return f"sekitar {int(round(seconds))} detik"
+        minutes = int(seconds // 60)
+        rest = int(round(seconds % 60))
+        if rest == 0:
+            return f"sekitar {minutes} menit"
+        return f"sekitar {minutes} menit {rest} detik"
 
     def _preprocess(self, frame: np.ndarray) -> np.ndarray:
         """Pre-processing untuk meningkatkan akurasi OCR."""
