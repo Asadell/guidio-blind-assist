@@ -155,6 +155,211 @@ class ServerService {
     }
   }
 
+  // ── Mode Cari Objek ─────────────────────────────────────────────────────
+
+  /// Cari satu barang di satu frame. `found: false` dengan reason
+  /// `not_in_frame` adalah kondisi NORMAL (CO-10) — aplikasi menyuruh
+  /// pengguna memutar badan lalu memanggil ini lagi.
+  Future<Map<String, dynamic>> cariObjek(String target, Uint8List jpegBytes) async {
+    final req = http.MultipartRequest('POST', Uri.parse('$_httpBase/api/cari-objek'))
+      ..fields['target'] = target
+      ..files.add(http.MultipartFile.fromBytes('file', jpegBytes, filename: 'frame.jpg'));
+    final streamed = await req.send().timeout(const Duration(seconds: 12));
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode != 200) {
+      throw Exception('Cari objek error ${streamed.statusCode}');
+    }
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  /// Daftar barang yang dikenali — dipakai CO-12 untuk menawarkan
+  /// barang lain saat target tidak dikenal.
+  Future<List<String>> cariObjekTargets() async {
+    final res = await http
+        .get(Uri.parse('$_httpBase/api/cari-objek/targets'))
+        .timeout(const Duration(seconds: 5));
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    return (json['targets'] as List).cast<String>();
+  }
+
+  // ── Mode Navigasi (segmentasi jalur 3 zona) ─────────────────────────────
+
+  Future<Map<String, dynamic>> segmentasiJalur(
+    Uint8List jpegBytes, {
+    double lat = 0,
+    double lng = 0,
+  }) async {
+    final req = http.MultipartRequest('POST', Uri.parse('$_httpBase/api/navigasi'))
+      ..fields['lat'] = '$lat'
+      ..fields['lng'] = '$lng'
+      ..files.add(http.MultipartFile.fromBytes('file', jpegBytes, filename: 'frame.jpg'));
+    final streamed = await req.send().timeout(const Duration(seconds: 8));
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode != 200) {
+      throw Exception('Navigasi error ${streamed.statusCode}');
+    }
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  // ── Kemampuan server ────────────────────────────────────────────────────
+
+  /// Mode mana yang server-nya hidup, DITANYAKAN SEBELUM pengguna menekan
+  /// tombol. Menentukan item `limited`/`disabled` di ModePickerSheet dan
+  /// aktif-tidaknya tombol utama Mode Baca Teks.
+  Future<Map<String, dynamic>?> capabilities() async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_httpBase/api/capabilities'))
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode != 200) return null;
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      return null; // offline: pemanggil menganggap semua mode server mati
+    }
+  }
+
+  /// Health check + waktu tempuh — PG-08c membacakan latensinya.
+  Future<Map<String, dynamic>?> health({Duration? timeout}) async {
+    final sw = Stopwatch()..start();
+    try {
+      final res = await http
+          .get(Uri.parse('$_httpBase/health'))
+          .timeout(timeout ?? const Duration(seconds: 4));
+      sw.stop();
+      if (res.statusCode != 200) return null;
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      json['round_trip_ms'] = sw.elapsedMilliseconds;
+      return json;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Perintah suara ──────────────────────────────────────────────────────
+
+  /// Resolusi perintah yang TIDAK cocok di CommandParser lokal.
+  /// `resolved: false` berarti aplikasi harus menawarkan dua tebakan
+  /// (AS-18 / AS-19), bukan bilang "perintah gagal".
+  Future<Map<String, dynamic>?> resolveIntent(String text) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$_httpBase/api/intent'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'text': text}),
+          )
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode != 200) return null;
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Telemetri, crash, antrean offline ───────────────────────────────────
+
+  /// Telemetri alur. Sengaja fire-and-forget: kegagalan mengirim statistik
+  /// tidak boleh terasa oleh pengguna.
+  Future<void> sendEvents(String deviceId, List<Map<String, dynamic>> events) async {
+    try {
+      await http
+          .post(
+            Uri.parse('$_httpBase/api/events'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'device_id': deviceId, 'events': events}),
+          )
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Diabaikan dengan sengaja.
+    }
+  }
+
+  Future<bool> sendCrashReport(Map<String, dynamic> report) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$_httpBase/api/crash-report'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(report),
+          )
+          .timeout(const Duration(seconds: 6));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// ER-06 — mode terakhir sebelum crash, untuk dipulihkan otomatis.
+  Future<String?> lastModeBeforeCrash(String deviceId) async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_httpBase/api/crash-report/last-mode?device_id=$deviceId'))
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode != 200) return null;
+      return (jsonDecode(res.body) as Map<String, dynamic>)['mode'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// BT-13 — kirim ulang gambar yang tertahan saat offline.
+  /// [idempotencyKey] mencegah pemrosesan dobel di server.
+  Future<Map<String, dynamic>?> flushQueue({
+    required String deviceId,
+    required String idempotencyKey,
+    required String kind,
+    required Uint8List jpegBytes,
+  }) async {
+    try {
+      final req = http.MultipartRequest('POST', Uri.parse('$_httpBase/api/queue/flush'))
+        ..fields['device_id'] = deviceId
+        ..fields['idempotency_key'] = idempotencyKey
+        ..fields['kind'] = kind
+        ..files.add(http.MultipartFile.fromBytes('file', jpegBytes, filename: 'queued.jpg'));
+      final streamed = await req.send().timeout(const Duration(seconds: 20));
+      final body = await streamed.stream.bytesToString();
+      if (streamed.statusCode != 200) return null;
+      return jsonDecode(body) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Kamus label & manifest model ────────────────────────────────────────
+
+  /// Pemetaan label model → frasa Indonesia (DO-08, DO-19). Ada di server
+  /// supaya perbaikan nama tidak perlu rilis ulang aplikasi.
+  Future<List<Map<String, dynamic>>?> labels({String lang = 'id'}) async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_httpBase/api/labels?lang=$lang'))
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode != 200) return null;
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final list = json['labels'];
+      if (list is! List) return null;
+      return list.cast<Map<String, dynamic>>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// UG-18 — emisi uang baru = update model, bukan update aplikasi.
+  Future<List<Map<String, dynamic>>?> modelManifest() async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_httpBase/api/models/manifest'))
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode != 200) return null;
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final list = json['models'];
+      if (list is! List) return null;
+      return list.cast<Map<String, dynamic>>();
+    } catch (_) {
+      return null;
+    }
+  }
+
   void disconnect() {
     _channel?.sink.close();
     _connected = false;

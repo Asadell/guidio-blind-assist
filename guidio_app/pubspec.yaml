@@ -34,6 +34,10 @@ dependencies:
   # Sensor accelerometer (camera health check posisi)
   sensors_plus: ^7.0.0
 
+  # Kondisi global — offline, baterai kritis (StatusBanner gabungan)
+  connectivity_plus: ^6.0.5
+  battery_plus: ^6.0.2
+
   # Izin kamera, mikrofon
   permission_handler: ^11.3.1
 

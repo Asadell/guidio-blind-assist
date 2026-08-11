@@ -26,20 +26,16 @@ class GuidioApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // AppMode — tidak ada dependency
+        // Providers tanpa dependency
         ChangeNotifierProvider(create: (_) => AppModeProvider()),
-
-        // InferenceProvider — tidak ada dependency
         ChangeNotifierProvider(create: (_) => InferenceProvider()),
-
-        // CameraProvider — tidak ada dependency
         ChangeNotifierProvider(create: (_) => CameraProvider()),
-
-        // TtsProvider — tidak ada dependency
         ChangeNotifierProvider(create: (_) => TtsProvider()),
-
-        // NavigationProvider — tidak ada dependency
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
+        ChangeNotifierProvider(create: (_) => MoneyProvider()),
+        ChangeNotifierProvider(create: (_) => FindObjectProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..init()),
+        ChangeNotifierProvider(create: (_) => GlobalConditionsProvider()..init()),
 
         // DetectionProvider — butuh InferenceProvider + CameraProvider
         ChangeNotifierProxyProvider2<InferenceProvider, CameraProvider, DetectionProvider>(
@@ -61,11 +57,29 @@ class GuidioApp extends StatelessWidget {
               prev ?? VoiceProvider(cam, det),
         ),
       ],
-      child: MaterialApp(
-        title:           'Guidio',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        home: const MainScreen(),
+      child: Builder(
+        builder: (context) {
+          final settings = context.watch<SettingsProvider>();
+          return MaterialApp(
+            title: 'Guidio',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: switch (settings.themeMode) {
+              AppThemeMode.dark => AppTheme.dark,
+              AppThemeMode.highContrast => AppTheme.highContrast,
+              AppThemeMode.light => AppTheme.light,
+            },
+            themeMode: settings.themeMode == AppThemeMode.light ? ThemeMode.light : ThemeMode.dark,
+            builder: (context, child) {
+              final scaler = TextScaler.linear(settings.fontScale);
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: scaler),
+                child: child!,
+              );
+            },
+            home: const MainScreen(),
+          );
+        },
       ),
     );
   }

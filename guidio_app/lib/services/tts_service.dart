@@ -45,6 +45,11 @@ class TTSService {
     }
   }
 
+  /// Kecepatan bicara — pengaturan 1 "Kecepatan bicara TTS" (bagian 13).
+  Future<void> setRate(double rate) async {
+    await _tts.setSpeechRate(rate);
+  }
+
   /// Konfirmasi saat ganti mode — "Mode baca teks aktif".
   Future<void> announceMode(String modeName) async {
     await stop();

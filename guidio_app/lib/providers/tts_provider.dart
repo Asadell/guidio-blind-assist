@@ -1,56 +1,33 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../services/tts_service.dart';
 
+import '../core/speech/tts_queue.dart';
+
+export '../core/speech/tts_queue.dart' show SpeechTier;
+
+/// TtsProvider — pembungkus [TtsQueue] tier-based (bagian 15). Dipakai
+/// screen/mode baru lewat `context.read<TtsProvider>().speak(msg, tier: ...)`
+/// alih-alih memanggil TTSService langsung, supaya aturan interupsi
+/// Critical/Warning/Info dan anti-banjir Info konsisten di seluruh app.
 class TtsProvider extends ChangeNotifier {
-  final _queue    = <String>[];
-  bool  _playing  = false;
-  String? _current;
+  final _queue = TtsQueue();
 
-  String? get current  => _current;
-  bool    get isActive => _playing;
+  bool get isActive => _queue.isSpeaking;
+  SpeechTier? get speakingTier => _queue.speakingTier;
 
-  static const int _maxQueue = 2; // sesuai PRD Cognitive Load Theory
-
-  /// Enqueue pesan TTS.
-  /// [critical] = true → clear queue, interrupt TTS saat ini, langsung speak.
-  Future<void> enqueue(String message, {bool critical = false}) async {
-    if (critical) {
-      _queue.clear();
-      _current = message;
-      notifyListeners();
-      await TTSService.instance.speak(message, interrupt: true);
-      _playing = false;
-      notifyListeners();
-      return;
-    }
-
-    // Buang jika queue sudah penuh
-    if (_queue.length >= _maxQueue) return;
-    _queue.add(message);
-
-    if (!_playing) await _processQueue();
-  }
-
-  Future<void> _processQueue() async {
-    while (_queue.isNotEmpty) {
-      _playing = true;
-      _current = _queue.removeAt(0);
-      notifyListeners();
-
-      // speak() resolve saat selesai (awaitSpeakCompletion=true di TTSService)
-      await TTSService.instance.speak(_current!);
-    }
-    _playing = false;
-    _current = null;
+  Future<void> speak(String message, {SpeechTier tier = SpeechTier.info}) async {
+    notifyListeners();
+    await _queue.speak(message, tier: tier);
     notifyListeners();
   }
 
+  /// Kompatibel dengan pemanggil lama: `critical: true` ≈ `tier: critical`.
+  Future<void> enqueue(String message, {bool critical = false}) =>
+      speak(message, tier: critical ? SpeechTier.critical : SpeechTier.info);
+
+  Future<void> interruptByUser() => _queue.interruptByUser();
+
   Future<void> stop() async {
-    _queue.clear();
-    await TTSService.instance.stop();
-    _playing = false;
-    _current = null;
+    await _queue.stop();
     notifyListeners();
   }
 }

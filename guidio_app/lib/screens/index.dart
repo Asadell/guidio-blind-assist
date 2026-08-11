@@ -1,5 +1,11 @@
 export 'main_screen.dart';
 export 'tuntun_screen.dart';
+export 'money_screen.dart';
 export 'ocr_screen.dart';
 export 'navigasi_screen.dart';
 export 'voice_screen.dart';
+export 'find_object_screen.dart';
+export 'splash_screen.dart';
+export 'onboarding_screen.dart';
+export 'permissions_screen.dart';
+export 'settings_screen.dart';
