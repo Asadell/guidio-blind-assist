@@ -77,4 +77,49 @@ abstract final class AppTheme {
       ),
     );
   }
+
+  /// Tema gelap — chrome Material (AppBar, tombol, snackbar, scaffold).
+  /// Catatan: komponen desain sistem (AlertCard, ModeBadge, dst.) memakai
+  /// token AppColors langsung sehingga tetap tampil dengan palet terang di
+  /// atas kamera — itu memang benar untuk pill/kartu yang melayang di atas
+  /// video, tapi permukaan non-kamera (Settings, Onboarding) mengikuti tema
+  /// gelap lewat ThemeData ini.
+  static ThemeData get dark {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.actionFill,
+        brightness: Brightness.dark,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF15171E),
+      fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
+    );
+    return base.copyWith(
+      appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF15171E), elevation: 0),
+      dividerTheme: const DividerThemeData(color: Color(0xFF2A2D38), thickness: 1, space: 1),
+    );
+  }
+
+  /// Tema kontras tinggi — seluruh bayangan diganti garis 2 dp putih (bagian
+  /// 3.4): kedalaman lewat bayangan tidak terbaca oleh sensitivitas kontras
+  /// rendah.
+  static ThemeData get highContrast {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: Colors.white,
+        brightness: Brightness.dark,
+        primary: Colors.white,
+        surface: Colors.black,
+      ),
+      scaffoldBackgroundColor: Colors.black,
+      fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
+    );
+    return base.copyWith(
+      appBarTheme: const AppBarTheme(backgroundColor: Colors.black, elevation: 0),
+      dividerTheme: const DividerThemeData(color: Colors.white, thickness: 1, space: 1),
+    );
+  }
 }

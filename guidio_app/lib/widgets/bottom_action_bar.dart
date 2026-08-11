@@ -16,6 +16,13 @@ class BottomActionBar extends StatelessWidget {
   final VoidCallback? onMicPressed;
   final bool cameraEnabled;
   final String cameraLabel;
+  /// DO-24 — izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
+  final bool micEnabled;
+  /// Saat mode aktif punya STT sendiri (mis. Cari Objek), timpa visual
+  /// listening/processing bawaan `VoiceProvider` supaya tombol tetap sesuai
+  /// dengan apa yang sesungguhnya sedang berjalan.
+  final bool? listeningOverride;
+  final bool? processingOverride;
 
   const BottomActionBar({
     super.key,
@@ -23,13 +30,17 @@ class BottomActionBar extends StatelessWidget {
     this.onMicPressed,
     this.cameraEnabled = true,
     this.cameraLabel = 'Ambil gambar',
+    this.micEnabled = true,
+    this.listeningOverride,
+    this.processingOverride,
   });
 
   @override
   Widget build(BuildContext context) {
     final voice = context.watch<VoiceProvider>();
+    final listening = listeningOverride ?? voice.isListening;
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final sideButtonsEnabled = cameraEnabled && !voice.isListening;
+    final sideButtonsEnabled = cameraEnabled && !listening;
 
     return Container(
       height: AppSizes.bottomActionBarHeight + bottomInset,
@@ -50,11 +61,16 @@ class BottomActionBar extends StatelessWidget {
             enabled: sideButtonsEnabled,
             onTap: onCameraPressed ?? () {},
           ),
-          _MicButton(onTap: onMicPressed),
+          _MicButton(
+            onTap: onMicPressed,
+            enabled: micEnabled,
+            listeningOverride: listeningOverride,
+            processingOverride: processingOverride,
+          ),
           _SquareButton(
             icon: Icons.apps_rounded,
             label: 'Pilih mode',
-            enabled: !voice.isListening,
+            enabled: !listening,
             onTap: () => showModePickerSheet(context),
           ),
         ],
@@ -65,13 +81,28 @@ class BottomActionBar extends StatelessWidget {
 
 class _MicButton extends StatelessWidget {
   final VoidCallback? onTap;
-  const _MicButton({this.onTap});
+  final bool enabled;
+  final bool? listeningOverride;
+  final bool? processingOverride;
+  const _MicButton({this.onTap, this.enabled = true, this.listeningOverride, this.processingOverride});
 
   @override
   Widget build(BuildContext context) {
     final voice = context.watch<VoiceProvider>();
-    final listening = voice.isListening;
-    final processing = voice.isProcessing;
+    if (!enabled) {
+      return Semantics(
+        button: true,
+        label: 'Bicara, tidak tersedia, izin mikrofon belum diberikan',
+        child: Container(
+          width: AppSizes.micButton,
+          height: AppSizes.micButton,
+          decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.surfaceSunk),
+          child: const Icon(Icons.mic_off_rounded, color: AppColors.disabledInk, size: 28),
+        ),
+      );
+    }
+    final listening = listeningOverride ?? voice.isListening;
+    final processing = processingOverride ?? voice.isProcessing;
 
     final semanticLabel = processing
         ? 'Bicara, sedang memproses'
