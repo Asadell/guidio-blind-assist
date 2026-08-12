@@ -1,11 +1,14 @@
-"""Mode Navigasi — POST /api/navigasi (segmentasi jalur 3 zona).
+"""Mode Navigasi — POST /api/navigasi (segmentasi jalur 3 zona + rintangan).
 
-Dua proses paralel di aplikasi: deteksi rintangan ON-DEVICE (selalu jalan,
-tidak butuh endpoint ini) dan segmentasi jalur di server (endpoint ini).
-Kalau endpoint ini mati, aplikasi masuk NV-11 "mode terbatas" — rintangan
-tetap diperingatkan. Itu sebabnya Mode Navigasi TIDAK PERNAH dinonaktifkan
-saat offline; mematikannya akan mencabut fungsi keselamatan yang sebenarnya
-masih hidup.
+Sejak deteksi rintangan dipindah dari perangkat ke server, endpoint ini
+mengembalikan **keduanya dari satu frame**: status tiga zona jalur DAN daftar
+rintangan di depan. Menggabungkannya di sini disengaja — aplikasi kalau tidak
+harus mengunggah frame yang sama dua kali ke dua endpoint, dan itu menggandakan
+pemakaian kuota serta latensi pada mode yang dipakai sambil berjalan.
+
+Konsekuensi yang harus disadari: kalau endpoint ini tidak terjangkau, Mode
+Navigasi tidak punya cadangan apa pun. Aplikasi menyuruh pengguna berhenti
+berjalan, bukan melanjutkan dengan "mode terbatas".
 """
 
 import cv2
@@ -48,6 +51,20 @@ async def navigasi(
 
     svc = request.app.state.segmentation_service
     result = svc.zones(frame)
+
+    # Rintangan dari frame yang SAMA. Prioritas suara di aplikasi menaruh
+    # rintangan di atas zona — jaraknya lebih dekat dan lebih mendesak — jadi
+    # keduanya harus datang bersamaan, bukan dari dua permintaan yang bisa
+    # tiba dengan selisih waktu.
+    yolo = getattr(request.app.state, "yolo_service", None)
+    if yolo is not None and yolo.loaded:
+        try:
+            result["obstacles"] = yolo.infer(frame)
+        except Exception as e:
+            logger.warning(f"Deteksi rintangan gagal: {e}")
+            result["obstacles"] = []
+    else:
+        result["obstacles"] = []
 
     # Risk Zone dari laporan komunitas (opsional, butuh koordinat).
     if lat != 0.0 and lng != 0.0 and is_available():

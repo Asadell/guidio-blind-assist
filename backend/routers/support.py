@@ -70,20 +70,22 @@ async def capabilities(request: Request):
         "money": {"state": "up", "on_device": True,
                   "note": "Klasifikasi nominal on-device (TFLite), tidak pernah memanggil server."},
 
+        # Baca Teks pindah ke ML Kit on-device — server tidak dipanggil lagi,
+        # jadi ia tidak pernah 'down' dan tetap jalan penuh tanpa internet.
         "read_text": {
-            "state": "up" if ocr_ok else "down",
-            "on_device": False,
-            "note": "OCR teks panjang butuh server." if ocr_ok
-                    else "OCR sedang mati. Baca judul saja masih bisa dipakai.",
+            "state": "up",
+            "on_device": True,
+            "note": "Pengenalan teks on-device (ML Kit), tidak butuh server.",
         },
         "navigation": {
-            # Rintangan on-device tetap hidup, jadi TIDAK PERNAH 'down' —
-            # paling buruk 'limited'. Mematikannya akan mencabut fungsi
-            # keselamatan yang sebenarnya masih ada.
-            "state": "up" if (seg and seg.loaded) else "limited",
-            "on_device": True,
-            "note": "Jalur dan rintangan terbaca." if (seg and seg.loaded)
-                    else "Arahan jalur memakai perkiraan. Deteksi rintangan tetap jalan.",
+            # Sejak rintangan DAN jalur sama-sama dibaca di sini, tidak ada
+            # lagi cadangan on-device: kalau segmentasi mati, mode ini benar-
+            # benar tidak melihat apa pun. Menandainya 'limited' akan
+            # menjanjikan keselamatan yang tidak ada.
+            "state": "up" if (seg and seg.loaded and yolo_ok) else "down",
+            "on_device": False,
+            "note": "Jalur dan rintangan terbaca." if (seg and seg.loaded and yolo_ok)
+                    else "Navigasi sedang mati. Jangan berjalan mengandalkan aplikasi.",
         },
         "assistant": {
             "state": "up" if llm_ok else "limited",
