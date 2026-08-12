@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
+import '../providers/app_mode_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
 import '../services/server_service.dart';
@@ -43,8 +44,9 @@ class ChatTurn {
 class VoiceProvider extends ChangeNotifier {
   final CameraProvider _camera;
   final DetectionProvider _detection;
+  final AppModeProvider _appMode;
 
-  VoiceProvider(this._camera, this._detection);
+  VoiceProvider(this._camera, this._detection, this._appMode);
 
   final SpeechToText _stt = SpeechToText();
   VoiceState _state = VoiceState.idle;
@@ -68,11 +70,16 @@ class VoiceProvider extends ChangeNotifier {
   String _heardRaw = '';
   String get heardRaw => _heardRaw;
 
-  /// Dipasang layar untuk menjalankan efek suara/pindah mode — menjaga
+  /// Dipasang layar untuk menyalurkan suara lewat antrean tier — menjaga
   /// provider ini tidak bergantung BuildContext, pola sama dengan mode lain.
   void Function(String text)? onSpeak;
-  void Function(VoiceIntent modeIntent)? onModeChangeRequested;
   void Function()? onAllFeaturesFailed;
+
+  /// Pengaturan adalah layar penunjang, bukan mode — pembukaannya butuh
+  /// Navigator. Layar yang aktif memasang ini dan mengembalikan **true hanya
+  /// kalau halaman benar-benar terbuka**; kalau null atau false, Vinara
+  /// mengatakan yang sejujurnya alih-alih mengonfirmasi.
+  Future<bool> Function()? onOpenSettings;
 
   Future<void> init() async {
     await _stt.initialize(
@@ -165,9 +172,7 @@ class VoiceProvider extends ChangeNotifier {
 
     if (command.intent!.isModeChange) {
       // AS-17 — perintah ganti mode.
-      _consecutiveFailures = 0;
-      onModeChangeRequested?.call(command.intent!);
-      _respond('Baik, mode ${command.intent!.spokenLabel}.', save: false);
+      await _applyModeChange(command.intent!);
       return;
     }
 
@@ -181,6 +186,63 @@ class VoiceProvider extends ChangeNotifier {
       default:
         await _handleDescribeScene();
     }
+  }
+
+  /// AS-17 — ganti mode lewat suara. **Aturan mutlak bagian 4.1: suara Vinara
+  /// tidak boleh pernah mengonfirmasi sesuatu yang tidak terjadi.** State
+  /// dipindah dulu lewat [AppModeProvider.setMode]; konfirmasi "Baik."
+  /// dititipkan sebagai prefiks pengumuman kedatangan, jadi ia baru terdengar
+  /// setelah layar mode tujuan benar-benar terpasang. Kalau perpindahan
+  /// dibatalkan (NV-18 saat pengguna masih berjalan), yang diucapkan adalah
+  /// keadaan yang sebenarnya — bukan konfirmasi.
+  Future<void> _applyModeChange(VoiceIntent intent) async {
+    if (intent == VoiceIntent.modeSettings) {
+      final opened = await onOpenSettings?.call() ?? false;
+      if (opened) {
+        _consecutiveFailures = 0;
+        // Diucapkan sesudah rutenya benar-benar masuk tumpukan.
+        await _respond('Pengaturan terbuka.', save: false);
+      } else {
+        await _respond(
+          'Pengaturan belum bisa dibuka dari sini. Tekan Pilih mode, lalu buka Pengaturan.',
+          save: false,
+        );
+      }
+      return;
+    }
+
+    final target = switch (intent) {
+      VoiceIntent.modeMoney => AppMode.money,
+      VoiceIntent.modeReadText => AppMode.ocr,
+      VoiceIntent.modeDetection => AppMode.tuntun,
+      VoiceIntent.modeNavigation => AppMode.navigasi,
+      VoiceIntent.modeAssistant => AppMode.voice,
+      VoiceIntent.modeFindObject => AppMode.findObject,
+      _ => null,
+    };
+    if (target == null) {
+      await _respond('Saya belum bisa membuka itu. Coba sebutkan nama modenya.', save: false);
+      return;
+    }
+
+    // Sudah berada di mode yang diminta: katakan apa adanya, jangan berpura-pura
+    // berpindah dan jangan mengumumkan ulang panduan mode.
+    if (_appMode.mode == target) {
+      _consecutiveFailures = 0;
+      await _respond('Kamu sudah di mode ${target.label}.', save: false);
+      return;
+    }
+
+    final changed = await _appMode.setMode(target, spokenPrefix: 'Baik.');
+    if (!changed || _appMode.mode != target) {
+      // Dibatalkan konfirmasi NV-18 — pengguna tetap di tempatnya.
+      await _respond('Tetap di mode ${_appMode.mode.label}.', save: false);
+      return;
+    }
+    _consecutiveFailures = 0;
+    // Tidak ada _respond di sini: pengumuman "Baik. <Mode> aktif. <panduan>"
+    // diucapkan announceEntry milik layar tujuan, sesudah ia terpasang.
+    _setState(VoiceState.responded);
   }
 
   Future<void> _handleLocal(String answer) async {

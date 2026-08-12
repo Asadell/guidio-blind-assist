@@ -60,6 +60,10 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _checkPermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Prinsip 6 "umumkan saat tiba" — diucapkan di sini, sesudah layarnya
+      // benar-benar terpasang, bukan oleh pemanggil setMode.
+      context.read<AppModeProvider>().announceEntry(AppMode.ocr);
       if (_hasCameraPermission) context.read<CameraProvider>().startStream();
     });
     // BT-20 — cek kedaluwarsa tiap 30 detik.
@@ -117,14 +121,11 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     if (_scanning) return;
     if (_debugOverride != null) setState(() => _debugOverride = null);
 
-    final offline = context.read<GlobalConditionsProvider>().isOffline;
-    if (offline) {
-      await context.read<TtsProvider>().speak(
-            'Baca teks butuh internet untuk teks panjang. Coba Baca judul saja.',
-            tier: SpeechTier.warning,
-          );
-      return;
-    }
+    // Tidak ada lagi penghalang offline di sini. Pengenalan teks berjalan
+    // sepenuhnya di perangkat lewat ML Kit, jadi BT-02 ("butuh internet")
+    // tidak berlaku: melarang jepret saat offline berarti mematikan fitur
+    // yang sebenarnya masih hidup — kesalahan yang sama seperti mematikan
+    // Mode Navigasi offline.
 
     setState(() {
       _scanning = true;
@@ -157,16 +158,16 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     });
 
     try {
-      final jpeg = await context.read<CameraProvider>().captureJpeg();
-      final result = await ServerService.instance.readText(jpeg);
-      final text = (result['text'] as String? ?? '').trim();
+      final path = await context.read<CameraProvider>().captureFile();
+      final result = await OcrService.instance.recognizeFile(path);
 
       _hardTimeoutTimer?.cancel();
       _elapsedTicker?.cancel();
       if (!mounted) return;
       setState(() => _scanning = false);
 
-      if (text.isEmpty) {
+      if (result.isEmpty) {
+        // BT-11 — instruksi jarak konkret, bukan "tidak ada teks".
         setState(() => _fail = _FailKind.zeroText);
         await context.read<TtsProvider>().speak(
               'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal, pastikan tulisan rata di tengah.',
@@ -176,24 +177,40 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       }
 
       setState(() {
-        _blocks = [OcrRenderBlock(heading: 'Hasil baca', sentences: _splitSentences(text))];
+        // ML Kit sudah memisahkan teks per blok tata letak, jadi heading
+        // ResultPanel/long jadi nyata — bukan satu blok "Hasil baca" untuk
+        // seluruh halaman seperti waktu OCR dikerjakan server.
+        _blocks = [
+          for (final b in result.blocks)
+            OcrRenderBlock(heading: b.heading, sentences: b.sentences),
+        ];
         _completedAt = null;
       });
+
+      // BT-08 — kalau bacaannya panjang, sebut durasinya SEBELUM mulai,
+      // supaya pengguna sempat memilih ringkasan.
+      final secs = result.estimatedDuration.inSeconds;
+      if (secs > 90) {
+        await context.read<TtsProvider>().speak(
+              'Teksnya panjang, sekitar ${(secs / 60).round()} menit dibacakan. '
+              'Ucapkan "ringkas" kalau mau ringkasannya saja.',
+              tier: SpeechTier.info,
+            );
+      }
       await _speak();
     } catch (e) {
       _hardTimeoutTimer?.cancel();
       _elapsedTicker?.cancel();
       if (!mounted) return;
-      final offlineNow = context.read<GlobalConditionsProvider>().isOffline;
+      // Tidak ada lagi cabang offline/server: pengenalan on-device hanya gagal
+      // karena kamera atau berkasnya, dan itu yang dikatakan.
       setState(() {
         _scanning = false;
-        _fail = offlineNow ? _FailKind.offline : _FailKind.server;
+        _fail = _FailKind.zeroText;
       });
       await context.read<TtsProvider>().speak(
-            offlineNow
-                ? 'Jaringan hilang. Gambar disimpan, akan dicoba lagi nanti.'
-                : 'Server tidak bisa dihubungi. Bukan karena gambarmu.',
-            tier: SpeechTier.critical,
+            'Gagal membaca gambar. Coba ambil ulang.',
+            tier: SpeechTier.warning,
           );
     }
   }
@@ -340,14 +357,13 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             ),
 
           if (!_hasCameraPermission)
-            Center(
-              child: PermissionCard(
-                icon: Icons.camera_alt_outlined,
-                title: 'Izin kamera',
-                reason: 'Kamera dipakai untuk memotret tulisan yang ingin dibacakan.',
-                actionLabel: 'Izinkan kamera',
-                onAction: _requestPermission,
-              ),
+            // BT-17 — kartu di zona konten, tombolnya di slot kartu bawah.
+            PermissionPrompt(
+              icon: Icons.camera_alt_outlined,
+              title: 'Izin kamera',
+              reason: 'Kamera dipakai untuk memotret tulisan yang ingin dibacakan.',
+              actionLabel: 'Izinkan kamera',
+              onAction: _requestPermission,
             )
           else
             ..._buildContentZone(context, bottomInset, offline),

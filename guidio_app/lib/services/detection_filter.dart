@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/detection.dart';
+import '../providers/settings_provider.dart' show Verbosity;
 
 /// Filter pipeline — dipanggil oleh BOTH TFLite dan Server result.
 /// Satu instance, state persist selama sesi aktif.
@@ -15,8 +16,25 @@ class DetectionFilter {
   // flash 1 frame lalu hilang). Minimal 2 frame berturut-turut memastikan
   // deteksi stabil sebelum popup muncul dan TTS disuarakan.
   static const int    _streakRequired = 2;
-  static const double _maxDistance    = 10.0; // dinaikkan dari 4.0 — SSD kurang presisi jarak
   static const double _minConfidence  = 0.5;  // SSD lebih noisy, threshold lebih tinggi dari YOLO
+
+  /// PG-06 "Ambang jarak peringatan" (1–5 m) — objek lebih jauh dari ini tidak
+  /// diumumkan. Diisi `SettingsProvider`; dulu nilainya konstanta 10 m dan
+  /// slider di Pengaturan tidak berpengaruh sama sekali.
+  ///
+  /// Slider ini mengubah **frekuensi peringatan**, yang untuk sebagian
+  /// pengguna adalah selisih antara berguna dan tidak tertahankan: 5 m di
+  /// koridor ramai berarti bicara terus-menerus.
+  double _maxDistance = 10.0;
+
+  /// PG-05 "Tingkat kecerewetan" — menentukan berapa banyak yang diumumkan
+  /// sekaligus, bukan hanya panjang kalimatnya.
+  Verbosity _verbosity = Verbosity.sedang;
+
+  void applySettings({required double maxDistanceM, required Verbosity verbosity}) {
+    _maxDistance = maxDistanceM;
+    _verbosity = verbosity;
+  }
 
   List<Detection> process(List<Detection> raw) {
     final currentLabels = raw.map((d) => d.labelEn).toSet();
@@ -79,8 +97,15 @@ class DetectionFilter {
       return a.distanceMeter.compareTo(b.distanceMeter);
     });
 
-    // [8] Maks 2 pesan per cycle (sesuai PRD Cognitive Load Theory)
-    return approved.take(2).toList();
+    // [8] Berapa banyak yang boleh bicara sekaligus — PG-05. Batas atas tetap
+    // 2 (Cognitive Load Theory, dan kontrak zona hanya menampung 2 kartu);
+    // "ringkas" memangkasnya jadi satu supaya hanya yang paling mendesak
+    // terdengar.
+    final maxPerCycle = switch (_verbosity) {
+      Verbosity.ringkas => 1,
+      _ => 2,
+    };
+    return approved.take(maxPerCycle).toList();
   }
 
   int _prio(String danger) => switch (danger) {
@@ -97,10 +122,22 @@ class DetectionFilter {
       'warning'  => const Duration(seconds: 3),
       _          => const Duration(seconds: 5),
     };
+
+    // PG-05 — kecerewetan menggeser jeda antar pengumuman. Critical TIDAK
+    // ikut digeser: seberapa pun pengguna ingin sepi, peringatan bahaya
+    // tidak boleh ditahan lebih lama.
+    final scaled = det.dangerLevel == 'critical'
+        ? base
+        : switch (_verbosity) {
+            Verbosity.ringkas => base * 2.0,
+            Verbosity.sedang => base,
+            Verbosity.detail => base * 0.6,
+          };
+
     if (det.isApproaching) {
-      return Duration(milliseconds: base.inMilliseconds ~/ 2);
+      return Duration(milliseconds: scaled.inMilliseconds ~/ 2);
     }
-    return base;
+    return scaled;
   }
 
   void reset() {

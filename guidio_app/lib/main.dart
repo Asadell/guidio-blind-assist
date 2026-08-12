@@ -26,35 +26,61 @@ class GuidioApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // SettingsProvider didaftarkan paling awal: ia sumber kebenaran untuk
+        // alamat server, kecerewetan, dan ambang jarak — dan provider lain
+        // membacanya lewat proxy di bawah.
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..init()),
+
         // Providers tanpa dependency
-        ChangeNotifierProvider(create: (_) => AppModeProvider()),
         ChangeNotifierProvider(create: (_) => InferenceProvider()),
         ChangeNotifierProvider(create: (_) => CameraProvider()),
         ChangeNotifierProvider(create: (_) => TtsProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => MoneyProvider()),
         ChangeNotifierProvider(create: (_) => FindObjectProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()..init()),
         ChangeNotifierProvider(create: (_) => GlobalConditionsProvider()..init()),
+        ChangeNotifierProvider(create: (_) => CapabilitiesProvider()),
 
-        // DetectionProvider — butuh InferenceProvider + CameraProvider
-        ChangeNotifierProxyProvider2<InferenceProvider, CameraProvider, DetectionProvider>(
+        // AppModeProvider ikut PG-05: kecerewetan mengubah panjang pengumuman
+        // saat masuk mode.
+        ChangeNotifierProxyProvider<SettingsProvider, AppModeProvider>(
+          create: (_) => AppModeProvider(),
+          update: (_, settings, prev) =>
+              (prev ?? AppModeProvider())..applyVerbosity(settings.verbosity),
+        ),
+
+        // DetectionProvider — butuh InferenceProvider + CameraProvider, dan
+        // ikut mendengarkan SettingsProvider supaya PG-05 (kecerewetan) dan
+        // PG-06 (ambang jarak) benar-benar mengubah perilaku deteksi. Tanpa
+        // sambungan ini keduanya hanya tersimpan ke disk.
+        ChangeNotifierProxyProvider3<InferenceProvider, CameraProvider, SettingsProvider, DetectionProvider>(
           create: (ctx) => DetectionProvider(
             ctx.read<InferenceProvider>(),
             ctx.read<CameraProvider>(),
           ),
-          update: (ctx, inf, cam, prev) =>
-              prev ?? DetectionProvider(inf, cam),
+          update: (ctx, inf, cam, settings, prev) {
+            final provider = prev ?? DetectionProvider(inf, cam);
+            provider.applySettings(
+              maxDistanceM: settings.distanceThresholdM,
+              verbosity: settings.verbosity,
+            );
+            return provider;
+          },
         ),
 
-        // VoiceProvider — butuh CameraProvider + DetectionProvider
-        ChangeNotifierProxyProvider2<CameraProvider, DetectionProvider, VoiceProvider>(
+        // VoiceProvider — butuh CameraProvider + DetectionProvider +
+        // AppModeProvider. AppModeProvider ikut disuntik supaya perintah suara
+        // "buka mode X" memindah state SENDIRI, tanpa bergantung layar yang
+        // sedang aktif memasang callback (bagian 4.1: konfirmasi TTS tidak
+        // boleh mendahului perubahan state).
+        ChangeNotifierProxyProvider3<CameraProvider, DetectionProvider, AppModeProvider, VoiceProvider>(
           create: (ctx) => VoiceProvider(
             ctx.read<CameraProvider>(),
             ctx.read<DetectionProvider>(),
+            ctx.read<AppModeProvider>(),
           ),
-          update: (ctx, cam, det, prev) =>
-              prev ?? VoiceProvider(cam, det),
+          update: (ctx, cam, det, appMode, prev) =>
+              prev ?? VoiceProvider(cam, det, appMode),
         ),
       ],
       child: Builder(

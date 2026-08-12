@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
 enum Verbosity { ringkas, sedang, detail }
@@ -28,7 +29,7 @@ class SettingsProvider extends ChangeNotifier {
   AppThemeMode _themeMode = AppThemeMode.light;
   double _fontScale = 1.0; // 1.0..2.0 (200%)
   bool _onboardingDone = false;
-  String _serverHost = '10.0.2.2:8000';
+  String _serverHost = kDefaultServerHost;
 
   double get speechRate => _speechRate;
   Verbosity get verbosity => _verbosity;
@@ -52,8 +53,11 @@ class SettingsProvider extends ChangeNotifier {
     _themeMode = AppThemeMode.values[_prefs!.getInt(_kThemeMode) ?? AppThemeMode.light.index];
     _fontScale = _prefs!.getDouble(_kFontScale) ?? 1.0;
     _onboardingDone = _prefs!.getBool(_kOnboardingDone) ?? false;
-    _serverHost = _prefs!.getString(_kServerHost) ?? '10.0.2.2:8000';
+    _serverHost = _prefs!.getString(_kServerHost) ?? kDefaultServerHost;
     await TTSService.instance.setRate(_speechRate);
+    // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama —
+    // tanpa ini, alamat kustom baru berlaku setelah pengguna membukanya lagi.
+    ServerService.instance.setHost(_serverHost);
     notifyListeners();
   }
 
@@ -102,6 +106,10 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setServerHost(String host) async {
     _serverHost = host;
+    // Terapkan ke service dulu, baru simpan, baru umumkan. Konfirmasi
+    // "tersimpan" yang diucapkan pemanggil karena itu selalu menyusul
+    // perubahan yang benar-benar terjadi (bagian 4.1).
+    ServerService.instance.setHost(host);
     await _prefs?.setString(_kServerHost, host);
     notifyListeners();
   }

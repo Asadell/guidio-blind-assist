@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -5,14 +7,16 @@ import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
 import '../core/layout/zone_contract.dart';
+import '../core/net/frame_codec.dart';
 import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
 /// Mode Navigasi — bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
-/// Dua proses paralel: deteksi rintangan on-device NYATA (DetectionProvider,
-/// sama dengan Mode Deteksi Objek) dan segmentasi jalur 3-zona yang di-mock
-/// di [NavigationProvider] (server segmentasi sungguhan belum ada).
+///
+/// **Sepenuhnya di server** lewat `POST /api/navigasi`: segmentasi jalur dan
+/// rintangan sama-sama dibaca di sana. Layar ini memasok frame dan menggambar
+/// hasilnya; tidak ada inferensi on-device di mode ini.
 class NavigasiScreen extends StatefulWidget {
   const NavigasiScreen({super.key});
 
@@ -20,11 +24,13 @@ class NavigasiScreen extends StatefulWidget {
   State<NavigasiScreen> createState() => _NavigasiScreenState();
 }
 
+/// NV-19 dan NV-20 dihapus dari katalog: keduanya memodelkan kombinasi
+/// "on-device mati, server hidup" yang tidak mungkin lagi terjadi sejak
+/// rintangan dan jalur sama-sama dibaca server. Kegagalan server sekarang
+/// selalu berarti NV-11.
 const List<(String, String)> _nvDebugCatalog = [
   ('NV-14a', 'Telepon masuk'),
   ('NV-16', 'Kamera tertutup'),
-  ('NV-19', 'Deteksi rintangan mati (on-device)'),
-  ('NV-20', 'Keduanya mati (on-device + server)'),
   ('NV-21', 'Izin kamera dicabut'),
   ('NV-22', 'Senyap / TTS mati (arah lewat getar)'),
   ('NV-25', 'Sudut kamera bergeser'),
@@ -34,7 +40,6 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   final TextEditingController _destCtrl = TextEditingController();
   bool _hasCameraPermission = true;
   String? _debugOverride;
-  bool _onDeviceForcedOff = false;
   bool _silentMode = false;
 
   @override
@@ -59,16 +64,34 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         context.read<TtsProvider>().speak(text, tier: tier);
       };
       nav.onTakeover = () => context.read<TtsProvider>().interruptByUser();
+      nav.frameSource = _grabFrame;
       nav.startCalibration();
 
       // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
 
       if (_hasCameraPermission) {
-        context.read<DetectionProvider>().startRealtime();
-        context.read<CameraProvider>().startStream();
+        // Deteksi rintangan on-device sengaja TIDAK dijalankan di sini lagi:
+        // rintangan dan jalur sama-sama dibaca server sekarang. Kamera hanya
+        // memasok frame.
+        final cam = context.read<CameraProvider>();
+        cam.onFrameReady = (image) => _latestFrame = image;
+        cam.startStream();
       }
     });
+  }
+
+  /// Frame terakhir dari stream, dikodekan hanya saat benar-benar dikirim.
+  CameraImage? _latestFrame;
+
+  Future<Uint8List?> _grabFrame() async {
+    final frame = _latestFrame;
+    if (frame == null) return null;
+    return FrameCodec.encodeForUpload(
+      frame,
+      maxEdge: UploadPreset.navigation.maxEdge,
+      quality: UploadPreset.navigation.quality,
+    );
   }
 
   @override
@@ -81,9 +104,11 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     final nav = context.read<NavigationProvider>();
     nav.onSpeak = null;
     nav.onTakeover = null;
+    nav.frameSource = null;
     nav.stopNavigation();
-    context.read<DetectionProvider>().stopRealtime();
-    context.read<CameraProvider>().stopStream();
+    final cam = context.read<CameraProvider>();
+    cam.onFrameReady = null;
+    cam.stopStream();
     _destCtrl.dispose();
     super.dispose();
   }
@@ -101,8 +126,8 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       if (granted) {
         final cam = context.read<CameraProvider>();
         if (!cam.isInitialized) await cam.initCamera();
+        cam.onFrameReady = (image) => _latestFrame = image;
         cam.startStream();
-        context.read<DetectionProvider>().startRealtime();
       }
     }
   }
@@ -114,26 +139,73 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
       if (!cam.isInitialized) await cam.initCamera();
+      cam.onFrameReady = (image) => _latestFrame = image;
       cam.startStream();
-      context.read<DetectionProvider>().startRealtime();
     }
   }
 
-  /// NV-18 — dialog fokus terkunci (bawaan showDialog), fokus kembali ke
-  /// tombol pemanggil otomatis setelah ditutup.
+  /// NV-18 — satu-satunya konfirmasi wajib di seluruh app.
+  ///
+  /// **Lembar bawah, bukan dialog tengah layar.** Pengguna sedang berjalan;
+  /// menjangkau tombol di tengah layar berarti berhenti dan menyesuaikan
+  /// pegangan — dengan satu tangan yang lain memegang tongkat. Tombolnya
+  /// karena itu menempel di dasar, mengikuti `zone/page-action`.
+  ///
+  /// Fokus terkunci di dalam lembar (bawaan `showModalBottomSheet`); setelah
+  /// ditutup, fokus kembali ke tombol pemanggilnya, bukan ke atas layar.
   Future<bool> _confirmLeaveNavigasi(AppMode from, AppMode to) async {
     final stillWalking = context.read<NavigationProvider>().phase != NavPhase.paused;
     if (!stillWalking) return true;
-    final result = await showDialog<bool>(
+
+    await context.read<TtsProvider>().speak(
+          'Kamu masih terdeteksi berjalan. Berhenti dulu sebelum keluar dari Navigasi.',
+          tier: SpeechTier.critical,
+        );
+    if (!mounted) return false;
+
+    final result = await showModalBottomSheet<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar dari Navigasi?'),
-        content: const Text('Kamu masih terdeteksi berjalan. Berhenti dulu dan pastikan aman sebelum ganti mode.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Tetap di Navigasi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ya, keluar')),
-        ],
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: AppColors.bgPage,
+      barrierColor: AppColors.scrimDim,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.sheetTop),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenMargin, AppSpacing.s6, AppSpacing.screenMargin, AppSpacing.s6,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text('Keluar dari Navigasi?', style: AppTypography.title()),
+                  ),
+                  const SizedBox(height: AppSpacing.s2),
+                  Text(
+                    'Kamu masih terdeteksi berjalan. Berhenti dulu dan pastikan aman sebelum ganti mode.',
+                    style: AppTypography.body(color: AppColors.ink2),
+                  ),
+                ],
+              ),
+            ),
+            // Pilihan aman ("Tetap di Navigasi") jadi tombol utama di dasar:
+            // ia yang paling mudah dijangkau, dan ia yang paling sering benar.
+            PageActionZone(
+              primaryLabel: 'Tetap di Navigasi',
+              onPrimary: () => Navigator.pop(ctx, false),
+              secondaryLabel: 'Ya, keluar dari Navigasi',
+              onSecondary: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
       ),
     );
     return result ?? false;
@@ -180,8 +252,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
                   children: [
                     ListTile(title: const Text('Kembali (bersihkan override)'), onTap: () {
                       Navigator.pop(sheetCtx);
-                      setState(() { _debugOverride = null; _onDeviceForcedOff = false; _silentMode = false; });
-                      context.read<NavigationProvider>().reportOnDeviceStatus(true);
+                      setState(() { _debugOverride = null; _silentMode = false; });
                     }),
                     for (final entry in _nvDebugCatalog)
                       ListTile(
@@ -213,16 +284,8 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
           if (mounted) nav.endSimulatedCall();
         });
         break;
-      case 'NV-19':
-        setState(() => _onDeviceForcedOff = true);
-        nav.reportOnDeviceStatus(false);
-        break;
       case 'NV-22':
         setState(() => _silentMode = !_silentMode);
-        break;
-      case 'NV-20':
-        setState(() => _onDeviceForcedOff = true);
-        nav.reportOnDeviceStatus(false);
         break;
       default:
     }
@@ -231,32 +294,30 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavigationProvider>();
-    final det = context.watch<DetectionProvider>();
     final cam = context.watch<CameraProvider>();
     final global = context.watch<GlobalConditionsProvider>();
     final media = MediaQuery.of(context);
     final topInset = media.padding.top;
     final bottomInset = media.padding.bottom;
 
-    if (_debugOverride != 'NV-19' && _debugOverride != 'NV-20' && _onDeviceForcedOff) {
-      _onDeviceForcedOff = false;
-    }
-
     final banner = _resolveBanner(context, nav, global, cam);
     final hasBanner = banner != null;
-    final obstacles = det.detections;
+    // Rintangan datang dari server bersama zona, dari frame yang sama.
+    final obstacles = nav.obstacles;
     final hasCriticalObstacle = obstacles.any((d) => d.isCritical);
 
     if (_debugOverride == 'NV-21') {
-      return Scaffold(
-        backgroundColor: AppColors.bgPage,
+      // NV-21 — layar mengambil alih penuh, tidak ada BottomActionBar, jadi
+      // aksinya memakai `zone/page-action`. Ini layar yang paling mungkin
+      // muncul saat pengguna sedang memegang tongkat: tombol wajib di dasar.
+      return const PageActionScaffold(
+        primaryLabel: 'Buka pengaturan izin',
+        onPrimary: openAppSettings,
         body: Center(
           child: PermissionCard(
             icon: Icons.camera_alt_outlined,
             title: 'Izin kamera dicabut',
             reason: 'Berhenti jalan dulu. Navigasi butuh kamera untuk membaca rintangan dan jalur.',
-            actionLabel: 'Buka pengaturan izin',
-            onAction: openAppSettings,
           ),
         ),
       );
@@ -284,14 +345,13 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
           ),
 
           if (!_hasCameraPermission)
-            Center(
-              child: PermissionCard(
-                icon: Icons.camera_alt_outlined,
-                title: 'Izin kamera',
-                reason: 'Kamera dipakai untuk membaca rintangan dan jalur di depanmu.',
-                actionLabel: 'Izinkan kamera',
-                onAction: _requestPermission,
-              ),
+            // Kartu di zona konten, tombolnya di slot kartu bawah.
+            PermissionPrompt(
+              icon: Icons.camera_alt_outlined,
+              title: 'Izin kamera',
+              reason: 'Kamera dipakai untuk membaca rintangan dan jalur di depanmu.',
+              actionLabel: 'Izinkan kamera',
+              onAction: _requestPermission,
             )
           else if (nav.phase == NavPhase.calibrating)
             _calibrationCard(nav)
@@ -376,14 +436,15 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (nav.phase == NavPhase.paused && _debugOverride == 'NV-14a') {
       return const StatusBanner(tier: AlertTier.info, message: 'Panggilan masuk, peringatan pindah ke getar');
     }
-    if (nav.phase == NavPhase.bothDown) {
-      return const StatusBanner(tier: AlertTier.critical, message: 'Berhenti jalan dulu, rintangan dan jalur sama-sama tidak terbaca');
-    }
-    if (nav.phase == NavPhase.onDeviceDown) {
-      return const StatusBanner(tier: AlertTier.warning, message: 'Peringatan rintangan sempat tidak tersedia');
-    }
+    // NV-11 — sejak segmentasi jalur DAN deteksi rintangan sama-sama di
+    // server, "mode terbatas" tidak ada lagi: kalau server tidak terjangkau,
+    // mode ini benar-benar tidak melihat apa pun. Bannernya Critical dan
+    // menyuruh berhenti, bukan Warning yang menjanjikan sisa fungsi.
     if (nav.phase == NavPhase.serverDown) {
-      return const StatusBanner(tier: AlertTier.warning, message: 'Jalur tidak terbaca, mode terbatas: rintangan saja');
+      return const StatusBanner(
+        tier: AlertTier.critical,
+        message: 'Berhenti jalan dulu, jalur tidak terbaca',
+      );
     }
     if (nav.phase == NavPhase.serverWeak) {
       return const StatusBanner(tier: AlertTier.info, message: 'Sinyal lemah, arahan jalur mungkin tertinggal');

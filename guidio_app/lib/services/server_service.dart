@@ -1,17 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../core/net/api_client.dart';
 import '../models/detection.dart';
 import '../models/risk_zone.dart';
 
 // ── Konfigurasi Server ─────────────────────────────────────────────────────
 // Emulator Android  : 10.0.2.2:8000
-// Device fisik      : ganti dengan IP laptop di jaringan yang sama, misal 192.168.1.x:8000
-const String _serverHost = '10.0.2.2:8000';
-const String _httpBase   = 'http://$_serverHost';
-const String _wsBase     = 'ws://$_serverHost';
+// Device fisik      : ganti lewat Pengaturan → Alamat server (PG-08).
+const String kDefaultServerHost = '10.0.2.2:8000';
 // ──────────────────────────────────────────────────────────────────────────
 
 class ServerDetectionResult {
@@ -23,6 +21,36 @@ class ServerDetectionResult {
 class ServerService {
   static final ServerService instance = ServerService._();
   ServerService._();
+
+  /// Alamat server aktif (PG-08). Dulu ini konstanta hardcoded, jadi
+  /// pengaturan "Alamat server" tersimpan ke disk tapi **tidak berpengaruh
+  /// sama sekali** — aplikasi mengatakan "tersimpan" untuk perubahan yang
+  /// tidak pernah terjadi. Itu pelanggaran bagian 4.1 yang sama seperti
+  /// konfirmasi ganti mode palsu, hanya di tempat berbeda.
+  ///
+  /// Sekarang [host] adalah sumber kebenaran tunggal untuk seluruh endpoint,
+  /// diisi `SettingsProvider` saat boot dan setiap kali pengguna menyimpan
+  /// alamat baru.
+  String _host = kDefaultServerHost;
+  String get host => _host;
+
+  /// Mengganti alamat. WebSocket yang sedang tersambung diputus supaya
+  /// sambungan berikutnya memakai alamat baru — kalau tidak, mode Deteksi
+  /// Objek akan tetap menempel di server lama sampai aplikasi dimatikan.
+  void setHost(String value) {
+    final next = value.trim();
+    if (next.isEmpty || next == _host) return;
+    _host = next;
+    if (_connected) disconnect();
+  }
+
+  String get _wsBase => 'ws://$_host';
+
+  /// Satu klien HTTP untuk seluruh aplikasi — koneksi dipakai ulang
+  /// (keep-alive) alih-alih handshake baru tiap permintaan. Lihat
+  /// [ApiClient] untuk alasan lengkapnya.
+  late final ApiClient _api = ApiClient()..hostProvider = (() => _host);
+  ApiClient get api => _api;
 
   WebSocketChannel? _channel;
   bool _connected = false;
@@ -76,62 +104,34 @@ class ServerService {
 
   /// Single-shot detect untuk Voice Assistant (REST).
   Future<List<Detection>> detectOnce(Uint8List jpegBytes) async {
-    final res = await http.post(
-      Uri.parse('$_httpBase/api/detect'),
-      headers: {'Content-Type': 'application/octet-stream'},
-      body: jpegBytes,
-    );
-    if (res.statusCode != 200) {
-      throw Exception('Server error ${res.statusCode}');
-    }
-    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    final json = await _api.postBytes('/api/detect', jpegBytes);
     return (json['detections'] as List)
         .map((e) => Detection.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  /// OCR — Mode Baca Teks.
-  Future<Map<String, dynamic>> readText(Uint8List jpegBytes) async {
-    final res = await http.post(
-      Uri.parse('$_httpBase/api/ocr'),
-      headers: {'Content-Type': 'application/octet-stream'},
-      body: jpegBytes,
-    );
-    if (res.statusCode != 200) {
-      throw Exception('OCR error ${res.statusCode}');
-    }
-    return jsonDecode(res.body) as Map<String, dynamic>;
-  }
-
   /// Minta narasi natural dari Claude Haiku berdasarkan deteksi.
   Future<String> getNarasi(List<Detection> detections, {String context = 'voice'}) async {
-    final body = jsonEncode({
-      'detections': detections.map((d) => {
-        'label_id':       d.labelId,
-        'distance_meter': d.distanceMeter,
-        'direction':      d.direction,
-        'danger_level':   d.dangerLevel,
-      }).toList(),
+    final json = await _api.postJson('/api/narasi', {
+      'detections': detections
+          .map((d) => {
+                'label_id': d.labelId,
+                'distance_meter': d.distanceMeter,
+                'direction': d.direction,
+                'danger_level': d.dangerLevel,
+              })
+          .toList(),
       'context': context,
-    });
-    final res = await http.post(
-      Uri.parse('$_httpBase/api/narasi'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-    if (res.statusCode != 200) {
-      throw Exception('Narasi error ${res.statusCode}');
-    }
-    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    }, op: ApiOp.frame);
     return json['narasi'] as String? ?? 'Area sekitar tampak aman.';
   }
 
   /// Cek risk zone via REST.
   Future<RiskZone?> checkRiskZone(double lat, double lng) async {
-    final res = await http.get(
-      Uri.parse('$_httpBase/api/risk-zone?lat=$lat&lng=$lng'),
-    );
-    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    final json = await _api.getJson('/api/risk-zone', query: {
+      'lat': '$lat',
+      'lng': '$lng',
+    });
     if (json['risk_zone'] == null) return null;
     return RiskZone.fromJson(json['risk_zone'] as Map<String, dynamic>);
   }
@@ -141,14 +141,7 @@ class ServerService {
   /// Fallback ke 'describe_scene' jika server tidak tersedia atau timeout.
   Future<String> routeIntent(String text) async {
     try {
-      final res = await http.post(
-        Uri.parse('$_httpBase/api/route-intent'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'text': text}),
-      ).timeout(const Duration(seconds: 2));
-
-      if (res.statusCode != 200) return 'describe_scene';
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = await _api.postJson('/api/route-intent', {'text': text});
       return json['intent'] as String? ?? 'describe_scene';
     } catch (_) {
       return 'describe_scene'; // offline atau timeout → fallback aman
@@ -160,25 +153,18 @@ class ServerService {
   /// Cari satu barang di satu frame. `found: false` dengan reason
   /// `not_in_frame` adalah kondisi NORMAL (CO-10) — aplikasi menyuruh
   /// pengguna memutar badan lalu memanggil ini lagi.
-  Future<Map<String, dynamic>> cariObjek(String target, Uint8List jpegBytes) async {
-    final req = http.MultipartRequest('POST', Uri.parse('$_httpBase/api/cari-objek'))
-      ..fields['target'] = target
-      ..files.add(http.MultipartFile.fromBytes('file', jpegBytes, filename: 'frame.jpg'));
-    final streamed = await req.send().timeout(const Duration(seconds: 12));
-    final body = await streamed.stream.bytesToString();
-    if (streamed.statusCode != 200) {
-      throw Exception('Cari objek error ${streamed.statusCode}');
-    }
-    return jsonDecode(body) as Map<String, dynamic>;
-  }
+  Future<Map<String, dynamic>> cariObjek(String target, Uint8List jpegBytes) =>
+      _api.postMultipart(
+        '/api/cari-objek',
+        bytes: jpegBytes,
+        fields: {'target': target},
+        op: ApiOp.frame,
+      );
 
   /// Daftar barang yang dikenali — dipakai CO-12 untuk menawarkan
   /// barang lain saat target tidak dikenal.
   Future<List<String>> cariObjekTargets() async {
-    final res = await http
-        .get(Uri.parse('$_httpBase/api/cari-objek/targets'))
-        .timeout(const Duration(seconds: 5));
-    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    final json = await _api.getJson('/api/cari-objek/targets');
     return (json['targets'] as List).cast<String>();
   }
 
@@ -188,18 +174,13 @@ class ServerService {
     Uint8List jpegBytes, {
     double lat = 0,
     double lng = 0,
-  }) async {
-    final req = http.MultipartRequest('POST', Uri.parse('$_httpBase/api/navigasi'))
-      ..fields['lat'] = '$lat'
-      ..fields['lng'] = '$lng'
-      ..files.add(http.MultipartFile.fromBytes('file', jpegBytes, filename: 'frame.jpg'));
-    final streamed = await req.send().timeout(const Duration(seconds: 8));
-    final body = await streamed.stream.bytesToString();
-    if (streamed.statusCode != 200) {
-      throw Exception('Navigasi error ${streamed.statusCode}');
-    }
-    return jsonDecode(body) as Map<String, dynamic>;
-  }
+  }) =>
+      _api.postMultipart(
+        '/api/navigasi',
+        bytes: jpegBytes,
+        fields: {'lat': '$lat', 'lng': '$lng'},
+        op: ApiOp.frame,
+      );
 
   // ── Kemampuan server ────────────────────────────────────────────────────
 
@@ -208,30 +189,33 @@ class ServerService {
   /// aktif-tidaknya tombol utama Mode Baca Teks.
   Future<Map<String, dynamic>?> capabilities() async {
     try {
-      final res = await http
-          .get(Uri.parse('$_httpBase/api/capabilities'))
-          .timeout(const Duration(seconds: 4));
-      if (res.statusCode != 200) return null;
-      return jsonDecode(res.body) as Map<String, dynamic>;
+      return await _api.getJson('/api/capabilities');
     } catch (_) {
       return null; // offline: pemanggil menganggap semua mode server mati
     }
   }
 
   /// Health check + waktu tempuh — PG-08c membacakan latensinya.
-  Future<Map<String, dynamic>?> health({Duration? timeout}) async {
+  Future<Map<String, dynamic>?> health({Duration? timeout}) =>
+      healthAt(_host, timeout: timeout);
+
+  /// Health check ke alamat tertentu **tanpa mengubah alamat aktif** — dipakai
+  /// PG-08b untuk menguji kandidat sebelum disimpan. Memisahkan "menguji" dari
+  /// "memakai" itulah yang membuat PG-08e mungkin: uji boleh gagal tanpa
+  /// merusak sambungan yang sedang bekerja.
+  Future<Map<String, dynamic>?> healthAt(String host, {Duration? timeout}) async {
+    // Klien sementara dengan host tetap — tidak menyentuh alamat aktif.
+    final probe = ApiClient()..hostProvider = (() => host);
     final sw = Stopwatch()..start();
     try {
-      final res = await http
-          .get(Uri.parse('$_httpBase/health'))
-          .timeout(timeout ?? const Duration(seconds: 4));
+      final json = await probe.getJson('/health', retries: 0);
       sw.stop();
-      if (res.statusCode != 200) return null;
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
       json['round_trip_ms'] = sw.elapsedMilliseconds;
       return json;
     } catch (_) {
       return null;
+    } finally {
+      probe.close();
     }
   }
 
@@ -242,15 +226,7 @@ class ServerService {
   /// (AS-18 / AS-19), bukan bilang "perintah gagal".
   Future<Map<String, dynamic>?> resolveIntent(String text) async {
     try {
-      final res = await http
-          .post(
-            Uri.parse('$_httpBase/api/intent'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'text': text}),
-          )
-          .timeout(const Duration(seconds: 4));
-      if (res.statusCode != 200) return null;
-      return jsonDecode(res.body) as Map<String, dynamic>;
+      return await _api.postJson('/api/intent', {'text': text});
     } catch (_) {
       return null;
     }
@@ -262,13 +238,11 @@ class ServerService {
   /// tidak boleh terasa oleh pengguna.
   Future<void> sendEvents(String deviceId, List<Map<String, dynamic>> events) async {
     try {
-      await http
-          .post(
-            Uri.parse('$_httpBase/api/events'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'device_id': deviceId, 'events': events}),
-          )
-          .timeout(const Duration(seconds: 5));
+      await _api.postJson(
+        '/api/events',
+        {'device_id': deviceId, 'events': events},
+        op: ApiOp.background,
+      );
     } catch (_) {
       // Diabaikan dengan sengaja.
     }
@@ -276,14 +250,8 @@ class ServerService {
 
   Future<bool> sendCrashReport(Map<String, dynamic> report) async {
     try {
-      final res = await http
-          .post(
-            Uri.parse('$_httpBase/api/crash-report'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(report),
-          )
-          .timeout(const Duration(seconds: 6));
-      return res.statusCode == 200;
+      await _api.postJson('/api/crash-report', report, op: ApiOp.background);
+      return true;
     } catch (_) {
       return false;
     }
@@ -292,18 +260,19 @@ class ServerService {
   /// ER-06 — mode terakhir sebelum crash, untuk dipulihkan otomatis.
   Future<String?> lastModeBeforeCrash(String deviceId) async {
     try {
-      final res = await http
-          .get(Uri.parse('$_httpBase/api/crash-report/last-mode?device_id=$deviceId'))
-          .timeout(const Duration(seconds: 4));
-      if (res.statusCode != 200) return null;
-      return (jsonDecode(res.body) as Map<String, dynamic>)['mode'] as String?;
+      final json = await _api.getJson(
+        '/api/crash-report/last-mode',
+        query: {'device_id': deviceId},
+      );
+      return json['mode'] as String?;
     } catch (_) {
       return null;
     }
   }
 
   /// BT-13 — kirim ulang gambar yang tertahan saat offline.
-  /// [idempotencyKey] mencegah pemrosesan dobel di server.
+  /// [idempotencyKey] mencegah pemrosesan dobel di server: unggah ulang tidak
+  /// idempoten dengan sendirinya, jadi kuncinya yang membuatnya aman diulang.
   Future<Map<String, dynamic>?> flushQueue({
     required String deviceId,
     required String idempotencyKey,
@@ -311,15 +280,17 @@ class ServerService {
     required Uint8List jpegBytes,
   }) async {
     try {
-      final req = http.MultipartRequest('POST', Uri.parse('$_httpBase/api/queue/flush'))
-        ..fields['device_id'] = deviceId
-        ..fields['idempotency_key'] = idempotencyKey
-        ..fields['kind'] = kind
-        ..files.add(http.MultipartFile.fromBytes('file', jpegBytes, filename: 'queued.jpg'));
-      final streamed = await req.send().timeout(const Duration(seconds: 20));
-      final body = await streamed.stream.bytesToString();
-      if (streamed.statusCode != 200) return null;
-      return jsonDecode(body) as Map<String, dynamic>;
+      return await _api.postMultipart(
+        '/api/queue/flush',
+        bytes: jpegBytes,
+        filename: 'queued.jpg',
+        fields: {
+          'device_id': deviceId,
+          'idempotency_key': idempotencyKey,
+          'kind': kind,
+        },
+        op: ApiOp.heavy,
+      );
     } catch (_) {
       return null;
     }
@@ -331,11 +302,7 @@ class ServerService {
   /// supaya perbaikan nama tidak perlu rilis ulang aplikasi.
   Future<List<Map<String, dynamic>>?> labels({String lang = 'id'}) async {
     try {
-      final res = await http
-          .get(Uri.parse('$_httpBase/api/labels?lang=$lang'))
-          .timeout(const Duration(seconds: 5));
-      if (res.statusCode != 200) return null;
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = await _api.getJson('/api/labels', query: {'lang': lang});
       final list = json['labels'];
       if (list is! List) return null;
       return list.cast<Map<String, dynamic>>();
@@ -347,11 +314,7 @@ class ServerService {
   /// UG-18 — emisi uang baru = update model, bukan update aplikasi.
   Future<List<Map<String, dynamic>>?> modelManifest() async {
     try {
-      final res = await http
-          .get(Uri.parse('$_httpBase/api/models/manifest'))
-          .timeout(const Duration(seconds: 5));
-      if (res.statusCode != 200) return null;
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = await _api.getJson('/api/models/manifest');
       final list = json['models'];
       if (list is! List) return null;
       return list.cast<Map<String, dynamic>>();

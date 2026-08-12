@@ -112,6 +112,8 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      // Prinsip 6 "umumkan saat tiba" — sesudah layar terpasang.
+      context.read<AppModeProvider>().announceEntry(AppMode.money);
       final money = context.read<MoneyProvider>();
       money.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
       money.onHaptic = (p) {
@@ -306,14 +308,13 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             ),
 
           if (showPermissionCard)
-            Center(
-              child: PermissionCard(
-                icon: Icons.camera_alt_outlined,
-                title: 'Izin kamera diperlukan',
-                reason: 'Kenali Uang butuh kamera untuk melihat uang di depanmu. Semua diproses di perangkat.',
-                actionLabel: 'Izinkan kamera',
-                onAction: _requestPermission,
-              ),
+            // UG-14 — kartu di zona konten, tombolnya di slot kartu bawah.
+            PermissionPrompt(
+              icon: Icons.camera_alt_outlined,
+              title: 'Izin kamera diperlukan',
+              reason: 'Kenali Uang butuh kamera untuk melihat uang di depanmu. Semua diproses di perangkat.',
+              actionLabel: 'Izinkan kamera',
+              onAction: _requestPermission,
             )
           else ...[
             if (spec!.frame != null)

@@ -224,14 +224,13 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
             ),
 
           if (!_hasCameraPermission)
-            Center(
-              child: PermissionCard(
-                icon: Icons.camera_alt_outlined,
-                title: 'Izin kamera',
-                reason: 'Kamera dipakai untuk mendeteksi rintangan di depanmu tanpa internet.',
-                actionLabel: 'Izinkan kamera',
-                onAction: _requestCameraPermission,
-              ),
+            // DO-14 — kartu di zona konten, tombolnya di slot kartu bawah.
+            PermissionPrompt(
+              icon: Icons.camera_alt_outlined,
+              title: 'Izin kamera',
+              reason: 'Kamera dipakai untuk mendeteksi rintangan di depanmu tanpa internet.',
+              actionLabel: 'Izinkan kamera',
+              onAction: _requestCameraPermission,
             )
           else if (!warmingUp)
             ..._buildDetectionZone(context, bottomInset, dets, cam),

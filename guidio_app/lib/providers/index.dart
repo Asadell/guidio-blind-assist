@@ -8,4 +8,5 @@ export 'voice_provider.dart';
 export 'settings_provider.dart';
 export 'money_provider.dart';
 export 'find_object_provider.dart';
+export 'capabilities_provider.dart';
 export '../core/state/global_conditions.dart';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/tts_service.dart';
 import '../theme/index.dart';
+import '../widgets/index.dart';
 
 class _Step {
   final IconData icon;
@@ -81,23 +82,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final step = _steps[_index];
+    final isLast = _index == _steps.length - 1;
 
-    return Scaffold(
-      backgroundColor: AppColors.bgPage,
+    // OB-01..OB-07 — layar penunjang, memakai `zone/page-action`. "Lewati
+    // panduan" (dan "Kembali ke Pengaturan" pada OB-06) adalah tombol sekunder
+    // 56 dp tepat di atas primer, **tidak pernah di pojok kanan atas**: pojok
+    // atas adalah zona merah thumb zone, butuh ganti pegangan.
+    return PageActionScaffold(
+      primaryLabel: isLast ? 'Mulai pakai Vinara' : 'Lanjut',
+      onPrimary: _next,
+      secondaryLabel: widget.fromSettings ? 'Kembali ke Pengaturan' : 'Lewati panduan',
+      onSecondary: widget.fromSettings ? () => Navigator.of(context).pop() : _skip,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
           child: Column(
             children: [
-              if (widget.fromSettings)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text('Kembali ke Pengaturan'),
-                  ),
-                ),
               const Spacer(),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 240),
@@ -105,47 +105,50 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   key: ValueKey(_index),
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: const BoxDecoration(color: AppColors.actionTint, shape: BoxShape.circle),
-                      child: Icon(step.icon, size: 44, color: AppColors.actionLabel),
+                    ExcludeSemantics(
+                      child: Container(
+                        width: 96,
+                        height: 96,
+                        decoration: const BoxDecoration(color: AppColors.actionTint, shape: BoxShape.circle),
+                        child: Icon(step.icon, size: 44, color: AppColors.actionLabel),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.s6),
-                    Text(step.title, textAlign: TextAlign.center, style: AppTypography.headline()),
+                    Semantics(
+                      header: true,
+                      // Eyebrow langkah dibaca sebagai bagian judul — bagian 10
+                      // nomor 5, bukan simpul fokus tersendiri.
+                      label: 'Langkah ${_index + 1} dari ${_steps.length}. ${step.title}',
+                      child: ExcludeSemantics(
+                        child: Text(step.title, textAlign: TextAlign.center, style: AppTypography.headline()),
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.s3),
                     Text(step.body, textAlign: TextAlign.center, style: AppTypography.body(color: AppColors.ink2)),
                   ],
                 ),
               ),
               const Spacer(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  _steps.length,
-                  (i) => Container(
-                    width: i == _index ? 22 : 8,
-                    height: 8,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: i == _index ? AppColors.actionLabel : AppColors.surfaceSunk,
-                      borderRadius: BorderRadius.circular(4),
+              // Titik langkah: ExcludeSemantics wajib (bagian 16) — maknanya
+              // sudah dibawa label judul di atas.
+              ExcludeSemantics(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    _steps.length,
+                    (i) => Container(
+                      width: i == _index ? 22 : 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: i == _index ? AppColors.actionLabel : AppColors.surfaceSunk,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: AppSpacing.s6),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _next,
-                  child: Text(_index == _steps.length - 1 ? 'Mulai pakai Vinara' : 'Lanjut'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s3),
-              if (!widget.fromSettings)
-                TextButton(onPressed: _skip, child: const Text('Lewati panduan')),
-              const SizedBox(height: AppSpacing.s4),
             ],
           ),
         ),

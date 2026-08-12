@@ -109,6 +109,34 @@ class CameraProvider extends ChangeNotifier {
     _streaming = false;
   }
 
+  /// Ambil foto dan kembalikan **path berkas**, bukan byte-nya.
+  ///
+  /// Dipakai OCR ML Kit, yang membaca langsung dari berkas. Untuk foto 4 MP,
+  /// tidak membaca byte ke memori Dart menghemat satu salinan besar yang
+  /// tidak pernah dipakai untuk apa pun.
+  Future<String> captureFile() async {
+    if (_capturing) throw Exception('Sedang capture, coba lagi');
+    if (!_initialized || _controller == null) {
+      throw Exception('Kamera belum siap');
+    }
+
+    _capturing = true;
+    try {
+      final wasStreaming = _streaming;
+      if (wasStreaming) stopStream();
+
+      final xfile = await _controller!.takePicture();
+
+      if (wasStreaming) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        startStream();
+      }
+      return xfile.path;
+    } finally {
+      _capturing = false;
+    }
+  }
+
   /// Capture JPEG untuk OCR / Voice Assistant.
   /// Mutex: jika sedang capture, lempar exception (jangan double-capture).
   ///

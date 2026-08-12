@@ -6,10 +6,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../core/layout/zone_contract.dart';
-import '../core/voice/intents.dart';
 import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
+import 'settings_screen.dart';
 
 const List<(String, String)> _asDebugCatalog = [
   ('AS-05', 'Terlalu berisik'),
@@ -56,7 +56,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       }
 
       voice.onSpeak = (text) => context.read<TtsProvider>().speak(text, tier: SpeechTier.info);
-      voice.onModeChangeRequested = _handleModeChange;
+      voice.onOpenSettings = _openSettings;
       voice.onAllFeaturesFailed = () {};
     });
 
@@ -72,7 +72,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     _expiryCheckTimer?.cancel();
     final voice = context.read<VoiceProvider>();
     voice.onSpeak = null;
-    voice.onModeChangeRequested = null;
+    voice.onOpenSettings = null;
     voice.onAllFeaturesFailed = null;
     super.dispose();
   }
@@ -98,19 +98,18 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     if (status.isGranted) setState(() => _hasMicPermission = true);
   }
 
-  void _handleModeChange(VoiceIntent intent) {
-    final mode = switch (intent) {
-      VoiceIntent.modeMoney => AppMode.money,
-      VoiceIntent.modeReadText => AppMode.ocr,
-      VoiceIntent.modeDetection => AppMode.tuntun,
-      VoiceIntent.modeNavigation => AppMode.navigasi,
-      VoiceIntent.modeFindObject => AppMode.findObject,
-      _ => null,
-    };
-    if (mode == null) return;
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (mounted) context.read<AppModeProvider>().setMode(mode);
-    });
+  /// `mode.settings` — Pengaturan layar penunjang, bukan mode. Mengembalikan
+  /// true hanya kalau halamannya benar-benar terdorong ke Navigator, supaya
+  /// VoiceProvider tidak mengonfirmasi pembukaan yang tidak terjadi.
+  Future<bool> _openSettings() async {
+    if (!mounted) return false;
+    // Rute sudah masuk tumpukan begitu `push` dipanggil; Future-nya baru
+    // selesai saat halaman DITUTUP, jadi ia sengaja tidak ditunggu — kalau
+    // ditunggu, konfirmasinya baru terdengar setelah pengguna keluar lagi.
+    unawaited(Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    ));
+    return true;
   }
 
   Future<void> _onMicPressed() async {
@@ -229,14 +228,13 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             Positioned(top: topInset + 52, right: 24, child: const SpeakingIndicator()),
 
           if (!_hasMicPermission && _debugOverride == null)
-            Center(
-              child: PermissionCard(
-                icon: Icons.mic_none_rounded,
-                title: 'Izin mikrofon',
-                reason: 'Mikrofon dipakai untuk mendengarkan pertanyaanmu. Mode lain tetap berfungsi tanpa izin ini.',
-                actionLabel: 'Izinkan mikrofon',
-                onAction: _requestMicPermission,
-              ),
+            // AS-02 — kartu di zona konten, tombolnya di slot kartu bawah.
+            PermissionPrompt(
+              icon: Icons.mic_none_rounded,
+              title: 'Izin mikrofon',
+              reason: 'Mikrofon dipakai untuk mendengarkan pertanyaanmu. Mode lain tetap berfungsi tanpa izin ini.',
+              actionLabel: 'Izinkan mikrofon',
+              onAction: _requestMicPermission,
             )
           else
             ..._buildContent(context, voice, bottomInset),

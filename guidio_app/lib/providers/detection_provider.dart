@@ -5,6 +5,7 @@ import '../models/detection.dart';
 import '../models/risk_zone.dart';
 import '../providers/inference_provider.dart';
 import '../providers/camera_provider.dart';
+import '../providers/settings_provider.dart' show Verbosity;
 import '../services/detection_filter.dart';
 import '../services/haptic_service.dart';
 import '../services/object_tracker.dart';
@@ -19,6 +20,13 @@ class DetectionProvider extends ChangeNotifier {
   DetectionProvider(this._inferenceProvider, this._cameraProvider);
 
   final _filter  = DetectionFilter();
+
+  /// PG-05 / PG-06 — diteruskan dari SettingsProvider setiap kali pengaturan
+  /// berubah, supaya slider dan segmented benar-benar mengubah perilaku
+  /// deteksi alih-alih hanya tersimpan ke disk.
+  void applySettings({required double maxDistanceM, required Verbosity verbosity}) {
+    _filter.applySettings(maxDistanceM: maxDistanceM, verbosity: verbosity);
+  }
   final _tracker = ObjectTracker(); // SORT tracker untuk isApproaching
   StreamSubscription? _serverSub;
   bool _realtimeActive = false;

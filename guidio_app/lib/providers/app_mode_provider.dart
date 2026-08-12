@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../providers/settings_provider.dart' show Verbosity;
 import '../services/tts_service.dart';
 
 /// Enam mode sejajar, sesuai kontrak navigasi Vinara: tidak ada beranda,
@@ -40,15 +41,25 @@ extension AppModeLabel on AppMode {
   bool get needsServer => switch (this) {
         AppMode.tuntun     => false, // sepenuhnya on-device
         AppMode.money      => false, // model nominal on-device
-        AppMode.ocr        => true,  // OCR teks panjang butuh server
-        AppMode.navigasi   => true,  // segmentasi jalur, tapi rintangan on-device tetap jalan
+        AppMode.ocr        => false, // ML Kit on-device — jalan penuh offline
+        AppMode.navigasi   => true,  // segmentasi jalur + rintangan, keduanya di server
         AppMode.voice      => true,  // LLM, ada fallback lokal
         AppMode.findObject => true,  // butuh server sepenuhnya
       };
 
-  /// Mode Navigasi TIDAK PERNAH dinonaktifkan offline — deteksi rintangan
-  /// on-device tetap hidup. Hanya Cari Objek yang benar-benar dinonaktifkan.
-  bool get disabledWhenOffline => this == AppMode.findObject;
+  /// Mode yang benar-benar mati tanpa internet.
+  ///
+  /// **Berubah dari desain awal.** Dokumen menetapkan Navigasi tidak pernah
+  /// dinonaktifkan offline karena deteksi rintangan on-device tetap hidup
+  /// (§2 dan §4.4 ALUR-DAN-TOMBOL.md). Sejak deteksi rintangan dan segmentasi
+  /// jalur dipindah sepenuhnya ke server, alasan itu tidak berlaku lagi:
+  /// offline berarti Navigasi benar-benar tidak bisa melihat apa pun, dan
+  /// membiarkannya "terbatas" akan menjanjikan keselamatan yang tidak ada.
+  ///
+  /// Kalau deteksi rintangan on-device dikembalikan, kembalikan juga Navigasi
+  /// ke state `limited` — itu satu baris di sini.
+  bool get disabledWhenOffline =>
+      this == AppMode.findObject || this == AppMode.navigasi;
 }
 
 class AppModeProvider extends ChangeNotifier {
@@ -59,13 +70,46 @@ class AppModeProvider extends ChangeNotifier {
   final Map<AppMode, int> _visitCount = {};
   int visitCountFor(AppMode m) => _visitCount[m] ?? 0;
 
-  /// Umumkan masuk mode TANPA berpindah — dipakai mode default (Deteksi
-  /// Objek) yang aktif sejak boot tanpa lewat [setMode], supaya DO-29
-  /// "verbositas lengkap 3 pemakaian pertama" tetap berlaku untuknya juga.
+  /// Kata pembuka yang dititipkan [setMode] untuk diucapkan oleh
+  /// [announceEntry] milik layar tujuan — mis. "Baik." dari perintah suara
+  /// (AS-17). Dititipkan, bukan diucapkan di sini, supaya konfirmasi tidak
+  /// pernah mendahului perpindahan state (bagian 4.1 ALUR-DAN-TOMBOL.md).
+  String? _pendingPrefix;
+
+  /// PG-05 — tingkat kecerewetan pengguna. Bekerja **bersama** verbositas
+  /// menurun bawaan (tiga pemakaian pertama lebih panjang), bukan
+  /// menggantikannya: "ringkas" memotong panduan sejak awal, "detail"
+  /// mempertahankannya selamanya.
+  Verbosity _verbosity = Verbosity.sedang;
+  void applyVerbosity(Verbosity v) => _verbosity = v;
+
+  /// Umumkan masuk mode. Dipanggil dari `initState` layar mode — artinya
+  /// pengumuman selalu menyusul mode yang BENAR-BENAR terpasang, tidak pernah
+  /// mendahuluinya. Mode default (Deteksi Objek) yang aktif sejak boot tanpa
+  /// lewat [setMode] ikut lewat sini juga, supaya DO-29 "verbositas lengkap 3
+  /// pemakaian pertama" tetap berlaku untuknya.
   Future<void> announceEntry(AppMode mode) async {
+    if (mode != _mode) return; // layar basi (dispose berpapasan) — jangan bicara
+    final prefix = _pendingPrefix;
+    _pendingPrefix = null;
+
     final count = (_visitCount[mode] ?? 0) + 1;
     _visitCount[mode] = count;
-    final announcement = count <= 3 ? '${mode.label} aktif. ${mode.shortIntro}' : '${mode.label} aktif.';
+
+    // Verbositas menurun bawaan (tiga kali pertama lengkap) digeser oleh
+    // pilihan pengguna: "ringkas" tidak pernah membacakan panduan, "detail"
+    // selalu membacakannya.
+    final withIntro = switch (_verbosity) {
+      Verbosity.ringkas => false,
+      Verbosity.sedang => count <= 3,
+      Verbosity.detail => true,
+    };
+
+    final announcement = [
+      if (prefix != null) prefix,
+      '${mode.label} aktif.',
+      if (withIntro) mode.shortIntro,
+    ].join(' ');
     await TTSService.instance.speak(announcement);
   }
 
@@ -76,20 +120,21 @@ class AppModeProvider extends ChangeNotifier {
   /// SEMUA jalur ganti mode (ModePickerSheet maupun perintah suara).
   Future<bool> Function(AppMode from, AppMode to)? confirmLeave;
 
-  Future<void> setMode(AppMode mode) async {
-    if (_mode == mode) return;
+  /// Berpindah mode. Mengembalikan **true hanya kalau mode benar-benar
+  /// berubah** — pemanggil wajib memeriksa nilai ini sebelum mengucapkan
+  /// konfirmasi apa pun. [spokenPrefix] dititipkan ke pengumuman kedatangan
+  /// layar tujuan, bukan diucapkan di sini.
+  Future<bool> setMode(AppMode mode, {String? spokenPrefix}) async {
+    if (_mode == mode) return false;
     if (confirmLeave != null) {
       final ok = await confirmLeave!(_mode, mode);
-      if (!ok) return;
+      if (!ok) return false;
     }
+    _pendingPrefix = spokenPrefix;
     _mode = mode;
     notifyListeners();
-
-    final count = (_visitCount[mode] ?? 0) + 1;
-    _visitCount[mode] = count;
-
-    // Tiga kali pertama: panduan lengkap. Setelah itu: ringkas.
-    final announcement = count <= 3 ? '${mode.label} aktif. ${mode.shortIntro}' : '${mode.label} aktif.';
-    await TTSService.instance.speak(announcement);
+    // Pengumuman kedatangan diucapkan `announceEntry` dari layar tujuan —
+    // sesudah layarnya benar-benar terpasang.
+    return true;
   }
 }

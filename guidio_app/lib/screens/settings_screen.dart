@@ -1,25 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/index.dart';
 import '../services/tts_service.dart';
 import '../theme/index.dart';
+import '../widgets/index.dart';
 import 'onboarding_screen.dart';
+import 'server_address_screen.dart';
 
 /// PG-01..PG-11 — delapan pengaturan, urutan baku (bagian 13).
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
+  /// PG-11 — penyimpanan penuh. Kartu error tetap di atas karena perannya
+  /// memberi tahu, tapi aksinya **diulang di dasar layar**: aksi yang hanya
+  /// ada di kartu atas memaksa pengguna low vision menjangkau zona merah.
+  Future<void> _manageStorage() async {
+    await TTSService.instance.speak(
+      'Membuka Pengaturan ponsel. Cari menu Penyimpanan, lalu hapus cache Vinara.',
+    );
+    await openAppSettings();
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    final storageLow = context.watch<GlobalConditionsProvider>().isStorageLow;
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceMuted,
-      appBar: AppBar(title: const Text('Pengaturan')),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
+    final list = ListView(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
         children: [
+          if (storageLow) const _StorageFullCard(),
           _SettingsRow(
             title: 'Kecepatan bicara TTS',
             value: '${(settings.speechRate * 200).round()}%',
@@ -117,13 +129,41 @@ class SettingsScreen extends StatelessWidget {
               child: const Text('Mulai panduan'),
             ),
           ),
+          // PG-08 — halaman kontrol sendiri, bukan kontrol inline. Aksinya
+          // ("Uji koneksi" / "Simpan alamat") butuh `zone/page-action`, dan
+          // zona itu tidak bisa hadir di tengah daftar.
           _SettingsRow(
             title: 'Alamat server',
             value: settings.serverHost,
-            child: _ServerHostField(initial: settings.serverHost),
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ServerAddressScreen()),
+              ),
+              child: const Text('Ubah alamat server'),
+            ),
           ),
         ],
-      ),
+      );
+
+    // PG-11 — selama penyimpanan penuh, aksinya diulang di `zone/page-action`
+    // supaya terjangkau tanpa menggulung dan tanpa menjangkau kartu di atas.
+    // Di luar kondisi itu Pengaturan tidak punya aksi halaman, jadi tidak ada
+    // zona aksi sama sekali — daftar boleh memenuhi layar.
+    if (storageLow) {
+      return PageActionScaffold(
+        backgroundColor: AppColors.surfaceMuted,
+        appBar: AppBar(title: const Text('Pengaturan')),
+        primaryLabel: 'Kelola penyimpanan',
+        primaryIcon: Icons.folder_open_rounded,
+        onPrimary: _manageStorage,
+        body: list,
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.surfaceMuted,
+      appBar: AppBar(title: const Text('Pengaturan')),
+      body: list,
     );
   }
 
@@ -144,6 +184,55 @@ class SettingsScreen extends StatelessWidget {
         AppThemeMode.dark => 'Gelap',
         AppThemeMode.highContrast => 'Kontras tinggi',
       };
+}
+
+/// PG-11 — kartu error penyimpanan penuh. Tetap di atas: perannya memberi
+/// tahu, dan pemberitahuan harus terbaca lebih dulu. Aksinya diulang di
+/// `zone/page-action` oleh [SettingsScreen], bukan hanya ada di sini.
+class _StorageFullCard extends StatelessWidget {
+  const _StorageFullCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      label: 'Penyimpanan hampir penuh. Pengaturan baru mungkin gagal disimpan '
+          'dan nilai lama akan tetap dipakai. Tombol Kelola penyimpanan ada di dasar layar.',
+      child: ExcludeSemantics(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin, AppSpacing.s1, AppSpacing.screenMargin, AppSpacing.s3,
+          ),
+          padding: const EdgeInsets.all(AppSpacing.s4),
+          decoration: const BoxDecoration(
+            color: AppColors.warningTint,
+            borderRadius: AppRadius.cardInner,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.sd_storage_outlined, size: 22, color: AppColors.warningLabel),
+              const SizedBox(width: AppSpacing.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Penyimpanan hampir penuh',
+                        style: AppTypography.bodyStrong(color: AppColors.warningLabel)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Pengaturan baru mungkin gagal disimpan, dan nilai lama akan tetap dipakai.',
+                      style: AppTypography.caption(color: AppColors.warningLabel),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SettingsRow extends StatelessWidget {
@@ -185,99 +274,3 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-class _ServerHostField extends StatefulWidget {
-  final String initial;
-  const _ServerHostField({required this.initial});
-
-  @override
-  State<_ServerHostField> createState() => _ServerHostFieldState();
-}
-
-enum _ServerFieldState { idle, testing, valid, invalid, failed }
-
-class _ServerHostFieldState extends State<_ServerHostField> {
-  late final TextEditingController _ctrl = TextEditingController(text: widget.initial);
-  _ServerFieldState _state = _ServerFieldState.idle;
-
-  static final _hostPattern = RegExp(r'^[\w.-]+:\d{2,5}$');
-
-  Future<void> _test() async {
-    final host = _ctrl.text.trim();
-    if (!_hostPattern.hasMatch(host)) {
-      setState(() => _state = _ServerFieldState.invalid);
-      return;
-    }
-    setState(() => _state = _ServerFieldState.testing);
-    final stopwatch = Stopwatch()..start();
-    try {
-      final uri = Uri.parse('http://$host/');
-      await Future.any([
-        Uri.parse('http://$host').isAbsolute
-            ? _ping(uri)
-            : Future.error('invalid'),
-        Future.delayed(const Duration(seconds: 4), () => throw TimeoutException()),
-      ]);
-      stopwatch.stop();
-      if (!mounted) return;
-      setState(() => _state = _ServerFieldState.valid);
-      context.read<SettingsProvider>().setServerHost(host);
-    } catch (_) {
-      if (!mounted) return;
-      // PG-08e — gagal terhubung: alamat lama tetap dipakai, bukan alamat baru.
-      setState(() => _state = _ServerFieldState.failed);
-    }
-  }
-
-  Future<void> _ping(Uri uri) async {
-    // Placeholder ringan: koneksi socket tanpa payload. Kegagalan (host
-    // tidak ada / port tertutup) dilempar sebagai exception oleh runtime.
-    await Future.delayed(const Duration(milliseconds: 300));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _ctrl,
-                decoration: const InputDecoration(
-                  hintText: 'host:port, mis. 10.0.2.2:8000',
-                  isDense: true,
-                ),
-                style: AppTypography.metricMono(),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s2),
-            OutlinedButton(
-              onPressed: _state == _ServerFieldState.testing ? null : _test,
-              child: Text(_state == _ServerFieldState.testing ? 'Menguji…' : 'Uji'),
-            ),
-          ],
-        ),
-        if (_state == _ServerFieldState.valid)
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Text('Terhubung.', style: TextStyle(color: AppColors.positiveLabel, fontSize: 13)),
-          ),
-        if (_state == _ServerFieldState.invalid)
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Text('Format salah. Contoh benar: 10.0.2.2:8000',
-                style: TextStyle(color: AppColors.criticalLabel, fontSize: 13)),
-          ),
-        if (_state == _ServerFieldState.failed)
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Text('Gagal terhubung. Alamat lama tetap dipakai.',
-                style: TextStyle(color: AppColors.criticalLabel, fontSize: 13)),
-          ),
-      ],
-    );
-  }
-}
-
-class TimeoutException implements Exception {}

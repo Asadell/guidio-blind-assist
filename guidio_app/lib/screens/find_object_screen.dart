@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -6,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:vibration/vibration.dart';
 
 import '../core/layout/zone_contract.dart';
+import '../core/net/frame_codec.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
 import '../providers/index.dart';
@@ -13,9 +16,9 @@ import '../theme/index.dart';
 import '../widgets/index.dart';
 
 /// Mode Cari Objek — bagian 12 IMPLEMENTASI.md, 19 state (CO-01..CO-19).
-/// Butuh server sepenuhnya (dan satu-satunya mode yang benar-benar
-/// dinonaktifkan offline, lihat ModePickerSheet) — karena server pencarian
-/// objek belum ada, seluruh pencarian di-mock lewat [FindObjectProvider].
+/// **Sepenuhnya di server** lewat `POST /api/cari-objek`; layar ini hanya
+/// memasok frame dan menggambar hasilnya. Karena itu ia benar-benar
+/// dinonaktifkan saat offline (CO-14), dengan targetnya disimpan.
 class FindObjectScreen extends StatefulWidget {
   const FindObjectScreen({super.key});
 
@@ -63,11 +66,41 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Prinsip 6 "umumkan saat tiba" — sesudah layar terpasang.
+      context.read<AppModeProvider>().announceEntry(AppMode.findObject);
       final provider = context.read<FindObjectProvider>();
       provider.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
       provider.onDirectionHaptic = _fireDirectionHaptic;
-      if (_hasCameraPermission) context.read<CameraProvider>().startStream();
+      provider.isOffline = () =>
+          context.read<GlobalConditionsProvider>().isOffline;
+      provider.frameSource = _grabFrame;
+      provider.loadKnownTargets();
+      if (_hasCameraPermission) {
+        final cam = context.read<CameraProvider>();
+        cam.onFrameReady = (image) => _latestFrame = image;
+        cam.startStream();
+      }
     });
+  }
+
+  /// Status koneksi frame sebelumnya — dipakai mendeteksi transisi
+  /// offline→online untuk menepati janji CO-14.
+  bool _wasOffline = false;
+
+  /// Frame terakhir dari stream kamera. Disimpan mentah dan baru dikodekan
+  /// saat benar-benar akan dikirim — mengodekan tiap frame kamera padahal
+  /// hanya sebagian kecil yang terkirim adalah pemborosan CPU dan baterai
+  /// yang langsung terasa sebagai panas di tangan pengguna.
+  CameraImage? _latestFrame;
+
+  Future<Uint8List?> _grabFrame() async {
+    final frame = _latestFrame;
+    if (frame == null) return null;
+    return FrameCodec.encodeForUpload(
+      frame,
+      maxEdge: UploadPreset.findObject.maxEdge,
+      quality: UploadPreset.findObject.quality,
+    );
   }
 
   @override
@@ -77,8 +110,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final provider = context.read<FindObjectProvider>();
     provider.onSpeak = null;
     provider.onDirectionHaptic = null;
+    provider.frameSource = null;
+    provider.isOffline = null;
     provider.reset();
-    context.read<CameraProvider>().stopStream();
+    final cam = context.read<CameraProvider>();
+    cam.onFrameReady = null;
+    cam.stopStream();
     super.dispose();
   }
 
@@ -171,6 +208,15 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final topInset = media.padding.top;
     final bottomInset = media.padding.bottom;
 
+    // CO-14 — janji "saya coba lagi begitu internet kembali" hanya bernilai
+    // kalau benar-benar ditepati tanpa pengguna menyebut ulang barangnya.
+    if (_wasOffline && !offline && fo.savedTarget != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<FindObjectProvider>().retrySavedTarget();
+      });
+    }
+    _wasOffline = offline;
+
     final disabledOffline = offline && _debugOverride != _Debug.co14 ? true : _debugOverride == _Debug.co14;
     final banner = disabledOffline
         ? const StatusBanner(tier: AlertTier.warning, message: 'Tanpa internet, Cari Objek tidak tersedia')
@@ -205,14 +251,13 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             ),
 
           if (!_hasCameraPermission || _debugOverride == _Debug.co15)
-            Center(
-              child: PermissionCard(
-                icon: Icons.camera_alt_outlined,
-                title: 'Izin kamera',
-                reason: 'Kamera dipakai untuk mencari dan menunjukkan arah barang yang kamu sebutkan.',
-                actionLabel: 'Izinkan kamera',
-                onAction: _requestPermission,
-              ),
+            // CO-15 — kartu di zona konten, tombolnya di slot kartu bawah.
+            PermissionPrompt(
+              icon: Icons.camera_alt_outlined,
+              title: 'Izin kamera',
+              reason: 'Kamera dipakai untuk mencari dan menunjukkan arah barang yang kamu sebutkan.',
+              actionLabel: 'Izinkan kamera',
+              onAction: _requestPermission,
             )
           else if (disabledOffline)
             const SizedBox.shrink()
@@ -299,6 +344,20 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
         return [_bottomPanel(bottomInset, const AlertCard(tier: AlertTier.critical, title: 'Bukan karena kameramu', description: 'Server pencarian sedang bermasalah.'))];
       case FindObjectState.tooDark:
         return [_bottomPanel(bottomInset, const CameraHealthToast(issue: CameraHealthIssue.dark))];
+      case FindObjectState.offlineSaved:
+        // CO-14 — targetnya disimpan, dan itu dikatakan. Bukan "perintah
+        // gagal": perintahnya diterima, hanya pelaksanaannya yang menunggu.
+        return [
+          _bottomPanel(
+            bottomInset,
+            AlertCard(
+              tier: AlertTier.warning,
+              title: 'Cari objek butuh internet',
+              description: 'Target ${fo.savedTarget ?? fo.target} disimpan. '
+                  'Saya lanjutkan begitu internet kembali.',
+            ),
+          ),
+        ];
     }
   }
 

@@ -1,20 +1,22 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/net/api_client.dart';
 import '../core/speech/tts_queue.dart' show SpeechTier;
-import '../mock/mock_find_object.dart';
+import '../services/server_service.dart';
 
 /// State machine Mode Cari Objek — bagian 12 IMPLEMENTASI.md (CO-01..CO-13,
-/// CO-18, CO-19). Server pencarian objek belum ada, jadi seluruh "penemuan"
-/// disimulasikan lewat Timer begitu target ditetapkan (dari hasil STT yang
-/// dilakukan di layer screen, sama seperti VoiceProvider).
+/// CO-18, CO-19).
 ///
-/// CO-14 (offline), CO-15 (izin kamera), CO-16 (senyap), CO-17 (font scale
-/// 200%) sengaja TIDAK dimodelkan di sini — itu murni keputusan lapisan UI
-/// (screen membaca GlobalConditionsProvider / izin sistem / MediaQuery
-/// langsung), sama seperti pola MoneyProvider.
+/// **Sepenuhnya di server.** Frame dikirim ke `POST /api/cari-objek` yang
+/// menjalankan YOLOE dengan prompt terbuka; tidak ada model pencarian di
+/// perangkat. Konsekuensinya CO-14 nyata: tanpa internet, mode ini benar-benar
+/// tidak bisa apa-apa, dan targetnya disimpan untuk dicoba lagi nanti.
+///
+/// CO-15 (izin kamera), CO-16 (senyap), CO-17 (font scale 200%) sengaja TIDAK
+/// dimodelkan di sini — itu murni keputusan lapisan UI, sama seperti pola
+/// MoneyProvider.
 enum FindObjectState {
   idle, // CO-01
   listening, // CO-02
@@ -26,18 +28,21 @@ enum FindObjectState {
   notFoundInFrame, // CO-10
   longNotFound, // CO-11
   unknownObject, // CO-12
+  offlineSaved, // CO-14
   serverError, // CO-18
   tooDark, // CO-19
 }
 
 class FindObjectProvider extends ChangeNotifier {
-  final _rand = Random();
-
   FindObjectState _state = FindObjectState.idle;
   FindObjectState get state => _state;
 
   String? _target;
   String? get target => _target;
+
+  /// CO-14 — target yang disimpan saat offline, dipakai lagi begitu pulih.
+  String? _savedTarget;
+  String? get savedTarget => _savedTarget;
 
   int _matchCount = 1; // CO-07: >1 berarti "lebih dari satu cocok"
   int get matchCount => _matchCount;
@@ -51,22 +56,42 @@ class FindObjectProvider extends ChangeNotifier {
   String? _lastKnownPosition; // CO-09
   String? get lastKnownPosition => _lastKnownPosition;
 
-  int _scanMessageIndex = 0;
-  String get scanMessage => FindObjectMockData.scanMessages[_scanMessageIndex % FindObjectMockData.scanMessages.length];
+  /// Pesan terakhir dari server. Server yang menyusun kalimatnya supaya
+  /// perbaikan naskah tidak perlu rilis ulang aplikasi.
+  String _serverMessage = '';
+  String get scanMessage =>
+      _serverMessage.isEmpty ? 'Memindai sekitar…' : _serverMessage;
+  String get notFoundMessage => scanMessage;
 
-  int _notFoundMessageIndex = 0;
-  String get notFoundMessage =>
-      FindObjectMockData.notFoundMessages[_notFoundMessageIndex % FindObjectMockData.notFoundMessages.length];
+  /// Daftar barang yang dikenali server — CO-12 memakainya untuk menawarkan
+  /// barang lain, bukan menebak dari daftar hardcoded di aplikasi.
+  List<String> _knownTargets = const [];
+  List<String> get knownTargets => _knownTargets;
 
-  /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan,
-  /// pola sama dengan MoneyProvider.onSpeak.
+  /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan.
   void Function(String text, SpeechTier tier)? onSpeak;
-  void Function(String direction)? onDirectionHaptic; // CO-16: getar arah saat senyap
+  void Function(String direction)? onDirectionHaptic; // CO-16
 
+  /// Sumber frame. Screen memasang ini supaya provider tetap bebas dari
+  /// BuildContext dan bebas dari paket kamera.
+  Future<Uint8List?> Function()? frameSource;
+
+  /// Dibaca sebelum mengirim — CO-14 menuntut mode ini benar-benar berhenti
+  /// saat offline, bukan mencoba lalu gagal berkali-kali.
+  bool Function()? isOffline;
+
+  /// Satu permintaan in-flight, frame lama dibuang. Untuk pencarian yang
+  /// pengguna lakukan sambil memutar badan, jawaban untuk frame tiga detik
+  /// lalu menunjuk ke arah yang sudah salah.
+  final _pacer = FramePacer(minInterval: const Duration(milliseconds: 600));
+
+  Timer? _loopTimer;
   Timer? _stepTimer;
-  Timer? _messageRotateTimer;
+  int _consecutiveNotFound = 0;
+  int _consecutiveErrors = 0;
 
-  void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
+  void _speak(String text, {SpeechTier tier = SpeechTier.info}) =>
+      onSpeak?.call(text, tier);
 
   void _set(FindObjectState s) {
     _state = s;
@@ -78,11 +103,21 @@ class FindObjectProvider extends ChangeNotifier {
     _stepTimer = Timer(Duration(milliseconds: ms), cb);
   }
 
+  /// Ambil kamus target dari server sekali saat masuk mode. Gagal diam-diam:
+  /// tanpa kamus, CO-12 hanya kehilangan saran, bukan seluruh fiturnya.
+  Future<void> loadKnownTargets() async {
+    try {
+      _knownTargets = await ServerService.instance.cariObjekTargets();
+      notifyListeners();
+    } catch (_) {
+      // Diabaikan dengan sengaja.
+    }
+  }
+
   // -------------------------------------------------------------- CO-02/03
 
   void startListening() {
-    _stepTimer?.cancel();
-    _messageRotateTimer?.cancel();
+    _stopLoop();
     _set(FindObjectState.listening);
   }
 
@@ -100,129 +135,235 @@ class FindObjectProvider extends ChangeNotifier {
 
   // ------------------------------------------------------------------ CO-04
 
-  /// Menetapkan target baru — juga dipakai untuk CO-13 "ganti target" saat
-  /// target sudah aktif (tidak perlu kembali ke CO-01 dulu).
+  /// Menetapkan target baru — juga dipakai CO-13 "ganti target" saat target
+  /// sudah aktif (tidak perlu kembali ke CO-01 dulu).
   void setTarget(String newTarget) {
     final isChange = _target != null && _target != newTarget;
     _target = newTarget;
     _matchCount = 1;
     _lastKnownPosition = null;
+    _consecutiveNotFound = 0;
+    _consecutiveErrors = 0;
     _set(FindObjectState.targetActive);
 
-    if (isChange) {
-      _speak('Ganti, sekarang mencari $newTarget.', tier: SpeechTier.info);
-    } else if (!FindObjectMockData.isKnown(newTarget)) {
-      // CO-12 — objek tak dikenali, sebut yang dikenal sebagai gantinya.
-      final fallback = FindObjectMockData.randomFallback(_rand);
-      _speak('Saya belum kenal "$newTarget". Saya bisa mencari $fallback, misalnya.', tier: SpeechTier.warning);
-      _set(FindObjectState.unknownObject);
-      _after(2600, () => _set(FindObjectState.idle));
+    // CO-14 — offline: target DISIMPAN, mode berhenti. Perintahnya diterima,
+    // yang hilang disebut, dan tidak pernah dikatakan "perintah gagal".
+    if (isOffline?.call() ?? false) {
+      _savedTarget = newTarget;
+      _set(FindObjectState.offlineSaved);
+      _speak(
+        'Cari objek butuh internet. Target $newTarget saya simpan, '
+        'saya coba lagi begitu internet kembali.',
+        tier: SpeechTier.warning,
+      );
       return;
-    } else {
-      _speak('Mencari $newTarget.', tier: SpeechTier.info);
     }
 
-    _after(500, _beginScan);
+    _speak(
+      isChange ? 'Ganti, sekarang mencari $newTarget.' : 'Mencari $newTarget.',
+      tier: SpeechTier.info,
+    );
+    _after(400, _beginScan);
+  }
+
+  /// Dipanggil screen saat koneksi pulih — CO-14 menjanjikan percobaan ulang,
+  /// jadi janji itu harus benar-benar ditepati.
+  void retrySavedTarget() {
+    final saved = _savedTarget;
+    if (saved == null) return;
+    _savedTarget = null;
+    _speak('Internet kembali. Melanjutkan mencari $saved.', tier: SpeechTier.info);
+    setTarget(saved);
   }
 
   // -------------------------------------------------------------- CO-05..11
 
   void _beginScan() {
-    _scanMessageIndex = 0;
+    if (_target == null) return;
     _set(FindObjectState.scanning);
-    _messageRotateTimer?.cancel();
-    _messageRotateTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      _scanMessageIndex++;
-      notifyListeners();
-    });
-    _after(3000 + _rand.nextInt(3000), _resolveScan);
+    _startLoop();
   }
 
-  void _resolveScan() {
-    _messageRotateTimer?.cancel();
-    final r = _rand.nextDouble();
-    if (r < 0.10) {
-      _set(FindObjectState.serverError);
-      _speak('Bukan karena kameramu. Coba lagi sebentar lagi.', tier: SpeechTier.critical);
-      _after(2500, _beginScan);
-    } else if (r < 0.18) {
-      _set(FindObjectState.tooDark);
-      _speak('Terlalu gelap. Nyalakan lampu.', tier: SpeechTier.warning);
-      _after(2500, _beginScan);
-    } else if (r < 0.55) {
-      _enterNotFound();
-    } else {
-      _enterFound();
-    }
+  void _startLoop() {
+    _loopTimer?.cancel();
+    _pacer.reset();
+    // Laju pemindaian dipilih dari kecepatan orang memutar badan, bukan dari
+    // kemampuan kamera: ~3 frame per detik sudah cukup rapat untuk mengikuti
+    // putaran badan, dan tidak membanjiri server.
+    _loopTimer = Timer.periodic(const Duration(milliseconds: 350), (_) => _tick());
+    _tick();
   }
 
-  void _enterNotFound() {
-    _notFoundMessageIndex = 0;
-    _set(FindObjectState.notFoundInFrame);
-    _messageRotateTimer?.cancel();
-    _messageRotateTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      _notFoundMessageIndex++;
-      notifyListeners();
-      if (_notFoundMessageIndex >= 2) {
-        _messageRotateTimer?.cancel();
-        _set(FindObjectState.longNotFound);
-        _speak('Belum ketemu di ruangan ini. Pindah ruangan, atau ganti target?', tier: SpeechTier.warning);
+  void _stopLoop() {
+    _loopTimer?.cancel();
+    _loopTimer = null;
+    _stepTimer?.cancel();
+    _pacer.reset();
+  }
+
+  Future<void> _tick() async {
+    final target = _target;
+    final grab = frameSource;
+    if (target == null || grab == null) return;
+
+    // Frame yang datang saat masih ada permintaan berjalan dibuang di sini,
+    // bukan diantre. Lihat FramePacer.
+    await _pacer.run(() async {
+      final jpeg = await grab();
+      if (jpeg == null || _target != target) return;
+
+      try {
+        final res = await ServerService.instance.cariObjek(target, jpeg);
+        if (_target != target) return; // target sudah diganti saat menunggu
+        _consecutiveErrors = 0;
+        _handleResponse(res, target);
+      } on ApiStatusException {
+        // Server hidup tapi menolak — CO-18, bukan salah kameranya.
+        _handleFailure(
+          'Bukan karena kameramu. Coba lagi sebentar lagi.',
+          FindObjectState.serverError,
+        );
+      } on ApiUnreachableException {
+        _handleFailure(
+          'Server tidak bisa dihubungi. Cari objek berhenti sampai sambungan kembali.',
+          FindObjectState.serverError,
+        );
       }
     });
-    _after(7000, _beginScan);
   }
 
-  void _enterFound() {
-    _matchCount = _rand.nextDouble() < 0.25 ? 2 + _rand.nextInt(2) : 1;
-    _direction = ['kiri', 'depan', 'kanan'][_rand.nextInt(3)];
-    _distanceMeter = 2.0 + _rand.nextDouble() * 3;
-    _set(FindObjectState.found);
+  void _handleResponse(Map<String, dynamic> res, String target) {
+    _serverMessage = res['message'] as String? ?? '';
+    final found = res['found'] == true;
 
-    final distText = _distanceMeter < 1
-        ? 'kurang dari satu meter'
-        : '${_distanceMeter.toStringAsFixed(1)} meter';
-    if (_matchCount > 1) {
-      _speak('Ada $_matchCount $_target. Yang terdekat di $_direction, sekitar $distText.', tier: SpeechTier.info);
-    } else {
-      _speak('$_target ditemukan di $_direction, sekitar $distText.', tier: SpeechTier.info);
-    }
-    onDirectionHaptic?.call(_direction);
+    if (!found) {
+      final reason = res['reason'] as String? ?? 'not_in_frame';
 
-    _after(1800, _narrowDistance);
-  }
+      if (reason == 'model_unavailable') {
+        _handleFailure(_serverMessage, FindObjectState.serverError);
+        return;
+      }
+      if (reason == 'invalid_frame') {
+        // CO-19 — frame tidak terbaca; paling sering karena terlalu gelap.
+        _set(FindObjectState.tooDark);
+        _speak('Terlalu gelap. Nyalakan lampu.', tier: SpeechTier.warning);
+        return;
+      }
 
-  /// CO-08 — panduan bertahap "dua meter" → "satu meter" → "setengah meter".
-  void _narrowDistance() {
-    if (_state != FindObjectState.found) return;
-    if (_distanceMeter > 0.6) {
-      _distanceMeter = (_distanceMeter - (0.7 + _rand.nextDouble() * 0.8)).clamp(0.4, 10);
-      notifyListeners();
-      final distText = _distanceMeter < 1 ? 'setengah meter, ulurkan tangan' : '${_distanceMeter.toStringAsFixed(0)} meter';
-      _speak(distText, tier: SpeechTier.info);
-      _after(2200, _narrowDistance);
+      _consecutiveNotFound++;
+      // CO-10 lalu CO-11 — sesudah cukup lama tidak ketemu, berhenti menyuruh
+      // memutar badan dan tawarkan jalan keluar. Mengulang instruksi yang sama
+      // tanpa batas adalah bentuk jalan buntu.
+      if (_consecutiveNotFound >= 18) {
+        _stopLoop();
+        _set(FindObjectState.longNotFound);
+        _speak(
+          'Belum ketemu di ruangan ini. Pindah ruangan, atau sebutkan barang lain?',
+          tier: SpeechTier.warning,
+        );
+        return;
+      }
+
+      if (_state != FindObjectState.notFoundInFrame) {
+        _set(FindObjectState.notFoundInFrame);
+      } else {
+        notifyListeners(); // pesan berputar dari server
+      }
+      // Instruksi diucapkan berkala, bukan tiap frame — kalau tidak, TTS
+      // akan bicara terus-menerus dan menutupi suara lingkungan.
+      if (_consecutiveNotFound % 6 == 1) {
+        _speak(scanMessage, tier: SpeechTier.info);
+      }
       return;
     }
 
-    // Sesekali objek "hilang dari pandangan" (CO-09) sebelum akhirnya diam di CO-06.
-    if (_rand.nextDouble() < 0.2) {
-      _lastKnownPosition = '$_direction, sekitar satu meter';
-      _set(FindObjectState.lostFromView);
-      _speak('$_target sempat hilang dari pandangan, terakhir di $_lastKnownPosition.', tier: SpeechTier.warning);
-      _after(2500, _enterFound);
+    // ── Ketemu ───────────────────────────────────────────────────────────
+    final nearest = res['nearest'] as Map<String, dynamic>?;
+    final total = (res['total_match'] as num?)?.toInt() ?? 1;
+    final wasLost = _state == FindObjectState.notFoundInFrame ||
+        _state == FindObjectState.lostFromView;
+
+    _consecutiveNotFound = 0;
+    _matchCount = total;
+    if (nearest != null) {
+      _direction = nearest['direction'] as String? ?? _direction;
+      _distanceMeter =
+          (nearest['distance_meter'] as num?)?.toDouble() ?? _distanceMeter;
+    }
+    _lastKnownPosition = '$_direction, sekitar ${_distanceMeter.toStringAsFixed(1)} meter';
+
+    final previous = _state;
+    _set(FindObjectState.found);
+
+    // CO-06/07/08 — umumkan saat pertama ketemu, saat ketemu lagi setelah
+    // hilang, atau saat jaraknya berubah cukup jauh untuk berarti. Tanpa
+    // aturan ini, jarak yang berubah tiap frame jadi banjir suara.
+    final shouldAnnounce = previous != FindObjectState.found ||
+        wasLost ||
+        _crossedDistanceStep();
+    if (shouldAnnounce) {
+      _speak(_serverMessage.isNotEmpty ? _serverMessage : _composeFound(),
+          tier: SpeechTier.info);
+      onDirectionHaptic?.call(_direction);
+    }
+    _lastAnnouncedDistance = _distanceMeter;
+  }
+
+  double _lastAnnouncedDistance = -1;
+
+  /// CO-08 — panduan bertahap. Diumumkan saat melewati ambang yang berarti
+  /// ("dua meter" → "satu meter" → "setengah meter, ulurkan tangan"), bukan
+  /// tiap kali angkanya bergeser sedikit.
+  bool _crossedDistanceStep() {
+    if (_lastAnnouncedDistance < 0) return true;
+    const steps = [0.6, 1.0, 2.0, 3.0];
+    for (final s in steps) {
+      if (_lastAnnouncedDistance > s && _distanceMeter <= s) return true;
+    }
+    return false;
+  }
+
+  String _composeFound() {
+    final distText = _distanceMeter < 1
+        ? 'kurang dari satu meter'
+        : '${_distanceMeter.toStringAsFixed(1)} meter';
+    return _matchCount > 1
+        ? 'Ada $_matchCount $_target. Yang terdekat di $_direction, sekitar $distText.'
+        : '$_target ditemukan di $_direction, sekitar $distText.';
+  }
+
+  void _handleFailure(String message, FindObjectState state) {
+    _consecutiveErrors++;
+    _set(state);
+    // Diucapkan sekali per rentetan kegagalan, bukan tiap frame.
+    if (_consecutiveErrors == 1) {
+      _speak(message, tier: SpeechTier.critical);
+    }
+    // Sesudah beberapa kegagalan berturut-turut, berhenti membebani server
+    // dan baterai. Pengguna diberi tahu, bukan dibiarkan menunggu diam-diam.
+    if (_consecutiveErrors >= 5) {
+      _stopLoop();
+      _speak(
+        'Pencarian dihentikan. Ucapkan nama barangnya lagi untuk mencoba ulang.',
+        tier: SpeechTier.warning,
+      );
+      _consecutiveErrors = 0;
     }
   }
 
   void reset() {
-    _stepTimer?.cancel();
-    _messageRotateTimer?.cancel();
+    _stopLoop();
     _target = null;
+    _serverMessage = '';
+    _consecutiveNotFound = 0;
+    _consecutiveErrors = 0;
+    _lastAnnouncedDistance = -1;
     _set(FindObjectState.idle);
   }
 
   @override
   void dispose() {
-    _stepTimer?.cancel();
-    _messageRotateTimer?.cancel();
+    _stopLoop();
     super.dispose();
   }
 }
