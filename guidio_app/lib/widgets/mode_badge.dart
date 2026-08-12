@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 import '../providers/app_mode_provider.dart';
 import '../theme/index.dart';
@@ -68,6 +69,8 @@ class _ModeBadgeState extends State<ModeBadge> {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      // Urutan fokus 3 — bagian 10, sesudah StatusBanner dan aksinya.
+      sortKey: const OrdinalSortKey(3),
       header: true,
       label: _label,
       liveRegion: widget.transitioning || widget.busy,

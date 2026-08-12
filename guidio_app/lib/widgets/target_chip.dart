@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 import '../theme/index.dart';
 
@@ -13,6 +14,8 @@ class TargetChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      // Urutan fokus 4 — bagian 10, baris sendiri di bawah ModeBadge.
+      sortKey: const OrdinalSortKey(4),
       liveRegion: true,
       label: 'Mencari: $itemName',
       child: Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/index.dart';
+import '../screens/settings_screen.dart';
 import '../theme/index.dart';
 import 'mode_badge.dart';
 
@@ -13,6 +14,13 @@ import 'mode_badge.dart';
 /// rintangan on-device tetap hidup, jadi statenya `limited` dengan alasan
 /// "Tanpa internet: rintangan saja". Cari Objek yang benar-benar disabled.
 void showModePickerSheet(BuildContext context) {
+  // Ditanyakan saat sheet dibuka, bukan saat item ditekan — status harus
+  // sudah terbaca sebelum pengguna memilih. Tidak di-await: sheet tampil
+  // segera, dan item memperbarui dirinya begitu jawaban datang.
+  context.read<CapabilitiesProvider>().refreshIfStale(
+        offline: context.read<GlobalConditionsProvider>().isOffline,
+      );
+
   showModalBottomSheet(
     context: context,
     backgroundColor: AppColors.surfaceMuted,
@@ -30,6 +38,7 @@ class _ModePickerSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final current = context.watch<AppModeProvider>().mode;
     final offline = context.watch<GlobalConditionsProvider>().isOffline;
+    final caps = context.watch<CapabilitiesProvider>();
 
     return SafeArea(
       top: false,
@@ -62,14 +71,18 @@ class _ModePickerSheet extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s2),
                 itemBuilder: (_, i) {
                   final mode = AppMode.values[i];
-                  final disabled = offline && mode.disabledWhenOffline;
-                  final limited = offline && mode.needsServer && !mode.disabledWhenOffline && mode != current;
+                  // Status ditentukan jaringan DAN jawaban server, ditanyakan
+                  // sebelum sheet dibuka — bukan ditebak dari koneksi saja.
+                  final state = caps.stateOf(mode, offline: offline);
+                  final disabled = state == CapState.down;
+                  final limited = state == CapState.limited && mode != current;
 
                   return _ModeTile(
                     mode: mode,
                     isCurrent: mode == current,
                     disabled: disabled,
                     limited: limited,
+                    reason: caps.unavailableReason(mode, offline: offline),
                     onTap: disabled
                         ? null
                         : () {
@@ -81,6 +94,47 @@ class _ModePickerSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.s3),
+            // Layar penunjang bukan saudara mode, jadi ia TIDAK muncul sebagai
+            // item mode. Tempatnya di paling bawah sheet, dipisah garis —
+            // bagian 2 ALUR-DAN-TOMBOL.md. Tanpa ini Pengaturan sama sekali
+            // tidak punya pintu masuk di layar: satu-satunya jalan adalah
+            // perintah suara, dan itu memutus pengguna yang tidak bisa bicara.
+            const Divider(height: AppSpacing.s4, color: AppColors.hairline),
+            Semantics(
+              button: true,
+              label: 'Pengaturan',
+              child: Material(
+                color: AppColors.surfaceCard,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    );
+                  },
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 56),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 14),
+                        Container(
+                          width: 40, height: 40,
+                          decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
+                          child: const Icon(Icons.tune_rounded, size: 22, color: AppColors.ink1),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(child: Text('Pengaturan', style: AppTypography.body())),
+                        const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.ink2),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s2),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -100,6 +154,10 @@ class _ModeTile extends StatelessWidget {
   final bool isCurrent;
   final bool disabled;
   final bool limited;
+
+  /// Alasan dari server (`/api/capabilities`), supaya perbaikan naskah tidak
+  /// perlu rilis ulang aplikasi.
+  final String? reason;
   final VoidCallback? onTap;
 
   const _ModeTile({
@@ -108,13 +166,10 @@ class _ModeTile extends StatelessWidget {
     required this.onTap,
     this.disabled = false,
     this.limited = false,
+    this.reason,
   });
 
-  String? get _reason {
-    if (disabled) return 'Tidak tersedia, butuh internet';
-    if (limited) return 'Tanpa internet: rintangan saja';
-    return null;
-  }
+  String? get _reason => reason;
 
   @override
   Widget build(BuildContext context) {

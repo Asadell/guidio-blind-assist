@@ -9,6 +9,7 @@ export 'guide_frame.dart';
 export 'mode_badge.dart';
 export 'mode_picker_sheet.dart';
 export 'nominal_card.dart';
+export 'page_action_zone.dart';
 export 'permission_card.dart';
 export 'result_panel.dart';
 export 'speaking_indicator.dart';

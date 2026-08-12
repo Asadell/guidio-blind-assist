@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 import '../theme/index.dart';
 import 'tier_icon.dart';
@@ -23,6 +24,11 @@ class StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      // Urutan fokus 1 — bagian 10. Di Flutter urutan fokus TIDAK otomatis
+      // mengikuti posisi visual, jadi tiap simpul zona dipasangi kunci urut
+      // eksplisit. Elemen yang tidak hadir dilewati tanpa mengubah nomor
+      // sisanya, dan itulah gunanya nomor tetap alih-alih urutan relatif.
+      sortKey: const OrdinalSortKey(1),
       liveRegion: true,
       label: actionLabel == null ? message : '$message. $actionLabel',
       child: Container(

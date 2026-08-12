@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
@@ -52,26 +53,38 @@ class BottomActionBar extends StatelessWidget {
           BoxShadow(color: Color(0x2E161819), blurRadius: 24, offset: Offset(0, -8), spreadRadius: -12),
         ],
       ),
+      // Urutan fokus 7-8-9 (bagian 10) dipasang eksplisit: reposisi tombol di
+      // layar lain tidak boleh menggeser urutan tiga tombol ini, karena
+      // kekekalannya adalah satu-satunya peta yang dimiliki pengguna.
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _SquareButton(
-            icon: Icons.camera_alt_outlined,
-            label: cameraLabel,
-            enabled: sideButtonsEnabled,
-            onTap: onCameraPressed ?? () {},
+          Semantics(
+            sortKey: const OrdinalSortKey(7),
+            child: _SquareButton(
+              icon: Icons.camera_alt_outlined,
+              label: cameraLabel,
+              enabled: sideButtonsEnabled,
+              onTap: onCameraPressed ?? () {},
+            ),
           ),
-          _MicButton(
-            onTap: onMicPressed,
-            enabled: micEnabled,
-            listeningOverride: listeningOverride,
-            processingOverride: processingOverride,
+          Semantics(
+            sortKey: const OrdinalSortKey(8),
+            child: _MicButton(
+              onTap: onMicPressed,
+              enabled: micEnabled,
+              listeningOverride: listeningOverride,
+              processingOverride: processingOverride,
+            ),
           ),
-          _SquareButton(
-            icon: Icons.apps_rounded,
-            label: 'Pilih mode',
-            enabled: !listening,
-            onTap: () => showModePickerSheet(context),
+          Semantics(
+            sortKey: const OrdinalSortKey(9),
+            child: _SquareButton(
+              icon: Icons.apps_rounded,
+              label: 'Pilih mode',
+              enabled: !listening,
+              onTap: () => showModePickerSheet(context),
+            ),
           ),
         ],
       ),
