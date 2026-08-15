@@ -232,6 +232,24 @@ class ServerService {
     }
   }
 
+  /// Scene Description via Moondream2.
+  /// Mengirim gambar JPEG ke /api/describe dan mengembalikan deskripsi
+  /// suasana dalam Bahasa Indonesia yang siap dibacakan via TTS.
+  Future<String?> describeScene(Uint8List jpegBytes) async {
+    try {
+      final result = await _api.postMultipart(
+        '/api/describe',
+        bytes: jpegBytes,
+        filename: 'scene.jpg',
+        fields: {},
+        op: ApiOp.heavy,
+      );
+      return result['deskripsi'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Telemetri, crash, antrean offline ───────────────────────────────────
 
   /// Telemetri alur. Sengaja fire-and-forget: kegagalan mengirim statistik

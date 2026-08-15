@@ -5,6 +5,7 @@ import '../core/voice/intents.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
+import '../providers/find_object_provider.dart';
 import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
@@ -45,8 +46,9 @@ class VoiceProvider extends ChangeNotifier {
   final CameraProvider _camera;
   final DetectionProvider _detection;
   final AppModeProvider _appMode;
+  final FindObjectProvider _findObject;
 
-  VoiceProvider(this._camera, this._detection, this._appMode);
+  VoiceProvider(this._camera, this._detection, this._appMode, this._findObject);
 
   final SpeechToText _stt = SpeechToText();
   VoiceState _state = VoiceState.idle;
@@ -74,6 +76,11 @@ class VoiceProvider extends ChangeNotifier {
   /// provider ini tidak bergantung BuildContext, pola sama dengan mode lain.
   void Function(String text)? onSpeak;
   void Function()? onAllFeaturesFailed;
+
+  /// Dipasang oleh VoiceScreen saat masuk sebagai overlay (push Navigator).
+  /// Dipanggil setelah `actionGoBack` berhasil — agar layar bisa pop dirinya
+  /// sendiri tanpa VoiceProvider bergantung pada BuildContext/Navigator.
+  void Function()? onNavigateBack;
 
   /// Pengaturan adalah layar penunjang, bukan mode — pembukaannya butuh
   /// Navigator. Layar yang aktif memasang ini dan mengembalikan **true hanya
@@ -166,13 +173,38 @@ class VoiceProvider extends ChangeNotifier {
         _respond('Saya dengar "$text". Maksudmu ${command.suggestions[0].spokenLabel}?', save: false);
         return;
       }
-      await _handleDescribeScene();
+      // Tidak dikenali sama sekali — tidak ada saran.
+      await _handleLocal('Maaf, saya tidak mengerti. Coba katakan lagi dengan cara berbeda.');
       return;
     }
 
     if (command.intent!.isModeChange) {
       // AS-17 — perintah ganti mode.
       await _applyModeChange(command.intent!);
+      return;
+    }
+
+    // Perintah kembali ke mode sebelumnya.
+    if (command.intent == VoiceIntent.actionGoBack) {
+      await _handleGoBack();
+      return;
+    }
+
+    // Perintah cari objek dengan target dinamis — pindah ke FindObject.
+    if (command.intent == VoiceIntent.findObjectTarget && command.argument != null) {
+      await _handleFindObjectTarget(command.argument!);
+      return;
+    }
+
+    // Perintah nyalakan/matikan lampu — toggle torch.
+    if (command.intent == VoiceIntent.actionTorch) {
+      await _handleTorch();
+      return;
+    }
+
+    // Perintah deskripsi suasana — Moondream2 via server.
+    if (command.intent == VoiceIntent.describeScene) {
+      await _handleDescribeScene();
       return;
     }
 
@@ -184,7 +216,7 @@ class VoiceProvider extends ChangeNotifier {
         await _handleLocal('Kamu di mode Asisten Suara.');
         break;
       default:
-        await _handleDescribeScene();
+        await _handleLocal('Perintah itu belum saya kenali di mode ini.');
     }
   }
 
@@ -251,42 +283,83 @@ class VoiceProvider extends ChangeNotifier {
     await _respond('Baik. $answer');
   }
 
-  /// Implementasi lengkap describe_scene: capture → detect → narasi Claude
-  /// → speak. AS-09 mengumumkan jeda 3-5 detik sebelum hasil datang.
+  /// Toggle flashlight — nyala jadi mati, mati jadi nyala.\n  /// Konfirmasi TTS menyebutkan status baru, bukan perintah.
+  Future<void> _handleTorch() async {
+    _setState(VoiceState.processingLocal);
+    await _camera.toggleTorch();
+    final msg = _camera.isTorchOn
+        ? 'Baik, lampu dinyalakan.'
+        : 'Baik, lampu dimatikan.';
+    await _respond(msg, save: false);
+  }
+
+  /// Deskripsikan suasana di depan via Moondream2 (on-server).
+  /// AS-09 style: umumkan dulu bahwa perlu waktu, lalu ambil gambar & kirim.
   Future<void> _handleDescribeScene() async {
     _setState(VoiceState.processingLlm);
-    onSpeak?.call('Saya lihat sekitarmu dulu, sekitar tiga sampai lima detik.');
+    onSpeak?.call('Saya foto sekitarmu dulu, tunggu sebentar.');
 
     if (!_camera.isInitialized) {
-      // AS-24 — izin kamera dicabut: tetap bisa menjawab yang tidak butuh penglihatan.
-      await _handleChitchat();
+      await _handleLocal('Kamera tidak tersedia untuk mengambil foto.');
       return;
     }
 
     try {
       final jpeg = await _camera.captureJpeg();
-      final dets = await _detection.detectOnce(jpeg);
-      final narasi = await ServerService.instance.getNarasi(dets, context: 'voice');
-      _consecutiveFailures = 0;
-      await _respond(narasi);
-    } catch (e) {
-      _consecutiveFailures++;
-      if (_consecutiveFailures == 1) {
-        // AS-14 — fallback lokal sederhana sebelum menyerah total.
-        _setState(VoiceState.fallbackActive);
-        await _respond('Saya belum bisa melihat detail sekarang. Coba lagi sebentar, atau tanyakan hal lain.');
-      } else {
-        // AS-15 — semua gagal, tidak buntu.
-        _setState(VoiceState.allFailed);
-        onAllFeaturesFailed?.call();
-        await _respond('Fitur suara sedang bermasalah. Deteksi objek tetap jalan di mode lain.');
-        _consecutiveFailures = 0;
+      final deskripsi = await ServerService.instance.describeScene(jpeg);
+
+      if (deskripsi == null || deskripsi.isEmpty) {
+        await _handleLocal('Maaf, saya tidak bisa mendeskripsikan suasana saat ini. Coba lagi.');
+        return;
       }
+
+      _consecutiveFailures = 0;
+      await _respond(deskripsi, save: true);
+    } catch (e) {
+      debugPrint('[VoiceProvider] _handleDescribeScene error: $e');
+      await _handleLocal('Gagal mendeskripsikan suasana. Coba lagi.');
     }
   }
 
   Future<void> _handleChitchat() async {
     await _respond('Saya belum bisa melihat sekarang (izin kamera dicabut), tapi tetap bisa bicara atau ganti mode.');
+  }
+
+  /// Perintah suara "kembali" \u2014 kembali ke mode sebelumnya via AppModeProvider.
+  /// Jika ada onNavigateBack (masuk sebagai overlay push), callback dipanggil
+  /// sesudah mode berubah agar Navigator bisa pop layar ini.
+  Future<void> _handleGoBack() async {
+    _setState(VoiceState.processingLocal);
+    final previous = _appMode.previousMode;
+    final label = previous?.label ?? AppMode.tuntun.label;
+    final changed = await _appMode.goBack(spokenPrefix: 'Kembali.');
+    if (changed) {
+      _consecutiveFailures = 0;
+      _setState(VoiceState.responded);
+      // Pop dilakukan setelah mode berubah supaya announceEntry di layar tujuan
+      // terucap sebelum layar ini ditutup.
+      onNavigateBack?.call();
+    } else {
+      await _respond('Sudah di mode $label, tidak bisa kembali lebih jauh.', save: false);
+    }
+  }
+
+  /// Perintah suara "carikan [barang]" dari mode mana pun:
+  /// - Set target ke FindObjectProvider
+  /// - Pindah mode ke findObject
+  /// - Pop VoiceScreen overlay jika ada (via onNavigateBack)
+  Future<void> _handleFindObjectTarget(String target) async {
+    _setState(VoiceState.processingLocal);
+    _findObject.setTarget(target);
+    final changed = await _appMode.setMode(AppMode.findObject, spokenPrefix: 'Baik, mencari $target.');
+    if (changed) {
+      _consecutiveFailures = 0;
+      _setState(VoiceState.responded);
+      onNavigateBack?.call();
+    } else {
+      await _respond('Sudah di mode Cari Objek. Target diperbarui ke $target.', save: false);
+      onNavigateBack?.call();
+    }
   }
 
   Future<void> _respond(String message, {bool save = true}) async {
@@ -317,6 +390,10 @@ class VoiceProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    onSpeak = null;
+    onOpenSettings = null;
+    onNavigateBack = null;
+    onAllFeaturesFailed = null;
     _stt.cancel();
     super.dispose();
   }

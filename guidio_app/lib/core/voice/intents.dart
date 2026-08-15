@@ -11,10 +11,12 @@ enum VoiceIntent {
   // Tindakan dalam mode
   actionCapture,
   actionReplay,
+  actionGoBack,
   actionSummary,
   actionStopWalking,
   actionShowAll,
   actionTorch,
+  describeScene,
   // Kontrol pemutaran
   playPause,
   playResume,
@@ -39,6 +41,17 @@ extension VoiceIntentX on VoiceIntent {
         VoiceIntent.modeSettings =>
           true,
         _ => false,
+      };
+  String? get commandPhrase => switch (this) {
+        VoiceIntent.modeMoney => 'mode uang',
+        VoiceIntent.modeReadText => 'mode baca',
+        VoiceIntent.modeDetection => 'mode deteksi',
+        VoiceIntent.modeNavigation => 'mode navigasi',
+        VoiceIntent.modeAssistant => 'mode asisten',
+        VoiceIntent.modeFindObject => 'mode cari objek',
+        VoiceIntent.actionTorch => 'nyalakan lampu',
+        VoiceIntent.describeScene => 'deskripsikan suasana',
+        _ => null,
       };
 }
 
