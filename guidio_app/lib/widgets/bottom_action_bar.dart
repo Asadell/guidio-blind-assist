@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
 import '../providers/index.dart';
+import '../screens/voice_screen.dart';
 import '../theme/index.dart';
 import 'mode_picker_sheet.dart';
 
@@ -132,8 +133,32 @@ class _MicButton extends StatelessWidget {
             : () async {
                 HapticFeedback.mediumImpact();
                 final v = context.read<VoiceProvider>();
+                final appMode = context.read<AppModeProvider>();
                 final hasVib = await Vibration.hasVibrator();
                 if (hasVib) Vibration.vibrate(duration: 100);
+
+                // Jika bukan di mode voice, push VoiceScreen sebagai overlay
+                // (fitur "Jarvis Global Mic") alih-alih langsung ke onTap.
+                if (appMode.mode != AppMode.voice) {
+                  if (context.mounted) {
+                    await Navigator.of(context).push(
+                      PageRouteBuilder(
+                        opaque: false,
+                        barrierDismissible: false,
+                        pageBuilder: (_, __, ___) =>
+                            const VoiceScreen(isOverlay: true),
+                        transitionsBuilder: (_, anim, __, child) =>
+                            FadeTransition(opacity: anim, child: child),
+                        transitionDuration: const Duration(milliseconds: 250),
+                      ),
+                    );
+                    // Setelah pop, mulai listen segera
+                    if (!v.isListening) v.startListening();
+                  }
+                  return;
+                }
+
+                // Sudah di mode voice — perilaku bawaan
                 if (onTap != null) {
                   onTap!();
                 } else if (v.isListening) {

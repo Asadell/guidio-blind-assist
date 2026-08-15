@@ -66,6 +66,11 @@ class AppModeProvider extends ChangeNotifier {
   AppMode _mode = AppMode.tuntun;
   AppMode get mode => _mode;
 
+  /// Mode sebelum perpindahan terakhir — dipakai oleh fitur "kembali"
+  /// (perintah suara atau tombol ✕ di VoiceScreen overlay).
+  AppMode? _previousMode;
+  AppMode? get previousMode => _previousMode;
+
   /// Verbositas panduan menurun setelah 3 kali pemakaian pertama per mode.
   final Map<AppMode, int> _visitCount = {};
   int visitCountFor(AppMode m) => _visitCount[m] ?? 0;
@@ -130,11 +135,20 @@ class AppModeProvider extends ChangeNotifier {
       final ok = await confirmLeave!(_mode, mode);
       if (!ok) return false;
     }
+    _previousMode = _mode; // simpan mode sebelumnya untuk goBack()
     _pendingPrefix = spokenPrefix;
     _mode = mode;
     notifyListeners();
     // Pengumuman kedatangan diucapkan `announceEntry` dari layar tujuan —
     // sesudah layarnya benar-benar terpasang.
     return true;
+  }
+
+  /// Kembali ke mode sebelumnya. Dipanggil oleh `VoiceIntent.actionGoBack`
+  /// atau tombol ✕ di VoiceScreen overlay. Fallback ke [AppMode.tuntun]
+  /// kalau tidak ada riwayat mode sebelumnya.
+  Future<bool> goBack({String? spokenPrefix}) async {
+    final target = _previousMode ?? AppMode.tuntun;
+    return setMode(target, spokenPrefix: spokenPrefix);
   }
 }

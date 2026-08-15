@@ -23,8 +23,14 @@ const List<(String, String)> _asDebugCatalog = [
 ];
 
 /// Mode Asisten Suara — bagian 11 IMPLEMENTASI.md, 25 state (AS-01..AS-25).
+/// [isOverlay] = true saat dimasukkan via Navigator push dari mode lain
+/// (fitur "Jarvis Global Mic"). Dalam mode overlay:
+/// - Tampil tombol ✕ (tutup) di pojok kanan atas.
+/// - VoiceProvider.onNavigateBack dipasang untuk pop otomatis setelah
+///   perintah suara yang mengubah mode dieksekusi.
 class VoiceScreen extends StatefulWidget {
-  const VoiceScreen({super.key});
+  final bool isOverlay;
+  const VoiceScreen({super.key, this.isOverlay = false});
 
   @override
   State<VoiceScreen> createState() => _VoiceScreenState();
@@ -58,6 +64,18 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       voice.onSpeak = (text) => context.read<TtsProvider>().speak(text, tier: SpeechTier.info);
       voice.onOpenSettings = _openSettings;
       voice.onAllFeaturesFailed = () {};
+
+      // Overlay: pasang callback agar VoiceProvider bisa meminta pop Navigator
+      // tanpa perlu tahu tentang BuildContext.
+      if (widget.isOverlay) {
+        voice.onNavigateBack = () {
+          if (mounted) Navigator.of(context).pop();
+        };
+        // Mulai mendengar langsung saat overlay dibuka.
+        if (!voice.isListening && voice.state == VoiceState.idle) {
+          voice.startListening();
+        }
+      }
     });
 
     _expiryCheckTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -74,6 +92,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     voice.onSpeak = null;
     voice.onOpenSettings = null;
     voice.onAllFeaturesFailed = null;
+    if (widget.isOverlay) voice.onNavigateBack = null;
     super.dispose();
   }
 
@@ -248,6 +267,24 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
               processingOverride: voice.isProcessing,
             ),
           ),
+
+          // ContextualActionSlot "Kembali" — hanya saat overlay push.
+          // Posisi konsisten dengan slot lampu di TuntunScreen (tepat di atas
+          // BottomActionBar) — pengguna terbiasa dengan lokasi yang sama.
+          if (widget.isOverlay)
+            Positioned(
+              left: 0, right: 0,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight,
+              child: ContextualActionSlot(
+                primaryLabel: 'Kembali',
+                primaryIcon: Icons.arrow_back_rounded,
+                onPrimary: () async {
+                  final nav = Navigator.of(context);
+                  context.read<TtsProvider>().speak('Kembali.', tier: SpeechTier.info);
+                  nav.pop();
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -421,9 +458,11 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
   }
 
   Widget _bubblePanel(double bottomInset, Widget child) {
+    // Geser ke atas jika overlay: ContextualActionSlot 'Kembali' ada di bawah.
+    final slotExtra = widget.isOverlay ? ContextualActionSlot.slotHeight : 0.0;
     return Positioned(
       left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-      bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+      bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2 + slotExtra,
       child: child,
     );
   }

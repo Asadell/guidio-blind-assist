@@ -2,6 +2,7 @@ export 'alert_card.dart';
 export 'bottom_action_bar.dart';
 export 'camera_health_toast.dart';
 export 'chat_bubble.dart';
+export 'contextual_action_slot.dart';
 export 'detection_card.dart';
 export 'distance_pill.dart';
 export 'full_screen_button.dart';

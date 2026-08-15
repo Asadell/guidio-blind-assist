@@ -69,18 +69,21 @@ class GuidioApp extends StatelessWidget {
         ),
 
         // VoiceProvider — butuh CameraProvider + DetectionProvider +
-        // AppModeProvider. AppModeProvider ikut disuntik supaya perintah suara
-        // "buka mode X" memindah state SENDIRI, tanpa bergantung layar yang
-        // sedang aktif memasang callback (bagian 4.1: konfirmasi TTS tidak
-        // boleh mendahului perubahan state).
-        ChangeNotifierProxyProvider3<CameraProvider, DetectionProvider, AppModeProvider, VoiceProvider>(
+        // AppModeProvider + FindObjectProvider. AppModeProvider ikut disuntik
+        // supaya perintah suara "buka mode X" memindah state SENDIRI, tanpa
+        // bergantung layar yang sedang aktif memasang callback (bagian 4.1:
+        // konfirmasi TTS tidak boleh mendahului perubahan state).
+        // FindObjectProvider disuntik untuk mendukung perintah suara
+        // "carikan [barang]" dari mode mana pun (fitur Jarvis Global Mic).
+        ChangeNotifierProxyProvider4<CameraProvider, DetectionProvider, AppModeProvider, FindObjectProvider, VoiceProvider>(
           create: (ctx) => VoiceProvider(
             ctx.read<CameraProvider>(),
             ctx.read<DetectionProvider>(),
             ctx.read<AppModeProvider>(),
+            ctx.read<FindObjectProvider>(),
           ),
-          update: (ctx, cam, det, appMode, prev) =>
-              prev ?? VoiceProvider(cam, det, appMode),
+          update: (ctx, cam, det, appMode, findObj, prev) =>
+              prev ?? VoiceProvider(cam, det, appMode, findObj),
         ),
       ],
       child: Builder(

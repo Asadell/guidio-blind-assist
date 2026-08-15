@@ -21,11 +21,20 @@ class CameraProvider extends ChangeNotifier {
   int  _frameCount  = 0;
 
   String? _healthMessage; // pesan camera health untuk UI
+  bool    _isDark    = false; // hasil on-device brightness check
+  bool    _isTorchOn = false; // status flashlight
 
-  CameraController? get controller     => _controller;
-  bool              get isInitialized  => _initialized;
-  bool              get isStreaming     => _streaming;
-  String?           get healthMessage  => _healthMessage;
+  CameraController? get controller    => _controller;
+  bool              get isInitialized => _initialized;
+  bool              get isStreaming    => _streaming;
+  String?           get healthMessage => _healthMessage;
+
+  /// True saat rata-rata kecerahan frame < threshold — UI bereaksi
+  /// dengan menampilkan ContextualActionSlot tawaran nyalakan lampu.
+  bool get isDark    => _isDark;
+
+  /// True saat flashlight sedang menyala.
+  bool get isTorchOn => _isTorchOn;
 
   // Callback — dipanggil dari CameraProvider ketika frame siap
   // DetectionProvider/InferenceProvider yang subscribe
@@ -69,14 +78,14 @@ class CameraProvider extends ChangeNotifier {
       _frameCount++;
 
       // [1] On-device brightness check setiap frame — O(100) sangat ringan
-      if (_isTooDark(image)) {
-        if (_healthMessage != 'Kamera terlalu gelap') {
-          _healthMessage = 'Kamera terlalu gelap';
-          notifyListeners();
-          TTSService.instance.speak('Kamera terlalu gelap');
-        }
-        return;
+      final tooDark = _isTooDark(image);
+      if (tooDark != _isDark) {
+        _isDark = tooDark;
+        // Notifikasi UI tanpa TTS — ContextualActionSlot di TuntunScreen
+        // yang bertanggung jawab bicara "Ini gelap, apakah perlu nyalain lampu?"
+        notifyListeners();
       }
+      if (tooDark) return;
 
       // [2] Cek orientasi dari accelerometer setiap 30 frame
       if (_frameCount % 30 == 0) {
@@ -107,7 +116,28 @@ class CameraProvider extends ChangeNotifier {
     if (!_streaming || _controller == null) return;
     _controller!.stopImageStream();
     _streaming = false;
+    // Reset dark state saat stream berhenti
+    if (_isDark) {
+      _isDark = false;
+      notifyListeners();
+    }
   }
+
+  /// Nyalakan atau matikan flashlight secara eksplisit.
+  /// Aman dipanggil saat stream berjalan maupun tidak.
+  Future<void> setTorch(bool on) async {
+    if (_controller == null || !_initialized) return;
+    try {
+      await _controller!.setFlashMode(on ? FlashMode.torch : FlashMode.off);
+      _isTorchOn = on;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[CameraProvider] setTorch($on) error: $e');
+    }
+  }
+
+  /// Toggle flashlight — nyala → mati, mati → nyala.
+  Future<void> toggleTorch() => setTorch(!_isTorchOn);
 
   /// Ambil foto dan kembalikan **path berkas**, bukan byte-nya.
   ///

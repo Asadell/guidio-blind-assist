@@ -51,6 +51,8 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   bool _warmingUp = true;
   bool _speaking = false;
   bool _silentMode = false;
+  bool _darkDismissed = false; // user pilih "Lewati" untuk tawaran lampu
+  bool _wasDark = false;        // track transisi gelap untuk TTS satu kali
   String? _debugOverride;
 
   final List<_GhostDetection> _ghosts = [];
@@ -72,6 +74,8 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
         context.read<DetectionProvider>().startRealtime();
         context.read<CameraProvider>().startStream();
       }
+      // Listener dark detection — TTS satu kali saat transisi gelap
+      context.read<CameraProvider>().addListener(_onCameraDarkChanged);
     });
 
     _warmupTimer = Timer(const Duration(milliseconds: 1200), () {
@@ -89,6 +93,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.removeObserver(this);
     _warmupTimer?.cancel();
     _speakingPoll?.cancel();
+    context.read<CameraProvider>().removeListener(_onCameraDarkChanged);
     context.read<DetectionProvider>().stopRealtime();
     context.read<CameraProvider>().stopStream();
     super.dispose();
@@ -124,6 +129,22 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       camProvider.startStream();
       context.read<DetectionProvider>().startRealtime();
     }
+  }
+
+  /// Dipanggil setiap kali CameraProvider notify — deteksi transisi gelap
+  /// dan bicara TTS satu kali saat pertama kali menjadi gelap.
+  void _onCameraDarkChanged() {
+    if (!mounted) return;
+    final cam = context.read<CameraProvider>();
+    final nowDark = cam.isDark && !cam.isTorchOn && _hasCameraPermission;
+    if (nowDark && !_wasDark && !_darkDismissed) {
+      TTSService.instance.speak('Sekitar gelap. Perlu nyalakan lampu?');
+    }
+    if (!cam.isDark && _darkDismissed) {
+      // Lingkungan sudah terang lagi, reset dismiss
+      setState(() => _darkDismissed = false);
+    }
+    _wasDark = nowDark;
   }
 
   Future<void> _requestCameraPermission() async {
@@ -192,6 +213,9 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       _updateGhosts(dets);
     }
 
+    // Dark detection + tawaran lampu
+    final isDark = cam.isDark && !cam.isTorchOn && !_darkDismissed && _hasCameraPermission;
+
     final rz = det.riskZone;
     final banner = _resolveBanner(global, cam, rz);
     final hasBanner = banner != null;
@@ -233,7 +257,30 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
               onAction: _requestCameraPermission,
             )
           else if (!warmingUp)
-            ..._buildDetectionZone(context, bottomInset, dets, cam),
+            ..._buildDetectionZone(context, bottomInset, dets, cam, isDark),
+
+          // ContextualActionSlot — tawaran nyalakan lampu saat gelap.
+          // Selalu di posisi yang sama: tepat di atas BottomActionBar.
+          if (isDark)
+            Positioned(
+              left: 0, right: 0,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight,
+              child: ContextualActionSlot(
+                message: 'Sekitar gelap — perlu nyalakan lampu?',
+                primaryLabel: 'Nyalakan Lampu',
+                primaryIcon: Icons.flashlight_on_rounded,
+                onPrimary: () {
+                  cam.setTorch(true);
+                  TTSService.instance.speak('Lampu dinyalakan.');
+                },
+                secondaryLabel: 'Lewati',
+                secondaryIcon: Icons.close_rounded,
+                onSecondary: () {
+                  setState(() => _darkDismissed = true);
+                  TTSService.instance.speak('Oke.');
+                },
+              ),
+            ),
 
           Positioned(
             left: 0, right: 0, bottom: 0,
@@ -264,8 +311,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     return null;
   }
 
-  List<Widget> _buildDetectionZone(BuildContext context, double bottomInset, List<Detection> dets, CameraProvider cam) {
+  List<Widget> _buildDetectionZone(BuildContext context, double bottomInset, List<Detection> dets, CameraProvider cam, bool isDark) {
     final widgets = <Widget>[];
+    // Jika slot lampu aktif, geser semua kartu ke atas sejumlah tinggi slot.
+    final slotExtra = isDark ? ContextualActionSlot.slotHeightWithMsg : 0.0;
 
     if (_debugOverride == 'DO-21') {
       widgets.add(_bottomSlot(bottomInset, const AlertCard(
@@ -280,7 +329,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     if (health != null && dets.isEmpty && _debugOverride == null) {
       widgets.add(Positioned(
         left: 0, right: 0,
-        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s6 + 44,
+        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s6 + 44 + slotExtra,
         child: Center(child: CameraHealthToast(issue: _mapHealthIssue(health))),
       ));
     }
@@ -292,7 +341,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       widgets.add(Positioned(
         left: AppSpacing.screenMargin,
         right: AppSpacing.screenMargin,
-        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2 + slotExtra,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
