@@ -16,70 +16,13 @@ import time
 import numpy as np
 from loguru import logger
 
-# Terjemahan target Bahasa Indonesia → prompt Inggris untuk YOLOE.
-# COCO sudah tercakup lewat tabel object_labels; peta di sini melengkapi
-# barang rumah tangga umum yang TIDAK ada di COCO tapi sering dicari.
-EXTRA_ID_TO_EN: dict[str, str] = {
-    "dompet": "wallet",
-    "kunci": "keys",
-    "kunci motor": "motorcycle keys",
-    "kunci rumah": "house keys",
-    "hp": "cell phone",
-    "handphone": "cell phone",
-    "kacamata": "eyeglasses",
-    "botol minum": "water bottle",
-    "botol air": "water bottle",
-    "tas": "bag",
-    "tas ransel": "backpack",
-    "remote tv": "tv remote control",
-    "sepatu": "shoes",
-    "sandal": "sandals",
-    "charger": "phone charger",
-    "kabel charger": "charging cable",
-    "headset": "headphones",
-    "earphone": "earphones",
-    "jaket": "jacket",
-    "topi": "hat",
-    "obat": "medicine box",
-    "masker": "face mask",
-    "jam tangan": "wristwatch",
-    "power bank": "power bank",
-    "korek": "lighter",
-    "sisir": "comb",
-    "handuk": "towel",
-    "bantal": "pillow",
-    "selimut": "blanket",
-    "piring": "plate",
-    "panci": "cooking pot",
-    "wajan": "frying pan",
-    "payung lipat": "folding umbrella",
-    "tongkat": "walking cane",
-    "uang": "banknote",
-    "kartu": "plastic card",
-    "kotak": "box",
-    "tempat sampah": "trash bin",
-    "saklar": "light switch",
-    "stop kontak": "power outlet",
-    "pintu": "door",
-    "gagang pintu": "door handle",
-    "meja": "table",
-    "kursi": "chair",
-}
-
-# Tinggi nyata (cm) untuk estimasi jarak similar-triangle pada objek non-COCO.
-EXTRA_HEIGHTS_CM: dict[str, int] = {
-    "wallet": 10, "keys": 7, "eyeglasses": 4, "water bottle": 25,
-    "bag": 35, "backpack": 45, "tv remote control": 18, "shoes": 12,
-    "sandals": 5, "phone charger": 8, "charging cable": 10,
-    "headphones": 18, "earphones": 5, "jacket": 60, "hat": 12,
-    "medicine box": 10, "face mask": 10, "wristwatch": 4,
-    "power bank": 10, "lighter": 8, "comb": 18, "towel": 40,
-    "pillow": 35, "blanket": 40, "plate": 3, "cooking pot": 20,
-    "frying pan": 8, "folding umbrella": 30, "walking cane": 95,
-    "banknote": 7, "plastic card": 5, "box": 25, "trash bin": 60,
-    "light switch": 8, "power outlet": 8, "door": 200,
-    "door handle": 12, "table": 75, "motorcycle keys": 7, "house keys": 7,
-}
+from services.find_object_constants import (
+    COLOR_MAP,
+    EXTRA_HEIGHTS_CM,
+    EXTRA_ID_TO_EN,
+    FILLER_WORDS,
+    SEARCH_PREFIXES,
+)
 
 FOCAL_LENGTH_PX = 615
 DEFAULT_HEIGHT_CM = 20
@@ -125,27 +68,78 @@ class FindObjectService:
     # ── Terjemahan target ────────────────────────────────────────────────
 
     def resolve_prompt(self, target_id: str, label_map: dict[str, str]) -> str:
-        """Ubah nama barang Bahasa Indonesia jadi prompt Inggris untuk YOLOE.
+        """Ubah nama barang Bahasa Indonesia (beserta warna/kata sifat) jadi prompt Inggris untuk YOLOE.
 
         `label_map` = {label_local: label_en} dari tabel object_labels.
-        Kalau tidak ketemu di mana pun, teks aslinya dipakai apa adanya —
-        YOLOE open-vocabulary, jadi tetap ada peluang ketemu.
         """
-        key = target_id.strip().lower()
+        raw_key = target_id.strip().lower()
+
+        # Clean search prefixes & filler words if passed directly to backend
+        key = raw_key
+        sorted_prefixes = sorted(SEARCH_PREFIXES, key=len, reverse=True)
+        for pref in sorted_prefixes:
+            if key.startswith(pref + " ") or key == pref:
+                key = key[len(pref):].strip()
+                break
+            elif " " + pref + " " in key:
+                key = key.replace(" " + pref + " ", " ").strip()
+
+        sorted_fillers = sorted(FILLER_WORDS, key=len, reverse=True)
+        for filler in sorted_fillers:
+            if key.startswith(filler + " "):
+                key = key[len(filler):].strip()
+            if key.endswith(" " + filler):
+                key = key[:-len(filler)].strip()
+            key = key.replace(f" {filler} ", " ").strip()
+
+        if not key:
+            key = raw_key
+
+        # Direct match in EXTRA_ID_TO_EN or DB label_map
         if key in EXTRA_ID_TO_EN:
             return EXTRA_ID_TO_EN[key]
         if key in label_map:
             return label_map[key]
-        # Coba pencocokan sebagian: "tas merah" → "tas"
-        for id_word, en_word in EXTRA_ID_TO_EN.items():
-            if key.startswith(id_word + " ") or key.endswith(" " + id_word):
-                sisa = key.replace(id_word, "").strip()
-                return f"{sisa} {en_word}".strip()
-        for local, en in label_map.items():
-            if key.startswith(local + " ") or key.endswith(" " + local):
-                sisa = key.replace(local, "").strip()
-                return f"{sisa} {en}".strip()
-        return key
+
+        # Clean filler words like "warna"
+        cleaned_key = key.replace(" warna ", " ").replace(" warna", "").strip()
+
+        # Check for color/modifier in COLOR_MAP
+        found_color_en = None
+        obj_phrase = cleaned_key
+
+        sorted_colors = sorted(COLOR_MAP.keys(), key=len, reverse=True)
+        for col_id in sorted_colors:
+            if col_id in cleaned_key:
+                found_color_en = COLOR_MAP[col_id]
+                obj_phrase = cleaned_key.replace(col_id, "").strip()
+                break
+
+        # Resolve the object part
+        obj_en = None
+        if obj_phrase in EXTRA_ID_TO_EN:
+            obj_en = EXTRA_ID_TO_EN[obj_phrase]
+        elif obj_phrase in label_map:
+            obj_en = label_map[obj_phrase]
+        else:
+            sorted_extra = sorted(EXTRA_ID_TO_EN.keys(), key=len, reverse=True)
+            for id_word in sorted_extra:
+                if id_word in obj_phrase:
+                    obj_en = EXTRA_ID_TO_EN[id_word]
+                    break
+            if not obj_en:
+                sorted_labels = sorted(label_map.keys(), key=len, reverse=True)
+                for local in sorted_labels:
+                    if local in obj_phrase:
+                        obj_en = label_map[local]
+                        break
+
+        if not obj_en:
+            obj_en = obj_phrase if obj_phrase else key
+
+        if found_color_en:
+            return f"{found_color_en} {obj_en}".strip()
+        return obj_en
 
     # ── Inferensi ────────────────────────────────────────────────────────
 
