@@ -23,6 +23,8 @@ gagal di saat paling dibutuhkan.
 6. [Struktur folder](#6-struktur-folder)
 7. [Keterbatasan yang perlu diketahui](#7-keterbatasan-yang-perlu-diketahui)
 8. [Uji cepat](#8-uji-cepat)
+9. [LLM Lokal (Qwen)](#9-llm-lokal-qwen)
+10. [Koneksi HP ke Backend Laptop](#10-koneksi-hp-ke-backend-laptop)
 
 ---
 
@@ -52,7 +54,7 @@ cd backend
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 
-cp .env.example .env      # isi kredensial PostgreSQL dan kunci Anthropic
+cp .env.example .env  # isi kredensial PostgreSQL
 
 venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
@@ -195,10 +197,10 @@ kamera.
 Memahami perintah suara yang tidak dikenali parser lokal di ponsel.
 
 Urutan usahanya: **cocokkan frasa persis, lalu kemiripan kata dan nama
-barang, baru LLM.**
+barang, baru Qwen lokal.**
 
 Yang menarik: kalau ada **dua kemungkinan yang sama sama masuk akal**, server
-sengaja **tidak** memanggil LLM dan langsung bertanya balik.
+sengaja **tidak** memanggil Qwen lokal dan langsung bertanya balik.
 
 ```json
 POST {"text": "kenal kunci"}
@@ -211,12 +213,12 @@ POST {"text": "kenal kunci"}
 ```
 
 Alasannya: menebak salah lebih mahal daripada satu pertanyaan, karena
-penggunanya tidak bisa melihat layar untuk mengoreksi. Perintah untuk LLM pun
+penggunanya tidak bisa melihat layar untuk mengoreksi. Perintah untuk Qwen lokal pun
 secara eksplisit menyuruhnya menjawab "tidak tahu" saat ragu.
 
 #### `POST /api/narasi`
 
-Mengubah hasil deteksi menjadi kalimat natural memakai Claude Haiku.
+Mengubah hasil deteksi menjadi kalimat natural memakai Qwen2.5-1.5B-Instruct lokal.
 Masukannya **teks terstruktur, bukan gambar**:
 
 ```
@@ -225,7 +227,7 @@ Masukannya **teks terstruktur, bukan gambar**:
 ```
 
 Ini mencegah AI "salah lihat" benda yang tidak ada, jauh lebih murah, dan
-lebih cepat. Kalau Claude gagal atau kuncinya tidak diisi, endpoint ini
+lebih cepat. Kalau Qwen lokal gagal atau modelnya belum diunduh, endpoint ini
 otomatis memakai template sederhana dan tidak pernah membuat server berhenti.
 
 #### `POST /api/uang` (opsional)
@@ -362,6 +364,7 @@ backend/
 │   ├── uang.py              Pengenalan uang (opsional)
 │   ├── asisten.py           Perintah suara dan riwayat percakapan
 │   ├── risk_zone.py         Zona rawan
+│   ├── describe.py          Deskripsi suasana via kamera (Moondream → Qwen)
 │   └── support.py           Kemampuan, label, manifest, telemetri, antrean
 ├── services/
 │   ├── yolo_service.py         Deteksi rintangan
@@ -372,6 +375,8 @@ backend/
 │   ├── uang_service.py         Pengenalan uang di server
 │   ├── risk_zone_service.py    Zona rawan
 │   ├── camera_health.py        Pemeriksaan kondisi kamera
+│   ├── moondream_service.py    Deskripsi scene via kamera (VLM)
+│   ├── qwen_service.py         LLM narasi & terjemahan (Qwen2.5-1.5B lokal)
 │   └── repository.py           Seluruh akses basis data
 └── utils/
     └── image_utils.py       Bantuan konversi gambar
@@ -393,9 +398,7 @@ backend/
    belum dikenali. Untuk emisi 2022, model perlu dilatih ulang; struktur API
    dan tabel denominasinya sudah siap menampung.
 
-4. **`ANTHROPIC_API_KEY` tersimpan apa adanya di `.env`.** Berkas itu sudah
-   dikecualikan dari git, tetapi sebaiknya kuncinya diganti sebelum
-   repositori dibagikan.
+4. **File model Qwen belum ada secara default.** Download dulu ke folder `models/` sebelum narasi dan terjemahan aktif. Tanpa model, endpoint `/api/narasi` dan `/api/describe` tetap bekerja dengan template fallback sederhana.
 
 5. **Berkas model besar tidak ikut ke git** (`mobileclip_blt.ts`,
    `yoloe-11s-seg.pt`, dan berkas `.pt` serta `.onnx` lainnya). Ultralytics
@@ -426,3 +429,147 @@ curl -s -X POST $B/api/cari-objek -F "target=dompet" -F "file=@foto.jpg"
 # Jalur tiga zona
 curl -s -X POST $B/api/navigasi -F "file=@foto.jpg" -F "lat=0" -F "lng=0"
 ```
+
+---
+
+## 9. LLM Lokal (Qwen)
+
+Server tidak lagi bergantung pada API eksternal untuk menghasilkan teks.
+Narasi dan terjemahan dikerjakan oleh **Qwen2.5-1.5B-Instruct** yang berjalan
+langsung di GPU laptop, tanpa koneksi internet dan tanpa biaya per-panggilan.
+
+### Peran Qwen di GUIDIO
+
+Qwen bukan VLM (tidak melihat gambar). Tugasnya hanya tiga:
+
+| Tugas | Dipanggil dari | Output |
+|---|---|---|
+| Narasi deteksi YOLO | `POST /api/narasi` | Kalimat Bahasa Indonesia natural dari data terstruktur |
+| Terjemahan caption | `POST /api/describe` | Caption Inggris (Moondream2) → Bahasa Indonesia TTS-friendly |
+| Intent semantik (Lapis 3) | `POST /api/intent` | Satu intent_key, hanya jika fuzzy matching gagal |
+
+Gambar diproses sepenuhnya oleh Moondream2 (VLM) dan YOLO. Qwen hanya
+menerima teks.
+
+### Cara install
+
+```bash
+# 1. Install llama-cpp-python dengan akselerasi CUDA (RTX 3050)
+cd backend
+source venv/bin/activate
+CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
+
+# 2. Download model Qwen (~1 GB) ke folder models/
+mkdir -p models
+huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
+  qwen2.5-1.5b-instruct-q4_k_m.gguf \
+  --local-dir models/
+```
+
+### Konfigurasi di `.env`
+
+```
+# Path ke file model GGUF (relatif dari folder backend/)
+QWEN_MODEL_PATH=models/qwen2.5-1.5b-instruct-q4_k_m.gguf
+
+# Jumlah layer yang dimuat ke GPU. -1 = semua layer ke GPU (RTX 3050 = aman)
+QWEN_GPU_LAYERS=-1
+```
+
+### Jika model belum didownload
+
+Server tetap berjalan normal. Qwen service terdaftar tapi `available=False`.
+Semua caller jatuh ke template fallback — tidak ada crash, tidak ada error
+yang terlihat pengguna. Log server menampilkan peringatan download sekali saja
+saat startup.
+
+### Estimasi VRAM (RTX 3050 4GB)
+
+```
+YOLO11n          ~200 MB
+Moondream2 FP16  ~1.2 GB
+Qwen 1.5B Q4_K_M ~1.0 GB
+─────────────────────────
+Total            ~2.4 GB  (dari 4 GB — aman)
+```
+
+---
+
+## 10. Koneksi HP ke Backend Laptop
+
+Skenario ini untuk situasi APK sudah di-build dan diinstall di HP fisik,
+namun backend jalan di laptop yang terhubung ke HP via USB atau WiFi.
+
+### Cara paling mudah: WiFi satu jaringan
+
+```
+Laptop (backend)  ←──WiFi──→  HP (APK Guidio)
+```
+
+**Langkah di laptop:**
+
+```bash
+# 1. Jalankan backend dan dengarkan semua interface, bukan hanya localhost
+cd backend
+source venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# 2. Cari IP laptop di jaringan WiFi yang sama
+ip addr show   # Linux — cari interface wlan0 atau eth0, contoh: 192.168.1.5
+```
+
+**Langkah di HP:**
+
+1. Buka aplikasi Guidio
+2. Ucapkan **"pengaturan"** atau tekan tombol **Pilih Mode → Pengaturan**
+3. Di bagian **Alamat Server**, isi: `192.168.1.5:8000`
+   (ganti dengan IP laptop Anda)
+4. Tekan **Uji Sambungan** — server akan membalas waktu tempuh
+5. Tekan **Simpan**
+
+> **Catatan:** Angka `10.0.2.2:8000` adalah alamat bawaan untuk emulator
+> Android (bukan HP fisik). Untuk HP fisik, selalu isi IP laptop yang
+> terlihat di jaringan WiFi.
+
+### Cara alternatif: USB (ADB reverse)
+
+Jika HP dan laptop tidak dalam jaringan WiFi yang sama, atau WiFi kampus
+memblokir traffic antar-device:
+
+```bash
+# Sambungkan HP ke laptop via kabel USB, aktifkan USB Debugging di HP
+# Lalu di laptop:
+adb reverse tcp:8000 tcp:8000
+```
+
+Dengan perintah ini, HP bisa mengakses `localhost:8000` laptop seolah-olah
+server itu ada di HP sendiri. Isi alamat server di Guidio: `localhost:8000`
+
+### Troubleshooting koneksi
+
+| Gejala | Kemungkinan penyebab | Solusi |
+|---|---|---|
+| "Tidak bisa menjangkau server" | Backend belum jalan atau salah IP | Cek `ip addr show` dan pastikan backend sudah `--host 0.0.0.0` |
+| Koneksi timeout | Firewall laptop memblokir port 8000 | Buka port: `sudo firewall-cmd --add-port=8000/tcp --permanent` |
+| HP dan laptop beda WiFi | Isolasi client di jaringan kampus | Pakai metode USB (ADB reverse) |
+| IP laptop berubah | DHCP memberi IP baru | Set IP statis di laptop, atau pakai ADB reverse |
+
+### Build APK dan install ke HP
+
+```bash
+# Di folder guidio_app
+
+# Build APK (mode release untuk performa optimal)
+flutter build apk --release
+
+# Lokasi file APK yang dihasilkan:
+# build/app/outputs/flutter-apk/app-release.apk
+
+# Install langsung ke HP yang tersambung via USB:
+flutter install
+# atau manual:
+adb install build/app/outputs/flutter-apk/app-release.apk
+```
+
+> **Tip:** Untuk pengembangan/testing tanpa build penuh, `flutter run --release`
+> langsung menjalankan di HP yang tersambung USB tanpa perlu `adb install`.

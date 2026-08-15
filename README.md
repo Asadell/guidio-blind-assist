@@ -41,15 +41,16 @@ gara gara sinyal hilang.
 | Istilah | Artinya |
 |---|---|
 | **On-device** | Diproses langsung di dalam ponsel, tanpa mengirim apa pun ke internet |
-| **Server** / **backend** | Komputer terpisah yang menangani tugas berat, dihubungi lewat internet |
-| **Model AI** | Berkas hasil pelatihan komputer yang bisa mengenali sesuatu, misalnya mengenali "ini orang" |
+| **Server** / **backend** | Komputer terpisah yang menangani tugas berat, dihubungi lewat jaringan |
+| **Model AI** | Berkas hasil pelatihan komputer yang bisa mengenali sesuatu |
 | **TFLite** | Format model AI berukuran kecil yang dirancang agar bisa jalan di ponsel |
 | **OCR** | Teknologi membaca tulisan dari foto |
-| **LLM** | AI bahasa (sejenis ChatGPT) yang bertugas menyusun kalimat |
+| **LLM** | AI bahasa yang bertugas menyusun kalimat, berjalan lokal di laptop server |
+| **VLM** | AI bahasa + visi, bisa memahami gambar (Moondream2 di GUIDIO) |
 | **TTS** | Text to Speech, mesin yang mengubah tulisan menjadi suara |
 | **STT** | Speech to Text, mesin yang mengubah suara menjadi tulisan |
 | **Endpoint** | Alamat di server yang dipanggil aplikasi untuk meminta sesuatu |
-| **State** | Satu kondisi tampilan layar, misalnya "sedang memproses" atau "gagal terhubung" |
+| **GGUF** | Format model LLM yang dioptimalkan untuk inferensi lokal via llama-cpp |
 
 ---
 
@@ -63,8 +64,9 @@ gara gara sinyal hilang.
 6. [Stack teknologi](#6-stack-teknologi)
 7. [Struktur repositori](#7-struktur-repositori)
 8. [Menjalankan](#8-menjalankan)
-9. [Status pengerjaan yang jujur](#9-status-pengerjaan-yang-jujur)
-10. [Landasan akademis](#10-landasan-akademis)
+9. [Koneksi HP fisik ke backend laptop](#9-koneksi-hp-fisik-ke-backend-laptop)
+10. [Status pengerjaan yang jujur](#10-status-pengerjaan-yang-jujur)
+11. [Landasan akademis](#11-landasan-akademis)
 
 ---
 
@@ -125,14 +127,13 @@ Ini pembagian yang paling penting dipahami sebelum membaca kode mana pun.
 
 **Butuh server:**
 
-- OCR teks panjang, segmentasi jalur, asisten suara berbasis LLM, dan
-  pencarian objek dengan prompt teks bebas.
+- OCR teks panjang, segmentasi jalur, asisten suara berbasis LLM, pencarian
+  objek dengan prompt teks bebas, dan deskripsi suasana via kamera.
 
 Ketika server mati, aplikasi tidak berhenti: ia menyebut fitur mana yang
 hilang dan meneruskan yang masih hidup. Mode Navigasi khususnya **tidak
 pernah dinonaktifkan saat offline**, karena deteksi rintangannya on-device
 dan mematikannya akan mencabut fungsi keselamatan yang sebenarnya masih ada.
-Satu-satunya mode yang benar-benar dinonaktifkan offline adalah Cari Objek.
 
 ---
 
@@ -151,16 +152,17 @@ Satu-satunya mode yang benar-benar dinonaktifkan offline adalah Cari Objek.
 │  TtsQueue bertingkat: Critical memotong semua, Warning memotong      │
 │  Info, Info dibuang bila menunggu lebih dari 2 detik                 │
 └────────────────────────────────┬─────────────────────────────────────┘
-                                 │ jaringan, opsional
+                                 │ WiFi / USB (ADB reverse)
 ┌────────────────────────────────▼─────────────────────────────────────┐
-│  SERVER (FastAPI)                                                    │
+│  SERVER (FastAPI — berjalan di laptop)                               │
 │                                                                      │
 │  /ws/detect       ──▶ YOLO           ──▶ deteksi mentah              │
 │  /api/ocr         ──▶ Tesseract      ──▶ teks + estimasi durasi baca │
 │  /api/navigasi    ──▶ PIDNet / CV    ──▶ 3 zona jalur                │
 │  /api/cari-objek  ──▶ YOLOE          ──▶ objek dari prompt teks      │
-│  /api/intent      ──▶ katalog + LLM  ──▶ resolusi perintah suara     │
-│  /api/narasi      ──▶ Claude Haiku   ──▶ kalimat natural             │
+│  /api/describe    ──▶ Moondream2     ──▶ caption ──▶ Qwen (EN→ID)    │
+│  /api/intent      ──▶ katalog + Qwen ──▶ resolusi perintah suara     │
+│  /api/narasi      ──▶ Qwen lokal     ──▶ kalimat natural             │
 │                                                                      │
 │  PostgreSQL: telemetri, crash report, antrean offline, kamus label,  │
 │              manifest model, sesi percakapan, zona rawan             │
@@ -177,16 +179,21 @@ di keduanya, terjadi penyaringan ganda yang membuang deteksi valid.
 **2. LLM menerima teks, bukan gambar.**
 Model deteksi bekerja lebih dulu, hasilnya dikirim sebagai teks terstruktur
 ke LLM. Ini mencegah halusinasi visual, jauh lebih murah, dan lebih cepat.
+LLM yang dipakai adalah **Qwen2.5-1.5B-Instruct** yang berjalan lokal di
+GPU laptop, tanpa API eksternal.
 
-**3. Antrean suara bertingkat.**
+**3. VLM (Moondream2) untuk deskripsi suasana.**
+Saat pengguna bertanya "apa yang ada di depanku", Moondream2 menganalisis
+gambar kamera dan menghasilkan caption Bahasa Inggris. Qwen kemudian
+menerjemahkannya ke Bahasa Indonesia yang TTS-friendly.
+
+**4. Antrean suara bertingkat.**
 Critical memotong apa pun dan tidak bisa dipotong pengguna. Warning memotong
 Info. Info mengantre dan dibuang kalau sudah menunggu lebih dari 2 detik.
-Tanpa aturan ini, jarak yang berubah terus menerus menjadi banjir suara.
 
-**4. Nominal uang tidak pernah ditebak.**
+**5. Nominal uang tidak pernah ditebak.**
 Di bawah ambang keyakinan, yang muncul hanya instruksi perbaikan, bukan
-angka. Salah menyebut nominal berarti kerugian uang nyata, jadi false
-positive di sini jauh lebih berbahaya daripada false negative.
+angka. Salah menyebut nominal berarti kerugian uang nyata.
 
 ---
 
@@ -200,8 +207,9 @@ dekat, jalur kiri tampak lebih aman"* memakai dua jalur berbeda.
 Tidak butuh internet, tidak ada latensi API. Untuk peringatan keselamatan,
 kecepatan adalah segalanya.
 
-**Jalur lambat (LLM), hanya saat pengguna bertanya.**
-Deteksi diformat menjadi teks terstruktur, lalu dikirim ke Claude Haiku:
+**Jalur lambat (LLM lokal), hanya saat pengguna bertanya.**
+Deteksi diformat menjadi teks terstruktur, lalu dikirim ke Qwen2.5-1.5B
+yang berjalan di GPU laptop:
 
 ```
 Objek terdeteksi kamera saat ini:
@@ -209,12 +217,10 @@ Objek terdeteksi kamera saat ini:
 - motor, jarak 2.8 meter, posisi kanan, bahaya: warning
 ```
 
-Claude tidak pernah melihat gambar. Ia hanya merangkai fakta yang sudah
+Qwen tidak pernah melihat gambar. Ia hanya merangkai fakta yang sudah
 diverifikasi model deteksi menjadi kalimat. LLM di sini bukan untuk melihat,
-melainkan untuk menyusun bahasa.
-
-Template tidak bisa menghasilkan saran relasional seperti *"sebaiknya
-berhenti sejenak dan geser ke kiri"*, dan itulah alasan jalur LLM tetap ada.
+melainkan untuk menyusun bahasa. Gambar hanya dilihat oleh Moondream2 saat
+fitur deskripsi suasana diaktifkan.
 
 ### Naskah darurat
 
@@ -237,7 +243,8 @@ pengguna mengenali bahaya dari kata pertama yang terdengar.
 | Pencarian objek | YOLOE open-vocabulary (prompt teks) |
 | Segmentasi jalur | PIDNet-S ONNX, dengan cadangan heuristik OpenCV |
 | OCR | Tesseract, bahasa `ind` dan `eng` |
-| LLM | Claude Haiku, masukan berupa teks |
+| Deskripsi suasana | Moondream2 (~2B, VLM, GPU lokal) |
+| LLM narasi & terjemahan | Qwen2.5-1.5B-Instruct GGUF Q4_K_M (lokal, via llama-cpp-python) |
 | Ucapan | `speech_to_text` dan `flutter_tts`, keduanya `id-ID` |
 | Getar | paket `vibration`, pola berbeda per tier |
 | Backend | FastAPI, Python |
@@ -264,9 +271,10 @@ project/
 │   └── assets/models/             ssd_mobilenet.tflite, uang_rupiah.tflite
 └── backend/                       Server FastAPI
     ├── README.md                  Panduan backend dan rujukan endpoint
+    ├── models/                    File GGUF Qwen (download manual, tidak di git)
     ├── db/                        Skema PostgreSQL dan data rujukan
     ├── routers/                   Endpoint per fitur
-    └── services/                  YOLO, YOLOE, segmentasi, OCR, intent, uang
+    └── services/                  YOLO, YOLOE, Moondream2, Qwen, OCR, intent
 ```
 
 ---
@@ -294,7 +302,7 @@ venv/bin/pip install -r requirements.txt
 
 createdb -h localhost -U postgres vinara_dev
 
-cp .env.example .env      # isi kredensial PostgreSQL dan kunci Anthropic
+cp .env.example .env      # isi kredensial PostgreSQL
 venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -314,12 +322,81 @@ Aplikasi tetap berjalan tanpa backend. Deteksi rintangan dan pengenalan uang
 berfungsi penuh karena keduanya on-device; mode lain menyebut keterbatasannya
 sendiri.
 
-Alamat server bawaan adalah `10.0.2.2:8000` (emulator Android). Untuk
-perangkat fisik, ganti lewat layar Pengaturan di dalam aplikasi.
+---
+
+## 9. Koneksi HP fisik ke backend laptop
+
+Skenario: APK sudah di-build dan diinstall di HP fisik, backend berjalan
+di laptop yang tersambung ke HP lewat WiFi atau kabel USB.
+
+### Cara 1 — WiFi (paling mudah)
+
+```
+Laptop (backend)  ←──WiFi──→  HP (APK Guidio)
+```
+
+**Di laptop:**
+
+```bash
+# Pastikan backend dijalankan dengan --host 0.0.0.0 agar bisa diakses HP
+cd backend && source venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Cari IP laptop di jaringan WiFi yang sama
+ip addr show   # cari bagian wlan0, contoh: 192.168.1.5
+```
+
+**Di HP:**
+
+1. Buka Guidio, ucapkan **"pengaturan"**
+   atau tekan **Pilih Mode → Pengaturan**
+2. Di kolom **Alamat Server**, isi: `192.168.1.5:8000`
+3. Tekan **Uji Sambungan** — waktu tempuh akan muncul kalau berhasil
+4. Tekan **Simpan**
+
+> Nilai bawaan `10.0.2.2:8000` hanya untuk emulator Android di laptop
+> dan tidak berlaku untuk HP fisik.
+
+### Cara 2 — USB tanpa WiFi (ADB reverse)
+
+Jika jaringan kampus memblokir koneksi antar-device, atau HP dan laptop
+berada di jaringan berbeda:
+
+```bash
+# Aktifkan USB Debugging di HP, sambungkan via kabel USB, lalu:
+adb reverse tcp:8000 tcp:8000
+```
+
+Setelah perintah itu, HP bisa mengakses backend laptop seolah-olah ada di
+dalam HP sendiri. Isi alamat server di Guidio: `localhost:8000`
+
+### Build APK
+
+```bash
+# Di folder guidio_app:
+flutter build apk --release
+
+# File APK ada di:
+# build/app/outputs/flutter-apk/app-release.apk
+
+# Install langsung ke HP via USB:
+flutter install
+# atau manual:
+adb install build/app/outputs/flutter-apk/app-release.apk
+```
+
+### Troubleshooting koneksi
+
+| Gejala | Kemungkinan penyebab | Solusi |
+|---|---|---|
+| "Tidak bisa menjangkau server" | IP salah atau backend belum `--host 0.0.0.0` | Cek `ip addr show`, restart backend |
+| Koneksi timeout | Firewall laptop memblokir port 8000 | `sudo firewall-cmd --add-port=8000/tcp --permanent` |
+| HP dan laptop beda subnet | Isolasi client di jaringan kampus | Pakai metode USB (ADB reverse) |
+| IP laptop berubah tiap kali | DHCP memberi IP baru | Set IP statis di laptop, atau pakai ADB reverse |
 
 ---
 
-## 9. Status pengerjaan yang jujur
+## 10. Status pengerjaan yang jujur
 
 **Sudah berfungsi penuh:**
 
@@ -330,6 +407,7 @@ perangkat fisik, ganti lewat layar Pengaturan di dalam aplikasi.
 - Pengenalan uang on-device, 6 denominasi emisi 2016.
 - OCR beserta estimasi durasi baca.
 - Pencarian objek dengan prompt teks bebas.
+- Deskripsi suasana via kamera (Moondream2 + Qwen terjemahan).
 - Seluruh endpoint penunjang: kemampuan server, kamus label, manifest model,
   telemetri, laporan crash, dan antrean unggah offline yang idempoten.
 
@@ -340,14 +418,15 @@ perangkat fisik, ganti lewat layar Pengaturan di dalam aplikasi.
   state, tetapi akurasinya di bawah model terlatih.
 - **Model uang hanya mengenali 6 pecahan emisi 2016.** Rp1.000 tidak
   didukung, dan aplikasi menyebut keterbatasan itu alih-alih menebak.
-- **Navigasi belum memakai GPS.** Arahan jalur berasal dari kamera, bukan
-  dari rute peta.
+- **Navigasi belum memakai GPS.** Arahan jalur berasal dari kamera.
 - **Tema gelap dan kontras tinggi** sudah aktif di tingkat aplikasi, tetapi
   belum dirancang ulang per komponen.
+- **Model Qwen perlu didownload manual** (~1 GB). Tanpa model, narasi dan
+  terjemahan memakai template fallback.
 
 ---
 
-## 10. Landasan akademis
+## 11. Landasan akademis
 
 | Sumber | Kontribusi |
 |---|---|

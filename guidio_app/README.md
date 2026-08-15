@@ -21,6 +21,7 @@ rintangan dan pengenalan uang.
 8. [Aksesibilitas](#8-aksesibilitas)
 9. [Struktur folder](#9-struktur-folder)
 10. [Menjalankan](#10-menjalankan)
+11. [Koneksi ke Backend Laptop (HP Fisik)](#11-koneksi-ke-backend-laptop-hp-fisik)
 
 ---
 
@@ -310,9 +311,10 @@ flutter run
 Aplikasi tetap jalan tanpa backend. Deteksi rintangan dan pengenalan uang
 berfungsi penuh; mode lain akan menyebut sendiri keterbatasannya.
 
-Alamat server bawaan `10.0.2.2:8000` (untuk emulator Android). Untuk
-perangkat fisik, ubah lewat layar Pengaturan di dalam aplikasi, atau lewat
-`lib/services/server_service.dart`.
+Alamat server bawaan adalah `10.0.2.2:8000`, yaitu alamat khusus emulator Android
+yang menunjuk ke `localhost` laptop. **Untuk HP fisik**, alamat ini tidak berlaku.
+Ubah lewat layar Pengaturan di dalam aplikasi (ucapkan "pengaturan" atau ketuk
+Pilih Mode → Pengaturan), lalu isi IP laptop Anda di jaringan WiFi yang sama.
 
 ### Delapan pengaturan yang tersimpan permanen
 
@@ -335,3 +337,63 @@ perangkat fisik, ubah lewat layar Pengaturan di dalam aplikasi, atau lewat
 - Pelacak SORT harus direset saat berganti mode.
 - Semua suara memakai Bahasa Indonesia (`id-ID`).
 - Aplikasi ini menargetkan Android; iOS belum diuji.
+
+---
+
+## 11. Koneksi ke Backend Laptop (HP Fisik)
+
+Setelah APK diinstall di HP fisik, aplikasi perlu diarahkan ke alamat
+backend yang berjalan di laptop.
+
+### Cara cepat: WiFi satu jaringan
+
+1. Jalankan backend di laptop dengan perintah:
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port 8000
+   ```
+
+2. Cari IP laptop:
+   ```bash
+   ip addr show  # Linux — cari bagian wlan0, contoh hasilnya: 192.168.1.5
+   ```
+
+3. Di HP, buka Guidio → ucapkan **"pengaturan"** atau tekan
+   **Pilih Mode → Pengaturan**
+
+4. Di kolom **Alamat Server**, isi `192.168.1.5:8000`
+   (gunakan IP laptop Anda)
+
+5. Tekan **Uji Sambungan** — jika berhasil, waktu tempuh akan muncul
+
+6. Tekan **Simpan**
+
+### Cara alternatif: USB tanpa WiFi (ADB Reverse)
+
+Jika WiFi kampus memblokir koneksi antar-device:
+
+```bash
+# Sambungkan HP ke laptop via USB, aktifkan USB Debugging di HP
+adb reverse tcp:8000 tcp:8000
+```
+
+Setelah perintah itu, isi alamat server di Guidio: `localhost:8000`
+
+### Build APK
+
+```bash
+# Build APK release
+flutter build apk --release
+
+# Install ke HP via USB
+flutter install
+# atau:
+adb install build/app/outputs/flutter-apk/app-release.apk
+```
+
+### Penjelasan nilai bawaan alamat server
+
+| Situasi | Alamat yang diisi |
+|---|---|
+| Emulator Android di laptop | `10.0.2.2:8000` (bawaan, tidak perlu diubah) |
+| HP fisik, WiFi sama dengan laptop | IP laptop, contoh: `192.168.1.5:8000` |
+| HP fisik, sambung USB + ADB reverse | `localhost:8000` |
