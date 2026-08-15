@@ -1,25 +1,60 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
-import anthropic
+"""
+Router: POST /api/route-intent
+Intent routing untuk Voice Assistant — ARSITEKTUR LAMA.
+
+Catatan: Endpoint ini merupakan sisa arsitektur lama sebelum CommandParser
+Flutter dibangun. Flutter sekarang melakukan intent parsing secara lokal
+(0ms, offline) dengan 70+ keyword dan fuzzy matching.
+
+Endpoint ini TIDAK lagi dipanggil oleh Flutter. Dipertahankan agar tidak
+break backward compatibility jika ada client lain yang masih menggunakannya.
+
+Claude Haiku yang sebelumnya di sini sudah DIHAPUS. Sekarang menggunakan
+keyword-based classifier sederhana yang tidak membutuhkan API key maupun
+model LLM — sesuai dengan sifat tugas yang hanya 4 kategori.
+"""
+
 import logging
 
-router = APIRouter()
+from fastapi import APIRouter
+from pydantic import BaseModel
 
-# Gunakan AsyncAnthropic agar tidak blocking FastAPI event loop
-client = anthropic.AsyncAnthropic()
+router = APIRouter()
 
 VALID_INTENTS = {"describe_scene", "ocr", "navigation", "chitchat"}
 DEFAULT_INTENT = "describe_scene"  # fallback paling aman untuk tunanetra
 
-ROUTER_SYSTEM = """Kamu adalah intent classifier untuk asisten navigasi tunanetra berbahasa Indonesia.
+# Keyword sederhana per intent — cukup untuk 4 kategori ini tanpa LLM
+_KEYWORDS: dict[str, list[str]] = {
+    "describe_scene": [
+        "deskripsikan", "jelaskan", "ceritakan", "gambarkan", "lihatkan",
+        "sekitarku", "depanku", "suasana", "kondisi", "pemandangan",
+    ],
+    "ocr": [
+        "baca", "bacakan", "teks", "tulisan", "kata", "huruf",
+        "bacain", "tolong baca",
+    ],
+    "navigation": [
+        "navigasi", "pergi", "jalan", "ke mana", "arahkan", "tuntun",
+        "panduan", "lewat", "belok",
+    ],
+    "chitchat": [
+        "halo", "hai", "apa kabar", "siapa kamu", "terima kasih",
+        "makasih", "selamat", "help", "tolong",
+    ],
+}
 
-Klasifikasikan teks input ke SATU intent dari daftar berikut:
-- describe_scene : user ingin tahu apa yang ada di sekitar atau di depan mereka
-- ocr            : user ingin membaca teks, tulisan, atau kata-kata yang ada di depan
-- navigation     : user ingin pergi ke suatu tempat atau meminta panduan navigasi
-- chitchat       : pertanyaan umum, sapaan, atau percakapan yang tidak terkait navigasi
 
-Jawab HANYA dengan satu kata intent tersebut. Tidak ada tanda baca, tidak ada kalimat lain."""
+def _classify_keyword(text: str) -> str:
+    """Klasifikasi berdasarkan keyword match — O(n) sederhana, tanpa model."""
+    low = text.strip().lower()
+    scores: dict[str, int] = {intent: 0 for intent in VALID_INTENTS}
+    for intent, keywords in _KEYWORDS.items():
+        for kw in keywords:
+            if kw in low:
+                scores[intent] += 1
+    best = max(scores, key=lambda k: scores[k])
+    return best if scores[best] > 0 else DEFAULT_INTENT
 
 
 class RouteRequest(BaseModel):
@@ -34,29 +69,16 @@ class RouteResponse(BaseModel):
 @router.post("/api/route-intent", response_model=RouteResponse)
 async def route_intent(req: RouteRequest):
     """
-    LLM intent routing untuk Voice Assistant.
+    Intent routing berbasis keyword (tanpa LLM, tanpa API key).
 
-    max_tokens=10 + temperature=0.0 → latency routing < 300ms.
-    Fallback ke 'describe_scene' jika Claude gagal atau return intent tidak valid.
+    Endpoint ini adalah sisa arsitektur lama — Flutter tidak lagi
+    memanggilnya karena CommandParser lokal sudah lebih lengkap.
+    Dipertahankan untuk backward compatibility.
     """
     try:
-        response = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=10,
-            temperature=0.0,
-            system=ROUTER_SYSTEM,
-            messages=[{"role": "user", "content": req.text}],
-        )
-        intent = response.content[0].text.strip().lower()
-
-        if intent not in VALID_INTENTS:
-            logging.warning(
-                f"Intent tidak valid dari LLM: '{intent}', fallback ke {DEFAULT_INTENT}"
-            )
-            return RouteResponse(intent=DEFAULT_INTENT, fallback_used=True)
-
-        return RouteResponse(intent=intent, fallback_used=False)
-
+        intent = _classify_keyword(req.text)
+        fallback = intent == DEFAULT_INTENT
+        return RouteResponse(intent=intent, fallback_used=fallback)
     except Exception as e:
         logging.error(f"route_intent gagal: {e}")
         return RouteResponse(intent=DEFAULT_INTENT, fallback_used=True)

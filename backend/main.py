@@ -11,6 +11,7 @@ from db.database import init_db, is_available
 from routers import (
     asisten,
     cari_objek,
+    describe,
     detect,
     narasi,
     navigasi,
@@ -23,7 +24,9 @@ from routers import (
 )
 from services.find_object_service import FindObjectService
 from services.intent_service import IntentService
+from services.moondream_service import MoonDreamService
 from services.ocr_service import OCRService
+from services.qwen_service import QwenService
 from services.risk_zone_service import RiskZoneService
 from services.segmentation_service import SegmentationService
 from services.uang_service import UangService
@@ -71,6 +74,34 @@ async def lifespan(app: FastAPI):
     # ratusan MB, tidak pantas menahan startup untuk mode yang jarang dipakai).
     app.state.find_object_service = FindObjectService()
 
+    # Scene Description — Moondream2 dimuat malas saat request pertama.
+    # Model ~2GB, tidak pantas menahan startup. RTX 3050 4GB VRAM cukup
+    # untuk FP16 (~1.2GB efektif setelah kuantisasi runtime).
+    moon_device = os.getenv("MOONDREAM_DEVICE", "auto")
+    app.state.moondream_service = MoonDreamService(device=moon_device)
+    logger.info("[Moondream2] Service terdaftar (lazy-load, belum dimuat).")
+
+    # Narasi & Terjemahan — Qwen2.5-1.5B-Instruct lokal menggantikan Claude Haiku.
+    # Model ~1GB GGUF Q4_K_M. Dimuat malas saat request pertama.
+    # Jika file model belum ada, service tetap terdaftar tapi available=False
+    # (semua caller jatuh ke template fallback — tidak crash).
+    qwen_model = os.getenv(
+        "QWEN_MODEL_PATH",
+        "models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    )
+    qwen_gpu_layers = int(os.getenv("QWEN_GPU_LAYERS", "-1"))
+    qwen_svc = QwenService(model_path=qwen_model, n_gpu_layers=qwen_gpu_layers)
+    app.state.qwen_service = qwen_svc
+    if qwen_svc.available:
+        logger.info(f"[Qwen] Service terdaftar (lazy-load): {qwen_model}")
+    else:
+        logger.warning(
+            f"[Qwen] File model tidak ditemukan: {qwen_model}\n"
+            "       Narasi dan terjemahan akan pakai template fallback.\n"
+            "       Download: huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF "
+            "qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir models/"
+        )
+
     # Kenali Uang di server: OPSIONAL. Jalur utama fitur ini on-device.
     uang_svc = UangService()
     uang_svc.load()
@@ -89,6 +120,8 @@ async def lifespan(app: FastAPI):
                 | set(EXTRA_ID_TO_EN.keys())
             )
             intent_svc.refresh(intents, searchable)
+            # Inject QwenService ke IntentService sebagai Lapis 3 LLM.
+            intent_svc.set_llm(qwen_svc)
             logger.info(
                 f"Katalog intent dimuat: {len(intents)} intent, "
                 f"{len(searchable)} nama barang bisa dicari"
@@ -125,6 +158,7 @@ app.include_router(websocket.router)      # /ws/detect        Deteksi Objek + Na
 app.include_router(detect.router)         # /api/detect       single-shot
 app.include_router(ocr.router)            # /api/ocr          Baca Teks
 app.include_router(narasi.router)         # /api/narasi       narasi scene
+app.include_router(describe.router)       # /api/describe     scene description Moondream2
 app.include_router(voice_router.router)   # /api/route-intent Asisten Suara (lama)
 app.include_router(asisten.router)        # /api/intent, /api/asisten/*
 app.include_router(cari_objek.router)     # /api/cari-objek

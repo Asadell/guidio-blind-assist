@@ -6,31 +6,18 @@ untuk dua kasus yang memang butuh pemahaman bahasa:
   - AS-18 "tidak dikenali" → tawarkan dua tebakan terdekat
   - AS-19 "ambigu"         → pertanyaan pilihan dua
 
-Urutan usaha: cocokkan frasa persis → skor kemiripan kata → LLM (opsional).
+Urutan usaha: cocokkan frasa persis → skor kemiripan kata → LLM lokal (opsional).
 Kalau semuanya gagal, balasannya tetap menawarkan dua tebakan, bukan
 "perintah gagal" — prinsip "tidak ada jalan buntu".
+
+LLM Lapis 3: Qwen2.5-1.5B-Instruct via QwenService lokal (bukan API eksternal).
 """
 
-import os
 import re
 
 from loguru import logger
 
 VALID_CATEGORIES = {"mode", "action", "play", "help"}
-
-LLM_SYSTEM = """Kamu pemetaan perintah suara Bahasa Indonesia untuk aplikasi
-asisten tunanetra bernama Vinara.
-
-Daftar intent yang tersedia beserta artinya:
-{intent_list}
-
-Tugasmu: petakan ucapan pengguna ke SATU intent_key dari daftar di atas.
-Jawab HANYA dengan intent_key persis seperti tertulis.
-
-PENTING: jawab `none` kalau ucapan itu MERAGUKAN — yaitu bisa masuk akal
-untuk lebih dari satu intent, atau kedengarannya seperti salah dengar.
-Menebak salah lebih berbahaya daripada bertanya balik, karena penggunanya
-tidak bisa melihat layar untuk mengoreksi. Kalau ragu sedikit saja: none"""
 
 
 class IntentService:
@@ -39,6 +26,7 @@ class IntentService:
     def __init__(self):
         self._intents: list[dict] = []
         self._searchable: list[str] = []
+        self._qwen = None  # Di-inject dari main.py setelah QwenService siap
 
     def refresh(self, intents: list[dict], searchable: list[str] | None = None) -> None:
         """Muat ulang daftar intent dari DB (dipanggil saat startup).
@@ -51,6 +39,11 @@ class IntentService:
         self._intents = intents
         if searchable is not None:
             self._searchable = [s.lower() for s in searchable]
+
+    def set_llm(self, qwen_service) -> None:
+        """Inject QwenService dari app.state (dipanggil di lifespan main.py)."""
+        self._qwen = qwen_service
+        logger.info("[IntentService] QwenService terdaftar sebagai Lapis 3 LLM.")
 
     def find_object_candidate(self, text: str) -> dict | None:
         """Kalau ucapan menyebut barang yang bisa dicari, tawarkan Cari Objek."""
@@ -131,41 +124,43 @@ class IntentService:
             for score, intent in scored[:limit]
         ]
 
-    # ── Lapis 3: LLM (opsional) ──────────────────────────────────────────
+    # ── Lapis 3: LLM lokal (Qwen, opsional) ─────────────────────────────
 
     async def match_llm(self, text: str) -> dict | None:
-        api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        if not api_key or api_key.startswith("sk-ant-xxxx") or not self._intents:
-            return None
-        try:
-            import anthropic
+        """Semantic matching via Qwen2.5-1.5B lokal — last resort.
 
-            client = anthropic.AsyncAnthropic(api_key=api_key)
+        Hanya dipanggil jika Lapis 1 dan 2 gagal menemukan intent yang
+        cukup yakin. Output hanya 1 kata (intent_key) jadi bahkan model
+        kecil seperti 0.5B sudah cukup untuk tugas ini.
+        """
+        if self._qwen is None or not self._intents:
+            return None
+
+        try:
             intent_list = "\n".join(
                 f"- {i['intent_key']}: {i['spoken_label']}" for i in self._intents
             )
-            resp = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=20,
-                temperature=0.0,
-                system=LLM_SYSTEM.format(intent_list=intent_list),
-                messages=[{"role": "user", "content": text}],
-            )
-            key = resp.content[0].text.strip().lower()
+            key_raw = await self._qwen.classify_intent(text, intent_list)
+            if not key_raw:
+                return None
+
+            key = key_raw.strip().lower()
             if key == "none":
                 return None
+
             for intent in self._intents:
                 if intent["intent_key"].lower() == key:
                     return {
                         "intent_key": intent["intent_key"],
                         "category": intent["category"],
                         "spoken_label": intent["spoken_label"],
-                        "confidence": 0.9,
-                        "source": "llm",
+                        "confidence": 0.85,
+                        "source": "llm_local",
                     }
+            logger.debug(f"[IntentService] Qwen return key tidak dikenal: '{key}'")
             return None
         except Exception as e:
-            logger.warning(f"Pencocokan intent via LLM gagal: {e}")
+            logger.warning(f"[IntentService] Pencocokan intent via Qwen gagal: {e}")
             return None
 
     # ── Ekstraksi target Cari Objek ──────────────────────────────────────

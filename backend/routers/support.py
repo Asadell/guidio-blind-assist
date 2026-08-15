@@ -61,7 +61,8 @@ async def capabilities(request: Request):
     ocr_ok = getattr(state, "ocr_service", None) is not None
     seg = getattr(state, "segmentation_service", None)
     finder = getattr(state, "find_object_service", None)
-    llm_ok = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    qwen_svc = getattr(state, "qwen_service", None)
+    llm_ok = qwen_svc is not None and qwen_svc.available
 
     caps = {
         # Dua mode ini sepenuhnya on-device: server mati pun tetap jalan.
