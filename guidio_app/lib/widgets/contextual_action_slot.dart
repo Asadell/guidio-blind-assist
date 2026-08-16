@@ -71,7 +71,7 @@ class ContextualActionSlot extends StatelessWidget {
                   horizontal: AppSpacing.s3,
                   vertical: 6,
                 ),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.scrimText,
                   borderRadius: AppRadius.pillShape,
                 ),
@@ -148,7 +148,7 @@ class _SlotButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, color: labelColor, size: 20),
+                ExcludeSemantics(child: Icon(icon, color: labelColor, size: 20)),
                 const SizedBox(width: 6),
               ],
               Text(

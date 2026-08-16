@@ -106,19 +106,25 @@ class _ModeBadgeState extends State<ModeBadge> {
                           const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            child: ExcludeSemantics(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                                valueColor: AlwaysStoppedAnimation(Colors.white),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Text('Mengenali…', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          const ExcludeSemantics(
+                            child: Text('Mengenali…', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          ),
                         ]
                       : [
-                          Icon(_icon, size: 18, color: Colors.white),
+                          ExcludeSemantics(child: Icon(_icon, size: 18, color: Colors.white)),
                           const SizedBox(width: 8),
-                          Text('Mode: ${widget.mode.label}', style: AppTypography.label(color: Colors.white)),
+                          ExcludeSemantics(
+                            child: Text('Mode: ${widget.mode.label}', style: AppTypography.label(color: Colors.white)),
+                          ),
                         ],
             ),
           ),

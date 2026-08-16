@@ -111,7 +111,9 @@ class _MicButton extends StatelessWidget {
           width: AppSizes.micButton,
           height: AppSizes.micButton,
           decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.surfaceSunk),
-          child: const Icon(Icons.mic_off_rounded, color: AppColors.disabledInk, size: 28),
+          child: const ExcludeSemantics(
+            child: Icon(Icons.mic_off_rounded, color: AppColors.disabledInk, size: 28),
+          ),
         ),
       );
     }
@@ -187,7 +189,9 @@ class _MicButton extends StatelessWidget {
                   padding: EdgeInsets.all(20),
                   child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.actionLabel),
                 )
-              : Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: Colors.white, size: 30),
+              : ExcludeSemantics(
+              child: Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: Colors.white, size: 30),
+            ),
         ),
       ),
     );
@@ -225,10 +229,12 @@ class _SquareButton extends StatelessWidget {
               color: AppColors.surfaceSunk,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(
-              icon,
-              size: 26,
-              color: enabled ? AppColors.ink1 : AppColors.disabledInk,
+            child: ExcludeSemantics(
+              child: Icon(
+                icon,
+                size: 26,
+                color: enabled ? AppColors.ink1 : AppColors.disabledInk,
+              ),
             ),
           ),
         ),

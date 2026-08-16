@@ -41,22 +41,30 @@ class StatusBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            TierIcon(tier: tier, size: 22),
+            ExcludeSemantics(child: TierIcon(tier: tier, size: 22)),
             const SizedBox(width: AppSpacing.s3),
             Expanded(
-              child: Text(
-                message,
-                style: AppTypography.bodyStrong(color: tier.labelColor).copyWith(fontSize: 15, height: 20 / 15),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              child: ExcludeSemantics(
+                child: Text(
+                  message,
+                  style: AppTypography.bodyStrong(color: tier.labelColor).copyWith(fontSize: 15, height: 20 / 15),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
             if (actionLabel != null)
-              GestureDetector(
-                onTap: onAction,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: AppSpacing.s3),
-                  child: Text(actionLabel!, style: AppTypography.label(color: AppColors.actionLabel)),
+              Semantics(
+                button: true,
+                label: actionLabel,
+                child: GestureDetector(
+                  onTap: onAction,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.s3),
+                    child: ExcludeSemantics(
+                      child: Text(actionLabel!, style: AppTypography.label(color: AppColors.actionLabel)),
+                    ),
+                  ),
                 ),
               ),
           ],

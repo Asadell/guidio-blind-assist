@@ -49,12 +49,14 @@ class _ModePickerSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 34, height: 4,
-              margin: const EdgeInsets.only(bottom: AppSpacing.s4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceSunk,
-                borderRadius: BorderRadius.circular(2),
+            ExcludeSemantics(
+              child: Container(
+                width: 34, height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.s4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSunk,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             Semantics(
@@ -100,7 +102,7 @@ class _ModePickerSheet extends StatelessWidget {
             // tidak punya pintu masuk di layar: satu-satunya jalan adalah
             // perintah suara, dan itu memutus pengguna yang tidak bisa bicara.
             const Divider(height: AppSpacing.s4, color: AppColors.hairline),
-            Semantics(
+              Semantics(
               button: true,
               label: 'Pengaturan',
               child: Material(
@@ -120,14 +122,16 @@ class _ModePickerSheet extends StatelessWidget {
                     child: Row(
                       children: [
                         const SizedBox(width: 14),
-                        Container(
-                          width: 40, height: 40,
-                          decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
-                          child: const Icon(Icons.tune_rounded, size: 22, color: AppColors.ink1),
+                        ExcludeSemantics(
+                          child: Container(
+                            width: 40, height: 40,
+                            decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
+                            child: const Icon(Icons.tune_rounded, size: 22, color: AppColors.ink1),
+                          ),
                         ),
                         const SizedBox(width: 14),
-                        Expanded(child: Text('Pengaturan', style: AppTypography.body())),
-                        const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.ink2),
+                        Expanded(child: ExcludeSemantics(child: Text('Pengaturan', style: AppTypography.body()))),
+                        const ExcludeSemantics(child: Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.ink2)),
                       ],
                     ),
                   ),
@@ -212,10 +216,12 @@ class _ModeTile extends StatelessWidget {
                     )
                   else
                     const SizedBox(width: 14),
-                  Container(
-                    width: 40, height: 40,
-                    decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
-                    child: Icon(modeIcon(mode), size: 22, color: AppColors.ink1),
+                  ExcludeSemantics(
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
+                      child: Icon(modeIcon(mode), size: 22, color: AppColors.ink1),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -223,28 +229,34 @@ class _ModeTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          mode.label,
-                          style: isCurrent ? AppTypography.bodyStrong() : AppTypography.body(),
+                        ExcludeSemantics(
+                          child: Text(
+                            mode.label,
+                            style: isCurrent ? AppTypography.bodyStrong() : AppTypography.body(),
+                          ),
                         ),
                         if (_reason != null)
-                          Text(
-                            _reason!,
-                            style: AppTypography.caption(
-                              color: limited ? AppColors.warningLabel : AppColors.disabledInk,
+                          ExcludeSemantics(
+                            child: Text(
+                              _reason!,
+                              style: AppTypography.caption(
+                                color: limited ? AppColors.warningLabel : AppColors.disabledInk,
+                              ),
                             ),
                           ),
                       ],
                     ),
                   ),
                   if (isCurrent)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: const BoxDecoration(
-                        color: AppColors.actionLabel,
-                        borderRadius: AppRadius.pillShape,
+                    ExcludeSemantics(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.actionLabel,
+                          borderRadius: AppRadius.pillShape,
+                        ),
+                        child: Text('AKTIF', style: AppTypography.eyebrow(color: Colors.white)),
                       ),
-                      child: Text('AKTIF', style: AppTypography.eyebrow(color: Colors.white)),
                     ),
                 ],
               ),
