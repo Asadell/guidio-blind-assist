@@ -65,8 +65,9 @@ gara gara sinyal hilang.
 7. [Struktur repositori](#7-struktur-repositori)
 8. [Menjalankan](#8-menjalankan)
 9. [Koneksi HP fisik ke backend laptop](#9-koneksi-hp-fisik-ke-backend-laptop)
-10. [Status pengerjaan yang jujur](#10-status-pengerjaan-yang-jujur)
-11. [Landasan akademis](#11-landasan-akademis)
+10. [Ukuran Model dan Kebutuhan Storage](#10-ukuran-model-dan-kebutuhan-storage)
+11. [Status pengerjaan yang jujur](#11-status-pengerjaan-yang-jujur)
+12. [Landasan akademis](#12-landasan-akademis)
 
 ---
 
@@ -396,7 +397,44 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 
 ---
 
-## 10. Status pengerjaan yang jujur
+## 10. Ukuran Model dan Kebutuhan Storage
+
+Rincian lengkap bobot model AI, ukuran download dependensi, alokasi hardware, dan total bandwidth/storage yang dibutuhkan:
+
+### Tabel Rincian Ukuran Model AI & Dependensi
+
+| Kategori | Komponen / Model | Ukuran File | Lokasi Simpan | Eksekusi | Keterangan |
+|---|---|---|---|---|---|
+| **Mobile (Flutter)** | `ssd_mobilenet.tflite` | ~4.18 MB | `guidio_app/assets/models/` | On-Device CPU (HP) | Deteksi rintangan real-time (bawaan app) |
+| **Mobile (Flutter)** | `uang_rupiah.tflite` | ~24.92 MB | `guidio_app/assets/models/` | On-Device CPU (HP) | Klasifikasi uang rupiah 6 pecahan |
+| **Backend LLM** | `qwen2.5-1.5b-instruct-q4_k_m.gguf` | **1.12 GB** | `backend/models/` | **Laptop CPU** (~1.2 GB RAM) | Narasi YOLO & terjemahan Moondream (via llama-cpp) |
+| **Backend VLM** | `vikhyatk/moondream2` | **~1.85 GB** | `~/.cache/huggingface/` | **Laptop GPU** (RTX 3050 ~1.2 GB VRAM) | Deskripsi suasana kamera (FP16) |
+| **Backend Deteksi** | `yolo11n.pt` | ~5.5 MB | `~/.config/Ultralytics/` | **Laptop GPU** (~200 MB VRAM) | Deteksi server / fallback |
+| **Backend Cari Objek**| `yoloe-11s-seg.pt` | ~30 MB | `backend/models/` | **Laptop GPU** (~300 MB VRAM) | Open-vocabulary text prompt search |
+| **Dependensi Python** | PyTorch + CUDA Wheels | ~1.8 GB | `backend/venv/` | Disk Laptop | Runtime CUDA untuk YOLO & Moondream |
+| **Dependensi Python** | Transformers, Llama-cpp, OpenCV, FastAPI | ~300 MB | `backend/venv/` | Disk Laptop | Framework & bindings |
+
+### Ringkasan Total Kebutuhan
+
+- **Total Ukuran Model di HP (Flutter Asset):** `~29.1 MB` *(sangat ringan)*
+- **Total Download Model di Server (Backend):** `~3.0 GB` *(Qwen 1.12 GB + Moondream 1.85 GB + YOLO 35 MB)*
+- **Total Storage Virtualenv Python Backend:** `~2.1 GB`
+- **Total Kuota / Storage yang Perlu Disiapkan:** **`~5.1 GB`**
+
+### Alokasi Hardware & Alasan Arsitektur
+
+1. **GPU RTX 3050 (4 GB VRAM):**
+   - Dikhususkan penuh untuk **Moondream2 (1.2 GB)** + **YOLO/YOLOE (0.5 GB)** = **~1.7 GB VRAM**.
+   - Sisa VRAM masih ~2.3 GB (sangat aman, bebas risiko *Out of Memory*).
+2. **CPU Laptop (Intel Core i5 / RAM):**
+   - **Qwen2.5-1.5B (GGUF Q4)** dijalankan di CPU via `llama-cpp-python`.
+   - Menggunakan RAM laptop sekitar **~1.2 GB**.
+   - Kecepatan di CPU: ~15–25 token/detik (untuk 1–2 kalimat hanya butuh **1.5 – 3 detik**).
+   - Menghindari keharusan kompilasi `nvcc` CUDA Toolkit di distro Linux seperti Fedora 43.
+
+---
+
+## 11. Status pengerjaan yang jujur
 
 **Sudah berfungsi penuh:**
 
@@ -421,12 +459,12 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 - **Navigasi belum memakai GPS.** Arahan jalur berasal dari kamera.
 - **Tema gelap dan kontras tinggi** sudah aktif di tingkat aplikasi, tetapi
   belum dirancang ulang per komponen.
-- **Model Qwen perlu didownload manual** (~1 GB). Tanpa model, narasi dan
+- **Model Qwen perlu didownload manual** (~1.12 GB). Tanpa model, narasi dan
   terjemahan memakai template fallback.
 
 ---
 
-## 11. Landasan akademis
+## 12. Landasan akademis
 
 | Sumber | Kontribusi |
 |---|---|

@@ -228,3 +228,5 @@ yolo11n.pt
 yolo11n.onnx
 models/*.onnx
 models/*.tflite
+models/*.gguf
+models/
