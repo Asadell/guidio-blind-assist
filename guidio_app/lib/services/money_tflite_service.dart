@@ -31,13 +31,12 @@ class MoneyTFLiteService {
   /// alat bantu uang.
   static const double confidenceThreshold = 0.85;
 
-  /// Urutan kelas WAJIB sama dengan `class_indices` saat training:
-  /// {'100rb': 0, '10rb': 1, '20rb': 2, '2rb': 3, '50rb': 4, '5rb': 5}
-  static const List<int> classValues = [100000, 10000, 20000, 2000, 50000, 5000];
+  /// Urutan kelas sesuai output model training (7 kelas kanonik):
+  /// [1000, 2000, 5000, 10000, 20000, 50000, 100000]
+  static const List<int> classValues = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
 
-  /// Model ini dilatih pada emisi 2016 dan TIDAK punya kelas Rp1.000.
-  /// Dipakai untuk menyusun pesan keterbatasan yang jujur (UG-18).
-  static const List<int> unsupportedValues = [1000];
+  /// Model dilatih pada dataset gabungan Emisi 2016 & 2022 (7 pecahan lengkap).
+  static const List<int> unsupportedValues = [];
 
   Interpreter? _interpreter;
   bool _loading = false;
@@ -228,8 +227,8 @@ List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
         final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toDouble();
         final b = (yVal + 1.772 * uVal).clamp(0, 255).toDouble();
 
-        // rescale = 1/255, persis seperti ImageDataGenerator saat training.
-        return [r / 255.0, g / 255.0, b / 255.0];
+        // Nilai RGB 0..255 float32 (preprocessing mobilenet_v2 ada di dalam model graph).
+        return [r, g, b];
       });
     }),
   ];
@@ -254,7 +253,7 @@ List<List<List<List<double>>>> _prepareJpeg(_JpegArgs a) {
     List.generate(_size, (y) {
       return List.generate(_size, (x) {
         final p = resized.getPixel(x, y);
-        return [p.r / 255.0, p.g / 255.0, p.b / 255.0];
+        return [p.r.toDouble(), p.g.toDouble(), p.b.toDouble()];
       });
     }),
   ];

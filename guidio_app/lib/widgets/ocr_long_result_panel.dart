@@ -136,7 +136,7 @@ class OcrLongResultPanel extends StatelessWidget {
       decoration: BoxDecoration(color: AlertTier.warning.tintColor, borderRadius: AppRadius.cardInner),
       child: Row(
         children: [
-          TierIcon(tier: AlertTier.warning, size: 20),
+          const TierIcon(tier: AlertTier.warning, size: 20),
           const SizedBox(width: AppSpacing.s2),
           Expanded(
             child: Text(
@@ -207,7 +207,7 @@ class OcrLongResultPanel extends StatelessWidget {
   Widget _languagePill(String language) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: AppColors.actionTint, borderRadius: AppRadius.pillShape),
+      decoration: const BoxDecoration(color: AppColors.actionTint, borderRadius: AppRadius.pillShape),
       child: Text(language, style: AppTypography.caption(color: AppColors.actionLabel)),
     );
   }

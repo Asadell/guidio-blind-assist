@@ -63,6 +63,8 @@ class VoiceProvider extends ChangeNotifier {
   VoiceState get state => _state;
   bool get isListening => _state == VoiceState.listening;
   bool get isProcessing => _state == VoiceState.transcribing || _state == VoiceState.processingLocal || _state == VoiceState.processingLlm;
+  DetectionProvider get detection => _detection;
+  int get consecutiveFailures => _consecutiveFailures;
   String get lastText => _lastText;
   String get response => _response;
 
@@ -124,9 +126,11 @@ class VoiceProvider extends ChangeNotifier {
         _lastText = result.recognizedWords;
         notifyListeners();
       },
-      listenFor: const Duration(seconds: 5),
-      localeId: 'id_ID',
-      cancelOnError: true,
+      listenOptions: SpeechListenOptions(
+        listenFor: const Duration(seconds: 5),
+        localeId: 'id_ID',
+        cancelOnError: true,
+      ),
     );
   }
 
@@ -321,9 +325,7 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _handleChitchat() async {
-    await _respond('Saya belum bisa melihat sekarang (izin kamera dicabut), tapi tetap bisa bicara atau ganti mode.');
-  }
+
 
   /// Perintah suara "kembali" \u2014 kembali ke mode sebelumnya via AppModeProvider.
   /// Jika ada onNavigateBack (masuk sebagai overlay push), callback dipanggil

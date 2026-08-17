@@ -127,6 +127,9 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     // yang sebenarnya masih hidup — kesalahan yang sama seperti mematikan
     // Mode Navigasi offline.
 
+    final cameraProvider = context.read<CameraProvider>();
+    final ttsProvider = context.read<TtsProvider>();
+
     setState(() {
       _scanning = true;
       _fail = _FailKind.none;
@@ -138,6 +141,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     await Vibration.hasVibrator().then((has) {
       if (has) Vibration.vibrate(duration: 15);
     });
+    if (!mounted) return;
 
     _elapsedTicker?.cancel();
     _elapsedTicker = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -154,11 +158,11 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         _nearTimeout = false;
         _fail = _FailKind.timeout;
       });
-      context.read<TtsProvider>().speak('Terlalu lama, coba lagi.', tier: SpeechTier.warning);
+      ttsProvider.speak('Terlalu lama, coba lagi.', tier: SpeechTier.warning);
     });
 
     try {
-      final path = await context.read<CameraProvider>().captureFile();
+      final path = await cameraProvider.captureFile();
       final result = await OcrService.instance.recognizeFile(path);
 
       _hardTimeoutTimer?.cancel();

@@ -145,6 +145,10 @@ class MoneyProvider extends ChangeNotifier {
   DateTime _lastInference = DateTime.fromMillisecondsSinceEpoch(0);
   int _consecutiveMiss = 0;
 
+  /// Hasil buffer terbaru dari model — diperbarui tiap frame, dipakai saat
+  /// snapAndAnnounce() dipanggil. Tidak pernah auto-diumumkan.
+  MoneyResult? _latestResult;
+
   /// Jeda antar inferensi. Klasifikasi 224x224 ringan, tapi tidak ada
   /// gunanya berjalan tiap frame: pengguna butuh waktu memposisikan uang.
   static const _inferenceInterval = Duration(milliseconds: 600);
@@ -180,23 +184,28 @@ class MoneyProvider extends ChangeNotifier {
   void _applyRealResult(MoneyResult result) {
     if (!_running) return;
 
+    // Selalu perbarui buffer — snapAndAnnounce() akan membaca ini saat user
+    // menekan tombol, sehingga hasilnya selalu mencerminkan apa yang kamera
+    // lihat saat itu tanpa delay inferensi tambahan.
+    _latestResult = result;
+
     if (result.detected && result.valueIdr != null) {
       _consecutiveMiss = 0;
-      // Jangan umumkan lembar yang sama berulang-ulang saat kamera masih
-      // menyorot uang yang itu-itu juga.
-      if (_state == MoneyState.detected && _lastAmount == result.valueIdr) return;
-      if (_state == MoneyState.consecutive && _lastAmount == result.valueIdr) return;
-      _enterDetected(result.valueIdr!);
+      // Update visual state ke "fit" (bingkai hijau) agar user tahu
+      // kamera sudah melihat uang dan siap di-snap — tapi TIDAK bicara.
+      if (_state != MoneyState.fit && _state != MoneyState.detected) {
+        _set(MoneyState.fit);
+      }
       return;
     }
 
     switch (result.failure) {
       case MoneyFailure.lowConfidence:
-        // UG-06 — ragu. Nominal tidak ditampilkan sama sekali.
+        // UG-06 — ragu. Tampilkan bingkai + indikator tapi tidak bicara
+        // secara otomatis; pesan muncul saat user snap.
         _consecutiveMiss = 0;
         if (_state != MoneyState.uncertain) {
           _set(MoneyState.uncertain);
-          _speak('Belum yakin, dekatkan sedikit dan tahan diam.', tier: SpeechTier.warning);
         }
       case MoneyFailure.modelUnavailable:
         _useRealModel = false;
@@ -211,6 +220,33 @@ class MoneyProvider extends ChangeNotifier {
           _startHintRotation();
         }
     }
+  }
+
+  /// Dipanggil saat user menekan tombol kiri — umumkan hasil buffer terbaru.
+  ///
+  /// Tidak ada delay inferensi: model sudah berjalan di background tiap 600ms,
+  /// jadi _latestResult selalu segar. User mendapat jawaban instan.
+  void snapAndAnnounce() {
+    if (!_running) return;
+
+    if (!_useRealModel) {
+      // Jalur mock: paksa siklus deteksi ulang seperti semula.
+      forceRedetect();
+      return;
+    }
+
+    final result = _latestResult;
+    if (result == null || !result.detected || result.valueIdr == null) {
+      // Tidak ada uang di frame saat ini — beri tahu user.
+      final msg = (result?.failure == MoneyFailure.lowConfidence)
+          ? 'Belum yakin, dekatkan sedikit dan tahan diam.'
+          : 'Tidak ada uang terdeteksi. Arahkan kamera ke uang.';
+      _speak(msg, tier: SpeechTier.warning);
+      return;
+    }
+
+    // Ada uang — masuk ke alur deteksi normal (session tracking + TTS).
+    _enterDetected(result.valueIdr!);
   }
 
   void _startHintRotation() {

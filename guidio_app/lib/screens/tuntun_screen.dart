@@ -55,6 +55,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   bool _wasDark = false;        // track transisi gelap untuk TTS satu kali
   String? _debugOverride;
 
+  /// Apakah deteksi objek sedang aktif (jalan) atau dijeda.
+  /// Dimulai true — deteksi langsung jalan saat mode dibuka.
+  bool _detectionActive = true;
+
   final List<_GhostDetection> _ghosts = [];
   List<Detection> _prevCritical = [];
 
@@ -126,6 +130,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     if (camChanged && cam) {
       final camProvider = context.read<CameraProvider>();
       if (!camProvider.isInitialized) await camProvider.initCamera();
+      if (!mounted) return;
       camProvider.startStream();
       context.read<DetectionProvider>().startRealtime();
     }
@@ -147,6 +152,20 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     _wasDark = nowDark;
   }
 
+  /// Toggle deteksi ON/OFF dari tombol kiri BottomActionBar.
+  void _toggleDetection() {
+    final det = context.read<DetectionProvider>();
+    if (_detectionActive) {
+      det.stopRealtime();
+      setState(() => _detectionActive = false);
+      TTSService.instance.speak('Deteksi dijeda.');
+    } else {
+      det.startRealtime();
+      setState(() => _detectionActive = true);
+      TTSService.instance.speak('Deteksi dilanjutkan.');
+    }
+  }
+
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     if (!mounted) return;
@@ -154,6 +173,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
       if (!cam.isInitialized) await cam.initCamera();
+      if (!mounted) return;
       cam.startStream();
       context.read<DetectionProvider>().startRealtime();
     }
@@ -284,7 +304,12 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
 
           Positioned(
             left: 0, right: 0, bottom: 0,
-            child: BottomActionBar(micEnabled: !micDisabled),
+            child: BottomActionBar(
+              micEnabled: !micDisabled,
+              cameraLabel: _detectionActive ? 'Hentikan' : 'Lanjutkan',
+              onCameraPressed: _hasCameraPermission ? _toggleDetection : null,
+              cameraEnabled: _hasCameraPermission,
+            ),
           ),
         ],
       ),

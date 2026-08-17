@@ -78,7 +78,7 @@ class _OcrDebugSheetContent extends StatelessWidget {
                         label: 'Batalkan mode debug',
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(color: AppColors.criticalTint, borderRadius: AppRadius.pillShape),
+                          decoration: const BoxDecoration(color: AppColors.criticalTint, borderRadius: AppRadius.pillShape),
                           child: Text('Batalkan', style: AppTypography.label(color: AppColors.criticalLabel)),
                         ),
                       ),

@@ -37,6 +37,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
   ServerFieldState _state = ServerFieldState.idle;
   int? _latencyMs;
 
+  /// Saat demo, tekan ikon mata untuk menyembunyikan alamat IP dari layar.
+  bool _obscured = false;
+
   static final _hostPattern = RegExp(r'^[\w.-]+:\d{2,5}$');
 
   @override
@@ -188,9 +191,28 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                     controller: _ctrl,
                     autocorrect: false,
                     keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
+                    // Saat _obscured = true, teks diganti karakter titik
+                    // sehingga alamat IP tidak terlihat saat demo.
+                    obscureText: _obscured,
+                    obscuringCharacter: '•',
+                    decoration: InputDecoration(
                       hintText: 'host:port, mis. 10.0.2.2:8000',
                       isDense: true,
+                      suffixIcon: Semantics(
+                        label: _obscured ? 'Tampilkan alamat server' : 'Sembunyikan alamat server',
+                        button: true,
+                        excludeSemantics: false,
+                        child: IconButton(
+                          icon: Icon(
+                            _obscured
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 20,
+                          ),
+                          tooltip: _obscured ? 'Tampilkan' : 'Sembunyikan',
+                          onPressed: () => setState(() => _obscured = !_obscured),
+                        ),
+                      ),
                     ),
                     style: AppTypography.metricMono(),
                     onChanged: (_) {

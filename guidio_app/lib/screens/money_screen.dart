@@ -10,7 +10,6 @@ import '../core/layout/zone_contract.dart';
 import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
-import '../widgets/nominal_card.dart';
 
 /// Mode Kenali Uang — bagian 9 IMPLEMENTASI.md, 18 state (UG-01..UG-18).
 /// Sepenuhnya on-device, nol sentuhan: [MoneyProvider] menjalankan siklus
@@ -166,6 +165,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       if (granted) {
         final cam = context.read<CameraProvider>();
         if (!cam.isInitialized) await cam.initCamera();
+        if (!mounted) return;
         cam.startStream();
         context.read<MoneyProvider>().start();
       }
@@ -179,6 +179,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
       if (!cam.isInitialized) await cam.initCamera();
+      if (!mounted) return;
       cam.startStream();
       context.read<MoneyProvider>().start();
       await context.read<TtsProvider>().speak('Izin diberikan.', tier: SpeechTier.info);
@@ -390,7 +391,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           ],
 
           // z60 — BottomActionBar, selalu ada, selalu di tempat yang sama.
-          // Mode nol-sentuhan: tombol kamera dipakai untuk "paksa deteksi ulang".
+          // Tombol kiri = "Kenali Uang": snap frame saat ini, umumkan hasilnya.
           Positioned(
             left: 0,
             right: 0,
@@ -398,14 +399,15 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             child: MediaQuery(
               data: media.copyWith(textScaler: fontScaleDemo ? const TextScaler.linear(2.0) : media.textScaler),
               child: BottomActionBar(
-                cameraLabel: 'Deteksi ulang',
-                cameraEnabled: !showPermissionCard && spec?.badgeBusy != true,
+                cameraLabel: 'Kenali Uang',
+                cameraEnabled: !showPermissionCard,
                 onCameraPressed: () {
                   if (_debugOverride != null) {
                     setState(() => _debugOverride = null);
                     money.start();
+                    return;
                   }
-                  money.forceRedetect();
+                  money.snapAndAnnounce();
                 },
               ),
             ),
@@ -439,10 +441,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       case MoneyState.glare:
         return const _RenderSpec(frame: FrameFit.fit, pillOverride: 'Miringkan sedikit');
       case MoneyState.dark:
-        return _RenderSpec(
+        return const _RenderSpec(
           frame: FrameFit.fit,
           healthToastDark: true,
-          card: const AlertCard(
+          card: AlertCard(
             tier: AlertTier.warning,
             title: 'Terlalu gelap',
             description: 'Coba nyalakan senter kamera atau cari cahaya lebih terang.',
