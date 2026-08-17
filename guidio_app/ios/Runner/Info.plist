@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Guidio App</string>
+	<string>Vinara</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>guidio_app</string>
+	<string>vinara</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Vinara membutuhkan akses kamera untuk mengenali uang, mendeteksi rintangan, dan memandu navigasi.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Vinara membutuhkan akses mikrofon untuk menerima perintah suara dari pengguna.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Vinara menggunakan pengenalan suara untuk memproses perintah navigasi.</string>
 </dict>
 </plist>
