@@ -10,7 +10,7 @@ from loguru import logger
 from db.database import init_db, is_available
 from routers import (
     asisten,
-    cari_objek,
+    # cari_objek,  # DINONAKTIFKAN — Cari Objek dipindah ke on-device YOLOE TFLite di Flutter.
     describe,
     detect,
     narasi,
@@ -22,7 +22,7 @@ from routers import (
     voice_router,
     websocket,
 )
-from services.find_object_service import FindObjectService
+# from services.find_object_service import FindObjectService  # DINONAKTIFKAN — on-device YOLOE
 from services.intent_service import IntentService
 from services.moondream_service import MoonDreamService
 from services.ocr_service import OCRService
@@ -70,9 +70,13 @@ async def lifespan(app: FastAPI):
     seg.load()
     app.state.segmentation_service = seg
 
-    # Cari Objek — YOLOE dimuat malas saat permintaan pertama (bobotnya
-    # ratusan MB, tidak pantas menahan startup untuk mode yang jarang dipakai).
-    app.state.find_object_service = FindObjectService()
+    # Cari Objek (backend YOLOE) — DINONAKTIFKAN.
+    # Fitur ini dipindah ke on-device YOLOE TFLite di Flutter (100% offline).
+    # Untuk mengaktifkan kembali:
+    #   1. Uncomment baris di bawah
+    #   2. Uncomment import FindObjectService dan cari_objek di atas
+    #   3. Uncomment app.include_router(cari_objek.router) di bawah
+    # app.state.find_object_service = FindObjectService()
 
     # Scene Description — Moondream2 dimuat malas saat request pertama.
     # Model ~2GB, tidak pantas menahan startup. RTX 3050 4GB VRAM cukup
@@ -112,12 +116,13 @@ async def lifespan(app: FastAPI):
     if is_available():
         try:
             from services import repository as repo
-            from services.find_object_service import EXTRA_ID_TO_EN
+            # EXTRA_ID_TO_EN dipindah ke Flutter — tidak diimpor lagi dari sini.
+            # from services.find_object_service import EXTRA_ID_TO_EN
 
             intents = repo.get_all_intents()
             searchable = sorted(
                 {r["label_local"] for r in repo.get_searchable_labels()}
-                | set(EXTRA_ID_TO_EN.keys())
+                # | set(EXTRA_ID_TO_EN.keys())  # nonaktif bersama find_object_service
             )
             intent_svc.refresh(intents, searchable)
             # Inject QwenService ke IntentService sebagai Lapis 3 LLM.
@@ -161,7 +166,7 @@ app.include_router(narasi.router)         # /api/narasi       narasi scene
 app.include_router(describe.router)       # /api/describe     scene description Moondream2
 app.include_router(voice_router.router)   # /api/route-intent Asisten Suara (lama)
 app.include_router(asisten.router)        # /api/intent, /api/asisten/*
-app.include_router(cari_objek.router)     # /api/cari-objek
+# app.include_router(cari_objek.router)   # /api/cari-objek  — DINONAKTIFKAN (on-device YOLOE)
 app.include_router(navigasi.router)       # /api/navigasi
 app.include_router(uang.router)           # /api/uang (opsional)
 app.include_router(risk_zone.router)      # /api/risk-zone

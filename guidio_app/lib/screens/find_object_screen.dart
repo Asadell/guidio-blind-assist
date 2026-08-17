@@ -176,9 +176,11 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             : result.recognizedWords;
         provider.submitHeardText(result.recognizedWords, parsedTarget: target);
       },
-      listenFor: const Duration(seconds: 5),
-      localeId: 'id_ID',
-      cancelOnError: true,
+      listenOptions: SpeechListenOptions(
+        listenFor: const Duration(seconds: 5),
+        localeId: 'id_ID',
+        cancelOnError: true,
+      ),
     );
   }
 
@@ -302,7 +304,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
           ),
         ];
       case FindObjectState.listening:
-        return [Center(child: VoiceOrb(state: VoiceOrbState.listening))];
+        return [const Center(child: VoiceOrb(state: VoiceOrbState.listening))];
       case FindObjectState.unclear:
         return [Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
           const VoiceOrb(state: VoiceOrbState.failure),
@@ -333,7 +335,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       case FindObjectState.notFoundInFrame:
         return [_bottomPanel(bottomInset, AlertCard(tier: AlertTier.info, title: fo.notFoundMessage, description: 'Mencari ${fo.target}'))];
       case FindObjectState.longNotFound:
-        return [_bottomPanel(bottomInset, AlertCard(
+        return [_bottomPanel(bottomInset, const AlertCard(
           tier: AlertTier.warning,
           title: 'Belum ketemu di ruangan ini',
           description: 'Coba pindah ruangan, atau ucapkan barang lain untuk ganti target.',

@@ -57,12 +57,25 @@ dependencies:
   google_fonts: ^6.2.1
   google_mlkit_text_recognition: ^0.16.0
 
+  # ONNX Runtime — inferensi YOLOE on-device untuk Mode Cari Objek (offline)
+  onnxruntime: ^1.4.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  change_app_package_name: ^1.5.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/vinara_logo.png"
+  min_sdk_android: 26
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
   assets:
     - assets/models/
+    - assets/icons/

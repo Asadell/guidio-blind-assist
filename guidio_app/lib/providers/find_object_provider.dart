@@ -2,17 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../core/net/api_client.dart';
+import '../core/net/api_client.dart' show FramePacer;
 import '../core/speech/tts_queue.dart' show SpeechTier;
-import '../services/server_service.dart';
+import '../services/find_object_onnx_service.dart';
 
-/// State machine Mode Cari Objek — bagian 12 IMPLEMENTASI.md (CO-01..CO-13,
-/// CO-18, CO-19).
+/// State machine Mode Cari Objek.
 ///
-/// **Sepenuhnya di server.** Frame dikirim ke `POST /api/cari-objek` yang
-/// menjalankan YOLOE dengan prompt terbuka; tidak ada model pencarian di
-/// perangkat. Konsekuensinya CO-14 nyata: tanpa internet, mode ini benar-benar
-/// tidak bisa apa-apa, dan targetnya disimpan untuk dicoba lagi nanti.
+/// **Sepenuhnya on-device** — inferensi YOLOE via ONNX Runtime, tidak ada
+/// panggilan server. Bekerja 100% offline.
 ///
 /// CO-15 (izin kamera), CO-16 (senyap), CO-17 (font scale 200%) sengaja TIDAK
 /// dimodelkan di sini — itu murni keputusan lapisan UI, sama seperti pola
@@ -63,9 +60,8 @@ class FindObjectProvider extends ChangeNotifier {
       _serverMessage.isEmpty ? 'Memindai sekitar…' : _serverMessage;
   String get notFoundMessage => scanMessage;
 
-  /// Daftar barang yang dikenali server — CO-12 memakainya untuk menawarkan
-  /// barang lain, bukan menebak dari daftar hardcoded di aplikasi.
-  List<String> _knownTargets = const [];
+  /// Tidak digunakan lagi — label sekarang on-device.
+  final List<String> _knownTargets = const [];
   List<String> get knownTargets => _knownTargets;
 
   /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan.
@@ -79,6 +75,9 @@ class FindObjectProvider extends ChangeNotifier {
   /// Dibaca sebelum mengirim — CO-14 menuntut mode ini benar-benar berhenti
   /// saat offline, bukan mencoba lalu gagal berkali-kali.
   bool Function()? isOffline;
+
+  /// ONNX service — dimuat lazy saat mode aktif pertama kali.
+  final _onnx = FindObjectOnnxService();
 
   /// Satu permintaan in-flight, frame lama dibuang. Untuk pencarian yang
   /// pengguna lakukan sambil memutar badan, jawaban untuk frame tiga detik
@@ -103,15 +102,10 @@ class FindObjectProvider extends ChangeNotifier {
     _stepTimer = Timer(Duration(milliseconds: ms), cb);
   }
 
-  /// Ambil kamus target dari server sekali saat masuk mode. Gagal diam-diam:
-  /// tanpa kamus, CO-12 hanya kehilangan saran, bukan seluruh fiturnya.
+  /// Tidak dipakai lagi — label sekarang berasal dari object_label_map.dart.
+  /// Dipertahankan agar tidak merusak layar yang masih memanggil ini.
   Future<void> loadKnownTargets() async {
-    try {
-      _knownTargets = await ServerService.instance.cariObjekTargets();
-      notifyListeners();
-    } catch (_) {
-      // Diabaikan dengan sengaja.
-    }
+    // no-op: on-device, tidak perlu fetch dari server
   }
 
   // -------------------------------------------------------------- CO-02/03
@@ -146,23 +140,13 @@ class FindObjectProvider extends ChangeNotifier {
     _consecutiveErrors = 0;
     _set(FindObjectState.targetActive);
 
-    // CO-14 — offline: target DISIMPAN, mode berhenti. Perintahnya diterima,
-    // yang hilang disebut, dan tidak pernah dikatakan "perintah gagal".
-    if (isOffline?.call() ?? false) {
-      _savedTarget = newTarget;
-      _set(FindObjectState.offlineSaved);
-      _speak(
-        'Cari objek butuh internet. Target $newTarget saya simpan, '
-        'saya coba lagi begitu internet kembali.',
-        tier: SpeechTier.warning,
-      );
-      return;
-    }
-
+    // On-device: tidak ada cek offline. Model ONNX selalu tersedia.
     _speak(
       isChange ? 'Ganti, sekarang mencari $newTarget.' : 'Mencari $newTarget.',
       tier: SpeechTier.info,
     );
+    // Mulai load model ONNX di background (lazy, sekali saja)
+    _onnx.ensureLoaded();
     _after(400, _beginScan);
   }
 
@@ -213,19 +197,13 @@ class FindObjectProvider extends ChangeNotifier {
       if (jpeg == null || _target != target) return;
 
       try {
-        final res = await ServerService.instance.cariObjek(target, jpeg);
-        if (_target != target) return; // target sudah diganti saat menunggu
+        final res = await _onnx.findObject(jpeg, target);
+        if (_target != target) return;
         _consecutiveErrors = 0;
         _handleResponse(res, target);
-      } on ApiStatusException {
-        // Server hidup tapi menolak — CO-18, bukan salah kameranya.
+      } catch (e) {
         _handleFailure(
-          'Bukan karena kameramu. Coba lagi sebentar lagi.',
-          FindObjectState.serverError,
-        );
-      } on ApiUnreachableException {
-        _handleFailure(
-          'Server tidak bisa dihubungi. Cari objek berhenti sampai sambungan kembali.',
+          'Gagal memproses gambar. Coba lagi sebentar.',
           FindObjectState.serverError,
         );
       }
