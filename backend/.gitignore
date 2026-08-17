@@ -225,8 +225,7 @@ yoloe-11s-seg.pt
 mobileclip_blt.ts
 yoloe-11s-seg.pt
 yolo11n.pt
-yolo11n.onnx
-models/*.onnx
-models/*.tflite
-models/*.gguf
+*.onnx
+*.torchscript
+*.gguf
 models/

@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Large or unused model exports (>100MB breaks GitHub file limit)
+assets/models/*.onnx
+assets/models/yolo11l_float32.tflite
+assets/models/yolo11n.tflite
