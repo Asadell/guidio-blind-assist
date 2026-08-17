@@ -184,6 +184,14 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     );
   }
 
+  /// Dipanggil saat tombol kiri (📷 / "Kirim") ditekan.
+  /// Ambil satu foto dari frame kamera terakhir → kirim ke backend YOLOE.
+  Future<void> _triggerScan() async {
+    final fo = context.read<FindObjectProvider>();
+    if (fo.isScanning || fo.target == null) return;
+    await fo.triggerScan();
+  }
+
   void _openDebugSheet() {
     showModalBottomSheet(
       context: context,
@@ -269,6 +277,14 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
           Positioned(
             left: 0, right: 0, bottom: 0,
             child: BottomActionBar(
+              // Tombol kiri: aktif hanya saat ada target DAN tidak sedang scanning.
+              // Label berubah jadi 'Kirim' supaya jelas fungsinya (bukan
+              // "ambil foto" biasa, melainkan "kirim ke server untuk dicari").
+              onCameraPressed: (fo.target != null && !fo.isScanning && _debugOverride == null)
+                  ? _triggerScan
+                  : null,
+              cameraEnabled: fo.target != null && !fo.isScanning && _debugOverride == null,
+              cameraLabel: fo.target != null ? 'Kirim — cari ${fo.target}' : 'Sebutkan barang dulu',
               onMicPressed: _startListening,
               listeningOverride: fo.state == FindObjectState.listening,
             ),
@@ -319,10 +335,22 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
             child: AlertCard(
               tier: AlertTier.info,
-              title: fo.state == FindObjectState.scanning ? fo.scanMessage : 'Mulai memindai…',
+              title: fo.state == FindObjectState.scanning
+                  ? 'Memindai ke server…'
+                  : 'Tekan tombol kirim untuk memindai',
               description: 'Mencari ${fo.target}',
             ),
           ),
+          if (fo.state == FindObjectState.scanning)
+            const Center(
+              child: SizedBox(
+                width: 48, height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Colors.white,
+                ),
+              ),
+            ),
         ];
       case FindObjectState.found:
         return [_bottomPanel(bottomInset, _foundCard(fo))];

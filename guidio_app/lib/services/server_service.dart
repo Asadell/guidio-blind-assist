@@ -148,15 +148,19 @@ class ServerService {
     }
   }
 
-  // ── Mode Cari Objek ─────────────────────────────────────────────────────
-
-  /// Cari satu barang di satu frame. `found: false` dengan reason
-  /// `not_in_frame` adalah kondisi NORMAL (CO-10) — aplikasi menyuruh
-  /// pengguna memutar badan lalu memanggil ini lagi.
-  Future<Map<String, dynamic>> cariObjek(String target, Uint8List jpegBytes) =>
+  /// Kirim satu frame ke backend YOLOE untuk mencari [target].
+  ///
+  /// Backend YOLOE open-vocabulary (300+ barang Bahasa Indonesia) — jauh lebih
+  /// fleksibel dari on-device ONNX 80 kelas. Melempar exception saat gagal.
+  ///
+  /// `found: false` dengan reason `not_in_frame` adalah kondisi NORMAL (CO-10)
+  /// — pengguna cukup arahkan kamera ke tempat lain lalu tekan kirim lagi.
+  Future<Map<String, dynamic>> cariObjek(Uint8List jpegBytes, String target) =>
       _api.postMultipart(
         '/api/cari-objek',
         bytes: jpegBytes,
+        fileField: 'file',
+        filename: 'frame.jpg',
         fields: {'target': target},
         op: ApiOp.frame,
       );
@@ -250,7 +254,7 @@ class ServerService {
     }
   }
 
-  // ── Telemetri, crash, antrean offline ───────────────────────────────────
+  // ── Telemetri, crash, antrean offline ────────────────────────────────
 
   /// Telemetri alur. Sengaja fire-and-forget: kegagalan mengirim statistik
   /// tidak boleh terasa oleh pengguna.

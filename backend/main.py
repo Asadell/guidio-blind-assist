@@ -10,7 +10,7 @@ from loguru import logger
 from db.database import init_db, is_available
 from routers import (
     asisten,
-    # cari_objek,  # DINONAKTIFKAN — Cari Objek dipindah ke on-device YOLOE TFLite di Flutter.
+    cari_objek,   # Cari Objek — trigger-based via backend YOLOE open-vocabulary
     describe,
     detect,
     narasi,
@@ -22,7 +22,7 @@ from routers import (
     voice_router,
     websocket,
 )
-# from services.find_object_service import FindObjectService  # DINONAKTIFKAN — on-device YOLOE
+from services.find_object_service import FindObjectService
 from services.intent_service import IntentService
 from services.moondream_service import MoonDreamService
 from services.ocr_service import OCRService
@@ -70,13 +70,11 @@ async def lifespan(app: FastAPI):
     seg.load()
     app.state.segmentation_service = seg
 
-    # Cari Objek (backend YOLOE) — DINONAKTIFKAN.
-    # Fitur ini dipindah ke on-device YOLOE TFLite di Flutter (100% offline).
-    # Untuk mengaktifkan kembali:
-    #   1. Uncomment baris di bawah
-    #   2. Uncomment import FindObjectService dan cari_objek di atas
-    #   3. Uncomment app.include_router(cari_objek.router) di bawah
-    # app.state.find_object_service = FindObjectService()
+    # Cari Objek — backend YOLOE open-vocabulary, trigger-based (bukan real-time).
+    # Dipindah dari on-device ONNX 80 kelas → backend 300+ barang via text prompt.
+    fo_svc = FindObjectService()
+    app.state.find_object_service = fo_svc
+    logger.info("[FindObject] Service terdaftar (lazy-load model YOLOE).")
 
     # Scene Description — Moondream2 dimuat malas saat request pertama.
     # Model ~2GB, tidak pantas menahan startup. RTX 3050 4GB VRAM cukup
@@ -166,7 +164,7 @@ app.include_router(narasi.router)         # /api/narasi       narasi scene
 app.include_router(describe.router)       # /api/describe     scene description Moondream2
 app.include_router(voice_router.router)   # /api/route-intent Asisten Suara (lama)
 app.include_router(asisten.router)        # /api/intent, /api/asisten/*
-# app.include_router(cari_objek.router)   # /api/cari-objek  — DINONAKTIFKAN (on-device YOLOE)
+app.include_router(cari_objek.router)      # /api/cari-objek  — trigger-based backend YOLOE
 app.include_router(navigasi.router)       # /api/navigasi
 app.include_router(uang.router)           # /api/uang (opsional)
 app.include_router(risk_zone.router)      # /api/risk-zone

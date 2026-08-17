@@ -57,8 +57,6 @@ dependencies:
   google_fonts: ^6.2.1
   google_mlkit_text_recognition: ^0.16.0
 
-  # ONNX Runtime — inferensi YOLOE on-device untuk Mode Cari Objek (offline)
-  onnxruntime: ^1.4.1
 
 dev_dependencies:
   flutter_test:
