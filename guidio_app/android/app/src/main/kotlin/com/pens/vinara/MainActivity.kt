@@ -1,4 +1,4 @@
-package com.guidio.app
+package com.pens.vinara
 
 import io.flutter.embedding.android.FlutterActivity
 
