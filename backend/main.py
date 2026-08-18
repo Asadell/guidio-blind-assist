@@ -53,9 +53,14 @@ async def lifespan(app: FastAPI):
     init_db()
 
     # Deteksi rintangan (Mode Deteksi Objek + Navigasi).
+    # YOLO_NAVIGASI_MODEL → model custom 6 kelas (lubang, got_terbuka, tangga,
+    # orang, motor, tiang) hasil fine-tuning balanced dataset.
     yolo = YOLOService(
         model_path=os.getenv("YOLO_MODEL", "yolo11n.pt"),
         device=os.getenv("DEVICE", "auto"),
+        navigasi_model_path=os.getenv(
+            "YOLO_NAVIGASI_MODEL", "models/yolo_navigasi.pt"
+        ),
     )
     if not yolo.load():
         logger.error("YOLO gagal dimuat — deteksi via server tidak aktif.")
@@ -64,9 +69,15 @@ async def lifespan(app: FastAPI):
     app.state.ocr_service = OCRService()
     app.state.risk_zone_service = RiskZoneService()
 
-    # Segmentasi jalur 3 zona. Tidak adanya model BUKAN kegagalan: service
-    # memakai fallback heuristik dan melaporkannya lewat field `source`.
-    seg = SegmentationService()
+    # Segmentasi jalur 3 zona via PIDNet-S ONNX (dilatih 80 epoch, mIoU 0.5975).
+    # Input model: H=384, W=640 — sesuai dimensi training.
+    # Tidak adanya model BUKAN kegagalan: fallback heuristik tetap aktif.
+    seg = SegmentationService(
+        model_path=os.getenv(
+            "SEGMENTATION_MODEL", "models/pidnet_s_3zona.onnx"
+        ),
+        input_size=384,   # PIDNet-S dilatih dengan H=384, W=640
+    )
     seg.load()
     app.state.segmentation_service = seg
 
