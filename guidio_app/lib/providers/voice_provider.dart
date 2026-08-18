@@ -299,6 +299,8 @@ class VoiceProvider extends ChangeNotifier {
 
   /// Deskripsikan suasana di depan via Moondream2 (on-server).
   /// AS-09 style: umumkan dulu bahwa perlu waktu, lalu ambil gambar & kirim.
+  /// Output Moondream2 adalah Bahasa Inggris — dibacakan via speakEnglish()
+  /// agar TTS menggunakan locale 'en-US' (pelafalan native English).
   Future<void> _handleDescribeScene() async {
     _setState(VoiceState.processingLlm);
     onSpeak?.call('Saya foto sekitarmu dulu, tunggu sebentar.');
@@ -310,15 +312,18 @@ class VoiceProvider extends ChangeNotifier {
 
     try {
       final jpeg = await _camera.captureJpeg();
-      final deskripsi = await ServerService.instance.describeScene(jpeg);
+      final description = await ServerService.instance.describeScene(jpeg);
 
-      if (deskripsi == null || deskripsi.isEmpty) {
+      if (description == null || description.isEmpty) {
         await _handleLocal('Maaf, saya tidak bisa mendeskripsikan suasana saat ini. Coba lagi.');
         return;
       }
 
       _consecutiveFailures = 0;
-      await _respond(deskripsi, save: true);
+      _response = description;
+      _setState(VoiceState.responded);
+      // Baca dalam English — output Moondream2 adalah Bahasa Inggris native.
+      await TTSService.instance.speakEnglish(description);
     } catch (e) {
       debugPrint('[VoiceProvider] _handleDescribeScene error: $e');
       await _handleLocal('Gagal mendeskripsikan suasana. Coba lagi.');

@@ -238,7 +238,8 @@ class ServerService {
 
   /// Scene Description via Moondream2.
   /// Mengirim gambar JPEG ke /api/describe dan mengembalikan deskripsi
-  /// suasana dalam Bahasa Indonesia yang siap dibacakan via TTS.
+  /// suasana dalam Bahasa Inggris (output langsung Moondream2, tanpa terjemahan).
+  /// Mobile membacanya via TTSService.speakEnglish() dengan locale 'en-US'.
   Future<String?> describeScene(Uint8List jpegBytes) async {
     try {
       final result = await _api.postMultipart(
@@ -248,7 +249,7 @@ class ServerService {
         fields: {},
         op: ApiOp.heavy,
       );
-      return result['deskripsi'] as String?;
+      return result['description_en'] as String?;
     } catch (_) {
       return null;
     }

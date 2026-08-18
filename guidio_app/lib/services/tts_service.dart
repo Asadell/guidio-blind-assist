@@ -45,6 +45,22 @@ class TTSService {
     }
   }
 
+  /// Speak pesan dalam Bahasa Inggris (untuk output Moondream2 / describeScene).
+  /// Set locale ke 'en-US' sebelum membaca, lalu kembalikan ke 'id-ID' setelahnya.
+  Future<void> speakEnglish(String message, {bool interrupt = false}) async {
+    if (interrupt) {
+      await _tts.stop();
+      _speaking = false;
+    }
+    if (!_speaking) {
+      _speaking = true;
+      await _tts.setLanguage('en-US');
+      await _tts.speak(message);
+      // Kembalikan ke Bahasa Indonesia setelah selesai membaca
+      await _tts.setLanguage('id-ID');
+    }
+  }
+
   /// Kecepatan bicara — pengaturan 1 "Kecepatan bicara TTS" (bagian 13).
   Future<void> setRate(double rate) async {
     await _tts.setSpeechRate(rate);

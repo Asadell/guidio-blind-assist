@@ -1,46 +1,21 @@
 """
 Router: POST /api/describe
 Menerima gambar JPEG dari Flutter, mengembalikan deskripsi suasana
-dalam Bahasa Indonesia via Moondream2 → Qwen2.5-1.5B terjemahan.
+dalam Bahasa Inggris via Moondream2.
 
-Pipeline:
-  Foto JPEG → Moondream2 (VLM, caption EN) → Qwen (terjemah EN→ID) → TTS Bahasa Indonesia
+Pipeline (TANPA LLM):
+  Foto JPEG → Moondream2 (VLM, caption EN) → dikembalikan langsung ke mobile
 
-Qwen di sini BUKAN VLM — tidak melihat gambar sama sekali.
-Tugasnya hanya: ubah kalimat Inggris pendek menjadi Bahasa Indonesia yang
-enak didengar via speaker HP.
+Keputusan desain:
+- Terjemahan ke Bahasa Indonesia via Qwen DIHAPUS — tidak ada LLM di backend.
+- Output tetap Bahasa Inggris; mobile membacanya via TTS dengan locale 'en-US'.
+- Key response: 'description_en' (bukan 'deskripsi').
 """
 
 from fastapi import APIRouter, File, Request, UploadFile
 from loguru import logger
 
 router = APIRouter(prefix="/api", tags=["describe"])
-
-
-def _template_translate(caption_en: str) -> str:
-    """Fallback sederhana jika Qwen service belum tersedia atau belum dimuat."""
-    return f"Di depanmu terlihat {caption_en}."
-
-
-async def _translate_to_id(request: Request, caption_en: str) -> str:
-    """Terjemahkan caption Inggris Moondream ke Bahasa Indonesia via QwenService.
-
-    Fallback ke template sederhana jika:
-    - Qwen service tidak terdaftar di app.state
-    - File model GGUF belum ada / belum di-download
-    - Inferensi gagal karena sebab apapun
-    """
-    qwen = getattr(request.app.state, "qwen_service", None)
-    if qwen is None:
-        logger.warning("[describe] qwen_service tidak ada di app.state — template fallback")
-        return _template_translate(caption_en)
-
-    result = await qwen.translate_to_id(caption_en)
-    if result:
-        return result
-
-    logger.warning("[describe] Qwen translate gagal — template fallback")
-    return _template_translate(caption_en)
 
 
 @router.post("/describe")
@@ -51,27 +26,27 @@ async def describe_scene(
     """
     POST /api/describe
 
-    Menerima gambar kamera, mengembalikan deskripsi suasana Bahasa Indonesia
-    yang siap dibacakan via TTS kepada pengguna tunanetra.
+    Menerima gambar kamera, mengembalikan deskripsi suasana Bahasa Inggris
+    dari Moondream2 yang siap dibacakan via TTS (locale en-US) kepada
+    pengguna tunanetra.
 
     Pipeline:
     1. Gambar JPEG → Moondream2 → caption Bahasa Inggris (length='short')
-    2. Caption Inggris → Qwen2.5-1.5B → kalimat Bahasa Indonesia natural
+    2. Caption dikembalikan langsung — tanpa terjemahan.
 
-    Fallback bertingkat:
-    - Jika Moondream gagal/belum dimuat: pesan error informatif
-    - Jika Qwen gagal/belum dimuat: template "Di depanmu terlihat [caption]."
+    Fallback:
+    - Jika Moondream gagal/belum dimuat: pesan error informatif.
     """
     moondream = getattr(request.app.state, "moondream_service", None)
     if moondream is None:
         return {
-            "deskripsi": "Fitur deskripsi tidak tersedia. Moondream service belum dimuat.",
+            "description_en": "Scene description unavailable. Moondream service not loaded.",
             "error": "moondream_service_unavailable",
         }
 
     image_bytes = await image.read()
     if len(image_bytes) == 0:
-        return {"deskripsi": "Gambar kosong atau tidak valid.", "error": "empty_image"}
+        return {"description_en": "Image is empty or invalid.", "error": "empty_image"}
 
     # Inferensi Moondream2 — length='short' → ringkas dan cepat (~300ms di GPU)
     logger.info(f"[describe] Menerima gambar {len(image_bytes) // 1024} KB")
@@ -79,17 +54,10 @@ async def describe_scene(
 
     if not caption_en:
         return {
-            "deskripsi": "Maaf, saya tidak dapat mendeskripsikan suasana saat ini.",
+            "description_en": "Sorry, I could not describe the scene right now.",
             "error": "moondream_inference_failed",
         }
 
     logger.info(f"[describe] Moondream caption: {caption_en}")
 
-    # Terjemahkan ke Bahasa Indonesia via Qwen (bukan Claude, bukan API eksternal)
-    deskripsi_id = await _translate_to_id(request, caption_en)
-    logger.info(f"[describe] Deskripsi ID: {deskripsi_id}")
-
-    return {
-        "deskripsi": deskripsi_id,
-        "caption_en": caption_en,  # Untuk debugging
-    }
+    return {"description_en": caption_en}
