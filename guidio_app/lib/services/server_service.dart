@@ -110,21 +110,10 @@ class ServerService {
         .toList();
   }
 
-  /// Minta narasi natural dari Claude Haiku berdasarkan deteksi.
-  Future<String> getNarasi(List<Detection> detections, {String context = 'voice'}) async {
-    final json = await _api.postJson('/api/narasi', {
-      'detections': detections
-          .map((d) => {
-                'label_id': d.labelId,
-                'distance_meter': d.distanceMeter,
-                'direction': d.direction,
-                'danger_level': d.dangerLevel,
-              })
-          .toList(),
-      'context': context,
-    }, op: ApiOp.frame);
-    return json['narasi'] as String? ?? 'Area sekitar tampak aman.';
-  }
+  // ── Narasi Deteksi ─────────────────────────────────────────────────────────
+  // POST /api/narasi DIHAPUS — digantikan generateNaturalNarration() lokal
+  // di lib/core/voice/narration_engine.dart. Tidak ada network call, 100% offline.
+  // ─────────────────────────────────────────────────────────────────────────────
 
   /// Cek risk zone via REST.
   Future<RiskZone?> checkRiskZone(double lat, double lng) async {
