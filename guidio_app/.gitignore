@@ -72,8 +72,8 @@ android/captures/
 **/ios/Pods/
 
 # Large Model Binaries (>50MB breaks GitHub file limit)
-assets/models/*.onnx
-assets/models/*.engine
-assets/models/*.pt
-assets/models/yolo11l_float32.tflite
-assets/models/yolo11n.tflite
+# assets/models/*.onnx
+# assets/models/*.engine
+# assets/models/*.pt
+# assets/models/yolo11l_float32.tflite
+# assets/models/yolo11n.tflite
