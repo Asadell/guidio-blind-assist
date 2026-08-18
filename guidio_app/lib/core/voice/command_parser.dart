@@ -10,12 +10,30 @@ class CommandParser {
       'uang ini nominal berapa', 'berapa nih duitnya', 'identifikasi uang', 'ini duit berapa ribu',
       'cek duit', 'berapa nominal ini', 'ini pecahan berapa', 'uang berapa ini', 'tolong cek uangnya',
       'lembaran berapa ini', 'duit iki piro', 'duit ieu sabaraha',
+      // bank kata tambahan
+      'aktifkan mode uang', 'deteksi nominal uang', 'kenali uang ini', 'pecahan berapa nih',
+      'liatin duit ini dong', 'ini duit berapa sih', 'berapaan nih duitnya', 'duit gue berapa ya',
+      'nih duit apaan', 'berapa nih lembaran ini', 'nominal berapa ini', 'ini uang berapa',
+      'cek duit dong', 'nominal uang',
+      'ono piro duite', 'iki duit piro', 'piro iki duite',
+      'sabaraha ieu artos', 'artosna sabaraha',
+      'iko doih barapo', 'berape nih duit',
+      'mod uang', 'mode uwang', 'cek uwang', 'nominl uang', 'moda uang', 'mode uan',
     ],
     VoiceIntent.modeReadText: [
       'baca teks', 'bacakan', 'buka mode baca', 'baca tulisan ini', 'apa tulisannya',
       'bacain ini', 'tolong bacain', 'ini tulisan apa', 'baca dong', 'scan teks', 'scan ini',
       'bacakan surat ini', 'apa isinya ini', 'baca kemasan ini', 'cek label ini', 'ini tulisannya apa ya',
       'baca komposisinya', 'baca tanggal kadaluarsanya', 'baca dokumen ini', 'wacaan ieu naon', 'wacanen iki',
+      // bank kata tambahan
+      'aktifkan mode baca dokumen', 'pindai teks', 'baca label kemasan', 'pindai dokumen ini',
+      'bacain dong ini', 'baca dong tulisannya', 'ini tulisan apaan', 'scan teks dong',
+      'bacain kemasan ini', 'ini tulisan apa ya', 'nih tulisan apaan sih',
+      'wacakno tulisan iki', 'moco tulisan iki', 'iki tulisane opo',
+      'bacakeun ieu tulisan', 'ieu naon tulisanana',
+      'bacoan tulisan ko', 'ko tulisan apo',
+      'bacain nih tulisan bang', 'ini tulisan apaan bang',
+      'mode bacaa teks', 'bca teks', 'mode ocr', 'baca text ini', 'moda baca teks',
     ],
     VoiceIntent.modeDetection: [
       'deteksi objek', 'mode deteksi', 'ada apa di depan',
@@ -24,29 +42,75 @@ class CommandParser {
       'jalanin mode tuntun', 'aktifkan deteksi', 'nyalain deteksi', 'cek depan',
       'aman gak jalan di depan', 'ada orang gak di depan', 'hati-hati ada apa', 'bantuin lihat depan',
       'ada apa di ngarep', 'ono opo neng ngarep', 'aya naon di hareup',
+      // bank kata tambahan
+      'aktifkan pendeteksi objek', 'kenali objek di sekitar', 'deteksi sekeliling',
+      'apa saja yang ada di depan saya', 'liatin depan dong', 'apaan tuh di depan', 'liat depan dong',
+      'ada apa aja di depan', 'cek sekitar dong', 'liat sekeliling dong', 'apaan sih di depan gue',
+      'ada apaan tuh di depan', 'liatin sekitar dong',
+      'ndelok ngarep opo ono', 'iki ono opo ngarepe',
+      'aya naon di payun', 'tulung tingali payuneun',
+      'apo tu di adok an', 'caliak lah adok an',
+      'ada ape tuh di depan', 'apaan tuh di depan bang',
+      'mode deteski', 'deteksi obek', 'mode dtksi', 'cek skeliling',
     ],
     VoiceIntent.modeNavigation: [
       'mode navigasi', 'mau jalan', 'bantu jalan', 'navigasi',
       'kemana ya arahnya', 'tolong arahin', 'navigasi ke', 'gimana caranya ke', 'arahin aku ke',
       'arahin saya ke', 'petunjuk jalan ke', 'rute ke', 'jalan ke mana', 'belok kemana',
       'tunjukin jalan ke', 'ke arah mana ya', 'piye carane menyang', 'kumaha carana ka',
+      // bank kata tambahan
+      'aktifkan navigasi jalan', 'pandu saya berjalan', 'aktifkan panduan jalan',
+      'anterin gue jalan', 'pandu gue jalan dong', 'bantuin gue jalan', 'gue mau jalan nih',
+      'bantu gue nyebrang', 'pandu jalan dong', 'temenin gue jalan dong',
+      'tulung tuntun mlaku', 'kancani aku mlaku',
+      'tulung antar abdi leumpang', 'antosan abdi leumpang',
+      'tolong anta ambo jalan', 'anterin gue jalan bang',
+      'mode navigsi', 'mode navigasii', 'bantu jalann', 'aktifkan navgasi',
     ],
     VoiceIntent.modeAssistant: [
       'asisten', 'tanya', 'mode suara',
       'halo guidio', 'hei guidio', 'oy guidio', 'guidio', 'jarvis', 'hei jarvis', 'halo jarvis',
       'tolong asisten', 'eh guidio', 'guidio tolong', 'woy guidio', 'eh jarvis tolong',
+      // bank kata tambahan
+      'buka mode asisten suara', 'aktifkan asisten', 'saya ingin bertanya', 'buka mode tanya jawab',
+      'bisa bantu saya', 'gue mau nanya', 'nanya dong', 'lu bisa jawab gak', 'bisa bantu gak',
+      'gue mau ngobrol', 'boleh nanya gak', 'mau nanya sesuatu nih',
+      'aku arep takon', 'iso mbantu ora',
+      'abdi bade naros', 'tiasa ngabantosan teu',
+      'ambo nio batanyo', 'gue mau nanye bang',
+      'mode asisten suaraa', 'aktifkan asistem', 'buka asistenn',
     ],
     VoiceIntent.modeFindObject: [
       'cari objek', 'cari barang', 'carikan',
+      // bank kata tambahan
+      'aktifkan pencarian barang', 'bantu saya cari barang', 'cari barang saya yang hilang',
+      'tolong bantu temukan barang saya', 'cariin dong', 'bantu carinya dong',
+      'gue kehilangan barang', 'barang gue ilang nih',
+      'tulung goleki barangku', 'barangku ilang golekno',
+      'tulung pilarian barang', 'barang abdi leungit',
+      'tolong cari barang ambo', 'ilang nih barang gue',
+      'mode cari barangg', 'cariinn dong', 'aktifkan carii barang',
     ],
     VoiceIntent.modeSettings: [
       'pengaturan', 'setelan', 'buka pengaturan',
+      // bank kata tambahan
+      'mode pengaturan', 'aktifkan menu pengaturan', 'buka menu konfigurasi',
+      'buka setting dong', 'buka setelan dong', 'gue mau atur aplikasi', 'masuk setting dong',
+      'buka setelan yo', 'muka setelan atuh',
+      'buka pengaturann', 'mode setingan', 'buka stelan',
     ],
     VoiceIntent.actionCapture: [
       'ambil gambar', 'jepret', 'foto',
     ],
     VoiceIntent.actionReplay: [
       'putar ulang', 'ulangi', 'baca lagi',
+      // bank kata tambahan
+      'ulangi instruksi', 'ulangi perkataan terakhir', 'tolong ulangi', 'ulangi lagi',
+      'ulang dong', 'bilang lagi dong', 'ulangin dong', 'apa tadi bilangnya', 'coba ulang deh',
+      'baleni maneh', 'baleni sing mau',
+      'ulang deui', 'ulangan anu tadi',
+      'ulangi lai', 'ulangin dong bang',
+      'ulangii instruksi', 'ulangi lgi',
     ],
     VoiceIntent.actionGoBack: [
       'kembali', 'balik', 'kembali ke sebelumnya', 'mode sebelumnya',
@@ -56,9 +120,22 @@ class CommandParser {
     ],
     VoiceIntent.actionSummary: [
       'ringkas', 'singkat saja', 'baca ringkasannya',
+      // bank kata tambahan
+      'berikan rangkuman objek', 'rangkum objek di sekitar', 'buat ringkasan objek sekitar',
+      'rangkum dong', 'kasih ringkasan dong', 'ringkes dong sekitar gue', 'rangkumin dong',
+      'kasih tau intinya aja', 'summary dong',
+      'ringkes o wae kahanane', 'ringkeskeun kaayaan sabudeureun',
+      'ringkasan objekk', 'rangkum objekk sekitar',
     ],
     VoiceIntent.actionStopWalking: [
       'selesai jalan', 'sudah sampai', 'berhenti navigasi',
+      // bank kata tambahan
+      'hentikan panduan', 'stop navigasi', 'jeda panduan jalan', 'tolong berhenti dulu',
+      'pause navigasi', 'stop dulu', 'berenti dulu', 'berhenti bentar', 'jeda dulu dong',
+      'mandeg disik', 'mandeg dhisik yo',
+      'eureun heula', 'eureun sakedap',
+      'baranti sabanta', 'stop dulu bang',
+      'berhentii navigasi', 'hentikn panduan', 'stop navigasii',
     ],
     VoiceIntent.actionShowAll: [
       'lihat semua',
@@ -123,18 +200,42 @@ class CommandParser {
       'tolong matikan lampu', 'tolong matiin lampu',
       // toggle generic
       'toggle lampu', 'toggle senter',
+      // bank kata tambahan
+      'aktifkan lampu kamera', 'nyalakan lampu kamera', 'matikan lampu kamera',
+      'nonaktifkan senter', 'idupin senter', 'matiin lampu dong', 'nyalain lampu dong',
+      'urupno senter', 'patenono senter', 'tulung urupno lampu',
+      'hurungkeun senter', 'pareuman senter',
+      'nyalain senter bang', 'matiin senter bang',
+      'nyalain sentr', 'aktifkn senter', 'nyalakan sentar',
     ],
     VoiceIntent.playPause: [
       'jeda', 'berhenti dulu', 'stop',
+      // bank kata tambahan
+      'jeda suara', 'pause suara', 'hentikan sebentar suaranya', 'jeda dong',
+      'stop bentar suaranya', 'pause dulu',
+      'mandeg disik swarane', 'eureun heula sorana', 'baranti sabanta suaronyo',
+      'jeda suaraa', 'pauze suara',
     ],
     VoiceIntent.playResume: [
       'lanjut', 'terusin', 'lanjutkan',
     ],
     VoiceIntent.playFaster: [
       'lebih cepat', 'percepat',
+      // bank kata tambahan
+      'percepat suara', 'percepat laju bicara', 'naikkan kecepatan suara',
+      'cepetin dong', 'gasin dong suaranya', 'lebih cepet dong',
+      'kebutno swarane', 'gancangkeun sorana',
+      'cepetin bang suaranye',
+      'percepat suaraa', 'cepetin suarane',
     ],
     VoiceIntent.playSlower: [
       'lebih pelan', 'pelan-pelan',
+      // bank kata tambahan
+      'perlambat suara', 'perlambat laju bicara', 'turunkan kecepatan suara',
+      'pelanin dong', 'pelanin suaranya dong', 'lebih pelan dong', 'jangan cepet-cepet dong',
+      'alonno swarane', 'lambatkeun sorana',
+      'pelanin bang suaranye',
+      'perlambat suaraa', 'pelanin suarane',
     ],
     VoiceIntent.playRepeatSection: [
       'ulangi bagian', 'ulang yang tadi',
