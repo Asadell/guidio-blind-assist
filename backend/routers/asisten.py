@@ -78,8 +78,8 @@ async def resolve_intent(request: Request, body: IntentRequest):
     if len(strong) == 1 and len(candidates) == 1:
         return _intent_payload(svc, {**strong[0], "source": "similarity"}, text, resolved=True)
 
-    # AS-19 — dua kandidat yang sama-sama masuk akal: tanya balik, jangan
-    # panggil LLM. Menebak salah lebih mahal daripada satu pertanyaan.
+    # AS-19 — dua kandidat yang sama-sama masuk akal: tanya balik.
+    # Menebak salah lebih mahal daripada satu pertanyaan.
     if len(candidates) >= 2:
         return {
             "resolved": False,
@@ -89,12 +89,8 @@ async def resolve_intent(request: Request, body: IntentRequest):
             "suggestions": candidates,
         }
 
-    # Lapis 3 — LLM, hanya untuk kasus yang belum punya kandidat jelas.
-    llm = await svc.match_llm(text)
-    if llm:
-        return _intent_payload(svc, llm, text, resolved=True)
-
     # AS-18 — tidak dikenali: sebut yang didengar, tawarkan tebakan terdekat.
+    # (Lapis 3 LLM dihapus — tidak ada LLM di backend)
     return {
         "resolved": False,
         "reason": "unrecognized",

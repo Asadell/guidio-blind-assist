@@ -13,7 +13,6 @@ from routers import (
     cari_objek,   # Cari Objek — trigger-based via backend YOLOE open-vocabulary
     describe,
     detect,
-    narasi,
     navigasi,
     ocr,
     risk_zone,
@@ -26,9 +25,7 @@ from services.find_object_service import FindObjectService
 from services.intent_service import IntentService
 from services.moondream_service import MoonDreamService
 from services.ocr_service import OCRService
-from services.qwen_service import QwenService
 from services.risk_zone_service import RiskZoneService
-from services.segmentation_service import SegmentationService
 from services.uang_service import UangService
 from services.yolo_service import YOLOService
 
@@ -98,48 +95,18 @@ async def lifespan(app: FastAPI):
     app.state.moondream_service = MoonDreamService(device=moon_device)
     logger.info("[Moondream2] Service terdaftar (lazy-load, belum dimuat).")
 
-    # Narasi & Terjemahan — Qwen2.5-1.5B-Instruct lokal menggantikan Claude Haiku.
-    # Model ~1GB GGUF Q4_K_M. Dimuat malas saat request pertama.
-    # Jika file model belum ada, service tetap terdaftar tapi available=False
-    # (semua caller jatuh ke template fallback — tidak crash).
-    qwen_model = os.getenv(
-        "QWEN_MODEL_PATH",
-        "models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
-    )
-    qwen_gpu_layers = int(os.getenv("QWEN_GPU_LAYERS", "-1"))
-    qwen_svc = QwenService(model_path=qwen_model, n_gpu_layers=qwen_gpu_layers)
-    app.state.qwen_service = qwen_svc
-    if qwen_svc.available:
-        logger.info(f"[Qwen] Service terdaftar (lazy-load): {qwen_model}")
-    else:
-        logger.warning(
-            f"[Qwen] File model tidak ditemukan: {qwen_model}\n"
-            "       Narasi dan terjemahan akan pakai template fallback.\n"
-            "       Download: huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF "
-            "qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir models/"
-        )
-
-    # Kenali Uang di server: OPSIONAL. Jalur utama fitur ini on-device.
-    uang_svc = UangService()
-    uang_svc.load()
-    app.state.uang_service = uang_svc
-
     # Katalog 20 intent perintah suara dari database.
+    # Hanya Lapis 1 (exact) dan Lapis 2 (similarity) — tidak ada LLM.
     intent_svc = IntentService()
     if is_available():
         try:
             from services import repository as repo
-            # EXTRA_ID_TO_EN dipindah ke Flutter — tidak diimpor lagi dari sini.
-            # from services.find_object_service import EXTRA_ID_TO_EN
 
             intents = repo.get_all_intents()
             searchable = sorted(
                 {r["label_local"] for r in repo.get_searchable_labels()}
-                # | set(EXTRA_ID_TO_EN.keys())  # nonaktif bersama find_object_service
             )
             intent_svc.refresh(intents, searchable)
-            # Inject QwenService ke IntentService sebagai Lapis 3 LLM.
-            intent_svc.set_llm(qwen_svc)
             logger.info(
                 f"Katalog intent dimuat: {len(intents)} intent, "
                 f"{len(searchable)} nama barang bisa dicari"
@@ -147,6 +114,11 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Katalog intent gagal dimuat: {e}")
     app.state.intent_service = intent_svc
+
+    # Kenali Uang di server: OPSIONAL. Jalur utama fitur ini on-device.
+    uang_svc = UangService()
+    uang_svc.load()
+    app.state.uang_service = uang_svc
 
     logger.success("=== Vinara Backend siap ===")
     yield
@@ -175,12 +147,12 @@ app.add_middleware(
 app.include_router(websocket.router)      # /ws/detect        Deteksi Objek + Navigasi
 app.include_router(detect.router)         # /api/detect       single-shot
 app.include_router(ocr.router)            # /api/ocr          Baca Teks
-app.include_router(narasi.router)         # /api/narasi       narasi scene
-app.include_router(describe.router)       # /api/describe     scene description Moondream2
-app.include_router(voice_router.router)   # /api/route-intent Asisten Suara (lama)
+# narasi.router DIHAPUS — /api/narasi digantikan generateNaturalNarration() lokal di mobile
+app.include_router(describe.router)       # /api/describe     scene description Moondream2 (output EN)
+app.include_router(voice_router.router)   # /api/route-intent legacy (keyword-based, tanpa LLM)
 app.include_router(asisten.router)        # /api/intent, /api/asisten/*
-app.include_router(cari_objek.router)      # /api/cari-objek  — trigger-based backend YOLOE
-# app.include_router(navigasi.router)     # /api/navigasi — Dinonaktifkan: Navigasi sudah 100% On-Device di HP
+app.include_router(cari_objek.router)     # /api/cari-objek   trigger-based backend YOLOE
+# navigasi.router DINONAKTIFKAN — Navigasi sudah 100% On-Device di HP
 app.include_router(uang.router)           # /api/uang (opsional)
 app.include_router(risk_zone.router)      # /api/risk-zone
 
