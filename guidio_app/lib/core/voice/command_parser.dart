@@ -382,11 +382,66 @@ class CommandParser {
     'pole',
   ];
 
+  /// Prefiks pengantar mode alami bahasa Indonesia yang sering diucapkan pengguna
+  static const List<String> modeTransitionPrefixes = [
+    'saya pengin pindah ke mode',
+    'saya mau pindah ke mode',
+    'pengin pindah ke mode',
+    'mau pindah ke mode',
+    'pindah ke mode',
+    'pindah mode ke',
+    'pindah mode',
+    'pindahin ke mode',
+    'pindahin ke',
+    'ganti mode ke',
+    'ganti ke mode',
+    'ganti mode',
+    'masuk ke mode',
+    'masuk mode',
+    'buka mode',
+    'tolong buka mode',
+    'tolong pindah ke',
+    'tolong ganti ke',
+    'mau ke mode',
+    'pengin ke mode',
+    'aktifkan mode',
+    'nyalakan mode',
+    'jalankan mode',
+  ];
+
   static VoiceCommand parse(String rawText) {
     final text = rawText.trim().toLowerCase();
     if (text.isEmpty) return VoiceCommand(rawText: rawText);
 
-    // 1. Cek pencocokan frasa mode generik / perintah tindakan dulu
+    // 0. Cek frasa pengantar transisi mode alami (mis. "saya pengin pindah ke mode baca teks")
+    for (final prefix in modeTransitionPrefixes) {
+      if (text.contains(prefix)) {
+        final targetPart = text.substring(text.indexOf(prefix) + prefix.length).trim();
+        if (targetPart.contains('uang') || targetPart.contains('duit') || targetPart.contains('money')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeMoney);
+        }
+        if (targetPart.contains('baca') || targetPart.contains('teks') || targetPart.contains('tulisan') || targetPart.contains('ocr')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeReadText);
+        }
+        if (targetPart.contains('deteksi') || targetPart.contains('tuntun') || targetPart.contains('objek') || targetPart.contains('rintangan')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeDetection);
+        }
+        if (targetPart.contains('navigasi') || targetPart.contains('jalan') || targetPart.contains('rute')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeNavigation);
+        }
+        if (targetPart.contains('asisten') || targetPart.contains('suara') || targetPart.contains('tanya') || targetPart.contains('voice')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeAssistant);
+        }
+        if (targetPart.contains('cari') || targetPart.contains('barang') || targetPart.contains('find')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
+        }
+        if (targetPart.contains('pengaturan') || targetPart.contains('setelan') || targetPart.contains('setting')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeSettings);
+        }
+      }
+    }
+
+    // 1. Cek pencocokan frasa mode generik / perintah tindakan baku
     for (final entry in _phrases.entries) {
       if (entry.key == VoiceIntent.modeFindObject) continue; // handle secara dinamis di bawah
       for (final phrase in entry.value) {
@@ -394,6 +449,26 @@ class CommandParser {
           return VoiceCommand(rawText: rawText, intent: entry.key);
         }
       }
+    }
+
+    // 1b. Fallback matching kata kunci mode jika diucapkan secara alami tanpa frasa persis
+    if (text.contains('baca teks') || (text.contains('baca') && text.contains('mode'))) {
+      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeReadText);
+    }
+    if (text.contains('kenali uang') || text.contains('mode uang') || (text.contains('uang') && text.contains('mode'))) {
+      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeMoney);
+    }
+    if (text.contains('deteksi objek') || text.contains('mode deteksi') || (text.contains('deteksi') && text.contains('mode'))) {
+      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeDetection);
+    }
+    if (text.contains('mode navigasi') || (text.contains('navigasi') && text.contains('mode'))) {
+      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeNavigation);
+    }
+    if (text.contains('asisten suara') || text.contains('mode suara') || (text.contains('asisten') && text.contains('mode'))) {
+      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeAssistant);
+    }
+    if (text.contains('cari objek') || text.contains('mode cari') || (text.contains('cari') && text.contains('mode'))) {
+      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
     }
 
     // 2. Cek pencocokan dynamic findObjectTarget menggunakan searchPrefixes
