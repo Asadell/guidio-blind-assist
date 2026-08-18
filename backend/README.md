@@ -1,31 +1,33 @@
 # Vinara Backend (FastAPI)
 
 Server untuk Vinara. Menangani pekerjaan yang tidak masuk akal dikerjakan di
-ponsel: membaca tulisan, memahami perintah suara yang rumit, mencari barang
-dari kalimat bebas, dan membaca jalur trotoar.
+ponsel: membaca tulisan, mencari barang dari kalimat bebas, memahami perintah
+suara yang ambigu, dan membaca jalur trotoar.
 
 **Hal pertama yang perlu dipahami:** dua dari enam mode **tidak pernah
 memanggil server ini sama sekali**, yaitu Deteksi Objek dan Kenali Uang.
-Itu keputusan sengaja, bukan kekurangan. Keduanya menyangkut keselamatan dan
-uang, dan dipakai di tempat yang sinyalnya sering buruk seperti jalan raya,
-pasar, dan warung. Fitur yang mati saat tidak ada internet berarti fitur yang
-gagal di saat paling dibutuhkan.
+Itu keputusan sengaja, bukan kekurangan. Dan sekarang ditambah dua lagi:
+**intent parsing** dan **narasi deteksi** juga dikerjakan lokal di Flutter —
+tanpa server, tanpa LLM.
+
+> **Tidak ada LLM di backend ini.** `QwenService` dan `narasi.py` telah
+> dihapus. Narasi dikerjakan oleh `narration_engine.dart` di Flutter.
+> Intent parsing dikerjakan oleh `CommandParser` di Flutter.
 
 ---
 
 ## Daftar isi
 
 1. [Menjalankan](#1-menjalankan)
-2. [Enam fitur dan pembagian tugasnya](#2-enam-fitur-dan-pembagian-tugasnya)
+2. [Pembagian tugas: on-device vs server](#2-pembagian-tugas-on-device-vs-server)
 3. [Rujukan endpoint](#3-rujukan-endpoint)
 4. [Basis data](#4-basis-data)
 5. [Prinsip yang dipegang server ini](#5-prinsip-yang-dipegang-server-ini)
 6. [Struktur folder](#6-struktur-folder)
 7. [Keterbatasan yang perlu diketahui](#7-keterbatasan-yang-perlu-diketahui)
 8. [Uji cepat](#8-uji-cepat)
-9. [LLM Lokal (Qwen)](#9-llm-lokal-qwen)
-10. [Koneksi HP ke Backend Laptop](#10-koneksi-hp-ke-backend-laptop)
-11. [Ukuran Model dan Kebutuhan Storage](#11-ukuran-model-dan-kebutuhan-storage)
+9. [Koneksi HP ke Backend Laptop](#9-koneksi-hp-ke-backend-laptop)
+10. [Ukuran Model dan Kebutuhan Storage](#10-ukuran-model-dan-kebutuhan-storage)
 
 ---
 
@@ -39,8 +41,7 @@ gagal di saat paling dibutuhkan.
 sudo dnf install -y tesseract tesseract-langpack-ind tesseract-langpack-eng
 ```
 
-Paket `tesseract-langpack-ind` penting, karena kode memanggil OCR dengan
-bahasa `ind+eng`. Tanpa data bahasa Indonesia, hasil bacaannya buruk.
+Paket `tesseract-langpack-ind` penting — OCR dipanggil dengan bahasa `ind+eng`.
 
 **PostgreSQL** yang sedang berjalan, lalu buat basis datanya sekali saja:
 
@@ -60,28 +61,29 @@ cp .env.example .env  # isi kredensial PostgreSQL
 venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Tabel basis data dibuat otomatis saat startup (aman diulang berkali kali),
-lalu data rujukan diisi: 52 label objek, 20 intent suara beserta 61 varian
-ucapan, 7 denominasi uang, dan manifest model.
+Tabel basis data dibuat otomatis saat startup (aman diulang berkali-kali),
+lalu data rujukan diisi: 52 label objek, 20 intent suara beserta variannya,
+7 denominasi uang, dan manifest model.
 
 Dokumentasi endpoint interaktif: `http://localhost:8000/docs`
 
 **Kalau PostgreSQL mati, server tetap jalan.** Endpoint yang membutuhkan
-basis data membalas dengan pesan yang menyebutkan apa yang masih berfungsi,
-bukan sekadar kode error kosong.
+basis data membalas dengan pesan yang menyebutkan apa yang masih berfungsi.
 
 ---
 
-## 2. Enam fitur dan pembagian tugasnya
+## 2. Pembagian tugas: on-device vs server
 
 | Fitur | Diproses di mana | Endpoint |
 |---|---|---|
-| Deteksi Objek | **Ponsel**, server hanya pembanding | `WS /ws/detect`, `POST /api/detect` |
-| Kenali Uang | **Ponsel**, tidak pernah ke server | `POST /api/uang` (opsional) |
+| Deteksi Objek | **Flutter** (TFLite on-device) | `WS /ws/detect`, `POST /api/detect` |
+| Kenali Uang | **Flutter** (TFLite on-device) | `POST /api/uang` (opsional) |
+| Intent parsing | **Flutter** (`CommandParser`, offline) | `POST /api/intent` (hanya fallback ambigu) |
+| Narasi deteksi | **Flutter** (`narration_engine.dart`, offline) | ~~`/api/narasi`~~ (dihapus) |
 | Baca Teks | Server | `POST /api/ocr` |
-| Asisten Suara | Server, ada cadangan lokal | `POST /api/intent`, `/api/narasi` |
-| Cari Objek | Server | `POST /api/cari-objek` |
-| Navigasi jalur | Server, rintangan tetap di ponsel | `POST /api/navigasi` |
+| Deskripsi suasana | Server (Moondream2 VLM) | `POST /api/describe` |
+| Cari Objek | Server (YOLOE) | `POST /api/cari-objek` |
+| Navigasi jalur | Server, rintangan tetap di Flutter | `POST /api/navigasi` |
 
 ### Cari Objek: kenapa memakai YOLOE
 
@@ -91,38 +93,28 @@ pengguna dan bisa apa saja: "dompet", "kunci motor", "tas merah".
 
 YOLOE menerima **prompt teks bebas**, jadi bisa mencari benda yang tidak
 pernah diajarkan secara khusus. Nama barang Bahasa Indonesia diterjemahkan
-dulu ke Inggris memakai tabel `object_labels` ditambah kamus bawaan berisi
-83 nama barang sehari hari.
+dulu ke Inggris memakai tabel `object_labels` ditambah kamus bawaan.
 
-Model dimuat **saat permintaan pertama**, bukan saat startup, karena
-berkasnya ratusan megabita dan mode ini jarang dipakai dibanding deteksi
-rintangan. Panggilan pertama memakan sekitar 2 detik, sesudahnya cepat.
-
-Balasan `found: false` dengan alasan `not_in_frame` **bukan error**. Itu
-kondisi normal: barangnya memang belum terlihat, dan aplikasi akan menyuruh
-pengguna memutar badan lalu memanggil endpoint ini lagi.
+Model dimuat **saat permintaan pertama**, bukan saat startup. Panggilan
+pertama memakan sekitar 2 detik, sesudahnya cepat.
 
 ### Navigasi: tiga zona jalur
 
 Gambar dari kamera dibagi menjadi tiga bagian (kiri, tengah, kanan), lalu
-masing masing dinilai seberapa layak dilewati.
+masing-masing dinilai seberapa layak dilewati.
 
 Model utamanya PIDNet-S. Kalau berkas modelnya belum ada, server memakai
-**cadangan berbasis pengolahan citra biasa**: permukaan yang bisa dijalani
-umumnya rata, yaitu sedikit garis tepi dan warnanya konsisten dengan area
-tepat di depan kaki pengguna.
-
-Bentuk balasannya sama persis untuk kedua jalur, dan jalur mana yang sedang
-dipakai selalu disebutkan di kolom `source`. Jadi tidak ada klaim palsu, dan
-mengganti cadangan dengan model sungguhan nanti tidak mengubah satu baris pun
-di sisi aplikasi.
-
-Cek jalur yang sedang aktif lewat `GET /api/navigasi/status`.
+**cadangan berbasis pengolahan citra**: permukaan yang bisa dijalani umumnya
+rata dan warnanya konsisten.
 
 > Mode Navigasi **tidak pernah dimatikan saat offline.** Deteksi rintangannya
-> berjalan di ponsel dan tetap hidup. Mematikan seluruh mode hanya karena
-> segmentasi jalur tidak tersedia sama saja mencabut fungsi keselamatan yang
-> sebenarnya masih bekerja. Status terburuknya adalah `limited`.
+> berjalan di Flutter dan tetap hidup. Status terburuknya adalah `limited`.
+
+### Deskripsi suasana: Moondream2
+
+`POST /api/describe` mengembalikan `description_en` — caption Bahasa Inggris
+langsung dari Moondream2. Flutter membacakannya dengan TTS locale `en-US`
+tanpa terjemahan tambahan. Tidak ada LLM terjemahan di tengah alur ini.
 
 ---
 
@@ -147,9 +139,19 @@ Membaca tulisan dari gambar. Kirim JPEG mentah sebagai isi permintaan.
 }
 ```
 
-Estimasi durasi bacaan disertakan karena aplikasi harus menyebutkan perkiraan
-waktu **sebelum** mulai membacakan teks panjang, supaya pengguna bisa memilih
-mendengar ringkasannya saja.
+#### `POST /api/describe`
+
+Deskripsikan suasana kamera via Moondream2. Kirim `file` (JPEG).
+
+```json
+{
+  "description_en": "A person walking on a sidewalk near a parked bicycle.",
+  "model": "moondream2",
+  "length": "short"
+}
+```
+
+Flutter langsung membacakan `description_en` dengan TTS `en-US`.
 
 #### `POST /api/cari-objek`
 
@@ -189,19 +191,16 @@ Kirim `file` (gambar JPEG), opsional `lat` dan `lng`.
 }
 ```
 
-Kalau `lat` dan `lng` diisi, balasan bisa memuat `risk_zone`, yaitu peringatan
-dari laporan pengguna lain di lokasi itu. Itu informasi yang tidak terlihat
-kamera.
-
 #### `POST /api/intent`
 
-Memahami perintah suara yang tidak dikenali parser lokal di ponsel.
+Memahami perintah suara yang **tidak dikenali** `CommandParser` lokal di
+Flutter. Server hanya dipanggil untuk dua kasus:
 
-Urutan usahanya: **cocokkan frasa persis, lalu kemiripan kata dan nama
-barang, baru Qwen lokal.**
+- **Ambigu** — dua kemungkinan sama-sama masuk akal → server bertanya balik
+- **Tidak dikenali** — server menawarkan dua tebakan terdekat
 
-Yang menarik: kalau ada **dua kemungkinan yang sama sama masuk akal**, server
-sengaja **tidak** memanggil Qwen lokal dan langsung bertanya balik.
+Urutan usahanya: cocokkan frasa persis (Lapis 1) → skor kemiripan kata
+(Lapis 2). **Tidak ada LLM** — Lapis 3 telah dihapus.
 
 ```json
 POST {"text": "kenal kunci"}
@@ -213,28 +212,9 @@ POST {"text": "kenal kunci"}
 }
 ```
 
-Alasannya: menebak salah lebih mahal daripada satu pertanyaan, karena
-penggunanya tidak bisa melihat layar untuk mengoreksi. Perintah untuk Qwen lokal pun
-secara eksplisit menyuruhnya menjawab "tidak tahu" saat ragu.
-
-#### `POST /api/narasi`
-
-Mengubah hasil deteksi menjadi kalimat natural memakai Qwen2.5-1.5B-Instruct lokal.
-Masukannya **teks terstruktur, bukan gambar**:
-
-```
-- orang, jarak 1.2 meter, posisi depan, bahaya: critical
-- motor, jarak 2.8 meter, posisi kanan, bahaya: warning
-```
-
-Ini mencegah AI "salah lihat" benda yang tidak ada, jauh lebih murah, dan
-lebih cepat. Kalau Qwen lokal gagal atau modelnya belum diunduh, endpoint ini
-otomatis memakai template sederhana dan tidak pernah membuat server berhenti.
-
 #### `POST /api/uang` (opsional)
 
-Jalur utama fitur ini ada di ponsel. Endpoint ini hanya untuk pembanding.
-Kalau model server tidak ada, balasannya jujur:
+Jalur utama fitur ini ada di Flutter. Endpoint ini hanya untuk pembanding.
 
 ```json
 {
@@ -244,64 +224,30 @@ Kalau model server tidak ada, balasannya jujur:
 }
 ```
 
-Endpoint ini **tidak pernah menebak nominal**.
-
 ### Endpoint penunjang
-
-Semuanya lahir dari kebutuhan tampilan yang sudah dirancang, bukan dari
-kebiasaan umum membuat API.
 
 | Endpoint | Kegunaan |
 |---|---|
-| `GET /health` | Cek server hidup, sekaligus melaporkan waktu tempuh |
-| `GET /api/capabilities` | Mode mana yang hidup, ditanyakan **sebelum** tombol ditekan |
+| `GET /health` | Cek server hidup, melaporkan waktu tempuh |
+| `GET /api/capabilities` | Mode mana yang hidup, ditanyakan sebelum tombol ditekan |
 | `GET /api/labels` | Kamus nama benda dalam Bahasa Indonesia |
 | `GET /api/models/manifest` | Versi model yang ada di ponsel |
 | `POST /api/models/rescan` | Pindai folder `models/`, hitung sidik jari berkas |
 | `POST /api/events` | Telemetri alur pemakaian |
 | `GET /api/events/summary` | Ringkasan telemetri |
 | `POST /api/crash-report` | Laporan aplikasi berhenti mendadak |
-| `GET /api/crash-report/last-mode` | Mode terakhir sebelum berhenti, untuk dipulihkan |
+| `GET /api/crash-report/last-mode` | Mode terakhir sebelum berhenti |
 | `POST /api/queue/flush` | Kirim ulang gambar yang tertahan saat offline |
 | `GET /api/intent/catalog` | 20 perintah suara beserta variannya |
 | `POST /api/asisten/turn` | Simpan satu giliran percakapan |
 | `GET /api/asisten/history` | Ambil riwayat percakapan |
 
-#### Kenapa `/api/capabilities` penting
-
-Tanpa endpoint ini, pengguna baru tahu server mati **setelah** menekan tombol
-dan menunggu. Bagi orang yang tidak melihat layar, itu berarti menunggu dalam
-ketidakpastian lalu mendengar kabar gagal.
-
-Dengan endpoint ini, menu mode sudah bisa menandai fitur yang sedang terbatas
-sejak awal, dan tombol yang nonaktif bisa langsung menyebutkan alasannya.
-
-#### Kenapa antrean offline butuh kunci idempotensi
-
-`POST /api/queue/flush` mewajibkan `idempotency_key`. Kalau permintaan dengan
-kunci yang sama dikirim dua kali, server mengembalikan hasil yang sudah
-tersimpan tanpa memproses ulang gambarnya.
-
-Ini penting karena aplikasi mengirim ulang antrean secara otomatis begitu
-internet kembali, dan tanpa penjaga ini satu foto bisa terproses berkali kali.
-
-#### Telemetri untuk apa
-
-Bukan untuk pemasaran. Yang diukur adalah target desain yang bisa dibuktikan:
-berapa gestur yang dibutuhkan untuk membayar di warung (targetnya di bawah
-4), berapa lama dari membuka aplikasi sampai deteksi aktif (targetnya di
-bawah 2 detik), dan berapa sering perintah suara tidak dikenali.
-
 ---
 
 ## 4. Basis data
 
-Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi**: identifikasi
+Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi** — identifikasi
 cukup memakai `device_id` anonim yang dibuat aplikasi sendiri.
-
-Tidak ada satu pun layar dalam rancangan yang membutuhkan login, jadi
-menambahkan sistem akun berarti memaksa hadirnya layar yang tidak pernah
-dirancang, dan itu justru menambah langkah bagi pengguna.
 
 | Tabel | Isi |
 |---|---|
@@ -311,36 +257,31 @@ dirancang, dan itu justru menambah langkah bagi pengguna.
 | `model_manifest` | Versi model yang dipakai ponsel |
 | `telemetry_events` | Telemetri alur |
 | `crash_reports` | Laporan aplikasi berhenti mendadak |
-| `upload_queue` | Antrean unggah offline |
+| `upload_queue` | Antrean unggah offline (kunci idempotensi wajib) |
 | `assistant_sessions`, `assistant_turns` | Riwayat percakapan |
 | `money_denominations` | Pecahan uang, kata terbilang, urutan kelas model |
 | `capability_overrides` | Paksa status fitur, untuk demo atau perawatan |
-
-Catatan: `risk_zones` dulu hanya disimpan di memori dan hilang setiap server
-dinyalakan ulang, artinya zona bahaya tidak pernah benar benar terbentuk.
-Sekarang tersimpan permanen, dan perhitungan jaraknya dilakukan langsung di
-dalam kueri SQL.
 
 ---
 
 ## 5. Prinsip yang dipegang server ini
 
 **Server tidak menyaring deteksi.** Ia mengirim hasil mentah. Seluruh
-penyaringan ada di aplikasi, supaya hasil dari model di ponsel dan hasil dari
-server melewati aturan yang sama persis.
+penyaringan ada di Flutter supaya hasil TFLite dan YOLO melewati aturan
+yang sama persis.
 
 **Tidak ada jalan buntu.** Setiap kegagalan membawa pesan yang menyebutkan
-apa yang masih berfungsi, lalu satu tindakan berikutnya. Contohnya, saat
-basis data mati: *"Deteksi objek dan kenali uang tetap jalan karena keduanya
-on-device. Penyimpanan di server sedang tidak bisa dipakai."*
+apa yang masih berfungsi, lalu satu tindakan berikutnya.
 
 **Tidak ada kegagalan yang menjatuhkan server.** Model gagal dimuat, basis
-data mati, kunci LLM kosong: semuanya dilaporkan lewat `/api/capabilities`,
-dan server tetap melayani sisanya.
+data mati: semuanya dilaporkan lewat `/api/capabilities`, dan server tetap
+melayani sisanya.
 
 **Jujur soal kemampuan.** Kalau segmentasi jalur sedang memakai cadangan
-sederhana, itu disebutkan di kolom `source`. Tidak ada yang berpura pura
-memakai model sungguhan.
+sederhana, itu disebutkan di kolom `source`.
+
+**Tidak ada LLM.** Semua teks natural — narasi deteksi dan resolusi intent —
+dikerjakan di sisi Flutter, offline, tanpa latensi jaringan.
 
 ---
 
@@ -359,50 +300,48 @@ backend/
 │   ├── websocket.py         Deteksi aliran waktu nyata
 │   ├── detect.py            Deteksi sekali jalan
 │   ├── ocr.py               Baca teks
-│   ├── narasi.py            Kalimat natural dari LLM
+│   ├── describe.py          Deskripsi suasana via kamera (Moondream2, output EN)
 │   ├── cari_objek.py        Pencarian barang dengan prompt teks
 │   ├── navigasi.py          Segmentasi jalur tiga zona
-│   ├── uang.py              Pengenalan uang (opsional)
-│   ├── asisten.py           Perintah suara dan riwayat percakapan
+│   ├── uang.py              Pengenalan uang (opsional, jalur utama on-device)
+│   ├── asisten.py           Perintah suara ambigu dan riwayat percakapan
+│   ├── voice_router.py      /api/route-intent legacy (keyword-only, tanpa LLM)
 │   ├── risk_zone.py         Zona rawan
-│   ├── describe.py          Deskripsi suasana via kamera (Moondream → Qwen)
 │   └── support.py           Kemampuan, label, manifest, telemetri, antrean
 ├── services/
-│   ├── yolo_service.py         Deteksi rintangan
+│   ├── yolo_service.py         Deteksi rintangan server
 │   ├── find_object_service.py  YOLOE prompt teks
 │   ├── segmentation_service.py PIDNet dan cadangan heuristik
 │   ├── ocr_service.py          Tesseract dan estimasi durasi baca
-│   ├── intent_service.py       Pencocokan perintah suara
+│   ├── intent_service.py       Pencocokan frasa + similarity (Lapis 1 & 2)
 │   ├── uang_service.py         Pengenalan uang di server
 │   ├── risk_zone_service.py    Zona rawan
 │   ├── camera_health.py        Pemeriksaan kondisi kamera
-│   ├── moondream_service.py    Deskripsi scene via kamera (VLM)
-│   ├── qwen_service.py         LLM narasi & terjemahan (Qwen2.5-1.5B lokal)
+│   ├── moondream_service.py    Deskripsi scene via kamera (VLM, output EN)
 │   └── repository.py           Seluruh akses basis data
 └── utils/
     └── image_utils.py       Bantuan konversi gambar
 ```
 
+> `narasi.py` dan `qwen_service.py` telah **dihapus**. Tidak ada file LLM
+> di folder ini.
+
 ---
 
 ## 7. Keterbatasan yang perlu diketahui
 
-1. **Model PIDNet-S belum ada.** Navigasi memakai cadangan heuristik yang
-   membaca gambar sungguhan dan cukup untuk menguji seluruh tampilan, tetapi
-   ketelitiannya di bawah model terlatih. Letakkan
+1. **Model PIDNet-S belum ada.** Navigasi memakai cadangan heuristik OpenCV
+   yang cukup untuk menguji seluruh tampilan. Letakkan
    `models/pidnet_s_3zona.onnx` untuk mengaktifkan jalur model.
 
 2. **Model uang di server memang tidak ada, dan itu disengaja.** Jalur utama
-   fitur ini di ponsel.
+   fitur ini di Flutter.
 
-3. **Model uang di ponsel hanya mengenali 6 pecahan emisi 2016.** Rp1.000
-   belum dikenali. Untuk emisi 2022, model perlu dilatih ulang; struktur API
-   dan tabel denominasinya sudah siap menampung.
+3. **Model uang di Flutter hanya mengenali 6 pecahan emisi 2016.** Rp1.000
+   belum dikenali.
 
-4. **File model Qwen belum ada secara default.** Download dulu ke folder `models/` sebelum narasi dan terjemahan aktif. Tanpa model, endpoint `/api/narasi` dan `/api/describe` tetap bekerja dengan template fallback sederhana.
-
-5. **Berkas model besar tidak ikut ke git** (`mobileclip_blt.ts`,
-   `yoloe-11s-seg.pt`, dan berkas `.pt` serta `.onnx` lainnya). Ultralytics
+4. **Berkas model besar tidak ikut ke git** (`yoloe-v8l-seg.pt`,
+   `yolo11l_float32.tflite`, dan berkas `.pt`/`.onnx` lainnya). Ultralytics
    mengunduhnya otomatis saat pertama dipakai.
 
 ---
@@ -424,7 +363,10 @@ curl -s -X POST $B/api/intent -H 'Content-Type: application/json' \
 curl -s -X POST $B/api/ocr --data-binary "@foto.jpg" \
      -H "Content-Type: application/octet-stream"
 
-# Cari barang (panggilan pertama memuat model, sekitar 2 detik)
+# Deskripsi suasana (output English)
+curl -s -X POST $B/api/describe -F "file=@foto.jpg"
+
+# Cari barang (panggilan pertama memuat model, ~2 detik)
 curl -s -X POST $B/api/cari-objek -F "target=dompet" -F "file=@foto.jpg"
 
 # Jalur tiga zona
@@ -433,182 +375,65 @@ curl -s -X POST $B/api/navigasi -F "file=@foto.jpg" -F "lat=0" -F "lng=0"
 
 ---
 
-## 9. LLM Lokal (Qwen)
-
-Server tidak lagi bergantung pada API eksternal untuk menghasilkan teks.
-Narasi dan terjemahan dikerjakan oleh **Qwen2.5-1.5B-Instruct** yang berjalan
-langsung di GPU laptop, tanpa koneksi internet dan tanpa biaya per-panggilan.
-
-### Peran Qwen di GUIDIO
-
-Qwen bukan VLM (tidak melihat gambar). Tugasnya hanya tiga:
-
-| Tugas | Dipanggil dari | Output |
-|---|---|---|
-| Narasi deteksi YOLO | `POST /api/narasi` | Kalimat Bahasa Indonesia natural dari data terstruktur |
-| Terjemahan caption | `POST /api/describe` | Caption Inggris (Moondream2) → Bahasa Indonesia TTS-friendly |
-| Intent semantik (Lapis 3) | `POST /api/intent` | Satu intent_key, hanya jika fuzzy matching gagal |
-
-Gambar diproses sepenuhnya oleh Moondream2 (VLM) dan YOLO. Qwen hanya
-menerima teks.
-
-### Cara install
-
-```bash
-# 1. Install llama-cpp-python dengan akselerasi CUDA (RTX 3050)
-cd backend
-source venv/bin/activate
-CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
-
-# 2. Download model Qwen (~1 GB) ke folder models/
-mkdir -p models
-huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
-  qwen2.5-1.5b-instruct-q4_k_m.gguf \
-  --local-dir models/
-```
-
-### Konfigurasi di `.env`
-
-```
-# Path ke file model GGUF (relatif dari folder backend/)
-QWEN_MODEL_PATH=models/qwen2.5-1.5b-instruct-q4_k_m.gguf
-
-# Jumlah layer yang dimuat ke GPU. -1 = semua layer ke GPU (RTX 3050 = aman)
-QWEN_GPU_LAYERS=-1
-```
-
-### Jika model belum didownload
-
-Server tetap berjalan normal. Qwen service terdaftar tapi `available=False`.
-Semua caller jatuh ke template fallback — tidak ada crash, tidak ada error
-yang terlihat pengguna. Log server menampilkan peringatan download sekali saja
-saat startup.
-
-### Estimasi VRAM (RTX 3050 4GB)
-
-```
-YOLO11n          ~200 MB
-Moondream2 FP16  ~1.2 GB
-Qwen 1.5B Q4_K_M ~1.0 GB
-─────────────────────────
-Total            ~2.4 GB  (dari 4 GB — aman)
-```
-
----
-
-## 10. Koneksi HP ke Backend Laptop
-
-Skenario ini untuk situasi APK sudah di-build dan diinstall di HP fisik,
-namun backend jalan di laptop yang terhubung ke HP via USB atau WiFi.
+## 9. Koneksi HP ke Backend Laptop
 
 ### Cara paling mudah: WiFi satu jaringan
 
-```
-Laptop (backend)  ←──WiFi──→  HP (APK Guidio)
-```
-
-**Langkah di laptop:**
-
 ```bash
-# 1. Jalankan backend dan dengarkan semua interface, bukan hanya localhost
-cd backend
-source venv/bin/activate
+# Laptop
 uvicorn main:app --host 0.0.0.0 --port 8000
-
-# 2. Cari IP laptop di jaringan WiFi yang sama
-ip addr show   # Linux — cari interface wlan0 atau eth0, contoh: 192.168.1.5
+ip addr show   # cari wlan0, contoh: 192.168.1.5
 ```
 
-**Langkah di HP:**
-
-1. Buka aplikasi Guidio
-2. Ucapkan **"pengaturan"** atau tekan tombol **Pilih Mode → Pengaturan**
-3. Di bagian **Alamat Server**, isi: `192.168.1.5:8000`
-   (ganti dengan IP laptop Anda)
-4. Tekan **Uji Sambungan** — server akan membalas waktu tempuh
-5. Tekan **Simpan**
-
-> **Catatan:** Angka `10.0.2.2:8000` adalah alamat bawaan untuk emulator
-> Android (bukan HP fisik). Untuk HP fisik, selalu isi IP laptop yang
-> terlihat di jaringan WiFi.
+Di HP: buka Guidio → ucapkan **"pengaturan"** → isi `192.168.1.5:8000` →
+**Uji Sambungan** → **Simpan**.
 
 ### Cara alternatif: USB (ADB reverse)
 
-Jika HP dan laptop tidak dalam jaringan WiFi yang sama, atau WiFi kampus
-memblokir traffic antar-device:
-
 ```bash
-# Sambungkan HP ke laptop via kabel USB, aktifkan USB Debugging di HP
-# Lalu di laptop:
 adb reverse tcp:8000 tcp:8000
 ```
 
-Dengan perintah ini, HP bisa mengakses `localhost:8000` laptop seolah-olah
-server itu ada di HP sendiri. Isi alamat server di Guidio: `localhost:8000`
+Isi alamat server di Guidio: `localhost:8000`
 
 ### Troubleshooting koneksi
 
 | Gejala | Kemungkinan penyebab | Solusi |
 |---|---|---|
-| "Tidak bisa menjangkau server" | Backend belum jalan atau salah IP | Cek `ip addr show` dan pastikan backend sudah `--host 0.0.0.0` |
-| Koneksi timeout | Firewall laptop memblokir port 8000 | Buka port: `sudo firewall-cmd --add-port=8000/tcp --permanent` |
-| HP dan laptop beda WiFi | Isolasi client di jaringan kampus | Pakai metode USB (ADB reverse) |
-| IP laptop berubah | DHCP memberi IP baru | Set IP statis di laptop, atau pakai ADB reverse |
-
-### Build APK dan install ke HP
-
-```bash
-# Di folder guidio_app
-
-# Build APK (mode release untuk performa optimal)
-flutter build apk --release
-
-# Lokasi file APK yang dihasilkan:
-# build/app/outputs/flutter-apk/app-release.apk
-
-# Install langsung ke HP yang tersambung via USB:
-flutter install
-# atau manual:
-adb install build/app/outputs/flutter-apk/app-release.apk
-```
-
-> **Tip:** Untuk pengembangan/testing tanpa build penuh, `flutter run --release`
-> langsung menjalankan di HP yang tersambung USB tanpa perlu `adb install`.
+| "Tidak bisa menjangkau server" | Salah IP atau belum `--host 0.0.0.0` | Cek `ip addr show`, restart backend |
+| Koneksi timeout | Firewall memblokir port 8000 | `sudo firewall-cmd --add-port=8000/tcp --permanent` |
+| HP dan laptop beda WiFi | Isolasi client jaringan kampus | Pakai metode USB |
+| IP laptop berubah | DHCP | Set IP statis atau pakai ADB reverse |
 
 ---
 
-## 11. Ukuran Model dan Kebutuhan Storage
+## 10. Ukuran Model dan Kebutuhan Storage
 
-Rincian lengkap bobot model AI, ukuran download dependensi, alokasi hardware, dan total bandwidth/storage yang dibutuhkan:
+| Kategori | Komponen | Ukuran | Eksekusi | Keterangan |
+|---|---|---|---|---|
+| **Mobile** | `ssd_mobilenet.tflite` | ~4.18 MB | On-Device CPU | Deteksi rintangan |
+| **Mobile** | `uang_rupiah.tflite` | ~24.92 MB | On-Device CPU | Klasifikasi uang |
+| **Backend VLM** | `vikhyatk/moondream2` | ~1.85 GB | Laptop GPU | Deskripsi suasana (FP16) |
+| **Backend Deteksi** | `yolo11n.pt` | ~5.5 MB | Laptop GPU | Deteksi server |
+| **Backend Cari Objek** | `yoloe-11s-seg.pt` | ~30 MB | Laptop GPU | Open-vocabulary |
+| **Dependensi Python** | PyTorch + CUDA | ~1.8 GB | Disk | Runtime CUDA |
+| **Dependensi Python** | Transformers, OpenCV, FastAPI | ~300 MB | Disk | Framework |
 
-### Tabel Rincian Ukuran Model AI & Dependensi
+### Ringkasan
 
-| Kategori | Komponen / Model | Ukuran File | Lokasi Simpan | Eksekusi | Keterangan |
-|---|---|---|---|---|---|
-| **Mobile (Flutter)** | `ssd_mobilenet.tflite` | ~4.18 MB | `guidio_app/assets/models/` | On-Device CPU (HP) | Deteksi rintangan real-time (bawaan app) |
-| **Mobile (Flutter)** | `uang_rupiah.tflite` | ~24.92 MB | `guidio_app/assets/models/` | On-Device CPU (HP) | Klasifikasi uang rupiah 6 pecahan |
-| **Backend LLM** | `qwen2.5-1.5b-instruct-q4_k_m.gguf` | **1.12 GB** | `backend/models/` | **Laptop CPU** (~1.2 GB RAM) | Narasi YOLO & terjemahan Moondream (via llama-cpp) |
-| **Backend VLM** | `vikhyatk/moondream2` | **~1.85 GB** | `~/.cache/huggingface/` | **Laptop GPU** (RTX 3050 ~1.2 GB VRAM) | Deskripsi suasana kamera (FP16) |
-| **Backend Deteksi** | `yolo11n.pt` | ~5.5 MB | `~/.config/Ultralytics/` | **Laptop GPU** (~200 MB VRAM) | Deteksi server / fallback |
-| **Backend Cari Objek**| `yoloe-11s-seg.pt` | ~30 MB | `backend/models/` | **Laptop GPU** (~300 MB VRAM) | Open-vocabulary text prompt search |
-| **Dependensi Python** | PyTorch + CUDA Wheels | ~1.8 GB | `backend/venv/` | Disk Laptop | Runtime CUDA untuk YOLO & Moondream |
-| **Dependensi Python** | Transformers, Llama-cpp, OpenCV, FastAPI | ~300 MB | `backend/venv/` | Disk Laptop | Framework & bindings |
+- **Model di HP:** `~29.1 MB`
+- **Model Backend (download):** `~1.9 GB` *(Moondream ~1.85 GB + YOLO ~50 MB)*
+- **Virtualenv Python:** `~2.1 GB`
+- **Total:** `~4.0 GB`
 
-### Ringkasan Total Kebutuhan
+### Alokasi VRAM (RTX 3050 4 GB)
 
-- **Total Ukuran Model di HP (Flutter Asset):** `~29.1 MB` *(sangat ringan)*
-- **Total Download Model di Server (Backend):** `~3.0 GB` *(Qwen 1.12 GB + Moondream 1.85 GB + YOLO 35 MB)*
-- **Total Storage Virtualenv Python Backend:** `~2.1 GB`
-- **Total Kuota / Storage yang Perlu Disiapkan:** **`~5.1 GB`**
+```
+Moondream2 FP16  ~1.2 GB
+YOLO/YOLOE       ~0.5 GB
+─────────────────────────
+Total            ~1.7 GB  (dari 4 GB — aman)
+```
 
-### Alokasi Hardware & Alasan Arsitektur
-
-1. **GPU RTX 3050 (4 GB VRAM):**
-   - Dikhususkan penuh untuk **Moondream2 (1.2 GB)** + **YOLO/YOLOE (0.5 GB)** = **~1.7 GB VRAM**.
-   - Sisa VRAM masih ~2.3 GB (sangat aman, bebas risiko *Out of Memory*).
-2. **CPU Laptop (Intel Core i5 / RAM):**
-   - **Qwen2.5-1.5B (GGUF Q4)** dijalankan di CPU via `llama-cpp-python`.
-   - Menggunakan RAM laptop sekitar **~1.2 GB**.
-   - Kecepatan di CPU: ~15–25 token/detik (untuk 1–2 kalimat hanya butuh **1.5 – 3 detik**).
-   - Menghindari keharusan kompilasi `nvcc` CUDA Toolkit di distro Linux seperti Fedora 43.
-
+Tidak ada LLM. Tidak ada `llama-cpp-python`. VRAM yang tersisa (~2.3 GB)
+bebas untuk kebutuhan lain.

@@ -34,7 +34,7 @@ disebut lewat suara.
 Bagian terpenting: **peringatan rintangan dan pengenalan uang bekerja tanpa
 internet sama sekali.** Keduanya diproses langsung di dalam ponsel, karena
 kedua hal itu menyangkut keselamatan dan uang, dan tidak boleh mati hanya
-gara gara sinyal hilang.
+gara-gara sinyal hilang.
 
 ### Istilah yang sering muncul di dokumen ini
 
@@ -45,12 +45,10 @@ gara gara sinyal hilang.
 | **Model AI** | Berkas hasil pelatihan komputer yang bisa mengenali sesuatu |
 | **TFLite** | Format model AI berukuran kecil yang dirancang agar bisa jalan di ponsel |
 | **OCR** | Teknologi membaca tulisan dari foto |
-| **LLM** | AI bahasa yang bertugas menyusun kalimat, berjalan lokal di laptop server |
 | **VLM** | AI bahasa + visi, bisa memahami gambar (Moondream2 di GUIDIO) |
 | **TTS** | Text to Speech, mesin yang mengubah tulisan menjadi suara |
 | **STT** | Speech to Text, mesin yang mengubah suara menjadi tulisan |
 | **Endpoint** | Alamat di server yang dipanggil aplikasi untuk meminta sesuatu |
-| **GGUF** | Format model LLM yang dioptimalkan untuk inferensi lokal via llama-cpp |
 
 ---
 
@@ -123,18 +121,19 @@ Ini pembagian yang paling penting dipahami sebelum membaca kode mana pun.
 - **Deteksi rintangan.** Peringatan keselamatan tidak boleh bergantung pada
   sinyal. Model SSD MobileNet (4 MB, TFLite) berjalan lokal.
 - **Pengenalan uang.** Transaksi tunai justru sering terjadi di tempat
-  bersinyal buruk seperti pasar dan warung. Selain itu foto uang tidak perlu
-  meninggalkan perangkat, dan pengguna butuh umpan balik seketika.
+  bersinyal buruk seperti pasar dan warung.
+- **Perintah suara (intent parsing).** `CommandParser` di Flutter mencocokkan
+  20 intent baku dari ratusan variasi ucapan secara offline (0 ms).
+- **Narasi deteksi.** `generateNaturalNarration()` menyusun kalimat dari hasil
+  deteksi YOLO secara lokal — tanpa LLM, tanpa jaringan.
 
 **Butuh server:**
 
-- OCR teks panjang, segmentasi jalur, asisten suara berbasis LLM, pencarian
-  objek dengan prompt teks bebas, dan deskripsi suasana via kamera.
+- OCR teks panjang, pencarian objek dengan prompt teks bebas, deskripsi
+  suasana via kamera (Moondream2 VLM), dan segmentasi jalur.
 
 Ketika server mati, aplikasi tidak berhenti: ia menyebut fitur mana yang
-hilang dan meneruskan yang masih hidup. Mode Navigasi khususnya **tidak
-pernah dinonaktifkan saat offline**, karena deteksi rintangannya on-device
-dan mematikannya akan mencabut fungsi keselamatan yang sebenarnya masih ada.
+hilang dan meneruskan yang masih hidup.
 
 ---
 
@@ -150,6 +149,9 @@ dan mematikannya akan mencabut fungsi keselamatan yang sebenarnya masih ada.
 │  Kamera ──▶ MobileNetV2 TFLite ────▶ NominalCard ──▶ TTS            │
 │             (224x224, uang rupiah)    (ambang keyakinan 0.85)        │
 │                                                                      │
+│  Suara ──▶ CommandParser (offline) ──▶ 20 intent baku                │
+│            (fuzzy multi-lapis, ~0ms)   generateNaturalNarration()    │
+│                                                                      │
 │  TtsQueue bertingkat: Critical memotong semua, Warning memotong      │
 │  Info, Info dibuang bila menunggu lebih dari 2 detik                 │
 └────────────────────────────────┬─────────────────────────────────────┘
@@ -161,9 +163,10 @@ dan mematikannya akan mencabut fungsi keselamatan yang sebenarnya masih ada.
 │  /api/ocr         ──▶ Tesseract      ──▶ teks + estimasi durasi baca │
 │  /api/navigasi    ──▶ PIDNet / CV    ──▶ 3 zona jalur                │
 │  /api/cari-objek  ──▶ YOLOE          ──▶ objek dari prompt teks      │
-│  /api/describe    ──▶ Moondream2     ──▶ caption ──▶ Qwen (EN→ID)    │
-│  /api/intent      ──▶ katalog + Qwen ──▶ resolusi perintah suara     │
-│  /api/narasi      ──▶ Qwen lokal     ──▶ kalimat natural             │
+│  /api/describe    ──▶ Moondream2     ──▶ caption Bahasa Inggris      │
+│  /api/intent      ──▶ katalog frasa  ──▶ resolusi perintah ambigu    │
+│                                                                      │
+│  TIDAK ADA LLM di backend — semua narasi & intent diselesaikan lokal │
 │                                                                      │
 │  PostgreSQL: telemetri, crash report, antrean offline, kamus label,  │
 │              manifest model, sesi percakapan, zona rawan             │
@@ -174,54 +177,57 @@ dan mematikannya akan mencabut fungsi keselamatan yang sebenarnya masih ada.
 
 **1. Filter deteksi hanya ada di Flutter.**
 Satu `DetectionFilter` melayani kedua sumber (TFLite dan server). Kalau
-filter dipasang di server, hasil TFLite tidak akan tersaring. Kalau dipasang
-di keduanya, terjadi penyaringan ganda yang membuang deteksi valid.
+filter dipasang di server, hasil TFLite tidak akan tersaring.
 
-**2. LLM menerima teks, bukan gambar.**
-Model deteksi bekerja lebih dulu, hasilnya dikirim sebagai teks terstruktur
-ke LLM. Ini mencegah halusinasi visual, jauh lebih murah, dan lebih cepat.
-LLM yang dipakai adalah **Qwen2.5-1.5B-Instruct** yang berjalan lokal di
-GPU laptop, tanpa API eksternal.
+**2. Narasi tanpa LLM.**
+Hasil deteksi YOLO diolah oleh `generateNaturalNarration()` di Flutter —
+fungsi lokal berbasis template + kamus 80 objek COCO. Kalimat yang dihasilkan
+terasa natural tanpa bergantung pada model bahasa mana pun.
 
 **3. VLM (Moondream2) untuk deskripsi suasana.**
 Saat pengguna bertanya "apa yang ada di depanku", Moondream2 menganalisis
-gambar kamera dan menghasilkan caption Bahasa Inggris. Qwen kemudian
-menerjemahkannya ke Bahasa Indonesia yang TTS-friendly.
+gambar kamera dan menghasilkan caption Bahasa Inggris. Flutter membacakannya
+langsung dengan `speakEnglish()` — tidak ada terjemahan tambahan.
 
-**4. Antrean suara bertingkat.**
+**4. Intent parsing berlapis tiga di Flutter.**
+CommandParser mencoba: (0) prefiks transisi mode natural → (1) exact phrase
+dictionary → (1b) kombinasi keyword → (2) dynamic find-object prefix.
+Tidak ada panggilan ke server untuk intent yang sudah dikenali.
+
+**5. Antrean suara bertingkat.**
 Critical memotong apa pun dan tidak bisa dipotong pengguna. Warning memotong
 Info. Info mengantre dan dibuang kalau sudah menunggu lebih dari 2 detik.
 
-**5. Nominal uang tidak pernah ditebak.**
+**6. Nominal uang tidak pernah ditebak.**
 Di bawah ambang keyakinan, yang muncul hanya instruksi perbaikan, bukan
-angka. Salah menyebut nominal berarti kerugian uang nyata.
+angka.
 
 ---
 
 ## 5. Teknik: dari kotak deteksi menjadi kalimat
 
 Model deteksi hanya menghasilkan angka: koordinat kotak dan skor kelas.
-Perubahan menjadi kalimat seperti *"Di depanmu ada seseorang yang cukup
-dekat, jalur kiri tampak lebih aman"* memakai dua jalur berbeda.
+Perubahan menjadi kalimat seperti *"Di sekitarmu, ada dua orang di sebelah
+kirimu sejauh satu setengah meter, serta sebuah mobil di sebelah kananmu"*
+dikerjakan sepenuhnya di Flutter:
 
-**Jalur cepat (template lokal), untuk peringatan real-time.**
-Tidak butuh internet, tidak ada latensi API. Untuk peringatan keselamatan,
-kecepatan adalah segalanya.
-
-**Jalur lambat (LLM lokal), hanya saat pengguna bertanya.**
-Deteksi diformat menjadi teks terstruktur, lalu dikirim ke Qwen2.5-1.5B
-yang berjalan di GPU laptop:
-
-```
-Objek terdeteksi kamera saat ini:
-- orang, jarak 1.2 meter, posisi depan, bahaya: critical
-- motor, jarak 2.8 meter, posisi kanan, bahaya: warning
+```dart
+// lib/core/voice/narration_engine.dart
+generateNaturalNarration([
+  NarrationDetection(objectClass: 'person', dist: 1.5, dir: 'kiri', count: 2),
+  NarrationDetection(objectClass: 'car',    dist: 3.0, dir: 'kanan'),
+]);
 ```
 
-Qwen tidak pernah melihat gambar. Ia hanya merangkai fakta yang sudah
-diverifikasi model deteksi menjadi kalimat. LLM di sini bukan untuk melihat,
-melainkan untuk menyusun bahasa. Gambar hanya dilihat oleh Moondream2 saat
-fitur deskripsi suasana diaktifkan.
+**Kamus `cocoObjectDictionary`** memetakan 80 kelas COCO ke nama Indonesia
+dan kata kerja konteks ("berjalan", "terparkir", "diletakkan", dst).
+
+**`mapDistancePhrase`** mengubah jarak numerik ke frasa natural ("sangat
+dekat di depanmu", "sekitar satu setengah meter", "agak jauh sekitar tiga
+meter").
+
+Hasilnya divariasikan lewat pool konektor acak agar tidak monoton setiap
+didengar ulang.
 
 ### Naskah darurat
 
@@ -240,16 +246,20 @@ pengguna mengenali bahaya dari kata pertama yang terdengar.
 | Deteksi on-device | SSD MobileNet, TFLite, 300x300, sekitar 30 ms |
 | Pengenalan uang on-device | MobileNetV2 transfer learning, TFLite, 224x224, 6 kelas |
 | Pelacakan objek | SORT, ditulis murni dengan Dart |
+| Intent parsing | CommandParser lokal, fuzzy multi-lapis, 0 ms offline |
+| Narasi deteksi | `narration_engine.dart` lokal, kamus 80 objek COCO |
 | Deteksi server | YOLO11 via Ultralytics |
 | Pencarian objek | YOLOE open-vocabulary (prompt teks) |
 | Segmentasi jalur | PIDNet-S ONNX, dengan cadangan heuristik OpenCV |
 | OCR | Tesseract, bahasa `ind` dan `eng` |
-| Deskripsi suasana | Moondream2 (~2B, VLM, GPU lokal) |
-| LLM narasi & terjemahan | Qwen2.5-1.5B-Instruct GGUF Q4_K_M (lokal, via llama-cpp-python) |
-| Ucapan | `speech_to_text` dan `flutter_tts`, keduanya `id-ID` |
+| Deskripsi suasana | Moondream2 (~2B, VLM, GPU lokal, output English) |
+| Ucapan | `speech_to_text` dan `flutter_tts`, default `id-ID`, deskripsi `en-US` |
 | Getar | paket `vibration`, pola berbeda per tier |
 | Backend | FastAPI, Python |
 | Basis data | PostgreSQL, tanpa autentikasi |
+
+> **Tidak ada LLM** di stack ini. Qwen dan semua endpoint narasi/intent LLM
+> telah dihapus dari backend.
 
 ---
 
@@ -262,7 +272,11 @@ project/
 │   ├── README.md                  Panduan mobile, token desain, komponen
 │   ├── FEATURE_VERIFICATION.md    Daftar uji manual per mode
 │   ├── lib/
-│   │   ├── core/                  Token layout, antrean suara, parser perintah
+│   │   ├── core/
+│   │   │   ├── voice/             CommandParser, narration_engine, intents
+│   │   │   ├── speech/            Antrean suara bertingkat
+│   │   │   ├── layout/            Token zona layar
+│   │   │   └── state/             Penggabungan kondisi global
 │   │   ├── theme/                 Warna, tipografi, spasi, tema
 │   │   ├── widgets/               16 komponen sistem desain
 │   │   ├── providers/             State per mode dan kondisi global
@@ -272,10 +286,9 @@ project/
 │   └── assets/models/             ssd_mobilenet.tflite, uang_rupiah.tflite
 └── backend/                       Server FastAPI
     ├── README.md                  Panduan backend dan rujukan endpoint
-    ├── models/                    File GGUF Qwen (download manual, tidak di git)
     ├── db/                        Skema PostgreSQL dan data rujukan
     ├── routers/                   Endpoint per fitur
-    └── services/                  YOLO, YOLOE, Moondream2, Qwen, OCR, intent
+    └── services/                  YOLO, YOLOE, Moondream2, OCR, intent
 ```
 
 ---
@@ -307,9 +320,8 @@ cp .env.example .env      # isi kredensial PostgreSQL
 venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Skema basis data dibuat otomatis saat startup, lalu data rujukan diisi:
-52 label objek, 20 intent suara, 7 denominasi, dan manifest model.
-Dokumentasi endpoint interaktif tersedia di `http://localhost:8000/docs`.
+Skema basis data dibuat otomatis saat startup. Dokumentasi endpoint
+interaktif tersedia di `http://localhost:8000/docs`.
 
 ### Aplikasi mobile
 
@@ -319,16 +331,13 @@ flutter pub get
 flutter run
 ```
 
-Aplikasi tetap berjalan tanpa backend. Deteksi rintangan dan pengenalan uang
-berfungsi penuh karena keduanya on-device; mode lain menyebut keterbatasannya
-sendiri.
+Aplikasi tetap berjalan tanpa backend. Deteksi rintangan, pengenalan uang,
+intent parsing, dan narasi deteksi berfungsi penuh karena semuanya on-device;
+mode lain menyebut keterbatasannya sendiri.
 
 ---
 
 ## 9. Koneksi HP fisik ke backend laptop
-
-Skenario: APK sudah di-build dan diinstall di HP fisik, backend berjalan
-di laptop yang tersambung ke HP lewat WiFi atau kabel USB.
 
 ### Cara 1 — WiFi (paling mudah)
 
@@ -339,51 +348,32 @@ Laptop (backend)  ←──WiFi──→  HP (APK Guidio)
 **Di laptop:**
 
 ```bash
-# Pastikan backend dijalankan dengan --host 0.0.0.0 agar bisa diakses HP
 cd backend && source venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Cari IP laptop di jaringan WiFi yang sama
 ip addr show   # cari bagian wlan0, contoh: 192.168.1.5
 ```
 
 **Di HP:**
 
 1. Buka Guidio, ucapkan **"pengaturan"**
-   atau tekan **Pilih Mode → Pengaturan**
 2. Di kolom **Alamat Server**, isi: `192.168.1.5:8000`
 3. Tekan **Uji Sambungan** — waktu tempuh akan muncul kalau berhasil
 4. Tekan **Simpan**
 
-> Nilai bawaan `10.0.2.2:8000` hanya untuk emulator Android di laptop
-> dan tidak berlaku untuk HP fisik.
-
 ### Cara 2 — USB tanpa WiFi (ADB reverse)
 
-Jika jaringan kampus memblokir koneksi antar-device, atau HP dan laptop
-berada di jaringan berbeda:
-
 ```bash
-# Aktifkan USB Debugging di HP, sambungkan via kabel USB, lalu:
 adb reverse tcp:8000 tcp:8000
 ```
 
-Setelah perintah itu, HP bisa mengakses backend laptop seolah-olah ada di
-dalam HP sendiri. Isi alamat server di Guidio: `localhost:8000`
+Isi alamat server di Guidio: `localhost:8000`
 
 ### Build APK
 
 ```bash
-# Di folder guidio_app:
 flutter build apk --release
-
-# File APK ada di:
-# build/app/outputs/flutter-apk/app-release.apk
-
-# Install langsung ke HP via USB:
 flutter install
-# atau manual:
-adb install build/app/outputs/flutter-apk/app-release.apk
 ```
 
 ### Troubleshooting koneksi
@@ -399,38 +389,34 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 
 ## 10. Ukuran Model dan Kebutuhan Storage
 
-Rincian lengkap bobot model AI, ukuran download dependensi, alokasi hardware, dan total bandwidth/storage yang dibutuhkan:
+| Kategori | Komponen / Model | Ukuran | Eksekusi | Keterangan |
+|---|---|---|---|---|
+| **Mobile** | `ssd_mobilenet.tflite` | ~4.18 MB | On-Device CPU | Deteksi rintangan real-time |
+| **Mobile** | `uang_rupiah.tflite` | ~24.92 MB | On-Device CPU | Klasifikasi uang 6 pecahan |
+| **Backend VLM** | `vikhyatk/moondream2` | ~1.85 GB | Laptop GPU | Deskripsi suasana kamera (FP16) |
+| **Backend Deteksi** | `yolo11n.pt` | ~5.5 MB | Laptop GPU | Deteksi server / fallback |
+| **Backend Cari Objek** | `yoloe-11s-seg.pt` | ~30 MB | Laptop GPU | Open-vocabulary text prompt |
+| **Dependensi Python** | PyTorch + CUDA | ~1.8 GB | Disk | Runtime CUDA |
+| **Dependensi Python** | Transformers, OpenCV, FastAPI | ~300 MB | Disk | Framework |
 
-### Tabel Rincian Ukuran Model AI & Dependensi
+### Ringkasan
 
-| Kategori | Komponen / Model | Ukuran File | Lokasi Simpan | Eksekusi | Keterangan |
-|---|---|---|---|---|---|
-| **Mobile (Flutter)** | `ssd_mobilenet.tflite` | ~4.18 MB | `guidio_app/assets/models/` | On-Device CPU (HP) | Deteksi rintangan real-time (bawaan app) |
-| **Mobile (Flutter)** | `uang_rupiah.tflite` | ~24.92 MB | `guidio_app/assets/models/` | On-Device CPU (HP) | Klasifikasi uang rupiah 6 pecahan |
-| **Backend LLM** | `qwen2.5-1.5b-instruct-q4_k_m.gguf` | **1.12 GB** | `backend/models/` | **Laptop CPU** (~1.2 GB RAM) | Narasi YOLO & terjemahan Moondream (via llama-cpp) |
-| **Backend VLM** | `vikhyatk/moondream2` | **~1.85 GB** | `~/.cache/huggingface/` | **Laptop GPU** (RTX 3050 ~1.2 GB VRAM) | Deskripsi suasana kamera (FP16) |
-| **Backend Deteksi** | `yolo11n.pt` | ~5.5 MB | `~/.config/Ultralytics/` | **Laptop GPU** (~200 MB VRAM) | Deteksi server / fallback |
-| **Backend Cari Objek**| `yoloe-11s-seg.pt` | ~30 MB | `backend/models/` | **Laptop GPU** (~300 MB VRAM) | Open-vocabulary text prompt search |
-| **Dependensi Python** | PyTorch + CUDA Wheels | ~1.8 GB | `backend/venv/` | Disk Laptop | Runtime CUDA untuk YOLO & Moondream |
-| **Dependensi Python** | Transformers, Llama-cpp, OpenCV, FastAPI | ~300 MB | `backend/venv/` | Disk Laptop | Framework & bindings |
+- **Model di HP (Flutter Asset):** `~29.1 MB`
+- **Download Model Backend:** `~1.9 GB` *(Moondream ~1.85 GB + YOLO ~50 MB)*
+- **Storage Virtualenv Python:** `~2.1 GB`
+- **Total yang perlu disiapkan:** `~4.0 GB`
 
-### Ringkasan Total Kebutuhan
+### Alokasi Hardware (RTX 3050 4 GB VRAM)
 
-- **Total Ukuran Model di HP (Flutter Asset):** `~29.1 MB` *(sangat ringan)*
-- **Total Download Model di Server (Backend):** `~3.0 GB` *(Qwen 1.12 GB + Moondream 1.85 GB + YOLO 35 MB)*
-- **Total Storage Virtualenv Python Backend:** `~2.1 GB`
-- **Total Kuota / Storage yang Perlu Disiapkan:** **`~5.1 GB`**
+```
+Moondream2 FP16  ~1.2 GB
+YOLO/YOLOE       ~0.5 GB
+─────────────────────────
+Total            ~1.7 GB  (dari 4 GB — aman, sisa ~2.3 GB)
+```
 
-### Alokasi Hardware & Alasan Arsitektur
-
-1. **GPU RTX 3050 (4 GB VRAM):**
-   - Dikhususkan penuh untuk **Moondream2 (1.2 GB)** + **YOLO/YOLOE (0.5 GB)** = **~1.7 GB VRAM**.
-   - Sisa VRAM masih ~2.3 GB (sangat aman, bebas risiko *Out of Memory*).
-2. **CPU Laptop (Intel Core i5 / RAM):**
-   - **Qwen2.5-1.5B (GGUF Q4)** dijalankan di CPU via `llama-cpp-python`.
-   - Menggunakan RAM laptop sekitar **~1.2 GB**.
-   - Kecepatan di CPU: ~15–25 token/detik (untuk 1–2 kalimat hanya butuh **1.5 – 3 detik**).
-   - Menghindari keharusan kompilasi `nvcc` CUDA Toolkit di distro Linux seperti Fedora 43.
+Tidak ada LLM yang perlu dimuat di GPU atau CPU. Seluruh narasi dan intent
+dikerjakan di Flutter.
 
 ---
 
@@ -438,29 +424,24 @@ Rincian lengkap bobot model AI, ukuran download dependensi, alokasi hardware, da
 
 **Sudah berfungsi penuh:**
 
-- Enam mode dengan seluruh state antarmuka yang dirancang, dapat diperiksa
-  satu per satu lewat panel debug (ketuk 5 kali pada badge mode).
+- Enam mode dengan seluruh state antarmuka.
 - Deteksi rintangan on-device beserta pelacak SORT, penyaring kestabilan,
   getar tiga tingkat, dan antrean suara bertingkat.
 - Pengenalan uang on-device, 6 denominasi emisi 2016.
 - OCR beserta estimasi durasi baca.
 - Pencarian objek dengan prompt teks bebas.
-- Deskripsi suasana via kamera (Moondream2 + Qwen terjemahan).
-- Seluruh endpoint penunjang: kemampuan server, kamus label, manifest model,
-  telemetri, laporan crash, dan antrean unggah offline yang idempoten.
+- Deskripsi suasana via kamera (Moondream2, output English dibacakan TTS).
+- Intent parsing lokal: 20 intent, ratusan variasi ucapan multi-bahasa/dialek.
+- Narasi deteksi lokal: kamus 80 objek COCO, jarak natural, arah kontekstual.
 
 **Masih tiruan atau terbatas:**
 
 - **Segmentasi jalur** memakai heuristik OpenCV karena model PIDNet-S belum
-  ada. Heuristik membaca gambar sungguhan dan cukup untuk menguji seluruh
-  state, tetapi akurasinya di bawah model terlatih.
-- **Model uang hanya mengenali 6 pecahan emisi 2016.** Rp1.000 tidak
-  didukung, dan aplikasi menyebut keterbatasan itu alih-alih menebak.
-- **Navigasi belum memakai GPS.** Arahan jalur berasal dari kamera.
+  ada.
+- **Model uang hanya mengenali 6 pecahan emisi 2016.** Rp1.000 tidak didukung.
+- **Navigasi belum memakai GPS.**
 - **Tema gelap dan kontras tinggi** sudah aktif di tingkat aplikasi, tetapi
   belum dirancang ulang per komponen.
-- **Model Qwen perlu didownload manual** (~1.12 GB). Tanpa model, narasi dan
-  terjemahan memakai template fallback.
 
 ---
 
@@ -471,7 +452,7 @@ Rincian lengkap bobot model AI, ukuran download dependensi, alokasi hardware, da
 | Wang dkk., *YOLO-OD*, Sensors 2024 | Dataset rintangan navigasi, deteksi objek kecil |
 | Lu dkk., *Neural Baby Talk*, CVPR 2018 | Fondasi mengubah keluaran detektor menjadi kalimat tanpa mengirim gambar |
 | Hingnekar dkk., *Netra AI*, TechRxiv 2025 | Arsitektur on-device, sistem audio tiga tingkat |
-| Alsulaimawi, *Feedback-Enhanced VLM*, arXiv 2025 | Validasi urutan deteksi dulu, LLM kemudian |
+| Alsulaimawi, *Feedback-Enhanced VLM*, arXiv 2025 | Validasi urutan deteksi dulu, VLM kemudian |
 
 ---
 
