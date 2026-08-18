@@ -49,17 +49,9 @@ extension AppModeLabel on AppMode {
 
   /// Mode yang benar-benar mati tanpa internet.
   ///
-  /// **Berubah dari desain awal.** Dokumen menetapkan Navigasi tidak pernah
-  /// dinonaktifkan offline karena deteksi rintangan on-device tetap hidup
-  /// (§2 dan §4.4 ALUR-DAN-TOMBOL.md). Sejak deteksi rintangan dan segmentasi
-  /// jalur dipindah sepenuhnya ke server, alasan itu tidak berlaku lagi:
-  /// offline berarti Navigasi benar-benar tidak bisa melihat apa pun, dan
-  /// membiarkannya "terbatas" akan menjanjikan keselamatan yang tidak ada.
-  ///
-  /// Kalau deteksi rintangan on-device dikembalikan, kembalikan juga Navigasi
-  /// ke state `limited` — itu satu baris di sini.
-  bool get disabledWhenOffline =>
-      this == AppMode.findObject || this == AppMode.navigasi;
+  /// Mode Navigasi tetap BERJALAN OFFLINE menggunakan model TFLite on-device
+  /// (YOLO11n untuk bounding box rintangan & PIDNet-S untuk segmentasi 3-zona).
+  bool get disabledWhenOffline => this == AppMode.findObject;
 
   /// Petunjuk kata kunci perintah suara untuk diumumkan atau ditampilkan di UI
   String get voiceHint => switch (this) {
