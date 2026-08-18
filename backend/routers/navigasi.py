@@ -59,7 +59,9 @@ async def navigasi(
     yolo = getattr(request.app.state, "yolo_service", None)
     if yolo is not None and yolo.loaded:
         try:
-            result["obstacles"] = yolo.infer(frame)
+            # Pakai model navigasi custom (6 kelas) jika sudah dilatih.
+            # Fallback otomatis ke COCO jika model custom belum tersedia.
+            result["obstacles"] = yolo.infer(frame, mode="navigasi")
         except Exception as e:
             logger.warning(f"Deteksi rintangan gagal: {e}")
             result["obstacles"] = []
