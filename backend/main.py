@@ -69,17 +69,21 @@ async def lifespan(app: FastAPI):
     app.state.ocr_service = OCRService()
     app.state.risk_zone_service = RiskZoneService()
 
-    # Segmentasi jalur 3 zona via PIDNet-S ONNX (dilatih 80 epoch, mIoU 0.5975).
-    # Input model: H=384, W=640 — sesuai dimensi training.
-    # Tidak adanya model BUKAN kegagalan: fallback heuristik tetap aktif.
-    seg = SegmentationService(
-        model_path=os.getenv(
-            "SEGMENTATION_MODEL", "models/pidnet_s_3zona.onnx"
-        ),
-        input_size=384,   # PIDNet-S dilatih dengan H=384, W=640
-    )
-    seg.load()
-    app.state.segmentation_service = seg
+    # ── ON-DEVICE MOBILE NAVIGATION UPDATE ────────────────────────────────────
+    # Mode Navigasi (PIDNet-S + YOLO11n) saat ini sudah berjalan 100% On-Device
+    # di aplikasi Flutter Mobile (via `PidnetService` & `YoloNavigasiService` TFLite).
+    # Oleh karena itu, SegmentationService ONNX di backend dinonaktifkan sementara
+    # untuk menghemat CPU/VRAM server laptop.
+    # ──────────────────────────────────────────────────────────────────────────
+    # seg = SegmentationService(
+    #     model_path=os.getenv(
+    #         "SEGMENTATION_MODEL", "models/pidnet_s_3zona.onnx"
+    #     ),
+    #     input_size=384,   # PIDNet-S dilatih dengan H=384, W=640
+    # )
+    # seg.load()
+    # app.state.segmentation_service = seg
+    app.state.segmentation_service = None
 
     # Cari Objek — backend YOLOE open-vocabulary, trigger-based (bukan real-time).
     # Dipindah dari on-device ONNX 80 kelas → backend 300+ barang via text prompt.
@@ -176,7 +180,7 @@ app.include_router(describe.router)       # /api/describe     scene description 
 app.include_router(voice_router.router)   # /api/route-intent Asisten Suara (lama)
 app.include_router(asisten.router)        # /api/intent, /api/asisten/*
 app.include_router(cari_objek.router)      # /api/cari-objek  — trigger-based backend YOLOE
-app.include_router(navigasi.router)       # /api/navigasi
+# app.include_router(navigasi.router)     # /api/navigasi — Dinonaktifkan: Navigasi sudah 100% On-Device di HP
 app.include_router(uang.router)           # /api/uang (opsional)
 app.include_router(risk_zone.router)      # /api/risk-zone
 
