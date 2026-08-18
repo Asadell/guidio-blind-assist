@@ -1,9 +1,20 @@
-# Miscellaneous
+# ==============================================================================
+# GUIDIO App — Comprehensive Flutter & Testing .gitignore
+# ==============================================================================
+
+# Miscellaneous & System Junk
 *.class
 *.log
+*.tmp
 *.pyc
 *.swp
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -12,39 +23,57 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# IDE & Editor Configs
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter / Dart Build & Package Artifacts
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 /coverage/
 
-# Symbolication related
-app.*.symbols
+# Testing & Temporary Evaluation Artifacts
+test/navigation/results/
+test/navigation/samples/
+test/navigation/eval_model.py
+test/results/
+test/samples/
 
-# Obfuscation related
+# Symbolication & Obfuscation
+app.*.symbols
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android Studio & Gradle Artifacts
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/.gradle/
+android/captures/
 
-# Large or unused model exports (>100MB breaks GitHub file limit)
+# iOS Generated & Pods
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flttmp
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
+**/ios/Pods/
+
+# Large Model Binaries (>50MB breaks GitHub file limit)
 assets/models/*.onnx
+assets/models/*.engine
+assets/models/*.pt
 assets/models/yolo11l_float32.tflite
 assets/models/yolo11n.tflite
