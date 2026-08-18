@@ -63,8 +63,27 @@ class _ModePickerSheet extends StatelessWidget {
               header: true,
               child: Text('Pilih Mode', style: AppTypography.title()),
             ),
-            const SizedBox(height: 4),
-            Text('atau ucapkan nama mode', style: AppTypography.caption()),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.actionTint,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.mic_none_rounded, size: 14, color: AppColors.actionLabel),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Atau ucapkan via tombol Bicara (Mic)',
+                      style: AppTypography.caption(color: AppColors.actionLabel),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: AppSpacing.s4),
             Flexible(
               child: ListView.separated(
@@ -178,10 +197,10 @@ class _ModeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final semanticLabel = isCurrent
-        ? '${mode.label}, sedang aktif'
+        ? '${mode.label}, sedang aktif. Perintah suara: ${mode.voiceHint}'
         : _reason != null
             ? '${mode.label}, ${_reason!.toLowerCase()}'
-            : mode.label;
+            : '${mode.label}. Perintah suara: ${mode.voiceHint}';
 
     return Semantics(
       button: true,
@@ -241,6 +260,27 @@ class _ModeTile extends StatelessWidget {
                               _reason!,
                               style: AppTypography.caption(
                                 color: limited ? AppColors.warningLabel : AppColors.disabledInk,
+                              ),
+                            ),
+                          )
+                        else
+                          ExcludeSemantics(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.graphic_eq_rounded, size: 12, color: AppColors.actionLabel),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      mode.voiceHint,
+                                      style: AppTypography.caption(color: AppColors.ink2),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

@@ -60,6 +60,16 @@ extension AppModeLabel on AppMode {
   /// ke state `limited` — itu satu baris di sini.
   bool get disabledWhenOffline =>
       this == AppMode.findObject || this == AppMode.navigasi;
+
+  /// Petunjuk kata kunci perintah suara untuk diumumkan atau ditampilkan di UI
+  String get voiceHint => switch (this) {
+        AppMode.tuntun     => 'Katakan: "Deteksi objek" atau "Tuntun aku"',
+        AppMode.money      => 'Katakan: "Kenali uang" atau "Cek uang"',
+        AppMode.ocr        => 'Katakan: "Baca teks" atau "Bacakan"',
+        AppMode.navigasi   => 'Katakan: "Mode navigasi" atau "Mau jalan"',
+        AppMode.voice      => 'Katakan: "Asisten suara" atau "Tanya"',
+        AppMode.findObject => 'Katakan: "Cari objek" atau "Cari kunci"',
+      };
 }
 
 class AppModeProvider extends ChangeNotifier {
