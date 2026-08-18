@@ -1,11 +1,15 @@
 import 'dart:async';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/net/api_client.dart';
 import '../core/speech/tts_queue.dart' show SpeechTier;
 import '../models/detection.dart';
+import '../services/nav_frame_converter.dart';
+import '../services/pidnet_service.dart';
 import '../services/server_service.dart';
+import '../services/yolo_navigasi_service.dart';
 import '../widgets/zone_indicator.dart' show ZoneStatus;
 
 /// NavigationStep — placeholder tanpa GPS/Google Maps (belum diimplementasi,
@@ -77,20 +81,35 @@ class NavigationProvider extends ChangeNotifier {
   void Function(String text, SpeechTier tier)? onSpeak;
   void Function()? onTakeover; // NV-06 — mengambil alih layar
 
-  /// Sumber frame dan koordinat, dipasang screen. Provider tetap bebas dari
-  /// BuildContext dan bebas dari paket kamera.
-  Future<Uint8List?> Function()? frameSource;
+  /// Sumber frame — untuk on-device mode menerima CameraImage langsung.
+  /// Untuk server mode, menerima JPEG bytes.
+  Future<Uint8List?> Function()? frameSource;      // server mode (JPEG)
+  Future<CameraImage?> Function()? cameraSource;  // on-device mode (YUV raw)
   ({double lat, double lng})? Function()? locationSource;
 
+  /// Mode on-device: true = YOLO + PIDNet langsung di HP (tidak upload ke server).
+  /// Aktif secara default. Server tetap tersedia sebagai fallback.
+  bool _onDeviceMode = true;
+  bool get onDeviceMode => _onDeviceMode;
+
+  /// Status loading model on-device.
+  bool _modelsLoading = false;
+  bool _modelsReady   = false;
+  bool get modelsReady => _modelsReady;
+
   /// Satu permintaan in-flight; frame yang datang saat menunggu dibuang.
-  /// Untuk mode yang menuntun orang berjalan, arahan untuk pemandangan tiga
-  /// detik lalu lebih berbahaya daripada tidak ada arahan sama sekali.
-  final _pacer = FramePacer(minInterval: const Duration(milliseconds: 500));
+  final _pacer = FramePacer(minInterval: const Duration(milliseconds: 700));
 
   Timer? _loopTimer;
   int _consecutiveFailures = 0;
   String _lastSpokenMessage = '';
   DateTime _lastSpokenAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // ── Toggle mode ──────────────────────────────────────────────
+  void setOnDeviceMode(bool value) {
+    _onDeviceMode = value;
+    notifyListeners();
+  }
 
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
 
@@ -99,13 +118,40 @@ class NavigationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// NV-01 selesai → NV-02 menunggu server → NV-03 jalur aman.
-  ///
-  /// NV-02 sekarang benar-benar menunggu jawaban server pertama, bukan timer
-  /// tetap: pengguna tidak diberi tahu "siap" sebelum jalurnya sungguh terbaca.
+  /// NV-01 selesai → muat model on-device → NV-03 jalur aman.
   void finishCalibration() {
     _phase = NavPhase.waitingServer;
     _left = _center = _right = ZoneStatus.unknown;
+    notifyListeners();
+
+    if (_onDeviceMode && !_modelsReady && !_modelsLoading) {
+      _loadOnDeviceModels();
+    } else {
+      _startLoop();
+    }
+  }
+
+  /// Muat PIDNet + YOLO secara paralel di background.
+  Future<void> _loadOnDeviceModels() async {
+    _modelsLoading = true;
+    debugPrint('[Nav] Memuat model on-device...');
+
+    final results = await Future.wait([
+      PidnetService.instance.tryLoad(),
+      YoloNavigasiService.instance.tryLoad(),
+    ]);
+
+    _modelsLoading = false;
+    _modelsReady = results[0] && results[1];
+
+    if (_modelsReady) {
+      debugPrint('[Nav] Model on-device siap. PIDNet + YOLO aktif.');
+      _speak('Navigasi on-device aktif.', tier: SpeechTier.info);
+    } else {
+      debugPrint('[Nav] Model on-device gagal, fallback ke server.');
+      _onDeviceMode = false;
+      _speak('Menggunakan server untuk navigasi.', tier: SpeechTier.info);
+    }
     notifyListeners();
     _startLoop();
   }
@@ -129,28 +175,111 @@ class NavigationProvider extends ChangeNotifier {
 
   Future<void> _tick() async {
     if (_phase == NavPhase.paused) return;
-    final grab = frameSource;
-    if (grab == null) return;
 
     await _pacer.run(() async {
-      final jpeg = await grab();
-      if (jpeg == null) return;
-      final loc = locationSource?.call();
-
-      try {
-        final res = await ServerService.instance.segmentasiJalur(
-          jpeg,
-          lat: loc?.lat ?? 0,
-          lng: loc?.lng ?? 0,
-        );
-        _consecutiveFailures = 0;
-        _handleZones(res);
-      } on ApiStatusException {
-        _handleFailure();
-      } on ApiUnreachableException {
-        _handleFailure();
+      if (_onDeviceMode && _modelsReady) {
+        await _tickOnDevice();
+      } else {
+        await _tickServer();
       }
     });
+  }
+
+  // ── On-Device: PIDNet + YOLO di HP ──────────────────────────
+  Future<void> _tickOnDevice() async {
+    final camGrab = cameraSource;
+    if (camGrab == null) return;
+    final frame = await camGrab();
+    if (frame == null) return;
+
+    try {
+      // Konversi YUV→RGB sekali, dipakai keduanya
+      final conv = NavFrameConverter.fromCameraImage(frame);
+
+      // Jalankan PIDNet dan YOLO secara paralel
+      final results = await Future.wait([
+        PidnetService.instance.analyze(conv.rgb, conv.width, conv.height),
+        YoloNavigasiService.instance.detect(conv.rgb, conv.width, conv.height),
+      ]);
+
+      final zoneAnalysis = results[0] as ZoneAnalysis?;
+      final obstacles    = results[1] as List<Detection>;
+
+      if (zoneAnalysis == null) return;
+
+      _consecutiveFailures = 0;
+      _applyOnDeviceResult(zoneAnalysis, obstacles);
+    } catch (e) {
+      debugPrint('[Nav] on-device tick error: $e');
+      _handleFailure();
+    }
+  }
+
+  void _applyOnDeviceResult(ZoneAnalysis zones, List<Detection> obstacles) {
+    final wasDown = _phase == NavPhase.serverDown || _phase == NavPhase.waitingServer;
+
+    _left   = zones.left;
+    _center = zones.center;
+    _right  = zones.right;
+    _phase  = NavPhase.active;
+    _obstacles = obstacles;
+    _pothole = obstacles.any((d) =>
+        (d.labelEn == 'lubang' || d.labelEn == 'got_terbuka') &&
+        d.dangerLevel == 'critical');
+
+    if (wasDown) _speak('Navigasi aktif.', tier: SpeechTier.info);
+
+    // Susun pesan: rintangan kritis didahulukan, lalu arahan zona
+    final critical = obstacles
+        .where((d) => d.dangerLevel == 'critical')
+        .toList();
+    if (critical.isNotEmpty) {
+      onTakeover?.call();
+      _announce(critical.first.ttsMessage, SpeechTier.critical);
+    } else {
+      final warning = obstacles.where((d) => d.dangerLevel == 'warning').toList();
+      if (warning.isNotEmpty) {
+        _announce(warning.first.ttsMessage, SpeechTier.warning);
+      } else {
+        // Tidak ada rintangan berbahaya — beri arahan zona
+        final zoneMsg = zones.ttsMessage;
+        final allDanger = _left == ZoneStatus.danger &&
+            _center == ZoneStatus.danger &&
+            _right == ZoneStatus.danger;
+        if (allDanger) {
+          _announce('Berhenti dulu. Tidak ada jalur aman.', SpeechTier.critical);
+        } else if (_center == ZoneStatus.danger) {
+          onTakeover?.call();
+          _announce('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical);
+        } else {
+          _announce(zoneMsg, SpeechTier.info);
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  // ── Server mode (fallback) ────────────────────────────────────
+  Future<void> _tickServer() async {
+    final grab = frameSource;
+    if (grab == null) return;
+    final jpeg = await grab();
+    if (jpeg == null) return;
+    final loc = locationSource?.call();
+
+    try {
+      final res = await ServerService.instance.segmentasiJalur(
+        jpeg,
+        lat: loc?.lat ?? 0,
+        lng: loc?.lng ?? 0,
+      );
+      _consecutiveFailures = 0;
+      _handleZones(res);
+    } on ApiStatusException {
+      _handleFailure();
+    } on ApiUnreachableException {
+      _handleFailure();
+    }
   }
 
   void _handleZones(Map<String, dynamic> res) {
@@ -340,6 +469,8 @@ class NavigationProvider extends ChangeNotifier {
     _riskZoneWarning = null;
     _consecutiveFailures = 0;
     _lastSpokenMessage = '';
+    _modelsReady   = false;
+    _modelsLoading = false;
     _stopLoop();
     notifyListeners();
   }

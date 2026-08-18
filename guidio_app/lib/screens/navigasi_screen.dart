@@ -14,9 +14,9 @@ import '../widgets/index.dart';
 
 /// Mode Navigasi — bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
 ///
-/// **Sepenuhnya di server** lewat `POST /api/navigasi`: segmentasi jalur dan
-/// rintangan sama-sama dibaca di sana. Layar ini memasok frame dan menggambar
-/// hasilnya; tidak ada inferensi on-device di mode ini.
+/// **On-device secara default**: segmentasi jalur via PIDNet-S TFLite dan
+/// deteksi rintangan via YOLO11n TFLite berjalan langsung di HP tanpa upload
+/// ke server. Server hanya dipakai jika model gagal dimuat (offline-fallback).
 class NavigasiScreen extends StatefulWidget {
   const NavigasiScreen({super.key});
 
@@ -64,16 +64,16 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         context.read<TtsProvider>().speak(text, tier: tier);
       };
       nav.onTakeover = () => context.read<TtsProvider>().interruptByUser();
+      // Server JPEG source (dipakai jika on-device gagal / dinonaktifkan)
       nav.frameSource = _grabFrame;
+      // On-device source: CameraImage langsung ke PIDNet + YOLO
+      nav.cameraSource = _grabCameraImage;
       nav.startCalibration();
 
       // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
 
       if (_hasCameraPermission) {
-        // Deteksi rintangan on-device sengaja TIDAK dijalankan di sini lagi:
-        // rintangan dan jalur sama-sama dibaca server sekarang. Kamera hanya
-        // memasok frame.
         final cam = context.read<CameraProvider>();
         cam.onFrameReady = (image) => _latestFrame = image;
         cam.startStream();
@@ -84,6 +84,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   /// Frame terakhir dari stream, dikodekan hanya saat benar-benar dikirim.
   CameraImage? _latestFrame;
 
+  /// [Server mode] Encode ke JPEG untuk upload.
   Future<Uint8List?> _grabFrame() async {
     final frame = _latestFrame;
     if (frame == null) return null;
@@ -93,6 +94,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       quality: UploadPreset.navigation.quality,
     );
   }
+
+  /// [On-device mode] Kembalikan CameraImage mentah langsung ke PIDNet + YOLO.
+  Future<CameraImage?> _grabCameraImage() async => _latestFrame;
 
   @override
   void dispose() {
@@ -105,6 +109,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     nav.onSpeak = null;
     nav.onTakeover = null;
     nav.frameSource = null;
+    nav.cameraSource = null;  // on-device source
     nav.stopNavigation();
     final cam = context.read<CameraProvider>();
     cam.onFrameReady = null;
