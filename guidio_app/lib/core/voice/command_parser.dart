@@ -413,7 +413,11 @@ class CommandParser {
     final text = rawText.trim().toLowerCase();
     if (text.isEmpty) return VoiceCommand(rawText: rawText);
 
-    // 0. Cek frasa pengantar transisi mode alami (mis. "saya pengin pindah ke mode baca teks")
+    // =========================================================================
+    // [Fuzzy Matching Layer 0] — Natural Conversational Mode Transition
+    // Handles natural spoken sentences like: "Saya pengin pindah ke mode baca teks"
+    // Strips conversational prefixes and extracts target keywords (baca, uang, etc).
+    // =========================================================================
     for (final prefix in modeTransitionPrefixes) {
       if (text.contains(prefix)) {
         final targetPart = text.substring(text.indexOf(prefix) + prefix.length).trim();
@@ -441,7 +445,10 @@ class CommandParser {
       }
     }
 
-    // 1. Cek pencocokan frasa mode generik / perintah tindakan baku
+    // =========================================================================
+    // [Fuzzy Matching Layer 1a] — Exact Phrase Dictionary Matching
+    // Matches against fixed phrases in _phrases map (e.g. "kenali uang", "baca teks").
+    // =========================================================================
     for (final entry in _phrases.entries) {
       if (entry.key == VoiceIntent.modeFindObject) continue; // handle secara dinamis di bawah
       for (final phrase in entry.value) {
@@ -451,7 +458,11 @@ class CommandParser {
       }
     }
 
-    // 1b. Fallback matching kata kunci mode jika diucapkan secara alami tanpa frasa persis
+    // =========================================================================
+    // [Fuzzy Matching Layer 1b] — Keyword Combination Fallback
+    // Catches loose word combinations (e.g. "baca" + "mode", "uang" + "mode")
+    // when exact dictionary phrases are not matched.
+    // =========================================================================
     if (text.contains('baca teks') || (text.contains('baca') && text.contains('mode'))) {
       return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeReadText);
     }
@@ -471,7 +482,10 @@ class CommandParser {
       return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
     }
 
-    // 2. Cek pencocokan dynamic findObjectTarget menggunakan searchPrefixes
+    // =========================================================================
+    // [Fuzzy Matching Layer 2] — Dynamic Find Object Search Intent
+    // Extracts dynamic target item from search prefixes (e.g. "cari kacamata").
+    // =========================================================================
     String? matchedTarget;
     final sortedPrefixes = List<String>.from(searchPrefixes)..sort((a, b) => b.length.compareTo(a.length));
     for (final prefix in sortedPrefixes) {
@@ -509,8 +523,11 @@ class CommandParser {
     );
   }
 
-  /// Dua tebakan terdekat berbasis jumlah kata yang beririsan — dipakai untuk
-  /// naskah "Saya dengar X. Maksudmu Y, atau Z?" (bagian 14, "Tidak dikenali").
+  // =========================================================================
+  // [Fuzzy Matching Layer 3] — Word Overlap Similarity Scoring (Jaccard-like)
+  // Calculates word intersection overlap between raw STT input and phrase database.
+  // Returns top 2 nearest guesses for fallback voice prompts ("Saya dengar X. Maksudmu Y, atau Z?").
+  // =========================================================================
   static List<VoiceIntent> _nearestGuesses(String text) {
     final words = text.split(RegExp(r'\s+')).toSet();
     final scored = <MapEntry<VoiceIntent, int>>[];
