@@ -12,8 +12,16 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// tidak perlu meninggalkan perangkat, dan pengguna butuh umpan balik
 /// seketika saat mengarahkan kamera.
 ///
-/// Model: MobileNetV2 transfer learning, 6 kelas, input 224x224x3 float32
-/// dengan normalisasi `rescale = 1/255` (sama seperti saat training).
+/// Model: MobileNetV2 transfer learning, **7 kelas**, input 224x224x3 float32.
+///
+/// **Rentang input: 0..255, bukan 0..1.** Preprocessing `mobilenet_v2`
+/// (`x/127.5 - 1`) sudah dipanggang ke dalam graf model — terlihat sebagai
+/// op `truediv` dan `Sub` di level teratas berkas `.tflite`. Jadi piksel
+/// dikirim apa adanya. Docstring lama menyebut "6 kelas" dan
+/// "rescale = 1/255"; keduanya keliru dan berbahaya kalau dipercaya saat
+/// mengganti model, karena membagi lagi dengan 255 akan membuat masukan 255×
+/// terlalu kecil tanpa satu pun error yang terlihat — hanya prediksi yang
+/// diam-diam salah.
 ///
 /// ATURAN MUTLAK: nominal TIDAK PERNAH ditebak. Di bawah ambang keyakinan,
 /// yang dikembalikan hanya instruksi perbaikan — salah menyebut nominal ke
@@ -31,8 +39,13 @@ class MoneyTFLiteService {
   /// alat bantu uang.
   static const double confidenceThreshold = 0.85;
 
-  /// Urutan kelas sesuai output model training (7 kelas kanonik):
-  /// [1000, 2000, 5000, 10000, 20000, 50000, 100000]
+  /// Urutan kelas sesuai `class_indices` model saat pelatihan — sudah
+  /// diverifikasi terhadap notebook training, **jangan diubah**.
+  ///
+  /// Kalau model diganti, urutan ini WAJIB dicocokkan ulang: model
+  /// mengeluarkan indeks, dan indeks yang dipetakan ke nominal yang salah
+  /// menghasilkan jawaban yang percaya diri dan keliru — kegagalan paling
+  /// mahal yang bisa dilakukan aplikasi ini.
   static const List<int> classValues = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
 
   /// Model dilatih pada dataset gabungan Emisi 2016 & 2022 (7 pecahan lengkap).

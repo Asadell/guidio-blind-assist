@@ -115,6 +115,24 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       context.read<AppModeProvider>().announceEntry(AppMode.money);
       final money = context.read<MoneyProvider>();
       money.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
+
+      // Kontrak tombol kiri: "jepret" lewat suara = menekan tombol kiri.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = money.snapAndAnnounce;
+      voice.primaryActionLabel = () => 'mengenali uang';
+      voice.onRepeatLast = () {
+        if (money.lastAmount > 0) {
+          context.read<TtsProvider>().speak(
+                terbilangRupiah(money.lastAmount),
+                tier: SpeechTier.info,
+              );
+        } else {
+          context.read<TtsProvider>().speak(
+                'Belum ada nominal yang terbaca.',
+                tier: SpeechTier.info,
+              );
+        }
+      };
       money.onHaptic = (p) {
         switch (p) {
           case MoneyHaptic.positive:
@@ -146,6 +164,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     money.onSpeak = null;
     money.onHaptic = null;
     money.pause();
+    context.read<VoiceProvider>().clearModeHandlers();
     final cam = context.read<CameraProvider>();
     cam.onFrameReady = null;
     cam.stopStream();
@@ -263,7 +282,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     final fontScaleDemo = _debugOverride == MoneyDebugState.ug16;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -271,7 +290,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           if (cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (showOfflineBanner)
             Positioned(
@@ -344,7 +363,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
                                   color: AppColors.scrimText,
                                   borderRadius: AppRadius.pillShape,
                                 ),
-                                child: Text(spec.pillOverride!, style: AppTypography.caption(color: Colors.white)),
+                                child: Text(spec.pillOverride!, style: AppTypography.caption(color: AppColors.onDark)),
                               ),
                             ),
                           ),
@@ -370,7 +389,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
                           child: Text(
                             spec.note!,
                             textAlign: TextAlign.center,
-                            style: AppTypography.caption(color: Colors.white),
+                            style: AppTypography.caption(color: AppColors.onDark),
                           ),
                         ),
                       ],
@@ -400,7 +419,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
               data: media.copyWith(textScaler: fontScaleDemo ? const TextScaler.linear(2.0) : media.textScaler),
               child: BottomActionBar(
                 cameraLabel: 'Kenali Uang',
-                cameraEnabled: !showPermissionCard,
+                cameraEnabled: !showPermissionCard && !money.isUnavailable,
+                cameraDisabledReason: showPermissionCard
+                    ? 'izin kamera belum diberikan'
+                    : 'model pengenalan uang belum siap',
                 onCameraPressed: () {
                   if (_debugOverride != null) {
                     setState(() => _debugOverride = null);

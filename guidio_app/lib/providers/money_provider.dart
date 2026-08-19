@@ -8,15 +8,21 @@ import '../core/speech/tts_queue.dart' show SpeechTier;
 import '../services/money_tflite_service.dart';
 import '../widgets/nominal_card.dart' show terbilangRupiah;
 
-/// State machine "nol sentuhan" Mode Kenali Uang — bagian 9 IMPLEMENTASI.md
-/// (UG-01..UG-12, UG-17, UG-18). Sepenuhnya on-device dan sepenuhnya MOCK:
-/// tidak ada model nominal sungguhan, deteksi disimulasikan lewat Timer.
+/// State machine Mode Kenali Uang — bagian 9 IMPLEMENTASI.md
+/// (UG-01..UG-12, UG-17, UG-18). Sepenuhnya on-device.
+///
+/// **Jalur mock hanya hidup di build debug.** Simulasi Timer-nya memanggil
+/// `_enterDetected(_kDenoms[_rand.nextInt(...)])` — yaitu **mengucapkan
+/// nominal acak dengan nada yakin**. Di rilis, jalur itu bisa tercapai hanya
+/// karena model gagal dimuat, dan pengguna tunanetra tidak punya cara
+/// membedakannya dari hasil sungguhan. Salah menyebut nominal berarti
+/// kerugian uang nyata, jadi di rilis kegagalan model berakhir di satu
+/// kalimat jujur: fiturnya tidak tersedia. Titik.
 ///
 /// UG-13 (offline banner), UG-14 (izin kamera), UG-15 (senyap/TTS mati), dan
 /// UG-16 (font scale 200%) sengaja TIDAK dimodelkan di sini — itu murni
 /// keputusan lapisan UI (screen membaca GlobalConditionsProvider / izin
-/// sistem / MediaQuery langsung), sesuai instruksi agar provider ini tetap
-/// murni state-machine mock.
+/// sistem / MediaQuery langsung).
 enum MoneyState {
   idle,        // UG-01
   noCandidate, // UG-08
@@ -98,6 +104,14 @@ class MoneyProvider extends ChangeNotifier {
     _stepTimer = Timer(Duration(milliseconds: ms), cb);
   }
 
+  /// Simulasi hanya boleh hidup di build debug. `kDebugMode` dikompilasi
+  /// menjadi konstanta, jadi di rilis seluruh cabang mock ikut tereliminasi.
+  static bool get _mockAllowed => kDebugMode;
+
+  /// True kalau model tidak tersedia DAN mock tidak boleh jalan — layar
+  /// memakai ini untuk menonaktifkan tombol dengan alasan yang jujur.
+  bool get isUnavailable => !_useRealModel && !_mockAllowed;
+
   /// Masuk mode (UG-01) — mulai siklus otomatis dari awal.
   void start() {
     if (_running) return;
@@ -105,7 +119,21 @@ class MoneyProvider extends ChangeNotifier {
     _breakdown.clear();
     _lastAmount = 0;
     _set(MoneyState.idle);
-    if (!_useRealModel) _scheduleFromIdle();
+    if (!_useRealModel) _fallbackWhenModelMissing();
+  }
+
+  /// Satu titik keputusan untuk "model tidak ada": simulasi di debug,
+  /// pengakuan jujur di rilis. Tidak ada jalan ketiga yang menyebut angka.
+  void _fallbackWhenModelMissing() {
+    if (_mockAllowed) {
+      _scheduleFromIdle();
+      return;
+    }
+    _set(MoneyState.idle);
+    _speak(
+      'Pengenalan uang tidak tersedia saat ini. Model belum siap di perangkat ini.',
+      tier: SpeechTier.warning,
+    );
   }
 
   /// Keluar mode — hentikan semua timer, jangan bicara lagi.
@@ -124,6 +152,13 @@ class MoneyProvider extends ChangeNotifier {
     if (_useRealModel) {
       _consecutiveMiss = 0;
       _set(MoneyState.fit);
+      return;
+    }
+    if (!_mockAllowed) {
+      _speak(
+        'Pengenalan uang tidak tersedia saat ini.',
+        tier: SpeechTier.warning,
+      );
       return;
     }
     _enterFit();
@@ -210,7 +245,7 @@ class MoneyProvider extends ChangeNotifier {
       case MoneyFailure.modelUnavailable:
         _useRealModel = false;
         if (!_running) return;
-        _scheduleFromIdle();
+        _fallbackWhenModelMissing();
       case MoneyFailure.error:
       case null:
         // UG-08 — tidak ada kandidat: pill instruksi berputar tiap 5 detik.
@@ -230,7 +265,8 @@ class MoneyProvider extends ChangeNotifier {
     if (!_running) return;
 
     if (!_useRealModel) {
-      // Jalur mock: paksa siklus deteksi ulang seperti semula.
+      // Tanpa model: di debug jatuh ke simulasi, di rilis mengaku tidak bisa.
+      // Yang tidak pernah terjadi di rilis adalah menyebut angka.
       forceRedetect();
       return;
     }
@@ -348,6 +384,13 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   void _resolveDetection() {
+    // Pertahanan berlapis: satu-satunya tempat di seluruh aplikasi yang bisa
+    // mengucapkan nominal tanpa melihat uang sungguhan. Kalau suatu saat ada
+    // jalur baru yang lolos ke sini di rilis, ia berhenti di sini.
+    if (!_mockAllowed) {
+      _set(MoneyState.idle);
+      return;
+    }
     final r = _rand.nextDouble();
     if (r < 0.70) {
       _enterDetected(_kDenoms[_rand.nextInt(_kDenoms.length)]);
