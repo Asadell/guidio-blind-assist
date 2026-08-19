@@ -34,7 +34,7 @@ class CameraHealthToast extends StatelessWidget {
         child: Center(
           child: Text(
             issue.message,
-            style: AppTypography.body(color: Colors.white).copyWith(fontSize: 15, fontWeight: FontWeight.w500),
+            style: AppTypography.body(color: AppColors.onDark).copyWith(fontSize: 15, fontWeight: FontWeight.w500),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

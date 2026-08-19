@@ -3,9 +3,10 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vibration/vibration.dart';
+import '../core/speech/tts_queue.dart';
 import '../services/camera_health_service.dart';
 import '../services/tflite_service.dart';
-import '../services/tts_service.dart';
 
 /// CameraProvider — kelola kamera, stream, dan capture.
 ///
@@ -21,17 +22,31 @@ class CameraProvider extends ChangeNotifier {
   int  _frameCount  = 0;
 
   String? _healthMessage; // pesan camera health untuk UI
-  bool    _isDark    = false; // hasil on-device brightness check
-  bool    _isTorchOn = false; // status flashlight
+  bool    _isDark         = false; // hasil on-device brightness check
+  bool    _darkDismissed  = false; // true = jangan tampilkan tawaran lampu lagi
+  bool    _isTorchOn      = false; // status flashlight
+
+  // Fix 2.1: Timer peringatan gelap berkala — ucap setiap 30 detik jika masih gelap
+  Timer?   _darkWarningTimer;
+
+  /// Sejak kapan kondisi gelap berlangsung — dibaca layar/telemetri untuk
+  /// membedakan "baru saja gelap" dari "sudah lama tidak melihat apa-apa".
+  DateTime? _darkSince;
+  DateTime? get darkSince => _darkSince;
 
   CameraController? get controller    => _controller;
   bool              get isInitialized => _initialized;
   bool              get isStreaming    => _streaming;
   String?           get healthMessage => _healthMessage;
 
-  /// True saat rata-rata kecerahan frame < threshold — UI bereaksi
-  /// dengan menampilkan ContextualActionSlot tawaran nyalakan lampu.
-  bool get isDark    => _isDark;
+  /// True saat rata-rata kecerahan frame < threshold.
+  /// UI menampilkan ContextualActionSlot tawaran lampu HANYA jika
+  /// [isDark] && ![darkDismissed].
+  bool get isDark         => _isDark;
+
+  /// True saat pengguna menekan "Lewati" — tawaran lampu tidak tampil,
+  /// TAPI deteksi tetap berjalan (Fix 2.1).
+  bool get darkDismissed  => _darkDismissed;
 
   /// True saat flashlight sedang menyala.
   bool get isTorchOn => _isTorchOn;
@@ -39,6 +54,20 @@ class CameraProvider extends ChangeNotifier {
   // Callback — dipanggil dari CameraProvider ketika frame siap
   // DetectionProvider/InferenceProvider yang subscribe
   Function(CameraImage)? onFrameReady;
+
+  /// Dipasang MainScreen supaya kamera yang gagal muncul sebagai banner
+  /// global Critical, bukan hanya layar hitam tanpa penjelasan.
+  void Function(bool hasError)? onErrorChanged;
+
+  bool _hasError = false;
+  bool get hasError => _hasError;
+
+  void _setError(bool value) {
+    if (_hasError == value) return;
+    _hasError = value;
+    onErrorChanged?.call(value);
+    notifyListeners();
+  }
 
   Future<void> initCamera() async {
     // Request camera permission sebelum initialize — mencegah CameraAccessDenied
@@ -50,20 +79,34 @@ class CameraProvider extends ChangeNotifier {
       return;
     }
 
-    final cameras = await availableCameras();
-    if (cameras.isEmpty) return;
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        debugPrint('[CameraProvider] Tidak ada kamera pada perangkat ini');
+        _setError(true);
+        return;
+      }
 
-    _controller = CameraController(
-      cameras.first,
-      ResolutionPreset.medium, // 640x480 cukup untuk YOLO
-      enableAudio:    false,
-      imageFormatGroup: ImageFormatGroup.yuv420,
-    );
+      _controller = CameraController(
+        cameras.first,
+        ResolutionPreset.medium, // 640x480 cukup untuk YOLO
+        enableAudio:    false,
+        imageFormatGroup: ImageFormatGroup.yuv420,
+      );
 
-    await _controller!.initialize();
-    CameraHealthService.instance.startListening();
-    _initialized = true;
-    notifyListeners();
+      await _controller!.initialize();
+      CameraHealthService.instance.startListening();
+      _initialized = true;
+      _setError(false);
+      notifyListeners();
+    } catch (e) {
+      // Kamera gagal disiapkan = mode utama benar-benar buta. Kegagalan yang
+      // ditelan diam-diam di sini akan tampil sebagai aplikasi yang terlihat
+      // normal tapi tidak pernah memperingatkan apa pun.
+      debugPrint('[CameraProvider] initCamera error: $e');
+      _initialized = false;
+      _setError(true);
+    }
   }
 
   void startStream() {
@@ -81,11 +124,22 @@ class CameraProvider extends ChangeNotifier {
       final tooDark = _isTooDark(image);
       if (tooDark != _isDark) {
         _isDark = tooDark;
-        // Notifikasi UI tanpa TTS — ContextualActionSlot di TuntunScreen
-        // yang bertanggung jawab bicara "Ini gelap, apakah perlu nyalain lampu?"
+        if (tooDark) {
+          // Mulai timer peringatan gelap (Fix 2.1)
+          _darkSince = DateTime.now();
+          _startDarkWarningTimer();
+        } else {
+          // Kondisi terang kembali — reset semua
+          _cancelDarkWarningTimer();
+          _darkDismissed = false;
+          _darkSince = null;
+        }
+        // Notifikasi UI: ContextualActionSlot tampil/sembunyikan tawaran lampu
         notifyListeners();
       }
-      if (tooDark) return;
+      // Fix 2.1: JANGAN return di sini — inference tetap berjalan di kondisi gelap.
+      // Pengguna perlu tahu ada rintangan meski gelap.
+      // UI yang memutuskan apakah tawaran lampu tampil (isDark && !darkDismissed).
 
       // [2] Cek orientasi dari accelerometer setiap 30 frame
       if (_frameCount % 30 == 0) {
@@ -98,9 +152,14 @@ class CameraProvider extends ChangeNotifier {
           if (_healthMessage != health.message) {
             _healthMessage = health.message;
             notifyListeners();
-            TTSService.instance.speak(health.message);
+            // Gunakan TtsQueue agar tunduk pada sistem 3-tier (Fix 1C)
+            TtsQueue().speak(health.message, tier: SpeechTier.warning);
           }
-          return;
+          // Sengaja TIDAK `return` — ini kelas bug yang sama dengan kondisi
+          // gelap (Fix 2.1). Ponsel yang miring membuat estimasi jarak kurang
+          // akurat, tapi objek di depan tetap terlihat. Menghentikan inference
+          // berarti menukar "peringatan yang agak meleset" dengan "tidak ada
+          // peringatan sama sekali" — dan yang kedua jauh lebih berbahaya.
         } else if (_healthMessage != null) {
           _healthMessage = null;
           notifyListeners();
@@ -112,15 +171,59 @@ class CameraProvider extends ChangeNotifier {
     });
   }
 
+  /// Dismiss tawaran lampu tanpa mematikan deteksi (Fix 2.1).
+  /// Dipanggil saat pengguna menekan "Lewati" di ContextualActionSlot.
+  void dismissDarkOffer() {
+    _darkDismissed = true;
+    notifyListeners();
+  }
+
   void stopStream() {
     if (!_streaming || _controller == null) return;
     _controller!.stopImageStream();
     _streaming = false;
+    _cancelDarkWarningTimer();
     // Reset dark state saat stream berhenti
     if (_isDark) {
       _isDark = false;
+      _darkDismissed = false;
       notifyListeners();
     }
+  }
+
+  // ── Dark warning timer (Fix 2.1) ─────────────────────────────────────────
+
+  void _startDarkWarningTimer() {
+    _cancelDarkWarningTimer();
+    // Ucapkan peringatan pertama setelah 3 detik gelap
+    _darkWarningTimer = Timer(const Duration(seconds: 3), () {
+      if (!_isDark) return;
+      TtsQueue().speak(
+        'Terlalu gelap, saya tidak bisa melihat jalur dengan jelas. '
+        'Nyalakan lampu atau berhenti sejenak.',
+        tier: SpeechTier.warning,
+      );
+      Vibration.vibrate(pattern: [0, 100, 100, 100]);
+      // Ulangi setiap 30 detik selama masih gelap
+      _darkWarningTimer = Timer.periodic(
+        const Duration(seconds: 30),
+        (_) {
+          if (!_isDark) {
+            _cancelDarkWarningTimer();
+            return;
+          }
+          TtsQueue().speak(
+            'Masih gelap. Saya tetap berjalan tapi penglihatan terbatas.',
+            tier: SpeechTier.info,
+          );
+        },
+      );
+    });
+  }
+
+  void _cancelDarkWarningTimer() {
+    _darkWarningTimer?.cancel();
+    _darkWarningTimer = null;
   }
 
   /// Nyalakan atau matikan flashlight secara eksplisit.
@@ -256,6 +359,7 @@ class CameraProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _cancelDarkWarningTimer();
     CameraHealthService.instance.stopListening();
     _controller?.dispose();
     super.dispose();
