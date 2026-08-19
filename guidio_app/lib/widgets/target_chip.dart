@@ -26,11 +26,11 @@ class TargetChip extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            const Text('Mencari: ', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+            const Text('Mencari: ', style: TextStyle(color: AppColors.onDark, fontSize: 14, fontWeight: FontWeight.w600)),
             Expanded(
               child: Text(
                 itemName,
-                style: AppTypography.label(color: Colors.white),
+                style: AppTypography.label(color: AppColors.onDark),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

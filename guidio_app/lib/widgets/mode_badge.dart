@@ -93,13 +93,13 @@ class _ModeBadgeState extends State<ModeBadge> {
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                          color: AppColors.onDark,
+                          valueColor: AlwaysStoppedAnimation(AppColors.onDark),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text('Beralih ke ${widget.mode.label}…',
-                          style: AppTypography.metricMono(color: Colors.white.withValues(alpha: .9))),
+                          style: AppTypography.metricMono(color: AppColors.onDark.withValues(alpha: .9))),
                     ]
                   : widget.busy
                       ? [
@@ -109,21 +109,21 @@ class _ModeBadgeState extends State<ModeBadge> {
                             child: ExcludeSemantics(
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
-                                valueColor: AlwaysStoppedAnimation(Colors.white),
+                                color: AppColors.onDark,
+                                valueColor: AlwaysStoppedAnimation(AppColors.onDark),
                               ),
                             ),
                           ),
                           const SizedBox(width: 10),
                           const ExcludeSemantics(
-                            child: Text('Mengenali…', style: TextStyle(color: Colors.white, fontSize: 14)),
+                            child: Text('Mengenali…', style: TextStyle(color: AppColors.onDark, fontSize: 14)),
                           ),
                         ]
                       : [
-                          ExcludeSemantics(child: Icon(_icon, size: 18, color: Colors.white)),
+                          ExcludeSemantics(child: Icon(_icon, size: 18, color: AppColors.onDark)),
                           const SizedBox(width: 8),
                           ExcludeSemantics(
-                            child: Text('Mode: ${widget.mode.label}', style: AppTypography.label(color: Colors.white)),
+                            child: Text('Mode: ${widget.mode.label}', style: AppTypography.label(color: AppColors.onDark)),
                           ),
                         ],
             ),

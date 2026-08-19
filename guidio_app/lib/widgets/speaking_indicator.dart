@@ -38,10 +38,10 @@ class _SpeakingIndicatorState extends State<SpeakingIndicator> with SingleTicker
           mainAxisSize: MainAxisSize.min,
           children: [
             widget.silent
-                ? const Icon(Icons.volume_off_rounded, size: 14, color: Colors.white)
+                ? const Icon(Icons.volume_off_rounded, size: 14, color: AppColors.onDark)
                 : _Bars(controller: _controller),
             const SizedBox(width: 6),
-            Text(label, style: AppTypography.caption(color: Colors.white).copyWith(fontSize: 13)),
+            Text(label, style: AppTypography.caption(color: AppColors.onDark).copyWith(fontSize: 13)),
           ],
         ),
       ),
@@ -64,7 +64,7 @@ class _Bars extends AnimatedWidget {
         children: List.generate(4, (i) {
           final phase = (controller.value + i * .22) % 1.0;
           final h = 4 + (10 * (0.5 + 0.5 * (phase < .5 ? phase * 2 : (1 - phase) * 2)));
-          return Container(width: 2.4, height: h, color: Colors.white);
+          return Container(width: 2.4, height: h, color: AppColors.onDark);
         }),
       ),
     );

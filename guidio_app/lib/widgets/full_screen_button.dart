@@ -61,13 +61,13 @@ class FullScreenButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (icon != null) ...[
-                        Icon(icon, color: disabled ? AppColors.disabledInk : Colors.white, size: 26),
+                        Icon(icon, color: disabled ? AppColors.disabledInk : AppColors.onDark, size: 26),
                         const SizedBox(width: AppSpacing.s3),
                       ],
                       Text(
                         label,
                         style: AppTypography.title(
-                          color: disabled ? AppColors.disabledInk : Colors.white,
+                          color: disabled ? AppColors.disabledInk : AppColors.onDark,
                         ),
                       ),
                     ],

@@ -44,6 +44,39 @@ abstract final class AppColors {
   static const scrimText = Color(0xDB0B0D12); // #0B0D12 @ 86%
   static const scrimDim  = Color(0x660B0D12); // #0B0D12 @ 40% — tidak pernah membawa teks
 
+  // ── Foreground di atas bidang gelap/berwarna ────────────────────────────
+
+  /// Teks & ikon di atas bidang gelap atau vibrant — scrim di atas kamera,
+  /// [pillBg], dan isian `*Fill`.
+  ///
+  /// Ini yang dulu ditulis sebagai `Colors.white` mentah di 64 tempat.
+  /// Nilainya memang putih, tapi menyebutnya lewat token membuat maksudnya
+  /// terbaca — dan membuat tema kontras tinggi bisa menggesernya di **satu**
+  /// tempat alih-alih di 64 tempat yang harus ditemukan satu per satu dulu.
+  ///
+  /// Aturan 3:1 di header berkas ini tetap berlaku: putih di atas isian
+  /// vibrant hanya untuk teks besar/tebal dan ikon, tidak untuk teks kecil.
+  static const onDark = Color(0xFFFFFFFF);
+
+  // ── Latar kamera ────────────────────────────────────────────────────────
+
+  /// Latar di belakang preview kamera, dan pengganti saat preview belum siap.
+  ///
+  /// Hitam pekat disengaja: apa pun selain hitam akan terbaca sebagai "ada
+  /// sesuatu di layar" oleh pengguna low vision, padahal yang benar adalah
+  /// "belum ada gambar".
+  static const cameraVoid = Color(0xFF000000);
+
+  // ── Tema gelap ──────────────────────────────────────────────────────────
+  static const darkBg       = Color(0xFF15171E);
+  static const darkSurface  = Color(0xFF1E212B);
+  static const darkHairline = Color(0xFF2A2D38);
+
+  // ── Abu netral untuk indikator non-teks ─────────────────────────────────
+  /// Titik/segmen indikator yang tidak membawa teks (mis. penanda langkah).
+  static const indicatorOn  = Color(0xFF9AA0AD);
+  static const indicatorOff = Color(0xFFC4C9D2);
+
   static Color dangerColor(String dangerLevel) => switch (dangerLevel) {
         'critical' => criticalFill,
         'warning'  => warningFill,

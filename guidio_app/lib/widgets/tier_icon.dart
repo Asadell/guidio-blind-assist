@@ -75,7 +75,7 @@ class _TierIconPainter extends CustomPainter {
     switch (tier) {
       case AlertTier.critical:
         canvas.drawPath(_octagon(scale), fill);
-        _mark(canvas, scale, Colors.white, dotFirst: false);
+        _mark(canvas, scale, AppColors.onDark, dotFirst: false);
         break;
       case AlertTier.warning:
         canvas.drawPath(_triangle(scale), fill);
@@ -89,11 +89,11 @@ class _TierIconPainter extends CustomPainter {
           ),
           fill,
         );
-        _mark(canvas, scale, Colors.white, dotFirst: true);
+        _mark(canvas, scale, AppColors.onDark, dotFirst: true);
         break;
       case AlertTier.positive:
         final stroke = Paint()
-          ..color = Colors.white
+          ..color = AppColors.onDark
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.2 * scale
           ..strokeCap = StrokeCap.round

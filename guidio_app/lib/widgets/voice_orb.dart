@@ -40,7 +40,7 @@ class VoiceOrb extends StatelessWidget {
           diameter: size,
           color: AppColors.actionFill,
           shadow: [BoxShadow(color: AppColors.actionFill.withValues(alpha: .3), blurRadius: 12, offset: const Offset(0, 4))],
-          child: Icon(Icons.mic_none_rounded, color: Colors.white, size: size * .44),
+          child: Icon(Icons.mic_none_rounded, color: AppColors.onDark, size: size * .44),
         );
       case VoiceOrbState.listening:
         return _circle(
@@ -50,7 +50,7 @@ class VoiceOrb extends StatelessWidget {
             BoxShadow(color: AppColors.actionFill.withValues(alpha: .16), blurRadius: 0, spreadRadius: size * .14),
             BoxShadow(color: AppColors.actionFill.withValues(alpha: .08), blurRadius: 0, spreadRadius: size * .28),
           ],
-          child: Icon(Icons.mic_rounded, color: Colors.white, size: size * .44),
+          child: Icon(Icons.mic_rounded, color: AppColors.onDark, size: size * .44),
         );
       case VoiceOrbState.processing:
         return _circle(
@@ -65,12 +65,12 @@ class VoiceOrb extends StatelessWidget {
         return _circle(
           diameter: size,
           color: AppColors.positiveLabel,
-          child: Icon(Icons.check_rounded, color: Colors.white, size: size * .48),
+          child: Icon(Icons.check_rounded, color: AppColors.onDark, size: size * .48),
         );
       case VoiceOrbState.failure:
         return _circle(
           diameter: size,
-          color: Colors.white,
+          color: AppColors.onDark,
           border: Border.all(color: AppColors.warningFill, width: 2),
           child: Icon(Icons.priority_high_rounded, color: AppColors.ink1, size: size * .42),
         );

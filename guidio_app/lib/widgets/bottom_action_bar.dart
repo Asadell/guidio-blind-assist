@@ -4,20 +4,54 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
+import '../core/speech/tts_queue.dart';
 import '../providers/index.dart';
 import '../screens/voice_screen.dart';
+import '../services/haptic_service.dart';
 import '../theme/index.dart';
 import 'mode_picker_sheet.dart';
 
 /// BottomActionBar (F3) — selalu ada, selalu di tempat yang sama, tidak
-/// pernah menggulung. Tiga slot: Ambil Gambar 48, Bicara 64, Pilih Mode 48.
+/// pernah menggulung. Tiga slot: Aksi Utama 48, Bicara 64, Pilih Mode 48.
 /// Saat mic aktif, dua tombol lain nonaktif — supaya tidak ada aksi
 /// tabrakan sambil berjalan.
+///
+/// ## Kontrak tombol kiri
+///
+/// **Tombol kiri = lakukan hal utama mode ini, sekarang. Kalau mode itu tidak
+/// punya "hal utama", ia mengulang hal penting terakhir yang diucapkan.**
+///
+/// Bagian kedua yang membuat aturannya utuh: dengan itu tidak ada satu pun
+/// mode dengan tombol kiri mati, dan pengguna punya jaring pengaman — kalau
+/// lupa tombol kiri melakukan apa di mode ini, paling buruk ia mengulang
+/// sesuatu. Tidak pernah merusak, tidak pernah hening.
+///
+/// | Mode          | Label                        | Aksi                     |
+/// |---------------|------------------------------|--------------------------|
+/// | Deteksi Objek | "Hentikan" / "Lanjutkan"     | Toggle deteksi           |
+/// | Kenali Uang   | "Kenali Uang"                | 1 tap = 1 analisis       |
+/// | Baca Teks     | "Baca teks" → "Jeda bacaan"  | Kontekstual              |
+/// | Navigasi      | "Ulangi arahan"              | Baca ulang status zona   |
+/// | Asisten Suara | "Ulangi jawaban"             | Baca ulang respons       |
+/// | Cari Objek    | "Kirim — cari [X]"           | Scan                     |
+///
+/// Aturan pendukung: label berupa kata kerja + objek maksimal 3 kata (TalkBack
+/// membacanya tiap fokus mendarat), tombol nonaktif tetap bersuara saat
+/// ditekan, dan setiap tekan memberi getar konfirmasi.
+///
+/// [cameraLabel] sengaja **wajib**. Nilai bawaan lamanya "Ambil gambar" membuat
+/// dua mode (Navigasi dan Asisten) menampilkan tombol aktif yang dibacakan
+/// TalkBack sebagai "Ambil gambar, tombol" padahal menekannya tidak melakukan
+/// apa pun — label yang berbohong, dan jalan buntu yang hening.
 class BottomActionBar extends StatelessWidget {
   final VoidCallback? onCameraPressed;
   final VoidCallback? onMicPressed;
   final bool cameraEnabled;
   final String cameraLabel;
+
+  /// Alasan tombol kiri nonaktif, diucapkan saat ditekan.
+  final String? cameraDisabledReason;
+
   /// DO-24 — izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
   final bool micEnabled;
   /// Saat mode aktif punya STT sendiri (mis. Cari Objek), timpa visual
@@ -28,10 +62,11 @@ class BottomActionBar extends StatelessWidget {
 
   const BottomActionBar({
     super.key,
+    required this.cameraLabel,
     this.onCameraPressed,
     this.onMicPressed,
     this.cameraEnabled = true,
-    this.cameraLabel = 'Ambil gambar',
+    this.cameraDisabledReason,
     this.micEnabled = true,
     this.listeningOverride,
     this.processingOverride,
@@ -50,8 +85,8 @@ class BottomActionBar extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.bgPage,
         boxShadow: [
-          BoxShadow(color: Color(0x0F161819), blurRadius: 0, offset: Offset(0, -1)),
-          BoxShadow(color: Color(0x2E161819), blurRadius: 24, offset: Offset(0, -8), spreadRadius: -12),
+          BoxShadow(color: Color.fromRGBO(22, 24, 25, .06), blurRadius: 0, offset: Offset(0, -1)),
+          BoxShadow(color: Color.fromRGBO(22, 24, 25, .18), blurRadius: 24, offset: Offset(0, -8), spreadRadius: -12),
         ],
       ),
       // Urutan fokus 7-8-9 (bagian 10) dipasang eksplisit: reposisi tombol di
@@ -65,7 +100,12 @@ class BottomActionBar extends StatelessWidget {
             child: _SquareButton(
               icon: Icons.camera_alt_outlined,
               label: cameraLabel,
-              enabled: sideButtonsEnabled,
+              // Tanpa handler = tidak aktif. Tidak ada lagi `?? () {}` yang
+              // membuat tombol tampak hidup lalu diam saat ditekan.
+              enabled: sideButtonsEnabled && onCameraPressed != null,
+              disabledReason: listening
+                  ? 'sedang mendengarkan'
+                  : cameraDisabledReason,
               onTap: onCameraPressed ?? () {},
             ),
           ),
@@ -190,7 +230,7 @@ class _MicButton extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.actionLabel),
                 )
               : ExcludeSemantics(
-              child: Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: Colors.white, size: 30),
+              child: Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: AppColors.onDark, size: 30),
             ),
         ),
       ),
@@ -204,23 +244,46 @@ class _SquareButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
+  /// Alasan tombol nonaktif — diucapkan saat ditekan, bukan didiamkan.
+  final String? disabledReason;
+
   const _SquareButton({
     required this.icon,
     required this.label,
     required this.onTap,
     this.enabled = true,
+    this.disabledReason,
   });
+
+  /// Menekan tombol nonaktif TIDAK boleh hening.
+  ///
+  /// Untuk pengguna yang tidak melihat layar, tombol yang diam saat ditekan
+  /// tidak bisa dibedakan dari aplikasi yang macet — dan satu-satunya cara
+  /// menguji dugaannya adalah menekan lagi. Katakan alasannya, sekali, dengan
+  /// getar pendek supaya jelas tekanannya terdaftar.
+  void _explainDisabled() {
+    final reason = disabledReason;
+    TtsQueue().speak(
+      reason == null ? '$label tidak tersedia sekarang.' : '$label. $reason',
+      tier: SpeechTier.info,
+    );
+    HapticService.instance.info();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: enabled ? label : '$label, tidak tersedia',
+      label: enabled
+          ? label
+          : disabledReason == null
+              ? '$label, tidak tersedia'
+              : '$label, tidak tersedia, $disabledReason',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: enabled ? onTap : null,
+          onTap: enabled ? onTap : _explainDisabled,
           borderRadius: BorderRadius.circular(AppRadius.sm),
           child: Container(
             width: AppSizes.minTouchTarget,

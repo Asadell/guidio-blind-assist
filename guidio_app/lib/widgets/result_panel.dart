@@ -131,7 +131,7 @@ class ResultPanel extends StatelessWidget {
           ),
           child: Icon(
             speaking ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            color: speaking ? Colors.white : AppColors.actionLabel,
+            color: speaking ? AppColors.onDark : AppColors.actionLabel,
           ),
         ),
       ),
@@ -155,10 +155,10 @@ class ResultPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20, color: filled ? Colors.white : AppColors.actionLabel),
+                Icon(icon, size: 20, color: filled ? AppColors.onDark : AppColors.actionLabel),
                 const SizedBox(width: 8),
               ],
-              Text(label, style: AppTypography.label(color: filled ? Colors.white : AppColors.actionLabel)),
+              Text(label, style: AppTypography.label(color: filled ? AppColors.onDark : AppColors.actionLabel)),
             ],
           ),
         ),

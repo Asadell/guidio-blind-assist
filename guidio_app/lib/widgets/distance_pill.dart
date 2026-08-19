@@ -27,10 +27,10 @@ class DistancePill extends StatelessWidget {
       };
 
   Color get _fg => switch (tier) {
-        AlertTier.critical => Colors.white,
+        AlertTier.critical => AppColors.onDark,
         AlertTier.warning  => AppColors.ink1,
         AlertTier.info     => AppColors.actionLabel,
-        AlertTier.positive => Colors.white,
+        AlertTier.positive => AppColors.onDark,
       };
 
   String get _text {

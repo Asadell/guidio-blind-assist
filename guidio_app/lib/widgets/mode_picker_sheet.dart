@@ -18,7 +18,7 @@ void showModePickerSheet(BuildContext context) {
   // sudah terbaca sebelum pengguna memilih. Tidak di-await: sheet tampil
   // segera, dan item memperbarui dirinya begitu jawaban datang.
   context.read<CapabilitiesProvider>().refreshIfStale(
-        offline: context.read<GlobalConditionsProvider>().isOffline,
+        offline: context.read<GlobalConditionsProvider>().isBackendDown,
       );
 
   showModalBottomSheet(
@@ -37,7 +37,11 @@ class _ModePickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = context.watch<AppModeProvider>().mode;
-    final offline = context.watch<GlobalConditionsProvider>().isOffline;
+    // `isBackendDown`, bukan `isOffline`: mode yang butuh server sama-sama
+    // tidak bisa dipakai entah karena tidak ada jaringan atau karena server
+    // tidak menjawab. Yang penting bagi pengguna adalah statusnya sudah benar
+    // SEBELUM ia menekan, bukan sesudah gagal.
+    final offline = context.watch<GlobalConditionsProvider>().isBackendDown;
     final caps = context.watch<CapabilitiesProvider>();
 
     return SafeArea(
@@ -106,9 +110,28 @@ class _ModePickerSheet extends StatelessWidget {
                     reason: caps.unavailableReason(mode, offline: offline),
                     onTap: disabled
                         ? null
-                        : () {
-                            context.read<AppModeProvider>().setMode(mode);
-                            Navigator.pop(context);
+                        : () async {
+                            // Nilai balik `setMode` WAJIB diperiksa. Tanpa ini,
+                            // membatalkan konfirmasi keluar-Navigasi menutup
+                            // sheet tanpa satu kata pun terucap: `announceEntry`
+                            // tidak jalan karena mode tidak berubah, dan
+                            // pengguna yang tidak melihat layar menyimpulkan
+                            // modenya sudah berganti. VoiceProvider sudah
+                            // menangani ini dengan benar sejak awal — hanya
+                            // jalur sheet yang bocor.
+                            final appMode = context.read<AppModeProvider>();
+                            final tts = context.read<TtsProvider>();
+                            final navigator = Navigator.of(context);
+                            final previous = appMode.mode;
+
+                            final changed = await appMode.setMode(mode);
+                            if (!changed && appMode.mode == previous) {
+                              tts.speak(
+                                'Tetap di mode ${previous.label}.',
+                                tier: SpeechTier.info,
+                              );
+                            }
+                            navigator.pop();
                           },
                   );
                 },
@@ -295,7 +318,7 @@ class _ModeTile extends StatelessWidget {
                           color: AppColors.actionLabel,
                           borderRadius: AppRadius.pillShape,
                         ),
-                        child: Text('AKTIF', style: AppTypography.eyebrow(color: Colors.white)),
+                        child: Text('AKTIF', style: AppTypography.eyebrow(color: AppColors.onDark)),
                       ),
                     ),
                 ],

@@ -42,9 +42,9 @@ abstract final class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.actionLabel,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.onDark,
           minimumSize: const Size.fromHeight(AppSizes.minTouchTarget),
-          textStyle: AppTypography.label(color: Colors.white),
+          textStyle: AppTypography.label(color: AppColors.onDark),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.pillShape),
           elevation: 0,
         ),
@@ -71,7 +71,7 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.pillBg,
-        contentTextStyle: AppTypography.body(color: Colors.white),
+        contentTextStyle: AppTypography.body(color: AppColors.onDark),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
       ),
@@ -92,12 +92,12 @@ abstract final class AppTheme {
         seedColor: AppColors.actionFill,
         brightness: Brightness.dark,
       ),
-      scaffoldBackgroundColor: const Color(0xFF15171E),
+      scaffoldBackgroundColor: AppColors.darkBg,
       fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
     );
     return base.copyWith(
-      appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF15171E), elevation: 0),
-      dividerTheme: const DividerThemeData(color: Color(0xFF2A2D38), thickness: 1, space: 1),
+      appBarTheme: const AppBarTheme(backgroundColor: AppColors.darkBg, elevation: 0),
+      dividerTheme: const DividerThemeData(color: AppColors.darkHairline, thickness: 1, space: 1),
     );
   }
 
@@ -109,17 +109,17 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.white,
+        seedColor: AppColors.onDark,
         brightness: Brightness.dark,
-        primary: Colors.white,
-        surface: Colors.black,
+        primary: AppColors.onDark,
+        surface: AppColors.cameraVoid,
       ),
-      scaffoldBackgroundColor: Colors.black,
+      scaffoldBackgroundColor: AppColors.cameraVoid,
       fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
     );
     return base.copyWith(
-      appBarTheme: const AppBarTheme(backgroundColor: Colors.black, elevation: 0),
-      dividerTheme: const DividerThemeData(color: Colors.white, thickness: 1, space: 1),
+      appBarTheme: const AppBarTheme(backgroundColor: AppColors.cameraVoid, elevation: 0),
+      dividerTheme: const DividerThemeData(color: AppColors.onDark, thickness: 1, space: 1),
     );
   }
 }

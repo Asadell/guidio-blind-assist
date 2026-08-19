@@ -9,7 +9,7 @@ enum FrameFit { empty, partial, fit, tooClose }
 
 extension FrameFitX on FrameFit {
   Color get color => switch (this) {
-        FrameFit.empty   => Colors.white,
+        FrameFit.empty   => AppColors.onDark,
         FrameFit.partial => AppColors.warningFill,
         FrameFit.fit     => AppColors.positiveFill,
         FrameFit.tooClose => AppColors.criticalFill,
@@ -60,7 +60,7 @@ class GuideFrame extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-                  child: Text(fit.caption, style: AppTypography.caption(color: Colors.white)),
+                  child: Text(fit.caption, style: AppTypography.caption(color: AppColors.onDark)),
                 ),
               ),
             ),

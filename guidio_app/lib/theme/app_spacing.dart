@@ -36,17 +36,17 @@ abstract final class AppRadius {
 /// Elevasi: elev/1 datar, elev/2 kartu, elev/3 sheet + FAB.
 abstract final class AppElevation {
   static const flat = <BoxShadow>[
-    BoxShadow(color: Color(0x14161819), blurRadius: 2, offset: Offset(0, 1)),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .08), blurRadius: 2, offset: Offset(0, 1)),
   ];
 
   static const card = <BoxShadow>[
-    BoxShadow(color: Color(0x1A161819), blurRadius: 8, offset: Offset(0, 2)),
-    BoxShadow(color: Color(0x29161819), blurRadius: 24, offset: Offset(0, 8), spreadRadius: -8),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .10), blurRadius: 8, offset: Offset(0, 2)),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .16), blurRadius: 24, offset: Offset(0, 8), spreadRadius: -8),
   ];
 
   static const sheet = <BoxShadow>[
-    BoxShadow(color: Color(0x1F161819), blurRadius: 12, offset: Offset(0, 4)),
-    BoxShadow(color: Color(0x42161819), blurRadius: 40, offset: Offset(0, 20), spreadRadius: -12),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .12), blurRadius: 12, offset: Offset(0, 4)),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .26), blurRadius: 40, offset: Offset(0, 20), spreadRadius: -12),
   ];
 }
 

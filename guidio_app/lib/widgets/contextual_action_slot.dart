@@ -77,7 +77,7 @@ class ContextualActionSlot extends StatelessWidget {
                 ),
                 child: Text(
                   message!,
-                  style: AppTypography.caption(color: Colors.white),
+                  style: AppTypography.caption(color: AppColors.onDark),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -92,7 +92,7 @@ class ContextualActionSlot extends StatelessWidget {
                   onTap: onPrimary,
                   icon: primaryIcon,
                   fillColor: primaryColor ?? AppColors.actionFill,
-                  labelColor: Colors.white,
+                  labelColor: AppColors.onDark,
                 ),
               ),
               if (secondaryLabel != null) ...[
