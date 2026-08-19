@@ -9,6 +9,15 @@ class Detection {
   final double inferenceMs;
   final bool isApproaching;    // true jika bbox makin besar (dari SORT tracker)
 
+  /// Identitas objek dari [ObjectTracker], stabil antar frame. `null` berarti
+  /// deteksi ini belum melewati tracker (mis. hasil server single-shot).
+  ///
+  /// Dipakai [DetectionFilter] sebagai kunci cooldown dan streak. Sebelumnya
+  /// kuncinya `labelEn`, sehingga dua orang berbeda dianggap satu: orang yang
+  /// jauh diumumkan lebih dulu, lalu orang yang dekat dan mendekat dibungkam
+  /// sampai cooldown label "person" habis.
+  final int? trackId;
+
   const Detection({
     required this.labelEn,
     required this.labelId,
@@ -19,7 +28,12 @@ class Detection {
     required this.bbox,
     required this.inferenceMs,
     this.isApproaching = false,
+    this.trackId,
   });
+
+  /// Kunci identitas untuk filter. Pakai trackId kalau ada; kalau tidak,
+  /// jatuh ke label supaya jalur tanpa tracker tetap punya cooldown.
+  String get filterKey => trackId != null ? 't$trackId' : 'l$labelEn';
 
   factory Detection.fromJson(Map<String, dynamic> json) => Detection(
         labelEn:       json['label_en'] as String? ?? '',
@@ -34,17 +48,19 @@ class Detection {
       );
 
   /// Buat salinan Detection dengan field tertentu diubah.
-  /// Digunakan DetectionProvider untuk menambahkan isApproaching dari tracker.
-  Detection copyWith({bool? isApproaching}) => Detection(
+  /// Digunakan DetectionProvider untuk menambahkan isApproaching + trackId
+  /// dari tracker.
+  Detection copyWith({bool? isApproaching, int? trackId, double? distanceMeter}) => Detection(
         labelEn:       labelEn,
         labelId:       labelId,
         confidence:    confidence,
-        distanceMeter: distanceMeter,
+        distanceMeter: distanceMeter ?? this.distanceMeter,
         direction:     direction,
         dangerLevel:   dangerLevel,
         bbox:          bbox,
         inferenceMs:   inferenceMs,
         isApproaching: isApproaching ?? this.isApproaching,
+        trackId:       trackId ?? this.trackId,
       );
 
   // Computed getters dari bbox pixel (format x1/y1/x2/y2).

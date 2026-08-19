@@ -8,6 +8,13 @@ import '../providers/settings_provider.dart' show Verbosity;
 /// Fix dari doc 5 masalah 5:
 /// - Streak hanya di-increment SETELAH lolos distance + confidence filter
 /// - Cooldown berbeda per tier (Netra AI: critical=2s, warning=3s, info=5s)
+///
+/// Fix temuan 2B — kunci cooldown dan streak adalah **identitas objek**
+/// ([Detection.filterKey], berasal dari `trackId` SORT), bukan lagi `labelEn`.
+/// Dengan kunci label, dua orang di frame yang sama dianggap satu objek:
+/// orang yang jauh diumumkan lebih dulu, lalu orang yang dekat dan sedang
+/// mendekat ikut kena cooldown "person" dan **tidak diumumkan sama sekali**
+/// sampai 2 detik berlalu. Persis kebalikan dari yang dibutuhkan.
 class DetectionFilter {
   final Map<String, DateTime> _lastAnnounced = {};
   final Map<String, int>      _streak        = {};
@@ -37,55 +44,50 @@ class DetectionFilter {
   }
 
   List<Detection> process(List<Detection> raw) {
-    final currentLabels = raw.map((d) => d.labelEn).toSet();
+    final currentKeys = raw.map((d) => d.filterKey).toSet();
 
-    // Remove streak entry untuk label yang hilang dari frame ini
-    for (final label in _streak.keys.toList()) {
-      if (!currentLabels.contains(label)) {
-        _streak.remove(label);
-      }
-    }
+    // Buang streak untuk objek yang hilang dari frame ini. Cooldown sengaja
+    // TIDAK ikut dibuang: objek yang berkelip hilang-muncul satu frame tidak
+    // boleh mendapat izin bicara ulang seketika.
+    _streak.removeWhere((key, _) => !currentKeys.contains(key));
+
+    // Batasi pertumbuhan _lastAnnounced. trackId terus bertambah sepanjang
+    // sesi, jadi tanpa ini map-nya tumbuh selamanya di perjalanan panjang.
+    if (_lastAnnounced.length > 200) _pruneAnnounced();
 
     final approved = <Detection>[];
 
     for (final det in raw) {
+      final key = det.filterKey;
+
       // [1] Distance filter
       if (det.distanceMeter > _maxDistance) {
-        debugPrint('[Filter] DROP ${det.labelEn}: '
-            'jarak ${det.distanceMeter.toStringAsFixed(1)}m > ${_maxDistance}m');
         continue;
       }
 
       // [2] Confidence filter
       if (det.confidence < _minConfidence) {
-        debugPrint('[Filter] DROP ${det.labelEn}: '
-            'confidence ${det.confidence.toStringAsFixed(2)} < $_minConfidence');
         continue;
       }
 
       // [3] Increment streak HANYA untuk yang lolos distance + confidence
-      _streak[det.labelEn] = (_streak[det.labelEn] ?? 0) + 1;
+      _streak[key] = (_streak[key] ?? 0) + 1;
 
       // [4] Stability check
-      if ((_streak[det.labelEn] ?? 0) < _streakRequired) {
-        debugPrint('[Filter] STREAK ${det.labelEn}: '
-            '${_streak[det.labelEn]}/$_streakRequired frame');
+      if ((_streak[key] ?? 0) < _streakRequired) {
         continue;
       }
 
       // [5] Cooldown per tier
       final cooldown = _cooldownFor(det);
-      final last     = _lastAnnounced[det.labelEn];
+      final last     = _lastAnnounced[key];
       final now      = DateTime.now();
       if (last != null && now.difference(last) < cooldown) {
-        final sisa = cooldown - now.difference(last);
-        debugPrint('[Filter] COOLDOWN ${det.labelEn}: '
-            'sisa ${sisa.inMilliseconds}ms');
         continue;
       }
 
       // [6] Lolos semua
-      _lastAnnounced[det.labelEn] = now;
+      _lastAnnounced[key] = now;
       approved.add(det);
     }
 
@@ -105,7 +107,20 @@ class DetectionFilter {
       Verbosity.ringkas => 1,
       _ => 2,
     };
+
+    if (approved.isNotEmpty) {
+      debugPrint('[Filter] lolos ${approved.length}/${raw.length}: '
+          '${approved.take(maxPerCycle).map((d) => '${d.labelEn}#${d.trackId}(${d.dangerLevel})').join(' | ')}');
+    }
+
     return approved.take(maxPerCycle).toList();
+  }
+
+  /// Buang catatan cooldown yang jauh lebih lama dari cooldown terpanjang —
+  /// objek itu sudah pasti tidak akan tertahan lagi.
+  void _pruneAnnounced() {
+    final cutoff = DateTime.now().subtract(const Duration(seconds: 30));
+    _lastAnnounced.removeWhere((_, at) => at.isBefore(cutoff));
   }
 
   int _prio(String danger) => switch (danger) {

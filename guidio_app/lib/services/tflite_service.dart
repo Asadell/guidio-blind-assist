@@ -1,12 +1,11 @@
 
-import 'dart:io';
 import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
+import 'camera_intrinsics.dart';
 
 // Label Bahasa Indonesia — kunci adalah label Inggris dari labelmap.txt
 const Map<String, String> _labelId = {
@@ -199,9 +198,6 @@ const Map<String, int> _realHeightsCm = {
   'toothbrush':        20,
 };
 
-// Focal length piksel (kalibrasi default)
-const int _focalLengthPx = 615;
-
 // SSD MobileNet: input 300×300
 const int _inputSize = 300;
 
@@ -261,13 +257,27 @@ class TFLiteService {
   }
 
   /// Jalankan inference dari CameraImage (YUV420).
-  /// Menggunakan IsolateInterpreter — tidak freeze UI.
+  ///
+  /// Preprocessing berjalan di isolate lewat [compute] dan menghasilkan
+  /// **buffer datar** `Uint8List` yang langsung disalin ke tensor uint8.
+  ///
+  /// Versi sebelumnya melakukan seluruhnya di isolate UI: loop 640×480
+  /// YUV→RGB dengan `setPixelRgb()` per piksel, lalu `copyResize`, lalu
+  /// `copyRotate`, lalu membangun `List<List<List<List<num>>>>` berisi
+  /// 270.000 angka ter-boxing. Hanya interpreter-nya yang ada di isolate;
+  /// bagian yang jauh lebih mahal justru menghalangi thread UI — dan karena
+  /// TTS dijadwalkan dari thread yang sama, suaralah yang ikut tersendat.
   Future<List<Detection>> runInference(CameraImage image) async {
     if (!_loaded || _isolateInterpreter == null) return [];
 
-    // Konversi YUV420 → RGB → resize 300×300 → nested List [1][300][300][3]
-    final inputTensor = _prepareInput(image);
-    if (inputTensor == null) return [];
+    final geo = _FrameGeometry.of(image.width, image.height);
+    final Uint8List inputTensor;
+    try {
+      inputTensor = await compute(_prepareSsdInput, _SsdPrepArgs.from(image, geo));
+    } catch (e) {
+      debugPrint('[TFLite] preprocessing gagal: $e');
+      return [];
+    }
 
     // SSD MobileNet output 4 tensor terpisah:
     //   tensor[0]: locations [1][10][4]   — [ymin, xmin, ymax, xmax] normalized
@@ -292,86 +302,15 @@ class TFLiteService {
       outputLocations[0],
       outputClasses[0],
       outputScores[0],
-      image.width,
-      image.height,
+      geo,
     );
-  }
-
-  /// Konversi YUV420 → RGB → resize 300×300 → nested List[1][H][W][3]
-  ///
-  /// SSD MobileNet membutuhkan uint8 (integer 0..255), bukan float.
-  /// TFLite Flutter memetakan List<num> (integer) → uint8 tensor secara otomatis.
-  /// Pastikan TIDAK menggunakan .toDouble() agar tidak menjadi float64.
-  List<List<List<List<num>>>>? _prepareInput(CameraImage image) {
-    try {
-      final int width  = image.width;
-      final int height = image.height;
-
-      final yPlane = image.planes[0];
-      final uPlane = image.planes[1];
-      final vPlane = image.planes[2];
-
-      final yBytes      = yPlane.bytes;
-      final uBytes      = uPlane.bytes;
-      final vBytes      = vPlane.bytes;
-      final uvRowStride = uPlane.bytesPerRow;
-      final uvPixelStr  = uPlane.bytesPerPixel ?? 1;
-
-      // Buat img.Image RGB
-      final rgbImage = img.Image(width: width, height: height);
-
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          final int yIndex  = y * yPlane.bytesPerRow + x;
-          final int uvIndex = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStr;
-
-          final int yVal = yBytes[yIndex] & 0xFF;
-          final int uVal = (uBytes.length > uvIndex ? uBytes[uvIndex] : 128) & 0xFF;
-          final int vVal = (vBytes.length > uvIndex ? vBytes[uvIndex] : 128) & 0xFF;
-
-          final int r = (yVal + 1.402 * (vVal - 128)).round().clamp(0, 255);
-          final int g = (yVal - 0.344 * (uVal - 128) - 0.714 * (vVal - 128)).round().clamp(0, 255);
-          final int b = (yVal + 1.772 * (uVal - 128)).round().clamp(0, 255);
-
-          rgbImage.setPixelRgb(x, y, r, g, b);
-        }
-      }
-
-      // Resize ke 300×300 (SSD MobileNet input size)
-      img.Image resized = img.copyResize(
-        rgbImage,
-        width:         _inputSize,
-        height:        _inputSize,
-        interpolation: img.Interpolation.linear,
-      );
-
-      // Rotasi 90° untuk Android karena kamera CameraX default landscape
-      if (Platform.isAndroid) {
-        resized = img.copyRotate(resized, angle: 90);
-      }
-
-      // Build nested List [1][H][W][3] dengan tipe num (integer)
-      // PENTING: gunakan pixel.r/g/b sebagai num, BUKAN .toDouble()
-      // TFLite akan mapping num integer → uint8 tensor secara otomatis
-      final input = List.generate(1, (_) =>
-        List.generate(_inputSize, (y) =>
-          List.generate(_inputSize, (x) {
-            final pixel = resized.getPixel(x, y);
-            return [pixel.r, pixel.g, pixel.b]; // num integer, bukan double
-          }),
-        ),
-      );
-
-      return input;
-    } catch (_) {
-      return null;
-    }
   }
 
   /// Post-process output SSD MobileNet → List<Detection>
   ///
   /// Output tensor SSD:
   ///   locations[i] = [ymin, xmin, ymax, xmax] normalized 0..1
+  ///                  **relatif terhadap kotak crop tegak**, bukan frame mentah
   ///   classes[i]   = class index (float, bukan int)
   ///   scores[i]    = confidence score
   ///
@@ -380,10 +319,12 @@ class TFLiteService {
     List<List<double>> locations, // [10][4]: ymin, xmin, ymax, xmax
     List<double> classes,
     List<double> scores,
-    int origWidth,
-    int origHeight,
+    _FrameGeometry geo,
   ) {
     const double confThreshold = 0.5;
+    // Fokus per-perangkat, dihitung ulang dari lebar frame yang benar-benar
+    // dipakai — bukan konstanta yang mengasumsikan satu lensa untuk semua HP.
+    final focalPx = CameraIntrinsics.instance.focalPxForUprightFrame(geo.srcW);
     final List<Detection> results = [];
 
     for (int i = 0; i < scores.length; i++) {
@@ -399,27 +340,26 @@ class TFLiteService {
       final labelId = _labelId[labelEn] ?? labelEn;
 
       // SSD output: [ymin, xmin, ymax, xmax] normalized 0..1
-      final ymin = locations[i][0];
-      final xmin = locations[i][1];
-      final ymax = locations[i][2];
-      final xmax = locations[i][3];
+      final ymin = locations[i][0].clamp(0.0, 1.0);
+      final xmin = locations[i][1].clamp(0.0, 1.0);
+      final ymax = locations[i][2].clamp(0.0, 1.0);
+      final xmax = locations[i][3].clamp(0.0, 1.0);
 
-      // Konversi ke pixel koordinat, clamp ke batas frame
-      final x1 = (xmin * origWidth).clamp(0.0, (origWidth - 1).toDouble()).toInt();
-      final y1 = (ymin * origHeight).clamp(0.0, (origHeight - 1).toDouble()).toInt();
-      final x2 = (xmax * origWidth).clamp(0.0, (origWidth - 1).toDouble()).toInt();
-      final y2 = (ymax * origHeight).clamp(0.0, (origHeight - 1).toDouble()).toInt();
+      // Koordinat piksel di ruang **bingkai tegak**. Karena crop-nya persegi
+      // dan skalanya seragam, tinggi kotak di sini sebanding lurus dengan
+      // tinggi objek sebenarnya — syarat yang tidak dipenuhi versi lama, yang
+      // meregangkan 640×480 menjadi 300×300 (rasio berubah) lalu memutarnya,
+      // sehingga "tinggi" kotak sebenarnya mengukur lebar objek.
+      final x1 = (geo.offsetX + xmin * geo.cropSide).round();
+      final y1 = (geo.offsetY + ymin * geo.cropSide).round();
+      final x2 = (geo.offsetX + xmax * geo.cropSide).round();
+      final y2 = (geo.offsetY + ymax * geo.cropSide).round();
 
-      final boxH = y2 - y1;
-      final cx   = (x1 + x2) / 2.0;
-      final cy   = (y1 + y2) / 2.0;
+      final boxH = (ymax - ymin) * geo.cropSide;
 
-      final dist   = _estimateDistance(labelEn, boxH);
-      final dir    = _getDirection(cx, cy, origWidth, origHeight);
+      final dist   = _estimateDistance(labelEn, boxH, focalPx);
+      final dir    = _getDirection((xmin + xmax) / 2, (ymin + ymax) / 2);
       final danger = _getDanger(labelEn, dist);
-
-      // Debug: log tiap deteksi yang lolos threshold
-      debugPrint('[Inference] ${scores[i].toStringAsFixed(2)} → $labelEn | $dir | ${dist.toStringAsFixed(1)}m | $danger');
 
       results.add(Detection(
         labelEn:       labelEn,
@@ -436,10 +376,15 @@ class TFLiteService {
     return results;
   }
 
-  double _estimateDistance(String label, int boxH) {
-    if (boxH <= 0) return 999.0;
+  /// Estimasi jarak dari tinggi kotak dalam piksel bingkai tegak.
+  ///
+  /// [focalPx] dibaca dari intrinsik lensa perangkat lewat [CameraIntrinsics];
+  /// kalau perangkat tidak melaporkannya, nilainya jatuh ke fallback yang
+  /// sama seperti konstanta lama.
+  double _estimateDistance(String label, double boxHpx, double focalPx) {
+    if (boxHpx <= 0) return 999.0;
     final realH = _realHeightsCm[label] ?? 100;
-    double dist = (realH * _focalLengthPx) / (boxH * 100);
+    double dist = (realH * focalPx) / (boxHpx * 100);
 
     // Tilt correction: jika HP miring > 15° (0.26 rad), koreksi jarak.
     if (_lastTiltAngle.abs() > 0.26) {
@@ -449,19 +394,17 @@ class TFLiteService {
     return dist;
   }
 
-  /// Tentukan arah berdasarkan posisi horizontal DAN vertikal bounding box.
+  /// Tentukan arah dari posisi kotak dalam koordinat ternormalisasi (0..1)
+  /// pada kotak crop tegak.
   ///
   /// Horizontal: kiri / depan / kanan (trisection horizontal)
   /// Vertikal: atas / tengah / bawah (trisection vertikal)
   ///
   /// Jika vertikal = tengah → kembalikan arah horizontal saja ("depan")
   /// Jika vertikal != tengah → gabungkan: "kiri atas", "depan bawah", dll.
-  String _getDirection(double cx, double cy, int width, int height) {
-    final hThird = width / 3;
-    final vThird = height / 3;
-
-    final horiz = cx < hThird ? 'kiri' : cx < hThird * 2 ? 'depan' : 'kanan';
-    final vert  = cy < vThird ? 'atas' : cy < vThird * 2 ? 'tengah' : 'bawah';
+  String _getDirection(double cxNorm, double cyNorm) {
+    final horiz = cxNorm < 1 / 3 ? 'kiri' : cxNorm < 2 / 3 ? 'depan' : 'kanan';
+    final vert  = cyNorm < 1 / 3 ? 'atas' : cyNorm < 2 / 3 ? 'tengah' : 'bawah';
 
     // Jika objek di zona tengah vertikal, cukup sebut arah horizontal
     if (vert == 'tengah') return horiz;
@@ -483,4 +426,120 @@ class TFLiteService {
     _isolateInterpreter?.close();
     _loaded = false;
   }
+}
+
+// ── Geometri bingkai ────────────────────────────────────────────────────────
+
+/// Pemetaan antara frame sensor (landscape) dan bingkai tegak yang dilihat
+/// pengguna, plus kotak crop persegi yang dikirim ke model.
+///
+/// Kamera Android memberi frame landscape (mis. 640×480) sementara aplikasi
+/// terkunci portrait, jadi bingkai tegaknya 480×640. Model butuh masukan
+/// persegi 300×300; supaya rasio tidak berubah, yang diambil adalah **crop
+/// persegi di tengah** bingkai tegak, bukan seluruh frame yang diregangkan.
+class _FrameGeometry {
+  /// Lebar & tinggi frame sensor mentah.
+  final int srcW, srcH;
+
+  /// Sisi kotak crop, dalam piksel bingkai tegak.
+  final int cropSide;
+
+  /// Posisi kiri-atas kotak crop di dalam bingkai tegak.
+  final int offsetX, offsetY;
+
+  const _FrameGeometry({
+    required this.srcW,
+    required this.srcH,
+    required this.cropSide,
+    required this.offsetX,
+    required this.offsetY,
+  });
+
+  factory _FrameGeometry.of(int srcW, int srcH) {
+    // Bingkai tegak = frame sensor diputar 90°.
+    final uprightW = srcH;
+    final uprightH = srcW;
+    final side = uprightW < uprightH ? uprightW : uprightH;
+    return _FrameGeometry(
+      srcW: srcW,
+      srcH: srcH,
+      cropSide: side,
+      offsetX: (uprightW - side) ~/ 2,
+      offsetY: (uprightH - side) ~/ 2,
+    );
+  }
+}
+
+/// Argumen preprocessing — semua sudah berupa data biasa supaya bisa dikirim
+/// ke isolate lewat [compute].
+class _SsdPrepArgs {
+  final Uint8List yPlane, uPlane, vPlane;
+  final int yRowStride, uvRowStride, uvPixelStride;
+  final int srcH;
+  final int cropSide, offsetX, offsetY;
+
+  const _SsdPrepArgs({
+    required this.yPlane,
+    required this.uPlane,
+    required this.vPlane,
+    required this.yRowStride,
+    required this.uvRowStride,
+    required this.uvPixelStride,
+    required this.srcH,
+    required this.cropSide,
+    required this.offsetX,
+    required this.offsetY,
+  });
+
+  factory _SsdPrepArgs.from(CameraImage image, _FrameGeometry geo) => _SsdPrepArgs(
+        yPlane: image.planes[0].bytes,
+        uPlane: image.planes[1].bytes,
+        vPlane: image.planes[2].bytes,
+        yRowStride: image.planes[0].bytesPerRow,
+        uvRowStride: image.planes[1].bytesPerRow,
+        uvPixelStride: image.planes[1].bytesPerPixel ?? 1,
+        srcH: geo.srcH,
+        cropSide: geo.cropSide,
+        offsetX: geo.offsetX,
+        offsetY: geo.offsetY,
+      );
+}
+
+/// YUV420 → RGB langsung ke grid 300×300, dalam satu lintasan, di isolate.
+///
+/// Rotasi 90° dan crop persegi dilakukan lewat pemetaan indeks — tidak ada
+/// gambar antara yang dialokasikan, dan piksel yang disentuh hanya 90.000
+/// alih-alih 307.200. Hasilnya buffer datar `Uint8List` yang disalin apa
+/// adanya ke tensor uint8 (`ByteConversionUtils` memakai jalur cepat untuk
+/// `Uint8List`), jadi tidak ada 270.000 angka ter-boxing seperti sebelumnya.
+Uint8List _prepareSsdInput(_SsdPrepArgs a) {
+  final out = Uint8List(_inputSize * _inputSize * 3);
+  final yLen = a.yPlane.length;
+  final uLen = a.uPlane.length;
+  final vLen = a.vPlane.length;
+  var o = 0;
+
+  for (int ty = 0; ty < _inputSize; ty++) {
+    // Sumbu vertikal bingkai tegak = sumbu horizontal sensor.
+    final uy = a.offsetY + (ty * a.cropSide) ~/ _inputSize;
+    final sx = uy;
+    final uvCol = (sx >> 1) * a.uvPixelStride;
+
+    for (int tx = 0; tx < _inputSize; tx++) {
+      final ux = a.offsetX + (tx * a.cropSide) ~/ _inputSize;
+      final sy = a.srcH - 1 - ux;
+
+      final yIdx = sy * a.yRowStride + sx;
+      final uvIdx = (sy >> 1) * a.uvRowStride + uvCol;
+
+      final yVal = yIdx >= 0 && yIdx < yLen ? a.yPlane[yIdx] : 0;
+      final uVal = (uvIdx >= 0 && uvIdx < uLen ? a.uPlane[uvIdx] : 128) - 128;
+      final vVal = (uvIdx >= 0 && uvIdx < vLen ? a.vPlane[uvIdx] : 128) - 128;
+
+      out[o++] = (yVal + 1.402 * vVal).clamp(0, 255).toInt();
+      out[o++] = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toInt();
+      out[o++] = (yVal + 1.772 * uVal).clamp(0, 255).toInt();
+    }
+  }
+  return out;
 }
