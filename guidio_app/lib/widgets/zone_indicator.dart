@@ -83,7 +83,7 @@ class _ZoneChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final solid = recommended && status != ZoneStatus.unknown;
     final bg = solid ? status.ink : status.tint;
-    final fg = solid ? Colors.white : status.ink;
+    final fg = solid ? AppColors.onDark : status.ink;
 
     return Container(
       height: 56,
@@ -92,7 +92,7 @@ class _ZoneChip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: AppTypography.caption(color: solid ? Colors.white.withValues(alpha: .85) : AppColors.ink2)),
+            Text(label, style: AppTypography.caption(color: solid ? AppColors.onDark.withValues(alpha: .85) : AppColors.ink2)),
             const SizedBox(height: 1),
             status == ZoneStatus.unknown
                 ? _UnknownDots()
@@ -119,7 +119,7 @@ class _UnknownDots extends StatelessWidget {
             width: 6, height: 6,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: i == 0 ? const Color(0xFF9AA0AD) : const Color(0xFFC4C9D2),
+              color: i == 0 ? AppColors.indicatorOn : AppColors.indicatorOff,
             ),
           ),
         );

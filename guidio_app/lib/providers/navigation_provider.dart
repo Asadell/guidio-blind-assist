@@ -8,7 +8,6 @@ import '../core/speech/tts_queue.dart' show SpeechTier;
 import '../models/detection.dart';
 import '../services/nav_frame_converter.dart';
 import '../services/pidnet_service.dart';
-import '../services/server_service.dart';
 import '../services/yolo_navigasi_service.dart';
 import '../widgets/zone_indicator.dart' show ZoneStatus;
 
@@ -22,22 +21,23 @@ class NavigationStep {
 
 /// Fase segmentasi jalur — bagian 10 IMPLEMENTASI.md (NV-01..NV-13).
 ///
-/// **Sepenuhnya di server.** Frame dikirim ke `POST /api/navigasi`, yang
-/// mengembalikan status tiga zona plus zona rawan dari laporan komunitas.
+/// **Sepenuhnya on-device.** PIDNet-S (segmentasi 3 zona) dan YOLO11n
+/// (rintangan) berjalan di ponsel; keduanya sudah dibundel di APK.
 ///
-/// > **Perubahan dari desain awal, disengaja.** Dokumen merancang mode ini
-/// > dengan dua proses paralel: segmentasi jalur di server DAN deteksi
-/// > rintangan on-device yang tetap hidup saat offline (§2, §4.4). Sejak
-/// > keduanya dipindah ke server, NV-19 dan NV-20 tidak punya arti lagi —
-/// > tidak ada lagi "on-device mati sementara server hidup". Offline sekarang
-/// > berarti mode ini benar-benar buta, dan itu dikatakan apa adanya
-/// > ketimbang dijanjikan setengah.
+/// > Jalur server dihapus. `navigasi.router` memang sudah dinonaktifkan di
+/// > `backend/main.py` sejak navigasi dipindah on-device, sehingga fallback
+/// > `POST /api/navigasi` di sini hanya menghasilkan 404 — lalu diterjemahkan
+/// > menjadi "Saya tidak bisa membaca jalur tanpa sambungan ke server".
+/// > Kalimat itu menyalahkan jaringan untuk endpoint yang memang sengaja
+/// > tidak disediakan, dan mendorong pengguna mencari sinyal yang tidak akan
+/// > menolong. Sekarang mode ini hidup atau mati bersama modelnya sendiri,
+/// > dan mengatakannya apa adanya.
 enum NavPhase {
   calibrating, // NV-01
-  waitingServer, // NV-02
+  loadingModels, // NV-02 — memuat PIDNet + YOLO on-device
   active, // NV-03..NV-09
-  serverDown, // NV-11 — sekarang berarti mode benar-benar berhenti
-  serverWeak, // NV-13
+  unavailable, // NV-11 — model on-device tidak bisa dipakai
+  degraded, // NV-13 — model jalan tapi frame sering gagal dibaca
   paused, // NV-15
 }
 
@@ -66,31 +66,23 @@ class NavigationProvider extends ChangeNotifier {
 
   bool _pothole = false;
   bool get pothole => _pothole;
-  double _potholeSteps = 3;
+  final double _potholeSteps = 3;
   double get potholeSteps => _potholeSteps;
 
   /// Zona rawan dari laporan komunitas — informasi yang tidak terlihat kamera.
   String? _riskZoneWarning;
   String? get riskZoneWarning => _riskZoneWarning;
 
-  /// Rintangan dari server, dari frame yang sama dengan zona. Datang bersama
-  /// zona supaya keduanya tidak pernah menggambarkan momen yang berbeda.
+  /// Rintangan dari frame yang sama dengan zona. Datang bersama zona supaya
+  /// keduanya tidak pernah menggambarkan momen yang berbeda.
   List<Detection> _obstacles = const [];
   List<Detection> get obstacles => _obstacles;
 
   void Function(String text, SpeechTier tier)? onSpeak;
   void Function()? onTakeover; // NV-06 — mengambil alih layar
 
-  /// Sumber frame — untuk on-device mode menerima CameraImage langsung.
-  /// Untuk server mode, menerima JPEG bytes.
-  Future<Uint8List?> Function()? frameSource;      // server mode (JPEG)
-  Future<CameraImage?> Function()? cameraSource;  // on-device mode (YUV raw)
-  ({double lat, double lng})? Function()? locationSource;
-
-  /// Mode on-device: true = YOLO + PIDNet langsung di HP (tidak upload ke server).
-  /// Aktif secara default. Server tetap tersedia sebagai fallback.
-  bool _onDeviceMode = true;
-  bool get onDeviceMode => _onDeviceMode;
+  /// Sumber frame kamera mentah (YUV) untuk PIDNet + YOLO on-device.
+  Future<CameraImage?> Function()? cameraSource;
 
   /// Status loading model on-device.
   bool _modelsLoading = false;
@@ -105,12 +97,6 @@ class NavigationProvider extends ChangeNotifier {
   String _lastSpokenMessage = '';
   DateTime _lastSpokenAt = DateTime.fromMillisecondsSinceEpoch(0);
 
-  // ── Toggle mode ──────────────────────────────────────────────
-  void setOnDeviceMode(bool value) {
-    _onDeviceMode = value;
-    notifyListeners();
-  }
-
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
 
   void startCalibration() {
@@ -120,11 +106,11 @@ class NavigationProvider extends ChangeNotifier {
 
   /// NV-01 selesai → muat model on-device → NV-03 jalur aman.
   void finishCalibration() {
-    _phase = NavPhase.waitingServer;
+    _phase = NavPhase.loadingModels;
     _left = _center = _right = ZoneStatus.unknown;
     notifyListeners();
 
-    if (_onDeviceMode && !_modelsReady && !_modelsLoading) {
+    if (!_modelsReady && !_modelsLoading) {
       _loadOnDeviceModels();
     } else {
       _startLoop();
@@ -144,14 +130,22 @@ class NavigationProvider extends ChangeNotifier {
     _modelsLoading = false;
     _modelsReady = results[0] && results[1];
 
-    if (_modelsReady) {
-      debugPrint('[Nav] Model on-device siap. PIDNet + YOLO aktif.');
-      _speak('Navigasi on-device aktif.', tier: SpeechTier.info);
-    } else {
-      debugPrint('[Nav] Model on-device gagal, fallback ke server.');
-      _onDeviceMode = false;
-      _speak('Menggunakan server untuk navigasi.', tier: SpeechTier.info);
+    if (!_modelsReady) {
+      // Tidak ada cadangan server lagi. Katakan apa adanya — dan sebut mode
+      // apa yang MASIH bisa dipakai, supaya ini bukan jalan buntu.
+      debugPrint('[Nav] Model on-device gagal dimuat.');
+      _phase = NavPhase.unavailable;
+      _speak(
+        'Panduan jalur tidak bisa dijalankan di perangkat ini. '
+        'Mode Deteksi Objek tetap bisa memperingatkan rintangan.',
+        tier: SpeechTier.critical,
+      );
+      notifyListeners();
+      return;
     }
+
+    debugPrint('[Nav] Model on-device siap. PIDNet + YOLO aktif.');
+    _speak('Panduan jalur aktif.', tier: SpeechTier.info);
     notifyListeners();
     _startLoop();
   }
@@ -174,15 +168,8 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   Future<void> _tick() async {
-    if (_phase == NavPhase.paused) return;
-
-    await _pacer.run(() async {
-      if (_onDeviceMode && _modelsReady) {
-        await _tickOnDevice();
-      } else {
-        await _tickServer();
-      }
-    });
+    if (_phase == NavPhase.paused || !_modelsReady) return;
+    await _pacer.run(_tickOnDevice);
   }
 
   // ── On-Device: PIDNet + YOLO di HP ──────────────────────────
@@ -216,7 +203,7 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   void _applyOnDeviceResult(ZoneAnalysis zones, List<Detection> obstacles) {
-    final wasDown = _phase == NavPhase.serverDown || _phase == NavPhase.waitingServer;
+    final wasDown = _phase == NavPhase.degraded || _phase == NavPhase.loadingModels;
 
     _left   = zones.left;
     _center = zones.center;
@@ -227,7 +214,7 @@ class NavigationProvider extends ChangeNotifier {
         (d.labelEn == 'lubang' || d.labelEn == 'got_terbuka') &&
         d.dangerLevel == 'critical');
 
-    if (wasDown) _speak('Navigasi aktif.', tier: SpeechTier.info);
+    if (wasDown) _speak('Jalur terbaca lagi.', tier: SpeechTier.info);
 
     // Susun pesan: rintangan kritis didahulukan, lalu arahan zona
     final critical = obstacles
@@ -259,104 +246,6 @@ class NavigationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Server mode (fallback) ────────────────────────────────────
-  Future<void> _tickServer() async {
-    final grab = frameSource;
-    if (grab == null) return;
-    final jpeg = await grab();
-    if (jpeg == null) return;
-    final loc = locationSource?.call();
-
-    try {
-      final res = await ServerService.instance.segmentasiJalur(
-        jpeg,
-        lat: loc?.lat ?? 0,
-        lng: loc?.lng ?? 0,
-      );
-      _consecutiveFailures = 0;
-      _handleZones(res);
-    } on ApiStatusException {
-      _handleFailure();
-    } on ApiUnreachableException {
-      _handleFailure();
-    }
-  }
-
-  void _handleZones(Map<String, dynamic> res) {
-    final wasDown = _phase == NavPhase.serverDown || _phase == NavPhase.waitingServer;
-
-    if (res['ok'] != true) {
-      // Frame tidak terbaca (lensa tertutup, terlalu gelap) — beda dari
-      // server mati, dan naskahnya juga beda.
-      _left = _center = _right = ZoneStatus.unknown;
-      _phase = NavPhase.serverDown;
-      _announce(
-        res['message'] as String? ?? 'Jalur tidak terbaca. Berhenti jalan dulu.',
-        SpeechTier.critical,
-      );
-      notifyListeners();
-      return;
-    }
-
-    final zones = res['zones'] as Map<String, dynamic>?;
-    if (zones == null) return;
-
-    _left = _statusFrom(zones['kiri']);
-    _center = _statusFrom(zones['tengah']);
-    _right = _statusFrom(zones['kanan']);
-    _phase = NavPhase.active;
-
-    // Rintangan dari frame yang sama — lihat catatan di routers/navigasi.py.
-    final rawObstacles = res['obstacles'];
-    _obstacles = rawObstacles is List
-        ? rawObstacles
-            .map((e) => Detection.fromJson(e as Map<String, dynamic>))
-            .toList()
-        : const [];
-
-    // NV-09 — lubang dilaporkan server sebagai zona danger yang sempit;
-    // sementara backend belum memisahkannya, tandai lewat field opsional.
-    _pothole = res['pothole'] == true;
-    if (_pothole) {
-      _potholeSteps = (res['pothole_steps'] as num?)?.toDouble() ?? 3;
-    }
-
-    // Zona rawan komunitas — disebut sekali saat masuk radius, tidak diulang.
-    final risk = res['risk_zone'] as Map<String, dynamic>?;
-    final riskWarning = risk?['warning'] as String?;
-    if (riskWarning != null && riskWarning != _riskZoneWarning) {
-      _riskZoneWarning = riskWarning;
-      _speak(riskWarning, tier: SpeechTier.warning);
-    } else if (risk == null) {
-      _riskZoneWarning = null;
-    }
-
-    if (wasDown) {
-      _speak('Jalur terbaca lagi.', tier: SpeechTier.info);
-    }
-
-    final message = res['message'] as String? ?? '';
-    final allDanger = _left == ZoneStatus.danger &&
-        _center == ZoneStatus.danger &&
-        _right == ZoneStatus.danger;
-
-    if (allDanger) {
-      // NV-07 — berdiri diam adalah tindakan yang sah.
-      _announce('Berhenti dulu. Tidak ada jalur aman di sekitar sini.', SpeechTier.critical);
-    } else if (_center == ZoneStatus.danger) {
-      // NV-06 — mengambil alih layar dan memotong antrean suara.
-      onTakeover?.call();
-      _announce(
-        message.isNotEmpty ? message : 'Berhenti! Jalur di depan tidak aman.',
-        SpeechTier.critical,
-      );
-    } else if (message.isNotEmpty) {
-      _announce(message, SpeechTier.warning);
-    }
-
-    notifyListeners();
-  }
-
   /// Anti-banjir suara. Server mengirim pesan tiap frame; mengucapkan semuanya
   /// akan menutupi suara lalu lintas — hal terakhir yang boleh terjadi pada
   /// orang yang sedang menyeberang. Pesan yang sama hanya diulang setelah
@@ -377,35 +266,32 @@ class NavigationProvider extends ChangeNotifier {
     _speak(message, tier: tier);
   }
 
-  ZoneStatus _statusFrom(dynamic zone) {
-    final status = (zone is Map<String, dynamic>) ? zone['status'] as String? : null;
-    return switch (status) {
-      'safe' => ZoneStatus.safe,
-      'caution' => ZoneStatus.caution,
-      'danger' => ZoneStatus.danger,
-      _ => ZoneStatus.unknown,
-    };
-  }
-
+  /// Frame gagal dianalisis berturut-turut.
+  ///
+  /// Penyebabnya sekarang lokal — lensa tertutup, terlalu gelap, model
+  /// kehabisan memori — bukan jaringan. Naskahnya ikut berubah: menyalahkan
+  /// "sambungan server" untuk masalah yang ada di tangan pengguna hanya
+  /// mengirimnya mencari sinyal yang tidak akan menolong.
   void _handleFailure() {
     _consecutiveFailures++;
 
-    // Satu kegagalan bisa jadi hanya satu paket hilang — jangan langsung
-    // menakuti pengguna. Tiga berturut-turut berarti sambungannya memang
-    // putus, dan itu harus dikatakan segera: mode ini tidak punya cadangan
-    // on-device lagi, jadi diam berarti membiarkan orang berjalan buta.
-    if (_consecutiveFailures == 2) {
-      _phase = NavPhase.serverWeak;
-      _speak('Sinyal lemah, arahan jalur mungkin tertinggal.', tier: SpeechTier.warning);
+    // Satu kegagalan bisa jadi hanya satu frame buruk — jangan langsung
+    // menakuti pengguna. Beberapa berturut-turut berarti mode ini memang
+    // sedang tidak melihat apa-apa, dan itu harus dikatakan segera: diam
+    // berarti membiarkan orang berjalan menyangka dirinya dituntun.
+    if (_consecutiveFailures == 2 && _phase != NavPhase.degraded) {
+      _phase = NavPhase.degraded;
+      _speak('Jalur sulit dibaca, arahan mungkin tertinggal.', tier: SpeechTier.warning);
       notifyListeners();
       return;
     }
 
-    if (_consecutiveFailures >= 4 && _phase != NavPhase.serverDown) {
-      _phase = NavPhase.serverDown;
+    if (_consecutiveFailures >= 4 && _phase != NavPhase.unavailable) {
+      _phase = NavPhase.unavailable;
       _left = _center = _right = ZoneStatus.unknown;
       _speak(
-        'Berhenti jalan dulu. Saya tidak bisa membaca jalur tanpa sambungan ke server.',
+        'Berhenti jalan dulu. Saya tidak bisa membaca jalur sekarang. '
+        'Periksa apakah kamera tertutup, atau cari tempat yang lebih terang.',
         tier: SpeechTier.critical,
       );
       notifyListeners();
@@ -430,7 +316,60 @@ class NavigationProvider extends ChangeNotifier {
 
   String _summaryPhrase() {
     if (_left == ZoneStatus.safe && _center == ZoneStatus.safe && _right == ZoneStatus.safe) return 'Jalur aman.';
-    return 'Periksa arahan jalur di layar.';
+    return zoneSummary();
+  }
+
+  /// Ringkasan tiga zona dalam kata, bukan warna.
+  ///
+  /// `ZoneIndicator` menampilkan tiga blok berwarna — tidak ada gunanya bagi
+  /// pengguna yang tidak melihat layar. Ini padanan verbalnya, dan inilah yang
+  /// dibacakan tombol kiri "Ulangi arahan".
+  String zoneSummary() {
+    if (_phase == NavPhase.calibrating || _phase == NavPhase.loadingModels) {
+      return 'Jalur belum terbaca, tunggu sebentar.';
+    }
+    if (_left == ZoneStatus.unknown &&
+        _center == ZoneStatus.unknown &&
+        _right == ZoneStatus.unknown) {
+      return 'Jalur belum terbaca.';
+    }
+
+    String word(ZoneStatus s) => switch (s) {
+          ZoneStatus.safe => 'aman',
+          ZoneStatus.caution => 'hati-hati',
+          ZoneStatus.danger => 'bahaya',
+          ZoneStatus.unknown => 'belum terbaca',
+        };
+
+    final parts = 'Kiri ${word(_left)}, tengah ${word(_center)}, kanan ${word(_right)}.';
+
+    // Sebutkan rekomendasinya, bukan hanya keadaannya — pengguna butuh tahu
+    // harus berbuat apa, bukan sekadar daftar status.
+    final saran = _center == ZoneStatus.safe
+        ? 'Tetap di tengah.'
+        : _left == ZoneStatus.safe
+            ? 'Geser ke kiri.'
+            : _right == ZoneStatus.safe
+                ? 'Geser ke kanan.'
+                : 'Berhenti dulu, tidak ada jalur aman.';
+
+    return '$parts $saran';
+  }
+
+  /// Tombol kiri Mode Navigasi / perintah suara "ulangi".
+  ///
+  /// Sengaja melewati anti-banjir [_announce]: ini permintaan eksplisit
+  /// pengguna, bukan pesan otomatis yang berisiko menutupi suara lalu lintas.
+  void repeatGuidance() {
+    _speak(zoneSummary(), tier: SpeechTier.warning);
+  }
+
+  /// `actionStopWalking` — hentikan panduan tanpa keluar mode.
+  /// Mengembalikan false kalau memang tidak ada yang berjalan.
+  bool pauseGuidance() {
+    if (_phase == NavPhase.paused) return false;
+    autoPause();
+    return true;
   }
 
   /// NV-15 — jeda otomatis (berhenti berjalan / ponsel diturunkan).

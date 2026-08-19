@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -7,16 +5,16 @@ import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
 import '../core/layout/zone_contract.dart';
-import '../core/net/frame_codec.dart';
 import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
 /// Mode Navigasi — bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
 ///
-/// **On-device secara default**: segmentasi jalur via PIDNet-S TFLite dan
-/// deteksi rintangan via YOLO11n TFLite berjalan langsung di HP tanpa upload
-/// ke server. Server hanya dipakai jika model gagal dimuat (offline-fallback).
+/// **Sepenuhnya on-device**: segmentasi jalur via PIDNet-S TFLite dan deteksi
+/// rintangan via YOLO11n TFLite berjalan langsung di HP. Tidak ada upload
+/// frame, tidak ada cadangan server — kalau model gagal dimuat, mode ini
+/// mengatakannya apa adanya lewat NavPhase.unavailable.
 class NavigasiScreen extends StatefulWidget {
   const NavigasiScreen({super.key});
 
@@ -25,9 +23,9 @@ class NavigasiScreen extends StatefulWidget {
 }
 
 /// NV-19 dan NV-20 dihapus dari katalog: keduanya memodelkan kombinasi
-/// "on-device mati, server hidup" yang tidak mungkin lagi terjadi sejak
-/// rintangan dan jalur sama-sama dibaca server. Kegagalan server sekarang
-/// selalu berarti NV-11.
+/// "on-device mati, server hidup", yang tidak mungkin lagi terjadi karena
+/// mode ini tidak punya jalur server sama sekali. Kegagalan model sekarang
+/// selalu berarti NV-11 (NavPhase.unavailable).
 const List<(String, String)> _nvDebugCatalog = [
   ('NV-14a', 'Telepon masuk'),
   ('NV-16', 'Kamera tertutup'),
@@ -64,14 +62,21 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         context.read<TtsProvider>().speak(text, tier: tier);
       };
       nav.onTakeover = () => context.read<TtsProvider>().interruptByUser();
-      // Server JPEG source (dipakai jika on-device gagal / dinonaktifkan)
-      nav.frameSource = _grabFrame;
-      // On-device source: CameraImage langsung ke PIDNet + YOLO
+      // Sumber frame on-device: CameraImage langsung ke PIDNet + YOLO.
       nav.cameraSource = _grabCameraImage;
       nav.startCalibration();
 
       // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
+
+      // Kontrak tombol kiri: mode ini tidak punya aksi "jepret", jadi aksi
+      // utamanya adalah mengulang arahan — yang justru paling sering
+      // dibutuhkan sambil berjalan.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = nav.repeatGuidance;
+      voice.primaryActionLabel = () => 'mengulang arahan';
+      voice.onRepeatLast = nav.repeatGuidance;
+      voice.onStopWalking = nav.pauseGuidance;
 
       if (_hasCameraPermission) {
         final cam = context.read<CameraProvider>();
@@ -84,18 +89,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   /// Frame terakhir dari stream, dikodekan hanya saat benar-benar dikirim.
   CameraImage? _latestFrame;
 
-  /// [Server mode] Encode ke JPEG untuk upload.
-  Future<Uint8List?> _grabFrame() async {
-    final frame = _latestFrame;
-    if (frame == null) return null;
-    return FrameCodec.encodeForUpload(
-      frame,
-      maxEdge: UploadPreset.navigation.maxEdge,
-      quality: UploadPreset.navigation.quality,
-    );
-  }
-
-  /// [On-device mode] Kembalikan CameraImage mentah langsung ke PIDNet + YOLO.
+  /// Kembalikan CameraImage mentah langsung ke PIDNet + YOLO.
   Future<CameraImage?> _grabCameraImage() async => _latestFrame;
 
   @override
@@ -108,9 +102,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     final nav = context.read<NavigationProvider>();
     nav.onSpeak = null;
     nav.onTakeover = null;
-    nav.frameSource = null;
-    nav.cameraSource = null;  // on-device source
+    nav.cameraSource = null;
     nav.stopNavigation();
+    context.read<VoiceProvider>().clearModeHandlers();
     final cam = context.read<CameraProvider>();
     cam.onFrameReady = null;
     cam.stopStream();
@@ -329,16 +323,16 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
-          if (nav.phase == NavPhase.active || nav.phase == NavPhase.serverWeak)
+          if (nav.phase == NavPhase.active || nav.phase == NavPhase.degraded)
             Positioned.fill(child: ExcludeSemantics(child: _ZoneOverlay(left: nav.left, center: nav.center, right: nav.right))),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
@@ -360,7 +354,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             )
           else if (nav.phase == NavPhase.calibrating)
             _calibrationCard(nav)
-          else if (nav.phase == NavPhase.waitingServer)
+          else if (nav.phase == NavPhase.loadingModels)
             Positioned(
               top: topInset + AppSizes.modeBadgeHeight + AppSpacing.s4,
               left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
@@ -399,7 +393,16 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
               ),
           ],
 
-          const Positioned(left: 0, right: 0, bottom: 0, child: BottomActionBar()),
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: BottomActionBar(
+              // Dulu `const BottomActionBar()` — labelnya jatuh ke bawaan
+              // "Ambil gambar", tombolnya tampak aktif, dan menekannya tidak
+              // melakukan apa pun. Sekarang: baca ulang status tiga zona.
+              cameraLabel: 'Ulangi arahan',
+              onCameraPressed: nav.repeatGuidance,
+            ),
+          ),
         ],
       ),
     );
@@ -419,10 +422,10 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.phone_android_rounded, color: Colors.white, size: 40),
+            const Icon(Icons.phone_android_rounded, color: AppColors.onDark, size: 40),
             const SizedBox(height: AppSpacing.s4),
             Text('Pegang ponsel tegak setinggi dada, kamera menghadap depan',
-                textAlign: TextAlign.center, style: AppTypography.body(color: Colors.white)),
+                textAlign: TextAlign.center, style: AppTypography.body(color: AppColors.onDark)),
             const SizedBox(height: AppSpacing.s6),
             FullScreenButton(label: 'Siap, mulai', onTap: nav.finishCalibration),
           ],
@@ -441,18 +444,18 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (nav.phase == NavPhase.paused && _debugOverride == 'NV-14a') {
       return const StatusBanner(tier: AlertTier.info, message: 'Panggilan masuk, peringatan pindah ke getar');
     }
-    // NV-11 — sejak segmentasi jalur DAN deteksi rintangan sama-sama di
-    // server, "mode terbatas" tidak ada lagi: kalau server tidak terjangkau,
-    // mode ini benar-benar tidak melihat apa pun. Bannernya Critical dan
-    // menyuruh berhenti, bukan Warning yang menjanjikan sisa fungsi.
-    if (nav.phase == NavPhase.serverDown) {
+    // NV-11 — mode ini sepenuhnya on-device. Kalau modelnya tidak bisa
+    // dipakai atau frame tidak terbaca, tidak ada cadangan apa pun: bannernya
+    // Critical dan menyuruh berhenti, bukan Warning yang menjanjikan sisa
+    // fungsi yang sebenarnya tidak ada.
+    if (nav.phase == NavPhase.unavailable) {
       return const StatusBanner(
         tier: AlertTier.critical,
         message: 'Berhenti jalan dulu, jalur tidak terbaca',
       );
     }
-    if (nav.phase == NavPhase.serverWeak) {
-      return const StatusBanner(tier: AlertTier.info, message: 'Sinyal lemah, arahan jalur mungkin tertinggal');
+    if (nav.phase == NavPhase.degraded) {
+      return const StatusBanner(tier: AlertTier.warning, message: 'Jalur sulit dibaca, arahan mungkin tertinggal');
     }
     if (nav.left == ZoneStatus.danger && nav.center == ZoneStatus.danger && nav.right == ZoneStatus.danger) {
       return const StatusBanner(tier: AlertTier.critical, message: 'Tidak ada jalur aman, berhenti dulu');
@@ -571,7 +574,7 @@ class _DestInput extends StatelessWidget {
                     height: 48,
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     decoration: const BoxDecoration(color: AppColors.actionLabel, borderRadius: AppRadius.pillShape),
-                    child: Center(child: Text('Mulai', style: AppTypography.label(color: Colors.white))),
+                    child: Center(child: Text('Mulai', style: AppTypography.label(color: AppColors.onDark))),
                   ),
                 ),
               ),
