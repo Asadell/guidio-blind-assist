@@ -75,5 +75,21 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
-    - assets/models/
+    # Daftar model DISEBUT SATU PER SATU, bukan seluruh direktori.
+    #
+    # `- assets/models/` ikut membundel semua yang kebetulan ada di folder itu,
+    # termasuk yolo11l_float32.tflite (96,9 MB), yoloe_find.onnx (11 MB),
+    # pidnet_s.onnx.data (2,5 MB) dan pidnet_s_3zona.onnx — tidak satu pun
+    # dimuat kode, semuanya ikut ke APK. Untuk pengguna dengan kuota terbatas
+    # itu ratusan megabyte yang dibayar tanpa satu pun manfaat.
+    #
+    # Menambah berkas ke assets/models/ TIDAK otomatis membundelnya. Itu
+    # disengaja: tambahkan barisnya di sini hanya kalau kode benar-benar
+    # memuatnya lewat rootBundle.
+    - assets/models/ssd_mobilenet.tflite        # TFLiteService — deteksi rintangan
+    - assets/models/labelmap.txt                # TFLiteService — label COCO
+    - assets/models/uang_rupiah.tflite          # MoneyTFLiteService — 7 pecahan
+    - assets/models/pidnet_s_3zona_fp16.tflite  # PidnetService — segmentasi jalur
+    - assets/models/pidnet_s_3zona.tflite       # PidnetService — cadangan non-fp16
+    - assets/models/yolo11n.tflite              # YoloNavigasiService — rintangan navigasi
     - assets/icons/
