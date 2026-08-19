@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
+import '../core/voice/scene_translator.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
@@ -90,6 +91,35 @@ class VoiceProvider extends ChangeNotifier {
   /// mengatakan yang sejujurnya alih-alih mengonfirmasi.
   Future<bool> Function()? onOpenSettings;
 
+  // ── Kontrak aksi mode ──────────────────────────────────────────────────────
+  //
+  // Sepuluh intent punya bank kata lengkap tapi tidak punya handler sama
+  // sekali; semuanya jatuh ke `default:` dan dijawab "Perintah itu belum saya
+  // kenali di mode ini". Callback di bawah menyambungkannya ke mode yang
+  // sedang aktif, sehingga perintah suara dan tombol kiri menjalankan hal
+  // yang persis sama — satu model mental, dua cara memicunya.
+
+  /// Aksi utama mode aktif — setara menekan tombol kiri.
+  /// Dipasang tiap layar mode; `null` berarti mode ini memang tidak punya.
+  void Function()? onPrimaryAction;
+
+  /// Label aksi utama, untuk diucapkan saat mengonfirmasi.
+  String Function()? primaryActionLabel;
+
+  /// Ucapkan ulang hal penting terakhir di mode ini.
+  void Function()? onRepeatLast;
+
+  /// Jeda / lanjutkan pembacaan panjang (Mode Baca Teks).
+  /// Mengembalikan true kalau mode aktif benar-benar menanganinya.
+  bool Function()? onPauseSpeech;
+  bool Function()? onResumeSpeech;
+
+  /// Berhenti berjalan (Mode Navigasi).
+  bool Function()? onStopWalking;
+
+  /// Pengaturan kecepatan bicara — dipasang layar dari SettingsProvider.
+  Future<double> Function(double delta)? onAdjustSpeechRate;
+
   Future<void> init() async {
     await _stt.initialize(
       onStatus: _onSttStatus,
@@ -127,7 +157,13 @@ class VoiceProvider extends ChangeNotifier {
         notifyListeners();
       },
       listenOptions: SpeechListenOptions(
-        listenFor: const Duration(seconds: 5),
+        // 5 detik memotong kalimat yang wajar-wajar saja ("tolong bacakan
+        // tulisan yang ada di depan saya"), dan potongannya lalu gagal
+        // dikenali — pengguna menyimpulkan parsernya bodoh, padahal ia tidak
+        // pernah mendengar kalimat utuhnya. `pauseFor` yang menutup rekaman:
+        // 2 detik hening berarti pengguna sudah selesai bicara.
+        listenFor: const Duration(seconds: 10),
+        pauseFor: const Duration(seconds: 2),
         localeId: 'id_ID',
         cancelOnError: true,
       ),
@@ -215,13 +251,109 @@ class VoiceProvider extends ChangeNotifier {
     switch (command.intent!) {
       case VoiceIntent.helpWhat:
         await _handleLocal('Aku bisa mendeteksi objek, membaca teks, mengenali uang, menuntun jalan, mencari barang, atau menjawab pertanyaan tentang sekitarmu.');
-        break;
+
       case VoiceIntent.helpWhereAmI:
-        await _handleLocal('Kamu di mode Asisten Suara.');
-        break;
+        // Sebutkan mode yang SEDANG aktif. Jawaban lama selalu "Kamu di mode
+        // Asisten Suara" — benar hanya kalau Asisten sedang jadi mode, dan
+        // menyesatkan setiap kali mic dibuka sebagai overlay dari mode lain.
+        await _handleLocal('Kamu di mode ${_appMode.mode.label}.');
+
+      case VoiceIntent.actionCapture:
+        await _handlePrimaryAction();
+
+      case VoiceIntent.actionReplay:
+      case VoiceIntent.playRepeatSection:
+        await _handleRepeatLast();
+
+      case VoiceIntent.playPause:
+        await _handlePlayback(pause: true);
+
+      case VoiceIntent.playResume:
+        await _handlePlayback(pause: false);
+
+      case VoiceIntent.playFaster:
+        await _handleSpeechRate(0.1);
+
+      case VoiceIntent.playSlower:
+        await _handleSpeechRate(-0.1);
+
+      case VoiceIntent.actionStopWalking:
+        await _handleStopWalking();
+
       default:
         await _handleLocal('Perintah itu belum saya kenali di mode ini.');
     }
+  }
+
+  /// `actionCapture` — "jepret", "ambil gambar". Menjalankan aksi utama mode
+  /// aktif, yaitu hal yang sama dengan tombol kiri.
+  Future<void> _handlePrimaryAction() async {
+    final action = onPrimaryAction;
+    if (action == null) {
+      await _handleLocal('Mode ${_appMode.mode.label} tidak punya aksi ambil gambar.');
+      return;
+    }
+    _setState(VoiceState.processingLocal);
+    action();
+    _consecutiveFailures = 0;
+    final label = primaryActionLabel?.call();
+    await _respond(label != null ? 'Baik, $label.' : 'Baik.', save: false);
+  }
+
+  Future<void> _handleRepeatLast() async {
+    final repeat = onRepeatLast;
+    if (repeat == null) {
+      await _handleLocal('Tidak ada yang bisa diulang di mode ini.');
+      return;
+    }
+    _setState(VoiceState.processingLocal);
+    repeat();
+    _consecutiveFailures = 0;
+    _setState(VoiceState.responded);
+  }
+
+  Future<void> _handlePlayback({required bool pause}) async {
+    final handler = pause ? onPauseSpeech : onResumeSpeech;
+    final handled = handler?.call() ?? false;
+    if (handled) {
+      _consecutiveFailures = 0;
+      await _respond(pause ? 'Dijeda.' : 'Dilanjutkan.', save: false);
+      return;
+    }
+    // Tidak ada pembacaan panjang yang berjalan. Perlakukan "jeda" sebagai
+    // permintaan menghentikan suara — itu maksud yang paling mungkin.
+    if (pause) {
+      await TTSService.instance.stop();
+      _setState(VoiceState.responded);
+      return;
+    }
+    await _handleLocal('Tidak ada pembacaan yang sedang dijeda.');
+  }
+
+  Future<void> _handleSpeechRate(double delta) async {
+    final adjust = onAdjustSpeechRate;
+    if (adjust == null) {
+      await _handleLocal('Kecepatan bicara bisa diatur di Pengaturan.');
+      return;
+    }
+    _setState(VoiceState.processingLocal);
+    final applied = await adjust(delta);
+    _consecutiveFailures = 0;
+    final persen = (applied * 100).round();
+    await _respond(
+      delta > 0 ? 'Lebih cepat, $persen persen.' : 'Lebih pelan, $persen persen.',
+      save: false,
+    );
+  }
+
+  Future<void> _handleStopWalking() async {
+    final stop = onStopWalking;
+    if (stop == null || !stop()) {
+      await _handleLocal('Kamu sedang tidak dalam panduan jalan.');
+      return;
+    }
+    _consecutiveFailures = 0;
+    await _respond('Panduan jalan dihentikan.', save: false);
   }
 
   /// AS-17 — ganti mode lewat suara. **Aturan mutlak bagian 4.1: suara Vinara
@@ -298,9 +430,22 @@ class VoiceProvider extends ChangeNotifier {
   }
 
   /// Deskripsikan suasana di depan via Moondream2 (on-server).
-  /// AS-09 style: umumkan dulu bahwa perlu waktu, lalu ambil gambar & kirim.
-  /// Output Moondream2 adalah Bahasa Inggris — dibacakan via speakEnglish()
-  /// agar TTS menggunakan locale 'en-US' (pelafalan native English).
+  ///
+  /// Moondream2 menjawab dalam Bahasa Inggris. Sebelum ini kalimatnya
+  /// dibacakan apa adanya dengan TTS `en-US` — menuntut kemampuan Inggris
+  /// lisan yang tidak bisa diasumsikan pada tunanetra di pasar dan warung
+  /// Indonesia.
+  ///
+  /// Sekarang diterjemahkan lokal lewat [translateSceneCaption]: kamus + aturan
+  /// urutan kata, 0 ms, offline, tanpa LLM — prinsip yang sama yang membuat
+  /// `narration_engine` dan `CommandParser` menggantikan Qwen. Menambahkan LLM
+  /// penerjemah akan mengembalikan tepat tiga masalah yang sudah dibuang:
+  /// lambat, bisa berhalusinasi, dan butuh server.
+  ///
+  /// Kalau cakupan kamus terlalu rendah, penerjemah **menyerah** dan kalimat
+  /// Inggrisnya dibacakan — didahului satu penanda singkat, supaya pengguna
+  /// tahu bahasanya berganti dan tidak menyangka aplikasinya rusak. Bahasa
+  /// Indonesia yang kacau lebih buruk daripada Bahasa Inggris yang benar.
   Future<void> _handleDescribeScene() async {
     _setState(VoiceState.processingLlm);
     onSpeak?.call('Saya foto sekitarmu dulu, tunggu sebentar.');
@@ -320,9 +465,20 @@ class VoiceProvider extends ChangeNotifier {
       }
 
       _consecutiveFailures = 0;
+
+      final translated = translateSceneCaption(description);
+      if (translated.isUsable) {
+        _response = translated.indonesian!;
+        _setState(VoiceState.responded);
+        await TTSService.instance.speak(_response);
+        return;
+      }
+
+      debugPrint('[Describe] cakupan kamus ${translated.coverage.toStringAsFixed(2)} '
+          '— dibacakan dalam Bahasa Inggris');
       _response = description;
       _setState(VoiceState.responded);
-      // Baca dalam English — output Moondream2 adalah Bahasa Inggris native.
+      await TTSService.instance.speak('Dalam bahasa Inggris.');
       await TTSService.instance.speakEnglish(description);
     } catch (e) {
       debugPrint('[VoiceProvider] _handleDescribeScene error: $e');
@@ -395,12 +551,25 @@ class VoiceProvider extends ChangeNotifier {
 
   void backToIdle() => _setState(VoiceState.idle);
 
+  /// Lepas semua callback mode. Dipanggil layar saat dispose supaya aksi
+  /// mode yang sudah ditinggalkan tidak ikut terbawa ke mode berikutnya.
+  void clearModeHandlers() {
+    onPrimaryAction = null;
+    primaryActionLabel = null;
+    onRepeatLast = null;
+    onPauseSpeech = null;
+    onResumeSpeech = null;
+    onStopWalking = null;
+  }
+
   @override
   void dispose() {
     onSpeak = null;
     onOpenSettings = null;
     onNavigateBack = null;
     onAllFeaturesFailed = null;
+    onAdjustSpeechRate = null;
+    clearModeHandlers();
     _stt.cancel();
     super.dispose();
   }

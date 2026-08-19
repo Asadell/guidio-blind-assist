@@ -19,6 +19,8 @@ class CommandParser {
       'sabaraha ieu artos', 'artosna sabaraha',
       'iko doih barapo', 'berape nih duit',
       'mod uang', 'mode uwang', 'cek uwang', 'nominl uang', 'moda uang', 'mode uan',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'duit berapa', 'berapa duit', 'uang', 'duit',
     ],
     VoiceIntent.modeReadText: [
       'baca teks', 'bacakan', 'buka mode baca', 'baca tulisan ini', 'apa tulisannya',
@@ -34,6 +36,8 @@ class CommandParser {
       'bacoan tulisan ko', 'ko tulisan apo',
       'bacain nih tulisan bang', 'ini tulisan apaan bang',
       'mode bacaa teks', 'bca teks', 'mode ocr', 'baca text ini', 'moda baca teks',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'tulung wacakno', 'wacakno', 'bacakeun',
     ],
     VoiceIntent.modeDetection: [
       'deteksi objek', 'mode deteksi', 'ada apa di depan',
@@ -52,6 +56,8 @@ class CommandParser {
       'apo tu di adok an', 'caliak lah adok an',
       'ada ape tuh di depan', 'apaan tuh di depan bang',
       'mode deteski', 'deteksi obek', 'mode dtksi', 'cek skeliling',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'awasi jalan', 'deteksi',
     ],
     VoiceIntent.modeNavigation: [
       'mode navigasi', 'mau jalan', 'bantu jalan', 'navigasi',
@@ -66,6 +72,8 @@ class CommandParser {
       'tulung antar abdi leumpang', 'antosan abdi leumpang',
       'tolong anta ambo jalan', 'anterin gue jalan bang',
       'mode navigsi', 'mode navigasii', 'bantu jalann', 'aktifkan navgasi',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'jalan mana', 'mode jalan', 'arahan jalur', 'jalur mana',
     ],
     VoiceIntent.modeAssistant: [
       'asisten', 'tanya', 'mode suara',
@@ -79,6 +87,8 @@ class CommandParser {
       'abdi bade naros', 'tiasa ngabantosan teu',
       'ambo nio batanyo', 'gue mau nanye bang',
       'mode asisten suaraa', 'aktifkan asistem', 'buka asistenn',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'ngobrol', 'bicara', 'nanya',
     ],
     VoiceIntent.modeFindObject: [
       'cari objek', 'cari barang', 'carikan',
@@ -98,6 +108,8 @@ class CommandParser {
       'buka setting dong', 'buka setelan dong', 'gue mau atur aplikasi', 'masuk setting dong',
       'buka setelan yo', 'muka setelan atuh',
       'buka pengaturann', 'mode setingan', 'buka stelan',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'seting', 'setting', 'setelan',
     ],
     VoiceIntent.actionCapture: [
       'ambil gambar', 'jepret', 'foto',
@@ -354,6 +366,8 @@ class CommandParser {
     'ora ono',
     'ilang neng ndi',
     'diteangan',
+    'teangan',
+    'teang',
     'milarian',
     'leungit dimana',
     'ilang kama',
@@ -510,9 +524,66 @@ class CommandParser {
     'jalankan mode',
   ];
 
+  // ===========================================================================
+  // Normalisasi & pencocokan batas kata
+  //
+  // Versi lama memakai `text.contains(phrase)` mentah dan menelusuri `_phrases`
+  // **mengikuti urutan deklarasi Map**. Dua akibatnya nyata:
+  //
+  //   1. `actionGoBack` memuat 'stop' dan 'berhenti', dan ia dideklarasikan
+  //      sebelum `actionStopWalking` dan `playPause`. Maka "stop navigasi" —
+  //      yang jelas dimaksudkan untuk menghentikan panduan — malah **keluar
+  //      dari Mode Navigasi**. Sebagian besar frasa kedua intent itu tidak
+  //      pernah bisa tercapai.
+  //   2. `contains` tanpa batas kata membuat potongan kata ikut cocok.
+  //
+  // Sekarang: frasa dicocokkan pada batas kata, dan **yang paling panjang
+  // diperiksa lebih dulu** — yang spesifik selalu menang atas yang umum,
+  // terlepas dari urutan deklarasi.
+  // ===========================================================================
+
+  static String _normalize(String s) {
+    final lowered = s.toLowerCase();
+    final buf = StringBuffer(' ');
+    for (final rune in lowered.runes) {
+      final c = String.fromCharCode(rune);
+      final isWordChar = (rune >= 97 && rune <= 122) || // a-z
+          (rune >= 48 && rune <= 57) || // 0-9
+          c == '-';
+      buf.write(isWordChar ? c : ' ');
+    }
+    buf.write(' ');
+    return buf.toString().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  /// True kalau [phrase] muncul di [normalized] sebagai rangkaian kata utuh.
+  static bool _containsPhrase(String normalized, String phrase) =>
+      normalized.contains(' ${_normalize(phrase).trim()} ');
+
+  /// Semua (frasa, intent) diurutkan dari yang terpanjang. Dibangun sekali.
+  static List<MapEntry<String, VoiceIntent>>? _sortedPhrasesCache;
+
+  static List<MapEntry<String, VoiceIntent>> get _sortedPhrases {
+    final cached = _sortedPhrasesCache;
+    if (cached != null) return cached;
+    final all = <MapEntry<String, VoiceIntent>>[];
+    for (final entry in _phrases.entries) {
+      // modeFindObject ditangani dinamis lewat searchPrefixes.
+      if (entry.key == VoiceIntent.modeFindObject) continue;
+      for (final phrase in entry.value) {
+        all.add(MapEntry(phrase, entry.key));
+      }
+    }
+    all.sort((a, b) => b.key.length.compareTo(a.key.length));
+    return _sortedPhrasesCache = all;
+  }
+
+  static int _wordCount(String phrase) => phrase.trim().split(' ').length;
+
   static VoiceCommand parse(String rawText) {
     final text = rawText.trim().toLowerCase();
     if (text.isEmpty) return VoiceCommand(rawText: rawText);
+    final norm = _normalize(rawText);
 
     // =========================================================================
     // [Fuzzy Matching Layer 0] — Natural Conversational Mode Transition
@@ -547,96 +618,156 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Fuzzy Matching Layer 1a] — Exact Phrase Dictionary Matching
-    // Matches against fixed phrases in _phrases map (e.g. "kenali uang", "baca teks").
+    // [Layer 1] — Frasa kamus MULTI-KATA, terpanjang lebih dulu.
+    //
+    // Frasa banyak kata mengungkap maksud jauh lebih tegas daripada satu kata
+    // lepas, jadi ia diperiksa sebelum apa pun. Di sinilah "stop navigasi"
+    // menemukan `actionStopWalking` sebelum kata 'stop' sempat membawanya ke
+    // `actionGoBack`.
     // =========================================================================
-    for (final entry in _phrases.entries) {
-      if (entry.key == VoiceIntent.modeFindObject) continue; // handle secara dinamis di bawah
-      for (final phrase in entry.value) {
-        if (text.contains(phrase)) {
-          return VoiceCommand(rawText: rawText, intent: entry.key);
-        }
+    for (final entry in _sortedPhrases) {
+      if (_wordCount(entry.key) < 2) continue;
+      if (_containsPhrase(norm, entry.key)) {
+        return VoiceCommand(rawText: rawText, intent: entry.value);
       }
     }
 
     // =========================================================================
-    // [Fuzzy Matching Layer 1b] — Keyword Combination Fallback
-    // Catches loose word combinations (e.g. "baca" + "mode", "uang" + "mode")
-    // when exact dictionary phrases are not matched.
+    // [Layer 2] — Pola cari-objek dinamis ("cari [barang]").
+    //
+    // Sengaja SEBELUM kata tunggal: "cari uang yang jatuh" harus berarti
+    // mencari benda, bukan membuka Mode Kenali Uang hanya karena kata 'uang'
+    // muncul di dalamnya.
     // =========================================================================
-    if (text.contains('baca teks') || (text.contains('baca') && text.contains('mode'))) {
-      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeReadText);
-    }
-    if (text.contains('kenali uang') || text.contains('mode uang') || (text.contains('uang') && text.contains('mode'))) {
-      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeMoney);
-    }
-    if (text.contains('deteksi objek') || text.contains('mode deteksi') || (text.contains('deteksi') && text.contains('mode'))) {
-      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeDetection);
-    }
-    if (text.contains('mode navigasi') || (text.contains('navigasi') && text.contains('mode'))) {
-      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeNavigation);
-    }
-    if (text.contains('asisten suara') || text.contains('mode suara') || (text.contains('asisten') && text.contains('mode'))) {
-      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeAssistant);
-    }
-    if (text.contains('cari objek') || text.contains('mode cari') || (text.contains('cari') && text.contains('mode'))) {
-      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
+    final target = _extractSearchTarget(norm);
+    if (target != null) {
+      return VoiceCommand(
+        rawText: rawText,
+        intent: VoiceIntent.findObjectTarget,
+        argument: target,
+      );
     }
 
     // =========================================================================
-    // [Fuzzy Matching Layer 2] — Dynamic Find Object Search Intent
-    // Extracts dynamic target item from search prefixes (e.g. "cari kacamata").
+    // [Layer 3] — Kata tunggal ("uang", "deteksi", "navigasi", "asisten").
     // =========================================================================
-    String? matchedTarget;
-    final sortedPrefixes = List<String>.from(searchPrefixes)..sort((a, b) => b.length.compareTo(a.length));
-    for (final prefix in sortedPrefixes) {
-      if (text.startsWith('$prefix ') || text == prefix) {
-        matchedTarget = text.substring(prefix.length).trim();
-        break;
-      } else if (text.contains(prefix)) {
-        final idx = text.indexOf(prefix);
-        matchedTarget = text.substring(idx + prefix.length).trim();
-        break;
+    for (final entry in _sortedPhrases) {
+      if (_wordCount(entry.key) != 1) continue;
+      if (_containsPhrase(norm, entry.key)) {
+        return VoiceCommand(rawText: rawText, intent: entry.value);
       }
     }
 
-    if (matchedTarget != null && matchedTarget.isNotEmpty) {
-      // Clean filler words dari target
-      String cleaned = matchedTarget;
-      final sortedFillers = List<String>.from(fillerWords)..sort((a, b) => b.length.compareTo(a.length));
-      for (final filler in sortedFillers) {
-        cleaned = cleaned.replaceAll(RegExp('\\b${RegExp.escape(filler)}\\b'), ' ').trim();
+    // =========================================================================
+    // [Layer 4] — Kombinasi kata kunci longgar ("baca" + "mode").
+    // =========================================================================
+    bool has(String w) => _containsPhrase(norm, w);
+    if (has('mode') || has('buka') || has('aktifkan')) {
+      if (has('baca') || has('teks') || has('tulisan')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeReadText);
       }
-      cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-      if (cleaned.isNotEmpty && cleaned != 'objek' && cleaned != 'barang') {
-        return VoiceCommand(
-          rawText: rawText,
-          intent: VoiceIntent.findObjectTarget,
-          argument: cleaned,
-        );
+      if (has('uang') || has('duit')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeMoney);
+      }
+      if (has('deteksi') || has('tuntun') || has('rintangan')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeDetection);
+      }
+      if (has('navigasi') || has('jalur') || has('jalan')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeNavigation);
+      }
+      if (has('asisten') || has('suara') || has('tanya')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeAssistant);
+      }
+      if (has('cari') || has('barang')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
       }
     }
 
     return VoiceCommand(
       rawText: rawText,
-      suggestions: _nearestGuesses(text),
+      suggestions: _nearestGuesses(norm),
     );
   }
+
+  /// Ambil nama barang sesudah prefiks pencarian, lalu buang kata pengisi.
+  /// Mengembalikan null kalau tidak ada prefiks atau sisanya kosong.
+  static String? _extractSearchTarget(String norm) {
+    final sortedPrefixes = List<String>.from(searchPrefixes)
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    for (final prefix in sortedPrefixes) {
+      final needle = ' ${_normalize(prefix).trim()} ';
+      final idx = norm.indexOf(needle);
+      if (idx < 0) continue;
+
+      var cleaned = norm.substring(idx + needle.length - 1).trim();
+      if (cleaned.isEmpty) continue;
+
+      for (final filler in _sortedFillers) {
+        cleaned = cleaned.replaceAll(RegExp('\\b${RegExp.escape(filler)}\\b'), ' ');
+      }
+      cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+      if (cleaned.isEmpty || cleaned == 'objek' || cleaned == 'barang') continue;
+      return cleaned;
+    }
+    return null;
+  }
+
+  static List<String>? _sortedFillersCache;
+  static List<String> get _sortedFillers => _sortedFillersCache ??=
+      (List<String>.from(fillerWords)..sort((a, b) => b.length.compareTo(a.length)));
 
   // =========================================================================
   // [Fuzzy Matching Layer 3] — Word Overlap Similarity Scoring (Jaccard-like)
   // Calculates word intersection overlap between raw STT input and phrase database.
   // Returns top 2 nearest guesses for fallback voice prompts ("Saya dengar X. Maksudmu Y, atau Z?").
   // =========================================================================
-  static List<VoiceIntent> _nearestGuesses(String text) {
-    final words = text.split(RegExp(r'\s+')).toSet();
+  /// Intent yang boleh ditawarkan balik ke pengguna.
+  ///
+  /// **Hanya yang benar-benar punya handler.** Sebelumnya seluruh isi
+  /// `_phrases` bisa disarankan, termasuk 10 intent tanpa handler — sehingga
+  /// Vinara bisa bertanya "Maksudmu jeda?", pengguna menjawab "jeda", dan
+  /// jawabannya "Perintah itu belum saya kenali di mode ini". Lingkaran buntu
+  /// yang diciptakan aplikasi sendiri, dan pengguna tunanetra tidak punya
+  /// layar untuk keluar darinya.
+  ///
+  /// Menambah intent ke sini tanpa menambahkan handler di
+  /// `VoiceProvider._processText` akan menghidupkan lagi lingkaran itu.
+  static const Set<VoiceIntent> suggestableIntents = {
+    VoiceIntent.modeMoney,
+    VoiceIntent.modeReadText,
+    VoiceIntent.modeDetection,
+    VoiceIntent.modeNavigation,
+    VoiceIntent.modeAssistant,
+    VoiceIntent.modeFindObject,
+    VoiceIntent.modeSettings,
+    VoiceIntent.actionGoBack,
+    VoiceIntent.actionReplay,
+    VoiceIntent.actionStopWalking,
+    VoiceIntent.actionCapture,
+    VoiceIntent.actionTorch,
+    VoiceIntent.describeScene,
+    VoiceIntent.playPause,
+    VoiceIntent.playResume,
+    VoiceIntent.playFaster,
+    VoiceIntent.playSlower,
+    VoiceIntent.playRepeatSection,
+    VoiceIntent.helpWhat,
+    VoiceIntent.helpWhereAmI,
+  };
+
+  static List<VoiceIntent> _nearestGuesses(String normalized) {
+    final words = normalized.trim().split(' ').where((w) => w.isNotEmpty).toSet();
+    if (words.isEmpty) return const [];
+
     final scored = <MapEntry<VoiceIntent, int>>[];
 
     for (final entry in _phrases.entries) {
+      if (!suggestableIntents.contains(entry.key)) continue;
       var best = 0;
       for (final phrase in entry.value) {
-        final phraseWords = phrase.split(RegExp(r'\s+')).toSet();
+        final phraseWords = _normalize(phrase).trim().split(' ').toSet();
         final overlap = words.intersection(phraseWords).length;
         if (overlap > best) best = overlap;
       }
