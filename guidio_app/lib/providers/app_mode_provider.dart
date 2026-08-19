@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
+import '../core/speech/tts_queue.dart';
 import '../providers/settings_provider.dart' show Verbosity;
-import '../services/tts_service.dart';
 
 /// Enam mode sejajar, sesuai kontrak navigasi Vinara: tidak ada beranda,
 /// mode mana pun bisa dicapai dalam maksimal dua langkah (suara = 1 langkah,
@@ -22,7 +22,13 @@ extension AppModeLabel on AppMode {
         AppMode.tuntun     => 'Arahkan ponsel ke depan, saya akan menyebut rintangan di jalurmu.',
         AppMode.money      => 'Letakkan uang di dalam bingkai, saya akan menyebut nominalnya.',
         AppMode.ocr        => 'Arahkan ponsel ke tulisan, lalu ambil gambar.',
-        AppMode.navigasi   => 'Sebutkan atau ketik tujuanmu, saya akan menuntun jalan.',
+        // JANGAN menjanjikan tujuan/GPS di sini. Kalimat lama berbunyi
+        // "Sebutkan atau ketik tujuanmu, saya akan menuntun jalan." padahal
+        // GPS belum ada: pengguna tunanetra menyebutkan tujuan, tidak ada yang
+        // terjadi, mencoba lagi, tetap tidak ada. Kalimat pembuka yang
+        // menjanjikan sesuatu yang tidak ada adalah cara tercepat kehilangan
+        // kepercayaan pengguna terhadap seluruh aplikasi.
+        AppMode.navigasi   => 'Saya akan menyebut jalur mana yang lebih aman: kiri, tengah, atau kanan.',
         AppMode.voice      => 'Ketuk lalu bicara, tanyakan apa saja tentang sekitarmu.',
         AppMode.findObject => 'Sebutkan barang yang kamu cari, saya akan membantu menemukannya.',
       };
@@ -39,12 +45,12 @@ extension AppModeLabel on AppMode {
   /// Butuh internet untuk berfungsi penuh. Dipakai ModePickerSheet untuk
   /// menandai state `limited` / `disabled` saat offline.
   bool get needsServer => switch (this) {
-        AppMode.tuntun     => false, // sepenuhnya on-device
-        AppMode.money      => false, // model nominal on-device
+        AppMode.tuntun     => false, // SSD MobileNet TFLite, sepenuhnya on-device
+        AppMode.money      => false, // MobileNetV2 TFLite, sepenuhnya on-device
         AppMode.ocr        => false, // ML Kit on-device — jalan penuh offline
-        AppMode.navigasi   => true,  // segmentasi jalur + rintangan, keduanya di server
-        AppMode.voice      => true,  // LLM, ada fallback lokal
-        AppMode.findObject => true,  // butuh server sepenuhnya
+        AppMode.navigasi   => true,  // PIDNet on-device jadi jalur utama; server hanya cadangan
+        AppMode.voice      => true,  // butuh server untuk describe; intent parsing lokal, tanpa LLM
+        AppMode.findObject => true,  // YOLOE open-vocab hanya ada di server
       };
 
   /// Mode yang benar-benar mati tanpa internet.
@@ -58,7 +64,7 @@ extension AppModeLabel on AppMode {
         AppMode.tuntun     => 'Katakan: "Deteksi objek" atau "Tuntun aku"',
         AppMode.money      => 'Katakan: "Kenali uang" atau "Cek uang"',
         AppMode.ocr        => 'Katakan: "Baca teks" atau "Bacakan"',
-        AppMode.navigasi   => 'Katakan: "Mode navigasi" atau "Mau jalan"',
+        AppMode.navigasi   => 'Katakan: "Navigasi" atau "Jalan mana"',
         AppMode.voice      => 'Katakan: "Asisten suara" atau "Tanya"',
         AppMode.findObject => 'Katakan: "Cari objek" atau "Cari kunci"',
       };
@@ -117,7 +123,10 @@ class AppModeProvider extends ChangeNotifier {
       '${mode.label} aktif.',
       if (withIntro) mode.shortIntro,
     ].join(' ');
-    await TTSService.instance.speak(announcement);
+    // Lewat antrean, tier Warning: pengumuman "di mana saya sekarang" tidak
+    // boleh dibuang sebagai Info basi, tapi juga tidak boleh menahan
+    // peringatan bahaya yang datang saat mode baru terpasang.
+    await TtsQueue().speak(announcement, tier: SpeechTier.warning);
   }
 
   /// NV-18 — satu-satunya konfirmasi wajib di seluruh app: keluar dari Mode

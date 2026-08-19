@@ -65,6 +65,24 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       voice.onOpenSettings = _openSettings;
       voice.onAllFeaturesFailed = () {};
 
+      // "lebih cepat" / "lebih pelan" — dulu keduanya punya bank kata lengkap
+      // tapi tidak ada yang menjalankannya.
+      voice.onAdjustSpeechRate = (delta) async {
+        final settings = context.read<SettingsProvider>();
+        final next = (settings.speechRate + delta).clamp(0.2, 1.0);
+        await settings.setSpeechRate(next);
+        return next;
+      };
+
+      // Sebagai MODE (bukan overlay), aksi utamanya adalah mengulang jawaban.
+      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa —
+      // "jepret" saat mic terbuka harus menjalankan aksi mode aslinya.
+      if (!widget.isOverlay) {
+        voice.onPrimaryAction = _repeatLastAnswer;
+        voice.primaryActionLabel = () => 'mengulang jawaban';
+        voice.onRepeatLast = _repeatLastAnswer;
+      }
+
       // Overlay: pasang callback agar VoiceProvider bisa meminta pop Navigator
       // tanpa perlu tahu tentang BuildContext.
       if (widget.isOverlay) {
@@ -92,7 +110,14 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     voice.onSpeak = null;
     voice.onOpenSettings = null;
     voice.onAllFeaturesFailed = null;
-    if (widget.isOverlay) voice.onNavigateBack = null;
+    voice.onAdjustSpeechRate = null;
+    if (widget.isOverlay) {
+      voice.onNavigateBack = null;
+    } else {
+      // Hanya lepas handler yang dipasang layar ini. Sebagai overlay, handler
+      // milik mode di bawahnya harus tetap utuh.
+      voice.clearModeHandlers();
+    }
     super.dispose();
   }
 
@@ -129,6 +154,27 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       MaterialPageRoute(builder: (_) => const SettingsScreen()),
     ));
     return true;
+  }
+
+  /// Tombol kiri Mode Asisten Suara — baca ulang jawaban terakhir.
+  ///
+  /// Rencana perbaikan menyarankan tombol ini dinonaktifkan dengan label jujur.
+  /// Itu benar dan jujur, tapi menyisakan satu tombol mati dari enam mode dan
+  /// membuat aturan tombol kiri punya pengecualian. "Ulangi jawaban" berguna
+  /// nyata: pengguna yang tidak menangkap jawaban cukup menekan tombol yang
+  /// posisinya sudah ia hafal — tanpa bertanya ulang, dan tanpa memicu
+  /// panggilan Moondream2 kedua yang makan lima detik dan kuota.
+  void _repeatLastAnswer() {
+    final voice = context.read<VoiceProvider>();
+    final answer = voice.response;
+    if (answer.isEmpty) {
+      context.read<TtsProvider>().speak(
+            'Belum ada jawaban untuk diulang. Tekan tombol bicara dulu.',
+            tier: SpeechTier.info,
+          );
+      return;
+    }
+    context.read<TtsProvider>().speak(answer, tier: SpeechTier.info);
   }
 
   Future<void> _onMicPressed() async {
@@ -226,14 +272,14 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     final hasBanner = banner != null;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -261,6 +307,10 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
           Positioned(
             left: 0, right: 0, bottom: 0,
             child: BottomActionBar(
+              cameraLabel: 'Ulangi jawaban',
+              onCameraPressed: _repeatLastAnswer,
+              cameraEnabled: voice.response.isNotEmpty,
+              cameraDisabledReason: 'belum ada jawaban',
               onMicPressed: _onMicPressed,
               micEnabled: _hasMicPermission,
               listeningOverride: voice.isListening,
@@ -452,7 +502,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-        child: Text(text, style: AppTypography.body(color: Colors.white)),
+        child: Text(text, style: AppTypography.body(color: AppColors.onDark)),
       ),
     );
   }

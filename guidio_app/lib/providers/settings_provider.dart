@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/haptic_service.dart';
 import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
@@ -55,6 +56,9 @@ class SettingsProvider extends ChangeNotifier {
     _onboardingDone = _prefs!.getBool(_kOnboardingDone) ?? false;
     _serverHost = _prefs!.getString(_kServerHost) ?? kDefaultServerHost;
     await TTSService.instance.setRate(_speechRate);
+    // Tanpa baris ini, pilihan "Getar: Mati" tersimpan ke disk tapi tidak
+    // mematikan apa pun.
+    HapticService.instance.setMode(_vibrationMode);
     // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama —
     // tanpa ini, alamat kustom baru berlaku setelah pengguna membukanya lagi.
     ServerService.instance.setHost(_serverHost);
@@ -76,6 +80,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setVibrationMode(VibrationMode m) async {
     _vibrationMode = m;
+    HapticService.instance.setMode(m);
     await _prefs?.setInt(_kVibration, m.index);
     notifyListeners();
   }

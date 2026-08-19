@@ -49,17 +49,14 @@ class GuidioApp extends StatelessWidget {
               (prev ?? AppModeProvider())..applyVerbosity(settings.verbosity),
         ),
 
-        // DetectionProvider — butuh InferenceProvider + CameraProvider, dan
-        // ikut mendengarkan SettingsProvider supaya PG-05 (kecerewetan) dan
-        // PG-06 (ambang jarak) benar-benar mengubah perilaku deteksi. Tanpa
-        // sambungan ini keduanya hanya tersimpan ke disk.
-        ChangeNotifierProxyProvider3<InferenceProvider, CameraProvider, SettingsProvider, DetectionProvider>(
-          create: (ctx) => DetectionProvider(
-            ctx.read<InferenceProvider>(),
-            ctx.read<CameraProvider>(),
-          ),
-          update: (ctx, inf, cam, settings, prev) {
-            final provider = prev ?? DetectionProvider(inf, cam);
+        // DetectionProvider — hanya butuh CameraProvider (jalur deteksi
+        // sepenuhnya on-device), dan ikut mendengarkan SettingsProvider supaya
+        // PG-05 (kecerewetan) dan PG-06 (ambang jarak) benar-benar mengubah
+        // perilaku deteksi. Tanpa sambungan ini keduanya hanya tersimpan ke disk.
+        ChangeNotifierProxyProvider2<CameraProvider, SettingsProvider, DetectionProvider>(
+          create: (ctx) => DetectionProvider(ctx.read<CameraProvider>()),
+          update: (ctx, cam, settings, prev) {
+            final provider = prev ?? DetectionProvider(cam);
             provider.applySettings(
               maxDistanceM: settings.distanceThresholdM,
               verbosity: settings.verbosity,

@@ -3,6 +3,7 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../services/server_service.dart';
 import '../../widgets/tier_icon.dart' show AlertTier;
 
 /// Satu kondisi global aktif (offline, baterai kritis, penyimpanan penuh,
@@ -32,16 +33,37 @@ class MergedBanner {
 /// lain" + aksi "Lihat semua".
 class GlobalConditionsProvider extends ChangeNotifier {
   bool _offline = false;
+  bool _serverUnreachable = false;
+  bool _cameraError = false;
   int? _batteryPercent;
   bool _storageLow = false;
   bool _deviceHot = false;
 
   StreamSubscription? _connSub;
   Timer? _batteryTimer;
+  Timer? _serverTimer;
 
   bool get isOffline => _offline;
+
+  /// Ada jaringan, tapi server tidak menjawab.
+  ///
+  /// Ini kasus paling umum saat demo: ponsel tersambung WiFi sementara laptop
+  /// backend mati, IP-nya berubah, atau firewall menutup port. Kondisi lama
+  /// hanya membaca `ConnectivityResult.none`, jadi keadaan ini **tidak pernah
+  /// terdeteksi** — ModePickerSheet menampilkan semua mode sehat, lalu Cari
+  /// Objek gagal saat ditekan.
+  bool get isServerUnreachable => _serverUnreachable;
+
+  /// Server tidak bisa dipakai, apa pun sebabnya.
+  bool get isBackendDown => _offline || _serverUnreachable;
+
+  bool get isCameraError => _cameraError;
   int? get batteryPercent => _batteryPercent;
-  bool get isBatteryCritical => (_batteryPercent ?? 100) < 15;
+
+  /// Ambang dokumen: <10%. Versi kode lama memakai <15% **dan** tier Critical,
+  /// sehingga banner baterai bisa menyingkirkan banner kamera error — padahal
+  /// kamera error jauh lebih menentukan keselamatan.
+  bool get isBatteryCritical => (_batteryPercent ?? 100) < 10;
   bool get isStorageLow => _storageLow;
   bool get isDeviceHot => _deviceHot;
 
@@ -57,11 +79,39 @@ class GlobalConditionsProvider extends ChangeNotifier {
       if (nowOffline != _offline) {
         _offline = nowOffline;
         notifyListeners();
+        unawaited(_pollServer());
       }
     });
 
     _batteryTimer = Timer.periodic(const Duration(minutes: 1), (_) => _pollBattery());
-    await _pollBattery();
+    _serverTimer = Timer.periodic(const Duration(seconds: 15), (_) => _pollServer());
+    await Future.wait([_pollBattery(), _pollServer()]);
+  }
+
+  /// Dipanggil CameraProvider saat kamera gagal disiapkan.
+  void setCameraError(bool value) {
+    if (_cameraError == value) return;
+    _cameraError = value;
+    notifyListeners();
+  }
+
+  Future<void> _pollServer() async {
+    if (_offline) {
+      if (!_serverUnreachable) {
+        _serverUnreachable = true;
+        notifyListeners();
+      }
+      return;
+    }
+    final health = await ServerService.instance.healthAt(
+      ServerService.instance.host,
+      timeout: const Duration(seconds: 3),
+    );
+    final unreachable = health == null;
+    if (unreachable != _serverUnreachable) {
+      _serverUnreachable = unreachable;
+      notifyListeners();
+    }
   }
 
   Future<void> _pollBattery() async {
@@ -89,9 +139,17 @@ class GlobalConditionsProvider extends ChangeNotifier {
   }
 
   List<_Condition> get _active => [
+        // Kamera bermasalah = mode utama benar-benar buta. Tidak ada kondisi
+        // lain yang lebih menentukan, jadi hanya ini yang boleh Critical.
+        if (_cameraError)
+          const _Condition('camera', AlertTier.critical, 'Kamera bermasalah'),
         if (_offline) const _Condition('offline', AlertTier.warning, 'Tanpa internet'),
+        // Dibedakan dari offline: tindakan pengguna berikutnya berbeda —
+        // menyalakan data seluler, atau memeriksa server.
+        if (!_offline && _serverUnreachable)
+          const _Condition('server', AlertTier.info, 'Server tidak terhubung'),
         if (isBatteryCritical)
-          _Condition('battery', AlertTier.critical, 'Baterai ${_batteryPercent ?? 0} persen'),
+          _Condition('battery', AlertTier.warning, 'Baterai ${_batteryPercent ?? 0} persen'),
         if (_storageLow) const _Condition('storage', AlertTier.warning, 'Penyimpanan hampir penuh'),
         if (_deviceHot) const _Condition('thermal', AlertTier.warning, 'Ponsel panas'),
       ];
@@ -135,6 +193,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
   void dispose() {
     _connSub?.cancel();
     _batteryTimer?.cancel();
+    _serverTimer?.cancel();
     super.dispose();
   }
 }

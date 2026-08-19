@@ -56,6 +56,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _initServices() async {
+    // Kamera error jadi kondisi global (banner Critical), bukan kegagalan
+    // diam-diam yang hanya terlihat sebagai layar hitam.
+    final globals = context.read<GlobalConditionsProvider>();
+    context.read<CameraProvider>().onErrorChanged = globals.setCameraError;
+
     try {
       await Future.wait([
         context.read<CameraProvider>().initCamera(),
@@ -80,7 +85,7 @@ class _MainScreenState extends State<MainScreen> {
           duration: Duration(seconds: 5),
           action: SnackBarAction(
             label: 'Pengaturan',
-            textColor: Colors.white,
+            textColor: AppColors.onDark,
             onPressed: openAppSettings,
           ),
         ),
@@ -143,11 +148,11 @@ class _BootScreen extends StatelessWidget {
                 strokeWidth: 3,
               ),
               const SizedBox(height: AppSpacing.s6),
-              Text('Memulai Vinara…', style: AppTypography.title(color: Colors.white)),
+              Text('Memulai Vinara…', style: AppTypography.title(color: AppColors.onDark)),
               const SizedBox(height: AppSpacing.s2),
               Text(
                 'Menyiapkan kamera dan AI',
-                style: AppTypography.body(color: Colors.white.withValues(alpha: .6)),
+                style: AppTypography.body(color: AppColors.onDark.withValues(alpha: .6)),
               ),
             ],
           ),

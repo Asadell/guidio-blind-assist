@@ -71,10 +71,26 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       final provider = context.read<FindObjectProvider>();
       provider.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
       provider.onDirectionHaptic = _fireDirectionHaptic;
+      // Server tidak menjawab sama saja tidak bisa mencari — periksa sebelum
+      // memotret, bukan sesudah permintaannya gagal.
       provider.isOffline = () =>
-          context.read<GlobalConditionsProvider>().isOffline;
+          context.read<GlobalConditionsProvider>().isBackendDown;
       provider.frameSource = _grabFrame;
       provider.loadKnownTargets();
+
+      // Kontrak tombol kiri: "jepret" lewat suara = menekan tombol kirim.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = _triggerScan;
+      voice.primaryActionLabel = () => 'mencari ${provider.target ?? "barang"}';
+      voice.onRepeatLast = () {
+        final pos = provider.lastKnownPosition;
+        context.read<TtsProvider>().speak(
+              pos == null
+                  ? 'Belum ada hasil pencarian.'
+                  : '${provider.target ?? "Barang"} terakhir terlihat di $pos.',
+              tier: SpeechTier.info,
+            );
+      };
       if (_hasCameraPermission) {
         final cam = context.read<CameraProvider>();
         cam.onFrameReady = (image) => _latestFrame = image;
@@ -113,6 +129,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     provider.frameSource = null;
     provider.isOffline = null;
     provider.reset();
+    context.read<VoiceProvider>().clearModeHandlers();
     final cam = context.read<CameraProvider>();
     cam.onFrameReady = null;
     cam.stopStream();
@@ -235,14 +252,14 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final hasTarget = _debugOverride == null && fo.target != null && fo.state != FindObjectState.idle;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -284,6 +301,9 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
                   ? _triggerScan
                   : null,
               cameraEnabled: fo.target != null && !fo.isScanning && _debugOverride == null,
+              cameraDisabledReason: fo.target == null
+                  ? 'tekan tombol bicara lalu sebutkan barangnya'
+                  : 'sedang memindai',
               cameraLabel: fo.target != null ? 'Kirim — cari ${fo.target}' : 'Sebutkan barang dulu',
               onMicPressed: _startListening,
               listeningOverride: fo.state == FindObjectState.listening,
@@ -347,7 +367,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
                 width: 48, height: 48,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  color: Colors.white,
+                  color: AppColors.onDark,
                 ),
               ),
             ),
@@ -408,7 +428,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: const BoxDecoration(color: AppColors.actionLabel, borderRadius: AppRadius.pillShape),
-                child: Text('+${fo.matchCount - 1} lagi', style: AppTypography.caption(color: Colors.white)),
+                child: Text('+${fo.matchCount - 1} lagi', style: AppTypography.caption(color: AppColors.onDark)),
               ),
             ),
           ),
@@ -423,7 +443,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-        child: Text(text, style: AppTypography.body(color: Colors.white)),
+        child: Text(text, style: AppTypography.body(color: AppColors.onDark)),
       ),
     );
   }

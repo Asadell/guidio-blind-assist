@@ -191,9 +191,12 @@ class FindObjectProvider extends ChangeNotifier {
     } catch (e) {
       _isScanning = false;
       _set(FindObjectState.serverError);
+      // Warning, bukan Critical. Tier Critical dicadangkan untuk bahaya fisik
+      // dan tidak bisa dipotong pengguna — kegagalan jaringan tidak pernah
+      // setara dengan motor yang melaju ke arahmu.
       _speak(
         'Gagal menghubungi server. Periksa koneksi dan coba lagi.',
-        tier: SpeechTier.critical,
+        tier: SpeechTier.warning,
       );
     }
   }
@@ -211,7 +214,7 @@ class FindObjectProvider extends ChangeNotifier {
           _serverMessage.isNotEmpty
               ? _serverMessage
               : 'Pencari objek tidak tersedia di server.',
-          tier: SpeechTier.critical,
+          tier: SpeechTier.warning,
         );
         return;
       }

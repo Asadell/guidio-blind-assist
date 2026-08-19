@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../core/layout/zone_contract.dart';
+import '../core/speech/tts_queue.dart';
 import '../models/detection.dart';
 import '../providers/index.dart';
 import '../services/index.dart';
@@ -51,8 +52,9 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   bool _warmingUp = true;
   bool _speaking = false;
   bool _silentMode = false;
-  bool _darkDismissed = false; // user pilih "Lewati" untuk tawaran lampu
-  bool _wasDark = false;        // track transisi gelap untuk TTS satu kali
+  // Keadaan gelap & dismiss-nya dimiliki CameraProvider (lihat
+  // `cam.isDark` / `cam.darkDismissed`), supaya deteksi tetap berjalan saat
+  // gelap dan "Lewati" hanya menyembunyikan tawaran lampu.
   String? _debugOverride;
 
   /// Apakah deteksi objek sedang aktif (jalan) atau dijeda.
@@ -65,6 +67,14 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   Timer? _warmupTimer;
   Timer? _speakingPoll;
 
+  /// DO — pengingat berkala saat deteksi dijeda.
+  ///
+  /// Tanpa ini, "Deteksi dijeda." terucap sekali lalu hening permanen. Untuk
+  /// pengguna yang tidak melihat layar, aplikasi yang dijeda **tidak bisa
+  /// dibedakan** dari aplikasi yang aktif tapi kebetulan tidak melihat apa
+  /// pun — dan ia berjalan menyangka masih dijaga.
+  Timer? _pausedReminder;
+
   @override
   void initState() {
     super.initState();
@@ -75,11 +85,29 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       if (!mounted) return;
       context.read<AppModeProvider>().announceEntry(AppMode.tuntun);
       if (_hasCameraPermission) {
-        context.read<DetectionProvider>().startRealtime();
+        _startDetection();
         context.read<CameraProvider>().startStream();
       }
       // Listener dark detection — TTS satu kali saat transisi gelap
       context.read<CameraProvider>().addListener(_onCameraDarkChanged);
+
+      // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
+      // sama persis dengan menekan tombol kiri.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = _toggleDetection;
+      voice.primaryActionLabel = () =>
+          _detectionActive ? 'menjeda deteksi' : 'melanjutkan deteksi';
+      voice.onRepeatLast = _repeatLastDetection;
+
+      // Model gagal muat = mode ini tidak punya cadangan apa pun. Katakan,
+      // jangan biarkan layar terlihat normal sementara tidak ada yang mengawasi.
+      if (context.read<DetectionProvider>().isUnavailable) {
+        TtsQueue().speak(
+          'Deteksi rintangan tidak tersedia di perangkat ini. '
+          'Mode lain tetap bisa dipakai.',
+          tier: SpeechTier.critical,
+        );
+      }
     });
 
     _warmupTimer = Timer(const Duration(milliseconds: 1200), () {
@@ -97,9 +125,11 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.removeObserver(this);
     _warmupTimer?.cancel();
     _speakingPoll?.cancel();
+    _pausedReminder?.cancel();
     context.read<CameraProvider>().removeListener(_onCameraDarkChanged);
     context.read<DetectionProvider>().stopRealtime();
     context.read<CameraProvider>().stopStream();
+    context.read<VoiceProvider>().clearModeHandlers();
     super.dispose();
   }
 
@@ -111,10 +141,22 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       if (mounted) {
         setState(() => _warmingUp = true);
         context.read<CameraProvider>().startStream();
+        // Hormati keadaan jeda. Sebelumnya `startRealtime()` dipanggil tanpa
+        // memeriksa apa pun, jadi deteksi hidup lagi diam-diam sementara
+        // tombol tetap bertuliskan "Lanjutkan" — label dan keadaan berbohong
+        // ke arah yang berlawanan.
+        if (_detectionActive) {
+          _startDetection();
+        } else {
+          _armPausedReminder();
+        }
         _warmupTimer = Timer(const Duration(milliseconds: 700), () {
           if (mounted) setState(() => _warmingUp = false);
         });
       }
+    } else if (state == AppLifecycleState.paused) {
+      // Jangan bicara ke layar yang tidak dilihat siapa pun.
+      _pausedReminder?.cancel();
     }
   }
 
@@ -132,37 +174,75 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       if (!camProvider.isInitialized) await camProvider.initCamera();
       if (!mounted) return;
       camProvider.startStream();
-      context.read<DetectionProvider>().startRealtime();
+      if (_detectionActive) _startDetection();
     }
   }
 
-  /// Dipanggil setiap kali CameraProvider notify — deteksi transisi gelap
-  /// dan bicara TTS satu kali saat pertama kali menjadi gelap.
+  /// "ulangi" di Mode Deteksi — sebutkan lagi apa yang terlihat sekarang.
+  void _repeatLastDetection() {
+    final det = context.read<DetectionProvider>();
+    if (!_detectionActive) {
+      TtsQueue().speak('Deteksi sedang dijeda.', tier: SpeechTier.info);
+      return;
+    }
+    final dets = det.detections;
+    TtsQueue().speak(
+      dets.isEmpty
+          ? 'Tidak ada rintangan di depanmu saat ini.'
+          : dets.map((d) => d.ttsMessage).join('. '),
+      tier: SpeechTier.warning,
+    );
+  }
+
+  void _startDetection() {
+    _pausedReminder?.cancel();
+    _pausedReminder = null;
+    context.read<DetectionProvider>().startRealtime();
+  }
+
+  /// Ingatkan tiap 30 detik selama dijeda — suara + getar, karena di jalan
+  /// yang ramai getar sering lebih terdengar daripada suara.
+  void _armPausedReminder() {
+    _pausedReminder?.cancel();
+    _pausedReminder = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted || _detectionActive) return;
+      TtsQueue().speak('Deteksi masih dijeda.', tier: SpeechTier.info);
+      HapticService.instance.info();
+    });
+  }
+
+  /// Dipanggil setiap kali CameraProvider notify.
+  ///
+  /// Pengumuman gelap **tidak** lagi diucapkan di sini: [CameraProvider] yang
+  /// memilikinya (peringatan setelah 3 detik + pengulangan tiap 30 detik),
+  /// karena kondisi itu berlaku di semua mode berkamera, bukan hanya mode ini.
+  /// Dua sumber untuk satu kondisi hanya menghasilkan ucapan ganda.
   void _onCameraDarkChanged() {
     if (!mounted) return;
-    final cam = context.read<CameraProvider>();
-    final nowDark = cam.isDark && !cam.isTorchOn && _hasCameraPermission;
-    if (nowDark && !_wasDark && !_darkDismissed) {
-      TTSService.instance.speak('Sekitar gelap. Perlu nyalakan lampu?');
-    }
-    if (!cam.isDark && _darkDismissed) {
-      // Lingkungan sudah terang lagi, reset dismiss
-      setState(() => _darkDismissed = false);
-    }
-    _wasDark = nowDark;
+    setState(() {}); // slot tawaran lampu muncul/hilang mengikuti provider
   }
 
   /// Toggle deteksi ON/OFF dari tombol kiri BottomActionBar.
+  ///
+  /// Menjeda deteksi adalah satu-satunya cara pengguna mematikan pengawasan
+  /// rintangan, jadi konfirmasinya naik ke tier Warning: ia harus terdengar
+  /// meski ada narasi lain yang sedang mengantre.
   void _toggleDetection() {
     final det = context.read<DetectionProvider>();
     if (_detectionActive) {
       det.stopRealtime();
       setState(() => _detectionActive = false);
-      TTSService.instance.speak('Deteksi dijeda.');
+      TtsQueue().speak(
+        'Deteksi dijeda. Saya tidak akan memperingatkan rintangan sampai dilanjutkan.',
+        tier: SpeechTier.warning,
+      );
+      HapticService.instance.warning();
+      _armPausedReminder();
     } else {
-      det.startRealtime();
+      _startDetection();
       setState(() => _detectionActive = true);
-      TTSService.instance.speak('Deteksi dilanjutkan.');
+      TtsQueue().speak('Deteksi dilanjutkan.', tier: SpeechTier.warning);
+      HapticService.instance.info();
     }
   }
 
@@ -175,7 +255,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       if (!cam.isInitialized) await cam.initCamera();
       if (!mounted) return;
       cam.startStream();
-      context.read<DetectionProvider>().startRealtime();
+      if (_detectionActive) _startDetection();
     }
   }
 
@@ -233,24 +313,24 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       _updateGhosts(dets);
     }
 
-    // Dark detection + tawaran lampu
-    final isDark = cam.isDark && !cam.isTorchOn && !_darkDismissed && _hasCameraPermission;
+    // Tawaran lampu. Perhatikan: ini HANYA mengatur tampil/tidaknya slot —
+    // deteksi tetap berjalan saat gelap, dan "Lewati" tidak mematikannya.
+    final isDark = cam.isDark && !cam.isTorchOn && !cam.darkDismissed && _hasCameraPermission;
 
-    final rz = det.riskZone;
-    final banner = _resolveBanner(global, cam, rz);
+    final banner = _resolveBanner(global, cam);
     final hasBanner = banner != null;
     final warmingUp = _warmingUp || _debugOverride == 'DO-13';
     final micDisabled = !_hasMicPermission || _debugOverride == 'DO-24';
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -291,13 +371,19 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
                 primaryIcon: Icons.flashlight_on_rounded,
                 onPrimary: () {
                   cam.setTorch(true);
-                  TTSService.instance.speak('Lampu dinyalakan.');
+                  TtsQueue().speak('Lampu dinyalakan.', tier: SpeechTier.info);
                 },
                 secondaryLabel: 'Lewati',
                 secondaryIcon: Icons.close_rounded,
                 onSecondary: () {
-                  setState(() => _darkDismissed = true);
-                  TTSService.instance.speak('Oke.');
+                  // Hanya menyembunyikan tawaran. Deteksi tetap jalan, dan
+                  // peringatan gelap berkala tetap terdengar — pengguna berhak
+                  // tahu penglihatan aplikasi sedang terbatas.
+                  cam.dismissDarkOffer();
+                  TtsQueue().speak(
+                    'Baik, lampu tidak dinyalakan. Deteksi tetap berjalan.',
+                    tier: SpeechTier.info,
+                  );
                 },
               ),
             ),
@@ -309,6 +395,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
               cameraLabel: _detectionActive ? 'Hentikan' : 'Lanjutkan',
               onCameraPressed: _hasCameraPermission ? _toggleDetection : null,
               cameraEnabled: _hasCameraPermission,
+              cameraDisabledReason: 'izin kamera belum diberikan',
             ),
           ),
         ],
@@ -316,7 +403,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     );
   }
 
-  Widget? _resolveBanner(GlobalConditionsProvider global, CameraProvider cam, dynamic rz) {
+  Widget? _resolveBanner(GlobalConditionsProvider global, CameraProvider cam) {
     if (_debugOverride == 'DO-15') {
       return const StatusBanner(tier: AlertTier.critical, message: 'Izin kamera dicabut. Deteksi berhenti sampai izin dinyalakan lagi.');
     }
@@ -390,7 +477,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   alignment: Alignment.center,
                   decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-                  child: Text('dan $extra objek lain', style: AppTypography.caption(color: Colors.white)),
+                  child: Text('dan $extra objek lain', style: AppTypography.caption(color: AppColors.onDark)),
                 ),
               ),
             ],

@@ -65,6 +65,25 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       // benar-benar terpasang, bukan oleh pemanggil setMode.
       context.read<AppModeProvider>().announceEntry(AppMode.ocr);
       if (_hasCameraPermission) context.read<CameraProvider>().startStream();
+
+      // Kontrak tombol kiri + perintah suara. `playPause` / `playResume` /
+      // `actionReplay` punya bank kata lengkap sejak awal tapi tidak pernah
+      // punya handler — di mode inilah ketiganya paling masuk akal.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = () => (_speaking || _paused) ? _togglePause() : _scan();
+      voice.primaryActionLabel = () =>
+          _speaking ? 'menjeda bacaan' : _paused ? 'melanjutkan bacaan' : 'membaca teks';
+      voice.onRepeatLast = () { if (_blocks.isNotEmpty) _replay(); };
+      voice.onPauseSpeech = () {
+        if (!_speaking) return false;
+        _togglePause();
+        return true;
+      };
+      voice.onResumeSpeech = () {
+        if (!_paused) return false;
+        _togglePause();
+        return true;
+      };
     });
     // BT-20 — cek kedaluwarsa tiap 30 detik.
     _expiryTicker = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -80,6 +99,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     _sentenceTicker?.cancel();
     _expiryTicker?.cancel();
     context.read<CameraProvider>().stopStream();
+    context.read<VoiceProvider>().clearModeHandlers();
     super.dispose();
   }
 
@@ -231,7 +251,12 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     }
     final fullText = flat.join(' ');
     unawaited(_animateActiveSentence(flat.length));
-    await TTSService.instance.speak(fullText);
+    // Warning, bukan Info: pembacaan ini diminta pengguna secara eksplisit dan
+    // bisa berlangsung menit-menitan — membiarkannya dibuang sebagai "Info
+    // basi" karena antre 2 detik akan membatalkan permintaan yang disengaja.
+    // Tetap bisa dipotong pengguna lewat tombol "Jeda bacaan".
+    if (!mounted) return;
+    await context.read<TtsProvider>().speak(fullText, tier: SpeechTier.warning);
     _sentenceTicker?.cancel();
     if (!mounted) return;
     setState(() {
@@ -335,14 +360,14 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     final hasBanner = banner != null;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: _cameraWithGuide(cam))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -374,7 +399,20 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
 
           Positioned(
             left: 0, right: 0, bottom: 0,
-            child: BottomActionBar(onCameraPressed: _scan, cameraLabel: 'Baca teks'),
+            // Tombol kiri kontekstual: di mode ini "hal utama" memang berubah
+            // sepanjang alur. Sebelum jepret yang dibutuhkan adalah memotret;
+            // saat sedang dibacakan, yang dibutuhkan adalah menjeda.
+            child: BottomActionBar(
+              cameraLabel: _speaking
+                  ? 'Jeda bacaan'
+                  : _paused
+                      ? 'Lanjutkan bacaan'
+                      : 'Baca teks',
+              onCameraPressed:
+                  (_speaking || _paused) ? _togglePause : (_scanning ? null : _scan),
+              cameraEnabled: !_scanning,
+              cameraDisabledReason: 'sedang memindai',
+            ),
           ),
         ],
       ),
@@ -424,7 +462,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     }
 
     if (_scanning) {
-      return [const Center(child: CircularProgressIndicator(color: Colors.white))];
+      return [const Center(child: CircularProgressIndicator(color: AppColors.onDark))];
     }
 
     if (_hasExpired) {
@@ -451,7 +489,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             right: AppSpacing.screenMargin,
             bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s3,
             child: Center(
-              child: TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: Colors.white))),
+              child: TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: AppColors.onDark))),
             ),
           ),
       ];
@@ -555,12 +593,12 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const FullScreenButton(label: 'Baca teks', disabled: true, disabledReason: 'Butuh internet untuk teks panjang'),
             const SizedBox(height: AppSpacing.s3),
-            TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: Colors.white))),
+            TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: AppColors.onDark))),
           ]),
         );
       case 'BT-03':
         return const Center(
-          child: ColoredBox(color: Colors.white, child: SizedBox(width: double.infinity, height: double.infinity)),
+          child: ColoredBox(color: AppColors.bgPage, child: SizedBox(width: double.infinity, height: double.infinity)),
         );
       case 'BT-04':
         return _bottomPanel(bottomInset, const ResultPanel(text: '', title: 'Membaca teks…'));

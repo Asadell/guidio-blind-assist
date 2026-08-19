@@ -1,9 +1,15 @@
 import 'package:flutter/foundation.dart';
+import '../services/camera_intrinsics.dart';
 import '../services/tflite_service.dart';
 import '../services/server_service.dart';
 
-enum InferenceEngine { tflite, server }
-
+/// InferenceProvider — kesiapan model on-device dan server saat boot.
+///
+/// Sejak jalur deteksi via WebSocket dihapus, tidak ada lagi "engine yang
+/// dipilih": Mode Deteksi Objek selalu on-device. Server hanya dibutuhkan
+/// untuk yang memang tidak ada di perangkat (Cari Objek, Deskripsi Suasana,
+/// dan segmentasi jalur sebagai cadangan), jadi kesiapannya diperiksa lewat
+/// `/health` — bukan dengan membuka soket deteksi yang tidak akan dipakai.
 class InferenceProvider extends ChangeNotifier {
   bool _tfliteReady = false;
   bool _serverReady = false;
@@ -11,21 +17,21 @@ class InferenceProvider extends ChangeNotifier {
 
   bool get tfliteReady => _tfliteReady;
   bool get serverReady => _serverReady;
-  bool get isReady     => _tfliteReady || _serverReady;
 
-  /// Engine untuk real-time (Mode Tuntun, Navigasi):
-  /// TFLite jika ready, server sebagai fallback.
-  InferenceEngine get realtimeEngine =>
-      _tfliteReady ? InferenceEngine.tflite : InferenceEngine.server;
+  /// Deteksi rintangan siap. Ini satu-satunya yang menentukan mode utama
+  /// bisa berjalan — server tidak lagi jadi cadangannya.
+  bool get isReady => _tfliteReady;
 
   Future<void> initialize() async {
     if (_initialized) return;
 
-    // Load TFLite dan connect server secara parallel
-    // GPS/koordinat tidak dipakai (sesuai request user)
+    // Intrinsik lensa dibaca sekali di sini: estimasi jarak butuh panjang
+    // fokus perangkat ini, bukan rata-rata semua ponsel. Kegagalannya tidak
+    // memblokir apa pun — nilainya jatuh ke fallback.
     final results = await Future.wait([
       TFLiteService.instance.tryLoad(),
-      _tryConnectServer(),
+      _probeServer(),
+      CameraIntrinsics.instance.load().then((_) => true),
     ]);
 
     _tfliteReady = results[0];
@@ -34,11 +40,13 @@ class InferenceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> _tryConnectServer() async {
+  Future<bool> _probeServer() async {
     try {
-      // Connect tanpa koordinat GPS (risk zone tidak aktif, fitur lain tetap jalan)
-      await ServerService.instance.connect();
-      return true;
+      final health = await ServerService.instance.healthAt(
+        ServerService.instance.host,
+        timeout: const Duration(seconds: 2),
+      );
+      return health != null;
     } catch (_) {
       return false;
     }
