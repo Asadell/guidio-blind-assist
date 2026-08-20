@@ -3,3 +3,13 @@
 /op
 /co
 design_system
+
+# Large ML models & weights
+*.pt
+*.pth
+*.torchscript
+*.ts
+*.gguf
+
+# Documentation files
+*.md
