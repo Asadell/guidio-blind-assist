@@ -9,7 +9,15 @@ import '../services/money_tflite_service.dart';
 import '../widgets/nominal_card.dart' show terbilangRupiah;
 
 /// State machine Mode Kenali Uang — bagian 9 IMPLEMENTASI.md
-/// (UG-01..UG-12, UG-17, UG-18). Sepenuhnya on-device.
+/// (UG-01..UG-12, UG-18). Sepenuhnya on-device.
+///
+/// **Tidak ada akumulasi sesi.** Mode ini menjawab satu pertanyaan saja:
+/// "lembar yang sedang saya hadapkan ke kamera ini nominalnya berapa?"
+/// Tombol kiri mengumumkan nominal frame saat itu, lalu selesai — tidak ada
+/// total berjalan, tidak ada rincian lembar, tidak ada kartu "total direset".
+/// Penjumlahan otomatis justru berbahaya di sini: pengguna tunanetra tidak
+/// bisa melihat lembar mana yang sudah terhitung, jadi satu lembar yang
+/// ter-scan dua kali menghasilkan total yang salah tanpa satu pun tanda.
 ///
 /// **Jalur mock hanya hidup di build debug.** Simulasi Timer-nya memanggil
 /// `_enterDetected(_kDenoms[_rand.nextInt(...)])` — yaitu **mengucapkan
@@ -32,13 +40,10 @@ enum MoneyState {
   glare,       // UG-12a
   dark,        // UG-12b
   processing,  // UG-04
-  detected,    // UG-05 (lembar pertama sesi)
-  multiple,    // UG-09a/UG-09b (≥2 lembar, breakdown ditampilkan)
-  consecutive, // UG-11 (lembar berturut-turut, total berjalan)
+  detected,    // UG-05 (nominal lembar yang sedang dihadapi kamera)
   uncertain,   // UG-06
   notMoney,    // UG-07
   foreign,     // UG-18
-  resetAnnounce, // UG-17
 }
 
 /// Pola getar bagian 3.6 — `positive` (2×25ms) untuk bingkai pas,
@@ -60,12 +65,6 @@ class MoneyProvider extends ChangeNotifier {
   MoneyState _state = MoneyState.idle;
   MoneyState get state => _state;
 
-  /// Rincian lembar dalam sesi berjalan: denominasi → jumlah lembar.
-  final Map<int, int> _breakdown = {};
-  Map<int, int>? get sessionBreakdown => _breakdown.isEmpty ? null : Map.unmodifiable(_breakdown);
-  int get sessionTotal => _breakdown.entries.fold(0, (sum, e) => sum + e.key * e.value);
-  int get sheetCount => _breakdown.values.fold(0, (sum, v) => sum + v);
-
   int _lastAmount = 0;
   int get lastAmount => _lastAmount;
 
@@ -74,9 +73,6 @@ class MoneyProvider extends ChangeNotifier {
 
   String _notMoneyLabel = _kNotMoneyLabels.first;
   String get notMoneyLabel => _notMoneyLabel;
-
-  int _resetAnnounceTotal = 0;
-  int get resetAnnounceTotal => _resetAnnounceTotal;
 
   bool get busy => _state == MoneyState.processing;
 
@@ -88,7 +84,6 @@ class MoneyProvider extends ChangeNotifier {
 
   Timer? _stepTimer;
   Timer? _hintRotateTimer;
-  Timer? _sessionResetTimer;
   bool _running = false;
 
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
@@ -116,7 +111,6 @@ class MoneyProvider extends ChangeNotifier {
   void start() {
     if (_running) return;
     _running = true;
-    _breakdown.clear();
     _lastAmount = 0;
     _set(MoneyState.idle);
     if (!_useRealModel) _fallbackWhenModelMissing();
@@ -141,7 +135,6 @@ class MoneyProvider extends ChangeNotifier {
     _running = false;
     _stepTimer?.cancel();
     _hintRotateTimer?.cancel();
-    _sessionResetTimer?.cancel();
   }
 
   /// Dipanggil dari tombol kamera BottomActionBar — "paksa deteksi ulang".
@@ -414,66 +407,22 @@ class MoneyProvider extends ChangeNotifier {
     _set(MoneyState.notMoney);
     _speak('Ini sepertinya $_notMoneyLabel, bukan uang.', tier: SpeechTier.info);
     // Aturan #3: total yang sudah ada tidak boleh hilang diam-diam.
-    _after(2200, () => _breakdown.isEmpty ? _scheduleFromIdle() : _settleSession());
+    _after(2200, _scheduleFromIdle);
   }
 
   void _enterForeign() {
     _set(MoneyState.foreign);
     _speak('Ini sepertinya uang asing atau rusak, saya belum bisa membacanya.', tier: SpeechTier.warning);
-    _after(2200, () => _breakdown.isEmpty ? _scheduleFromIdle() : _settleSession());
+    _after(2200, _scheduleFromIdle);
   }
 
   // -------------------------------------------------------------- detected
 
+  /// Satu lembar, satu jawaban. Menekan tombol lagi pada lembar yang sama
+  /// hanya mengulang nominal yang sama — tidak pernah menambah apa pun.
   void _enterDetected(int amount) {
     _lastAmount = amount;
-    _breakdown.update(amount, (v) => v + 1, ifAbsent: () => 1);
-    _armSessionResetTimer();
-
-    if (sheetCount == 1) {
-      _set(MoneyState.detected);
-      _speak(terbilangRupiah(amount), tier: SpeechTier.info);
-      _scheduleNextSheetOrWait();
-    } else {
-      _set(MoneyState.multiple);
-      _speak('Total ${terbilangRupiah(sessionTotal)}, dari $sheetCount lembar.', tier: SpeechTier.info);
-      _after(2600, () {
-        _set(MoneyState.consecutive);
-        _scheduleNextSheetOrWait();
-      });
-    }
-  }
-
-  /// Lembar berikutnya bisa masuk kapan saja dalam jendela 60 detik — atau
-  /// tidak sama sekali, sehingga jatuh ke UG-17.
-  void _scheduleNextSheetOrWait() {
-    if (_rand.nextDouble() < 0.5) {
-      _after(4000 + _rand.nextInt(9000), () {
-        if (_state == MoneyState.detected || _state == MoneyState.consecutive) {
-          _enterPartial();
-        }
-      });
-    }
-    // Kalau tidak dijadwalkan lembar baru, layar tetap diam di
-    // detected/consecutive sampai timer 60 detik (UG-17) menyala sendiri.
-  }
-
-  void _armSessionResetTimer() {
-    _sessionResetTimer?.cancel();
-    _sessionResetTimer = Timer(const Duration(seconds: 60), () {
-      if (_breakdown.isNotEmpty) _settleSession();
-    });
-  }
-
-  /// UG-17 — total yang hilang WAJIB diumumkan, tidak pernah hilang diam-diam.
-  void _settleSession() {
-    _sessionResetTimer?.cancel();
-    _resetAnnounceTotal = sessionTotal;
-    _set(MoneyState.resetAnnounce);
-    _speak('Total ${terbilangRupiah(_resetAnnounceTotal)} direset.', tier: SpeechTier.info);
-    _after(2400, () {
-      _breakdown.clear();
-      _scheduleFromIdle();
-    });
+    _set(MoneyState.detected);
+    _speak(terbilangRupiah(amount), tier: SpeechTier.info);
   }
 }

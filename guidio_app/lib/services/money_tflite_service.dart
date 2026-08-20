@@ -12,16 +12,23 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// tidak perlu meninggalkan perangkat, dan pengguna butuh umpan balik
 /// seketika saat mengarahkan kamera.
 ///
-/// Model: MobileNetV2 transfer learning, **7 kelas**, input 224x224x3 float32.
+/// Model: MobileNetV2 transfer learning (repo `rupiah-vision`), **7 kelas**,
+/// varian INT8-quantized dengan I/O float32 — input 224x224x3, output [1,7]
+/// softmax. Test accuracy 99,52%; varian INT8 ~98% pada sampel evaluasi.
 ///
-/// **Rentang input: 0..255, bukan 0..1.** Preprocessing `mobilenet_v2`
-/// (`x/127.5 - 1`) sudah dipanggang ke dalam graf model — terlihat sebagai
-/// op `truediv` dan `Sub` di level teratas berkas `.tflite`. Jadi piksel
-/// dikirim apa adanya. Docstring lama menyebut "6 kelas" dan
-/// "rescale = 1/255"; keduanya keliru dan berbahaya kalau dipercaya saat
-/// mengganti model, karena membagi lagi dengan 255 akan membuat masukan 255×
-/// terlalu kecil tanpa satu pun error yang terlihat — hanya prediksi yang
-/// diam-diam salah.
+/// **Rentang input: -1..1, BUKAN 0..255.** Ini berbeda dari model lama
+/// (`uang_rupiah.tflite`) yang memanggang preprocessing `mobilenet_v2` ke
+/// dalam grafnya sehingga menerima piksel mentah. Model ini tidak: di
+/// `scripts/01_train.py` normalisasi `x/127.5 - 1` dilakukan di pipeline
+/// `tf.data`, di luar model, dan `scripts/02_export_tflite.py` mengekspor
+/// tanpa `inference_input_type` sehingga tensor masuk tetap float32 mentah
+/// tanpa parameter kuantisasi.
+///
+/// Salah rentang di sini TIDAK memunculkan error apa pun — interpreter tetap
+/// menerima float32 berapa pun nilainya, hanya prediksinya yang diam-diam
+/// salah. Di mode uang itu berarti nominal keliru dibacakan ke pengguna
+/// tunanetra. Jadi kalau model diganti lagi, periksa dulu apakah
+/// preprocessing ada di dalam graf atau tidak, jangan diasumsikan.
 ///
 /// ATURAN MUTLAK: nominal TIDAK PERNAH ditebak. Di bawah ambang keyakinan,
 /// yang dikembalikan hanya instruksi perbaikan — salah menyebut nominal ke
@@ -31,7 +38,7 @@ class MoneyTFLiteService {
   static final MoneyTFLiteService instance = MoneyTFLiteService._();
   MoneyTFLiteService._();
 
-  static const String _modelAsset = 'assets/models/uang_rupiah.tflite';
+  static const String _modelAsset = 'assets/models/rupiah_classifier_int8.tflite';
   static const int _inputSize = 224;
 
   /// Ambang keyakinan sengaja tinggi. Precedent Seeing AI menyetel presisi
@@ -39,8 +46,9 @@ class MoneyTFLiteService {
   /// alat bantu uang.
   static const double confidenceThreshold = 0.85;
 
-  /// Urutan kelas sesuai `class_indices` model saat pelatihan — sudah
-  /// diverifikasi terhadap notebook training, **jangan diubah**.
+  /// Urutan kelas sesuai `CLASS_ORDER` di `scripts/02_export_tflite.py` dan
+  /// isi `assets/models/rupiah_labels.txt` — sudah dicocokkan baris per
+  /// baris, **jangan diubah**.
   ///
   /// Kalau model diganti, urutan ini WAJIB dicocokkan ulang: model
   /// mengeluarkan indeks, dan indeks yang dipetakan ke nominal yang salah
@@ -240,8 +248,9 @@ List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
         final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toDouble();
         final b = (yVal + 1.772 * uVal).clamp(0, 255).toDouble();
 
-        // Nilai RGB 0..255 float32 (preprocessing mobilenet_v2 ada di dalam model graph).
-        return [r, g, b];
+        // Normalisasi ke [-1, 1] — preprocessing mobilenet_v2 TIDAK ada di
+        // dalam graf model ini, jadi harus dikerjakan di sini.
+        return [r / 127.5 - 1.0, g / 127.5 - 1.0, b / 127.5 - 1.0];
       });
     }),
   ];
@@ -266,7 +275,7 @@ List<List<List<List<double>>>> _prepareJpeg(_JpegArgs a) {
     List.generate(_size, (y) {
       return List.generate(_size, (x) {
         final p = resized.getPixel(x, y);
-        return [p.r.toDouble(), p.g.toDouble(), p.b.toDouble()];
+        return [p.r / 127.5 - 1.0, p.g / 127.5 - 1.0, p.b / 127.5 - 1.0];
       });
     }),
   ];
