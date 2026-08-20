@@ -73,32 +73,9 @@ class _MainScreenState extends State<MainScreen> {
 
     if (!mounted) return;
     setState(() => _stage = _BootStage.ready);
-
-    final cam = context.read<CameraProvider>();
-    final inf = context.read<InferenceProvider>();
-
-    if (!cam.isInitialized) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Izin kamera ditolak. Fitur kamera tidak tersedia.'),
-          backgroundColor: AppColors.criticalLabel,
-          duration: Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Pengaturan',
-            textColor: AppColors.onDark,
-            onPressed: openAppSettings,
-          ),
-        ),
-      );
-    } else if (!inf.serverReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Backend tidak terhubung. Berjalan di Mode Lokal (TFLite). Fitur Voice & OCR mungkin tidak tersedia.'),
-          backgroundColor: AppColors.warningLabel,
-          duration: Duration(seconds: 4),
-        ),
-      );
-    }
+    // Status kamera & backend offline ditangani oleh StatusBanner
+    // dan GlobalConditionsProvider di tiap mode screen — tidak perlu
+    // SnackBar di sini yang menutupi BottomActionBar.
   }
 
   @override
