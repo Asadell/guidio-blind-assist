@@ -110,6 +110,8 @@ class DetectionProvider extends ChangeNotifier {
       // pertama berlabel "person" untuk keduanya, sehingga status "mendekat"
       // milik orang jauh bisa menempel ke orang dekat — dan status itulah yang
       // memotong cooldown 50%.
+      if (!_realtimeActive) return;
+
       _tracker.update(raw);
       final assignment = _tracker.lastAssignment;
 
