@@ -58,8 +58,18 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   String? _debugOverride;
 
   /// Apakah deteksi objek sedang aktif (jalan) atau dijeda.
-  /// Dimulai true — deteksi langsung jalan saat mode dibuka.
-  bool _detectionActive = true;
+  ///
+  /// **Dimulai false — deteksi tidak menyala sendiri.** Ini layar pertama
+  /// saat aplikasi dibuka, dan saat itu ponsel biasanya masih di tangan yang
+  /// turun, di saku, atau menghadap tanah. Peringatan pertama dari posisi itu
+  /// hampir selalu keliru, dan peringatan keliru dari alat bantu jalan lebih
+  /// merusak daripada diam: sekali pengguna belajar aplikasinya sering salah,
+  /// peringatan yang benar ikut diabaikan.
+  ///
+  /// Konsekuensinya ditangani, bukan diabaikan — lihat [initState] dan
+  /// [_armPausedReminder]: keadaan mati diucapkan saat masuk dan diingatkan
+  /// tiap 30 detik, supaya tidak ada yang berjalan menyangka sudah dijaga.
+  bool _detectionActive = false;
 
   final List<_GhostDetection> _ghosts = [];
   List<Detection> _prevCritical = [];
@@ -81,12 +91,24 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context.read<AppModeProvider>().announceEntry(AppMode.tuntun);
+      // Ditunggu selesai supaya pemberitahuan "belum menyala" di bawah
+      // menyusul di belakangnya, bukan mengantre berebut dengannya.
+      await context.read<AppModeProvider>().announceEntry(AppMode.tuntun);
+      if (!mounted) return;
       if (_hasCameraPermission) {
-        _startDetection();
+        // Kamera tetap dinyalakan (pratinjau + deteksi gelap), tapi deteksi
+        // rintangan menunggu tombol kiri. Keadaan mati TIDAK boleh senyap:
+        // pengguna yang tidak melihat layar tidak bisa membedakan "belum
+        // menyala" dari "menyala tapi kebetulan tidak melihat apa pun".
         context.read<CameraProvider>().startStream();
+        TtsQueue().speak(
+          'Deteksi rintangan belum menyala. '
+          'Tekan tombol kiri bawah untuk mulai mengawasi.',
+          tier: SpeechTier.warning,
+        );
+        _armPausedReminder();
       }
       // Listener dark detection — TTS satu kali saat transisi gelap
       context.read<CameraProvider>().addListener(_onCameraDarkChanged);
@@ -206,7 +228,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     _pausedReminder?.cancel();
     _pausedReminder = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted || _detectionActive) return;
-      TtsQueue().speak('Deteksi masih dijeda.', tier: SpeechTier.info);
+      TtsQueue().speak(
+        'Deteksi rintangan masih mati. Tekan tombol kiri bawah untuk mulai.',
+        tier: SpeechTier.info,
+      );
       HapticService.instance.info();
     });
   }

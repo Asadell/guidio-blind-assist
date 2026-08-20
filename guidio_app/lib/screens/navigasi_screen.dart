@@ -54,6 +54,15 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       nav.onSpeak = (text, tier) {
         // NV-22 — senyap/TTS mati: arah lewat getar, 1 ketuk kiri, 2 ketuk kanan.
         if (_silentMode) {
+          // Critical selalu bergetar, apa pun rekomendasinya. Sebelum ini
+          // hanya rekomendasi kiri/kanan yang menghasilkan getar, sehingga
+          // "Berhenti! Jalur di depan tidak aman" — yang rekomendasinya
+          // tengah atau tidak ada sama sekali — lewat tanpa suara DAN tanpa
+          // getar. Dibisukan tidak boleh berarti peringatan bahaya hilang.
+          if (tier == SpeechTier.critical) {
+            _fireCriticalHaptic();
+            return;
+          }
           final rec = _recommendedZone(nav);
           if (rec == 0) _fireDirectionHaptic(true);
           if (rec == 2) _fireDirectionHaptic(false);
@@ -69,12 +78,16 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
 
-      // Kontrak tombol kiri: mode ini tidak punya aksi "jepret", jadi aksi
-      // utamanya adalah mengulang arahan — yang justru paling sering
-      // dibutuhkan sambil berjalan.
+      // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
+      // sama persis dengan menekan tombol kiri — di mode ini, membisukan dan
+      // menyalakan kembali suara panduan.
+      //
+      // "Ulangi arahan" tidak hilang, hanya pindah: tetap tersedia lewat
+      // perintah suara "ulangi" (`onRepeatLast`).
       final voice = context.read<VoiceProvider>();
-      voice.onPrimaryAction = nav.repeatGuidance;
-      voice.primaryActionLabel = () => 'mengulang arahan';
+      voice.onPrimaryAction = _toggleGuidanceVoice;
+      voice.primaryActionLabel = () =>
+          _silentMode ? 'menyalakan suara panduan' : 'mematikan suara panduan';
       voice.onRepeatLast = nav.repeatGuidance;
       voice.onStopWalking = nav.pauseGuidance;
 
@@ -214,6 +227,39 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     final dest = _destCtrl.text.trim();
     if (dest.isEmpty) return;
     await context.read<NavigationProvider>().startNavigation(dest);
+  }
+
+  /// Tombol kiri BottomActionBar — membisukan / menyalakan suara panduan.
+  ///
+  /// **Hanya suaranya.** PIDNet dan YOLO tetap berjalan dan indikator zona di
+  /// layar tetap hidup, jadi pendamping yang melihat layar tetap terbantu,
+  /// dan panduan arah tetap sampai lewat getar (NV-22). Membisukan di sini
+  /// bukan mematikan panduan — itu sebabnya loop-nya sengaja tidak disentuh.
+  void _toggleGuidanceVoice() {
+    final tts = context.read<TtsProvider>();
+    if (_silentMode) {
+      setState(() => _silentMode = false);
+      tts.speak('Suara panduan dinyalakan.', tier: SpeechTier.warning);
+      return;
+    }
+    // Konfirmasinya diucapkan SEBELUM bisu menyala. Kalau urutannya dibalik,
+    // kalimat ini ikut tertelan dan pengguna yang tidak melihat layar tidak
+    // punya cara tahu tombolnya bekerja.
+    tts.speak(
+      'Suara panduan dimatikan. Arah tetap terasa lewat getar. '
+      'Tekan tombol kiri bawah lagi untuk menyalakan.',
+      tier: SpeechTier.warning,
+    );
+    _fireCriticalHaptic();
+    setState(() => _silentMode = true);
+  }
+
+  Future<void> _fireCriticalHaptic() async {
+    final mode = context.read<SettingsProvider>().vibrationMode;
+    if (mode == VibrationMode.off) return;
+    final has = await Vibration.hasVibrator();
+    if (!has) return;
+    Vibration.vibrate(pattern: [0, 400, 120, 400]);
   }
 
   Future<void> _fireDirectionHaptic(bool left) async {
@@ -398,9 +444,11 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             child: BottomActionBar(
               // Dulu `const BottomActionBar()` — labelnya jatuh ke bawaan
               // "Ambil gambar", tombolnya tampak aktif, dan menekannya tidak
-              // melakukan apa pun. Sekarang: baca ulang status tiga zona.
-              cameraLabel: 'Ulangi arahan',
-              onCameraPressed: nav.repeatGuidance,
+              // melakukan apa pun. Lalu sempat "Ulangi arahan". Sekarang:
+              // saklar bisu untuk suara panduan, sesuai kontrak tombol kiri
+              // di mode lain (Deteksi Objek memakai pola yang sama).
+              cameraLabel: _silentMode ? 'Nyalakan Suara' : 'Matikan Suara',
+              onCameraPressed: _toggleGuidanceVoice,
             ),
           ),
         ],
