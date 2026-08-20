@@ -88,7 +88,15 @@ flutter:
     # memuatnya lewat rootBundle.
     - assets/models/ssd_mobilenet.tflite        # TFLiteService — deteksi rintangan
     - assets/models/labelmap.txt                # TFLiteService — label COCO
-    - assets/models/uang_rupiah.tflite          # MoneyTFLiteService — 7 pecahan
+    - assets/models/rupiah_classifier_int8.tflite  # MoneyTFLiteService — 7 pecahan
+    #
+    # uang_rupiah.tflite (model lama) sengaja TIDAK dibundel lagi: sudah
+    # digantikan rupiah_classifier_int8.tflite. Berkasnya tetap ada di
+    # assets/models/ sebagai arsip, tapi tidak ikut ke APK.
+    #
+    # rupiah_labels.txt juga tidak dibundel — urutan kelasnya sudah tetap di
+    # MoneyTFLiteService.classValues, jadi tidak ada yang memuatnya lewat
+    # rootBundle. Berkasnya disimpan sebagai rujukan saat mengganti model.
     - assets/models/pidnet_s_3zona_fp16.tflite  # PidnetService — segmentasi jalur
     - assets/models/pidnet_s_3zona.tflite       # PidnetService — cadangan non-fp16
     - assets/models/yolo11n.tflite              # YoloNavigasiService — rintangan navigasi
