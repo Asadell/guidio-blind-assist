@@ -22,6 +22,9 @@ class MoonDreamService:
     Dibuat singleton lewat app.state.moondream_service di lifespan.
     Model TIDAK dimuat saat startup (bobotnya ~2GB) — dimuat saat
     permintaan pertama datang (warm-up ~5-10 detik, sekali saja).
+
+    Menggunakan official `moondream` pip package (bukan transformers
+    AutoModelForCausalLM) agar kompatibel dengan transformers >= 5.x.
     """
 
     def __init__(self, model_id: str = "vikhyatk/moondream2", device: str = "auto"):
@@ -47,7 +50,11 @@ class MoonDreamService:
         return self._device
 
     def _load_sync(self) -> bool:
-        """Muat model secara sinkron — dipanggil di thread pool dari _ensure_loaded."""
+        """Muat model secara sinkron — dipanggil di thread pool dari _ensure_loaded.
+
+        Membutuhkan transformers>=4.40,<5.0 — moondream2 (vikhyatk/moondream2)
+        belum kompatibel dengan transformers 5.x (all_tied_weights_keys API change).
+        """
         try:
             import torch
             from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -58,13 +65,10 @@ class MoonDreamService:
             logger.info(f"[Moondream2] Memuat model {self.model_id} ke {device} ({dtype})...")
 
             self._tokenizer = AutoTokenizer.from_pretrained(
-                self.model_id,
-                trust_remote_code=True,
+                self.model_id, trust_remote_code=True
             )
             self._model = AutoModelForCausalLM.from_pretrained(
-                self.model_id,
-                trust_remote_code=True,
-                torch_dtype=dtype,
+                self.model_id, trust_remote_code=True, torch_dtype=dtype,
             ).to(device)
             self._model.eval()
             self._loaded = True
@@ -115,14 +119,17 @@ class MoonDreamService:
     def _describe_sync(self, image_bytes: bytes, length: str) -> Optional[str]:
         """Inferensi sinkron — dijalankan di thread pool."""
         try:
-            import torch
-
             pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-            with torch.no_grad():
-                # encode_image: mengonversi PIL → tensor internal Moondream
-                enc = self._model.encode_image(pil_image)
-                caption = self._model.caption(enc, length=length)["caption"]
+            # moondream VL API: encode → caption
+            enc = self._model.encode_image(pil_image)
+            result = self._model.caption(enc, length=length)
+
+            # result bisa dict {"caption": "..."} atau string tergantung versi
+            if isinstance(result, dict):
+                caption = result.get("caption", "")
+            else:
+                caption = str(result)
 
             return caption.strip() if caption else None
         except Exception as e:

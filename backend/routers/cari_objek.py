@@ -43,6 +43,14 @@ async def cari_objek(
     badan lalu memanggil endpoint ini lagi.
     """
     raw = await file.read()
+    if not raw:
+        return {
+            "found": False,
+            "reason": "invalid_frame",
+            "message": "Gambar kosong. Coba ambil ulang.",
+            "matches": [],
+            "total_match": 0,
+        }
     frame = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
     if frame is None:
         return {

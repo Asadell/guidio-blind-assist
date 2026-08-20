@@ -26,8 +26,9 @@ tanpa server, tanpa LLM.
 6. [Struktur folder](#6-struktur-folder)
 7. [Keterbatasan yang perlu diketahui](#7-keterbatasan-yang-perlu-diketahui)
 8. [Uji cepat](#8-uji-cepat)
-9. [Koneksi HP ke Backend Laptop](#9-koneksi-hp-ke-backend-laptop)
-10. [Ukuran Model dan Kebutuhan Storage](#10-ukuran-model-dan-kebutuhan-storage)
+9. [Testing Backend (pytest)](#9-testing-backend-pytest)
+10. [Koneksi HP ke Backend Laptop](#10-koneksi-hp-ke-backend-laptop)
+11. [Ukuran Model dan Kebutuhan Storage](#11-ukuran-model-dan-kebutuhan-storage)
 
 ---
 
@@ -375,7 +376,92 @@ curl -s -X POST $B/api/navigasi -F "file=@foto.jpg" -F "lat=0" -F "lng=0"
 
 ---
 
-## 9. Koneksi HP ke Backend Laptop
+## 9. Testing Backend (pytest)
+
+Suite pengujian otomatis untuk semua endpoint backend menggunakan `pytest` +
+`httpx` (via `TestClient` FastAPI — tidak perlu server menyala).
+
+### Instalasi
+
+```bash
+cd backend
+source venv/bin/activate
+pip install pytest pytest-asyncio httpx
+```
+
+### Menjalankan
+
+```bash
+# Semua test sekaligus
+python -m pytest tests/ -v
+
+# Per file
+python -m pytest tests/test_health.py -v
+python -m pytest tests/test_cari_objek.py -v
+python -m pytest tests/test_describe.py -v
+
+# Satu test spesifik
+python -m pytest tests/test_cari_objek.py::TestCariObjekInvalidInput -v
+```
+
+### Struktur test
+
+```
+backend/tests/
+├── conftest.py              Shared fixtures (TestClient, gambar navigasi, gambar objek)
+├── fixtures/
+│   ├── navigation/          5 gambar hazard (got, lubang, tiang, motor+orang, tangga)
+│   └── object_find/         5 gambar benda (tas, kunci, botol, headphone, payung)
+├── test_health.py           GET /health + GET /api/capabilities  (12 test)
+├── test_cari_objek.py       POST /api/cari-objek + GET /targets  (14 test)
+└── test_describe.py         POST /api/describe (Moondream2 VLM)  (10 test)
+```
+
+### Ringkasan cakupan
+
+| File | Skenario yang diuji |
+|---|---|
+| `test_health.py` | Status `ok`, semua field ada, uptime > 0, latensi < 500 ms, 6 mode capabilities, mode on-device selalu `up` |
+| `test_cari_objek.py` | Struktur respons, bytes kosong/rusak tidak crash, target tidak ada di frame, `/targets` endpoint |
+| `test_describe.py` | `description_en` ada, bukan Bahasa Indonesia, invalid image tidak 500, validasi caption motor+orang dan got terbuka |
+
+### Catatan: simulasi kamera HP
+
+Semua gambar fixture dikirim ke backend sebagai `multipart/form-data` dengan
+`Content-Type: image/png` — **byte-for-byte identik** dengan yang dikirim
+Flutter saat user mengarahkan kamera. Backend tidak membedakan sumber gambar.
+
+```
+Flutter (kamera) ──┐
+                   ├──▶ POST /api/cari-objek  (multipart/form-data)
+tests/fixtures  ───┘         ↑ identik
+```
+
+### Catatan: test Moondream otomatis skip
+
+Test di `TestDescribeKonten` (validasi isi caption) otomatis di-skip jika
+Moondream belum warm. Jalankan backend dulu lalu tunggu request pertama selesai
+sebelum menjalankan test tersebut, atau jalankan dengan backend menyala:
+
+```bash
+# Terminal 1
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 — setelah backend siap
+python -m pytest tests/test_describe.py -v
+```
+
+### Hasil terakhir (2026-08-20)
+
+```
+32 passed, 4 skipped — 44.80s
+```
+
+4 test di-skip adalah validasi isi caption Moondream (membutuhkan model warm).
+
+---
+
+## 10. Koneksi HP ke Backend Laptop
 
 ### Cara paling mudah: WiFi satu jaringan
 
@@ -407,7 +493,7 @@ Isi alamat server di Guidio: `localhost:8000`
 
 ---
 
-## 10. Ukuran Model dan Kebutuhan Storage
+## 11. Ukuran Model dan Kebutuhan Storage
 
 | Kategori | Komponen | Ukuran | Eksekusi | Keterangan |
 |---|---|---|---|---|

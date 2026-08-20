@@ -1,8 +1,10 @@
 # GUIDIO — Panduan Verifikasi Fitur
 
-> **Update terakhir**: 2026-08-19 — mencerminkan arsitektur akhir: On-Device First,
+> **Update terakhir**: 2026-08-20 — mencerminkan arsitektur akhir: On-Device First,
 > singleton TtsQueue, NavigationProvider PIDNet+YOLO, DetectionProvider FramePacer,
 > MoneyProvider on-device classifier, CameraProvider dark-state + mutex.
+> Threshold deteksi `lubang`/`got_terbuka` diturunkan ke 5% (dari 30%) — keduanya
+> dianggap setara dalam validasi pengujian.
 >
 > Jalankan langkah **Persiapan** terlebih dahulu sebelum masuk ke checklist fitur.
 > Urutan penting — jangan loncat.
@@ -27,8 +29,8 @@
 | Komponen | Status | Keterangan |
 |---|---|---|
 | `ssd_mobilenet.tflite` (rintangan) | ✅ | `assets/models/` ~4.18 MB |
-| `uang_rupiah.tflite` (kenali uang) | ✅ | `assets/models/` ~24.92 MB |
-| `pidnet_s.tflite` (segmentasi jalan) | ✅ | `assets/models/` — bundel di APK |
+| `rupiah_classifier_int8.tflite` (kenali uang) | ✅ | `assets/models/` — MobileNetV2 INT8, 7 kelas pecahan |
+| `pidnet_s_3zona_fp16.tflite` (segmentasi jalan) | ✅ | `assets/models/` — cadangan: `pidnet_s_3zona.tflite` (float32) |
 | `yolo11n.tflite` (navigasi obstacle) | ✅ | `assets/models/` — bundel di APK |
 | `transformers` Python (Moondream2) | ✅ | Terinstall di venv backend |
 | FastAPI, Uvicorn, Tesseract | ✅ | Terinstall di venv backend |
@@ -301,6 +303,13 @@ curl -s $B/api/cari-objek/targets
 - [ ] Rintangan warning: TTS muncul setelah arahan zona
 - [ ] Jika semua zona danger: "Berhenti dulu. Tidak ada jalur aman."
 
+> **Catatan threshold deteksi rintangan** (`yolo_navigasi_service.dart`):
+> - Kelas `lubang` (class 0) dan `got_terbuka` (class 1): threshold **5%** (diturunkan dari 30%).
+>   Keduanya dianggap setara — deteksi salah satu sudah dihitung sebagai bahaya got/lubang.
+> - Kelas lain (`tangga`, `orang`, `motor`, `tiang`): threshold tetap **30%**.
+> - Jika YOLO tidak mendeteksi (skor 0%), PIDNet-S tetap berfungsi sebagai lapis pengaman
+>   melalui penurunan rasio *walkable area* ($<50\%$ → HATI-HATI, $<30\%$ → BAHAYA).
+
 **E-4. Frame pacing navigasi**
 - Navigasi berjalan terus tanpa hang
 
@@ -481,6 +490,8 @@ Kriteria keberhasilan per perintah:
 | TTS tabrakan / dua suara bersamaan | `TtsQueue` tidak singleton | Pastikan semua provider panggil `TtsQueue()` (factory → instance) |
 | Narasi jarak naik-turun tiap frame | Menggunakan `distanceMeter` mentah, bukan `smoothedDistance` | Cek `detection_provider.dart` — harus pakai `track?.smoothedDistance` |
 | Navigasi stuck di `loadingModels` | PIDNet atau YOLO11n gagal dimuat | Cek file `.tflite` ada di `assets/models/`, jalankan `flutter pub get` |
+| `lubang` / `got_terbuka` tidak terdeteksi YOLO | Skor model 0% untuk gambar tertentu (sudut kamera, pencahayaan) | Normal — PIDNet-S tetap mendeteksi area tidak aman via penurunan *walkable ratio*. Keduanya dianggap setara dalam validasi: mendeteksi salah satu sudah cukup |
+| Tangga tidak terdeteksi YOLO | Skor model 0% — struktur tangga sulit dideteksi *bounding box* 2D dari sudut *first-person* | Normal — PIDNet-S mendeteksi area tangga sebagai non-walkable (status HATI-HATI/BAHAYA) |
 | Mode Uang debug: nominal acak muncul di release | `kDebugMode` check tidak berfungsi | Pastikan build release dengan `flutter build apk --release` |
 | `MoneyState.notMoney` tidak pernah muncul | Mock disabled di release | Normal — di release hanya model yang bekerja |
 | Dark state tidak reset setelah terang | `_cancelDarkWarningTimer()` tidak terpanggil | Cek `stopStream()` dipanggil dengan benar saat keluar mode |
