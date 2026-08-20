@@ -4,7 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/net/api_client.dart';
-import '../core/speech/tts_queue.dart' show SpeechTier;
+import '../core/speech/tts_queue.dart' show SpeechTier, TtsQueue;
 import '../models/detection.dart';
 import '../services/nav_frame_converter.dart';
 import '../services/pidnet_service.dart';
@@ -97,6 +97,23 @@ class NavigationProvider extends ChangeNotifier {
   String _lastSpokenMessage = '';
   DateTime _lastSpokenAt = DateTime.fromMillisecondsSinceEpoch(0);
 
+  /// Pesan yang sedang menunggu konfirmasi frame berikutnya, dan sudah berapa
+  /// frame berturut-turut ia bertahan. Dipakai [_emitGuidance] sebagai
+  /// histeresis — lihat alasannya di sana.
+  String _candidateMessage = '';
+  int _candidateStreak = 0;
+
+  /// Jeda minimum antar ucapan berbeda (non-critical).
+  static const _minGap = Duration(milliseconds: 1800);
+
+  /// Jeda sebelum pesan non-critical yang SAMA boleh diulang.
+  static const _sameMessageGap = Duration(seconds: 6);
+
+  /// Jeda sebelum peringatan critical yang SAMA boleh diulang. Lebih pendek
+  /// dari [_sameMessageGap] karena bahayanya nyata, tapi tidak nol — lihat
+  /// [_emitGuidance].
+  static const _criticalRepeatGap = Duration(seconds: 4);
+
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
 
   void startCalibration() {
@@ -153,6 +170,8 @@ class NavigationProvider extends ChangeNotifier {
   void _startLoop() {
     _loopTimer?.cancel();
     _pacer.reset();
+    _candidateMessage = '';
+    _candidateStreak = 0;
     // ~2 frame per detik. Kecepatan jalan kaki sekitar 1,4 m/s, jadi tiap
     // frame mewakili kurang dari satu meter perjalanan — cukup rapat untuk
     // memperingatkan sebelum terlambat, cukup jarang untuk tidak menguras
@@ -216,53 +235,94 @@ class NavigationProvider extends ChangeNotifier {
 
     if (wasDown) _speak('Jalur terbaca lagi.', tier: SpeechTier.info);
 
-    // Susun pesan: rintangan kritis didahulukan, lalu arahan zona
-    final critical = obstacles
-        .where((d) => d.dangerLevel == 'critical')
-        .toList();
-    if (critical.isNotEmpty) {
-      onTakeover?.call();
-      _announce(critical.first.ttsMessage, SpeechTier.critical);
-    } else {
-      final warning = obstacles.where((d) => d.dangerLevel == 'warning').toList();
-      if (warning.isNotEmpty) {
-        _announce(warning.first.ttsMessage, SpeechTier.warning);
-      } else {
-        // Tidak ada rintangan berbahaya — beri arahan zona
-        final zoneMsg = zones.ttsMessage;
-        final allDanger = _left == ZoneStatus.danger &&
-            _center == ZoneStatus.danger &&
-            _right == ZoneStatus.danger;
-        if (allDanger) {
-          _announce('Berhenti dulu. Tidak ada jalur aman.', SpeechTier.critical);
-        } else if (_center == ZoneStatus.danger) {
-          onTakeover?.call();
-          _announce('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical);
-        } else {
-          _announce(zoneMsg, SpeechTier.info);
-        }
-      }
-    }
+    final guidance = _composeGuidance(zones, obstacles);
+    _emitGuidance(guidance.$1, guidance.$2, takeover: guidance.$3);
     notifyListeners();
   }
 
-  /// Anti-banjir suara. Server mengirim pesan tiap frame; mengucapkan semuanya
-  /// akan menutupi suara lalu lintas — hal terakhir yang boleh terjadi pada
-  /// orang yang sedang menyeberang. Pesan yang sama hanya diulang setelah
-  /// jeda, kecuali Critical yang selalu lewat.
-  void _announce(String message, SpeechTier tier) {
+  /// Susun satu pesan untuk frame ini: rintangan kritis didahulukan, lalu
+  /// rintangan peringatan, baru arahan zona. Fungsi ini murni — tidak bicara
+  /// dan tidak mengubah state — supaya keputusan "apa yang perlu dikatakan"
+  /// terpisah dari keputusan "apakah sekarang saatnya mengatakannya".
+  (String, SpeechTier, bool) _composeGuidance(ZoneAnalysis zones, List<Detection> obstacles) {
+    final critical = obstacles.where((d) => d.dangerLevel == 'critical').toList();
+    if (critical.isNotEmpty) {
+      return (critical.first.ttsMessage, SpeechTier.critical, true);
+    }
+
+    final warning = obstacles.where((d) => d.dangerLevel == 'warning').toList();
+    if (warning.isNotEmpty) {
+      return (warning.first.ttsMessage, SpeechTier.warning, false);
+    }
+
+    final allDanger = _left == ZoneStatus.danger &&
+        _center == ZoneStatus.danger &&
+        _right == ZoneStatus.danger;
+    if (allDanger) {
+      return ('Berhenti dulu. Tidak ada jalur aman.', SpeechTier.critical, false);
+    }
+    if (_center == ZoneStatus.danger) {
+      return ('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical, true);
+    }
+    return (zones.ttsMessage, SpeechTier.info, false);
+  }
+
+  /// Anti-banjir suara. Loop menghasilkan pesan tiap frame; mengucapkan
+  /// semuanya akan menutupi suara lalu lintas — hal terakhir yang boleh
+  /// terjadi pada orang yang sedang menyeberang.
+  ///
+  /// Tiga rem, masing-masing menutup lubang yang berbeda:
+  ///
+  /// 1. **Histeresis.** PIDNet dan YOLO berkedip antar-frame; tanpa ini satu
+  ///    kedipan model langsung jadi satu kedipan suara. Info dan Warning
+  ///    butuh dua frame berturut-turut dengan pesan yang sama. Critical lewat
+  ///    pada kemunculan pertama — menunda peringatan bahaya ~700 ms demi
+  ///    kerapian suara adalah pertukaran yang salah di mode ini.
+  ///
+  /// 2. **Critical tidak memotong dirinya sendiri.** Sebelumnya kedua rem
+  ///    waktu dilewati Critical sepenuhnya, jadi jalur tengah yang berbahaya
+  ///    selama sepuluh detik memicu peringatan identik tiap ~700 ms. Tiap
+  ///    pemicu menjalankan `TTSService.stop()` lalu `speak(interrupt: true)`,
+  ///    sehingga kalimatnya diulang dari awal terus-menerus dan **tidak
+  ///    pernah selesai diucapkan sekali pun**. Peringatan yang tidak pernah
+  ///    utuh bukan peringatan. Critical tetap memotong Info/Warning; yang
+  ///    dilarang hanya memotong Critical yang sama.
+  ///
+  /// 3. **Jangan menumpuk di atas ucapan yang belum habis.** [_lastSpokenAt]
+  ///    dicatat saat pesan DIKIRIM, bukan saat selesai dibacakan. Satu
+  ///    kalimat arahan zona ("Kiri aman, tengah hati-hati, kanan bahaya.
+  ///    Geser ke kiri.") butuh ~4 detik pada `speechRate` 0,5 — jauh lebih
+  ///    lama dari rem 1,8 detik. Tanpa cek [TtsQueue.isSpeaking], pesan
+  ///    berikutnya selalu berangkat sebelum yang sekarang habis, lalu
+  ///    dibuang antrean karena kedaluwarsa 2 detik. Itulah yang terdengar
+  ///    sebagai suara buru-buru dan saling menimpa.
+  void _emitGuidance(String message, SpeechTier tier, {required bool takeover}) {
+    if (message == _candidateMessage) {
+      _candidateStreak++;
+    } else {
+      _candidateMessage = message;
+      _candidateStreak = 1;
+    }
+    if (tier != SpeechTier.critical && _candidateStreak < 2) return;
+
     final now = DateTime.now();
     final isRepeat = message == _lastSpokenMessage;
     final elapsed = now.difference(_lastSpokenAt);
 
-    if (tier != SpeechTier.critical && isRepeat && elapsed < const Duration(seconds: 6)) {
-      return;
+    if (tier == SpeechTier.critical) {
+      if (isRepeat && elapsed < _criticalRepeatGap) return;
+    } else {
+      if (isRepeat && elapsed < _sameMessageGap) return;
+      if (elapsed < _minGap) return;
+      if (TtsQueue.instance.isSpeaking) return;
     }
-    if (tier != SpeechTier.critical && elapsed < const Duration(milliseconds: 1800)) {
-      return;
-    }
+
     _lastSpokenMessage = message;
     _lastSpokenAt = now;
+    // Dipanggil hanya kalau pesannya benar-benar jadi diucapkan. Sebelumnya
+    // takeover berjalan lebih dulu tanpa syarat, jadi ia tetap memotong
+    // ucapan berjalan walau peringatannya kemudian diredam rem di atas.
+    if (takeover) onTakeover?.call();
     _speak(message, tier: tier);
   }
 

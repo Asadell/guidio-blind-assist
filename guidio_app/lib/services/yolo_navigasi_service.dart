@@ -158,7 +158,9 @@ class YoloNavigasiService {
         final score = raw[4 + c][i];
         if (score > maxScore) { maxScore = score; maxClass = c; }
       }
-      if (maxScore < _confThresh) continue;
+      // Threshold khusus: 0.05 (5%) untuk lubang/got_terbuka, 0.30 (30%) untuk kelas lainnya
+      final thresh = (maxClass == 0 || maxClass == 1) ? 0.05 : _confThresh;
+      if (maxScore < thresh) continue;
 
       // cx, cy, w, h → x1, y1, x2, y2 (dalam skala input 640×640)
       final cx = raw[0][i] * _yoloSize;
