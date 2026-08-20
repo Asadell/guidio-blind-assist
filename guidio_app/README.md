@@ -30,6 +30,7 @@ Empat hal ini berjalan penuh di dalam ponsel **tanpa internet sama sekali**:
 11. [Struktur folder](#11-struktur-folder)
 12. [Menjalankan](#12-menjalankan)
 13. [Koneksi ke Backend Laptop (HP Fisik)](#13-koneksi-ke-backend-laptop-hp-fisik)
+14. [Testing](#14-testing)
 
 ---
 
@@ -111,17 +112,22 @@ tombol Pilih Mode di kanan bawah (dua langkah).
 
 | Hal | Nilai |
 |---|---|
-| Berkas | `assets/models/uang_rupiah.tflite` |
-| Arsitektur | MobileNetV2, dilatih ulang untuk uang rupiah |
-| Ukuran masukan | 224 x 224 piksel |
-| Jumlah kelas | 6 pecahan, emisi 2016 |
+| Berkas | `assets/models/rupiah_classifier_int8.tflite` |
+| Arsitektur | MobileNetV2 transfer learning (repo `rupiah-vision`) |
+| Ukuran masukan | 224 × 224 piksel, float32 **rentang −1..1** |
+| Jumlah kelas | 7 pecahan — emisi 2016 & 2022 |
+| Test accuracy | 98,36% (varian INT8) |
 
-Urutan kelas **wajib** persis seperti saat model dilatih:
+Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scripts/02_export_tflite.py`):
 
 ```
-100.000 = 0    10.000 = 1    20.000 = 2
-  2.000 = 3    50.000 = 4     5.000 = 5
+1.000 = 0   2.000 = 1   5.000 = 2   10.000 = 3
+20.000 = 4  50.000 = 5  100.000 = 6
 ```
+
+> **Perhatian rentang input:** model ini memakai rentang −1..1 (`x/127.5 − 1`),
+> **bukan** 0..255. Nilai yang salah tidak memunculkan error — prediksi hanya
+> diam-diam salah. Periksa ulang jika model diganti.
 
 **Aturan yang tidak bisa ditawar:** kalau keyakinan model di bawah 0,85,
 aplikasi **tidak menampilkan angka sama sekali**, hanya instruksi perbaikan.
@@ -416,3 +422,157 @@ flutter install
 | Emulator Android di laptop | `10.0.2.2:8000` (bawaan) |
 | HP fisik, WiFi sama dengan laptop | IP laptop, contoh: `192.168.1.5:8000` |
 | HP fisik, sambung USB + ADB reverse | `localhost:8000` |
+
+---
+
+
+## 14. Testing
+
+Ada dua cara testing yang bisa dijalankan secara independen:
+
+| | Flutter unit test | Python visual test |
+|---|---|---|
+| Tujuan | Validasi logika & parsing | Lihat hasil gambar anotasi |
+| Butuh setup? | Tidak | Sekali saja (venv) |
+| Output | Pass/fail di terminal | Folder gambar bertimestamp |
+| Butuh model? | Opsional (di-skip jika tidak ada) | Ya |
+
+---
+
+### A. Flutter unit test
+
+**Tidak butuh setup apapun.** Jalankan dari folder `guidio_app/`:
+
+```bash
+flutter test
+```
+
+Atau per file jika mau lebih fokus:
+
+```bash
+# Command parser — cepat, tidak butuh model atau device
+flutter test test/command_parser_test.dart
+
+# Inferensi model langsung — butuh TFLite shared library
+flutter test test/model_inference_test.dart
+```
+
+**Hasil tipikal di laptop Linux** (tanpa perangkat Android):
+
+```
++40 passed, ~17 skipped
+```
+
+Test yang di-skip **bukan error** — mereka otomatis lewat sendiri kalau dependensinya tidak ada
+(TFLite `.so`, backend server, dll.). Tidak ada yang merah = aman.
+
+#### Apa yang ditest?
+
+**`test/command_parser_test.dart`** — logika parsing perintah suara:
+
+| Kelompok | Yang ditest | Syarat jalan |
+|---|---|---|
+| Pemetaan 21 intent | Contoh ucapan dari dokumen arsitektur | — |
+| Prioritas frasa | Frasa spesifik menang atas kata umum (4 kasus) | — |
+| Prefiks natural | "saya mau ke mode..." dan variasi (2 kasus) | — |
+| Batas kata | Anti false-positive | — |
+| Saran intent | Hanya intent yang ada handler-nya yang keluar | — |
+| **Kenali Uang** | Klasifikasi 14 gambar JPEG nyata (2 per pecahan) | TFLite SO |
+| **Navigasi** | 5 fixture PNG, cek file valid + ada deteksi | — |
+| **Cari Objek** | Parse perintah cari + guard jika backend mati | Backend opsional |
+
+**`test/model_inference_test.dart`** — model TFLite langsung, memuat dari path file:
+
+| Model | Input | Cara validasi |
+|---|---|---|
+| `rupiah_classifier_int8.tflite` | 14 JPEG, 224x224, rentang -1..1 | Nama file `uang_10000_a.jpg` → expected = 10000 |
+| `yolo11n.tflite` | 5 PNG, 640x640 NCHW, rentang 0..1 | Nama file `04_motor_dan_orang.png` → {motor, orang} |
+
+Validasi uang: confidence >= 85% harus benar persis; < 85% (uncertain) tetap pass
+(sama dengan perilaku production yang tidak menampilkan nominal saat ragu).
+
+Validasi navigasi: setidaknya **satu** label yang diharapkan harus ada di hasil deteksi.
+
+#### Gambar fixture
+
+```
+test/fixtures/
+├── money/       <- 14 JPEG, 2 gambar per pecahan (1rb s.d. 100rb)
+└── navigation/  <- 5 PNG dari test/navigation/test/
+```
+
+---
+
+### B. Python visual test — lihat gambar hasilnya
+
+Menghasilkan gambar ter-anotasi seperti di `test/navigation/results_mobile_tflite/`.
+Berguna untuk memeriksa secara visual apakah bounding box dan klasifikasi masuk akal.
+
+#### Setup (sekali saja) — dari root repo (folder `guido/`)
+
+```bash
+python3 -m venv test/.venv
+test/.venv/bin/pip install -r test/requirements-test.txt
+```
+
+Hanya install `ai-edge-litert` + `Pillow` + `numpy` (~50 MB, tidak perlu TensorFlow penuh).
+
+#### Menjalankan — dari root repo (folder `guido/`)
+
+```bash
+test/.venv/bin/python test/run_visual_test.py
+```
+
+Setiap run membuat **folder baru** dengan nama epoch (unix timestamp):
+
+```
+test/results/<epoch>/
+├── navigation/
+│   ├── nav_01_got_terbuka__none.png
+│   ├── nav_02_lubang_trotoar__lubangp50.png
+│   ├── nav_04_motor_dan_orang__motorp38_orangp17.png
+│   └── ...
+├── money/
+│   ├── money_uang_1000_a__PASS_99p6.jpg
+│   ├── money_uang_20000_b__UNCERTAIN_57p4.jpg
+│   └── ...
+└── summary.txt
+```
+
+#### Cara baca nama file tanpa buka gambarnya
+
+**Navigasi** — bagian setelah `__` adalah label yang terdeteksi + confidence:
+
+```
+nav_02_lubang_trotoar__lubangp50.png
+                       ^ label=lubang, conf=0.50
+
+nav_04_motor_dan_orang__motorp38_orangp17.png
+                        ^ motor (0.38), orang (0.17)
+
+nav_01_got_terbuka__none.png
+                    ^ tidak ada deteksi
+```
+
+**Uang** — bagian setelah `__` adalah status + confidence:
+
+```
+money_uang_100000_a__PASS_99p6.jpg        -> benar, conf 99.6%
+money_uang_20000_b__UNCERTAIN_57p4.jpg    -> ragu-ragu, conf 57.4% (di bawah threshold 85%)
+money_uang_5000_a__FAIL_pred2000_42p1.jpg -> salah prediksi ke 2000 (harusnya tidak terjadi)
+```
+
+#### Format isi gambar
+
+**Navigasi:** gambar asli + bounding box berwarna per kelas + label confidence di atas box
++ watermark jumlah deteksi dan epoch di bagian bawah.
+
+**Uang:** gambar asli + panel di bawah berisi status (hijau = benar, merah = salah,
+kuning = uncertain) + bar chart probabilitas semua 7 kelas.
+
+#### Exit code
+
+```
+0 -> semua pass atau uncertain (aman)
+1 -> ada navigasi fail atau uang salah ketika confident
+```
