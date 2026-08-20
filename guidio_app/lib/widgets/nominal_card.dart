@@ -53,20 +53,17 @@ String formatRupiah(int amount) {
 /// `display` 56sp dipakai. Nominal WAJIB dua bentuk (angka + kata), dan
 /// tidak pernah ditampilkan saat keyakinan rendah — pemanggil bertanggung
 /// jawab tidak me-render kartu ini pada kondisi itu.
+///
+/// Kartu ini hanya menampilkan **satu nominal**: lembar yang sedang dihadapi
+/// kamera. Tidak ada rincian lembar dan tidak ada total berjalan — mode ini
+/// tidak menjumlahkan apa pun.
 class NominalCard extends StatelessWidget {
   final int amount;
-  /// Rincian per lembar, mis. {20000: 2, 5000: 1} — opsional, untuk
-  /// UG-09b "beberapa lembar berbeda".
-  final Map<int, int>? breakdown;
-  /// Total berjalan (UG-11 "lembar berturut-turut") — opsional.
-  final int? runningTotal;
   final VoidCallback? onReplay;
 
   const NominalCard({
     super.key,
     required this.amount,
-    this.breakdown,
-    this.runningTotal,
     this.onReplay,
   });
 
@@ -106,29 +103,6 @@ class NominalCard extends StatelessWidget {
                 style: AppTypography.title(color: AppColors.ink2),
               ),
             ),
-            if (breakdown != null && breakdown!.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.s3),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: AppSpacing.s2,
-                runSpacing: 4,
-                children: breakdown!.entries
-                    .map((e) => Text(
-                          '${e.value} × ${formatRupiah(e.key)}',
-                          style: AppTypography.metricMono(color: AppColors.ink2),
-                        ))
-                    .toList(),
-              ),
-            ],
-            if (runningTotal != null) ...[
-              const SizedBox(height: AppSpacing.s3),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s3, vertical: 6),
-                decoration: const BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.pillShape),
-                child: Text('Total: ${formatRupiah(runningTotal!)}',
-                    style: AppTypography.label().copyWith(fontSize: 14)),
-              ),
-            ],
             if (onReplay != null) ...[
               const SizedBox(height: AppSpacing.s4),
               Semantics(

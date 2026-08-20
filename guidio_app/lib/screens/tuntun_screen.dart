@@ -313,9 +313,9 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       _updateGhosts(dets);
     }
 
-    // Tawaran lampu. Perhatikan: ini HANYA mengatur tampil/tidaknya slot —
-    // deteksi tetap berjalan saat gelap, dan "Lewati" tidak mematikannya.
-    final isDark = cam.isDark && !cam.isTorchOn && !cam.darkDismissed && _hasCameraPermission;
+    // Tawaran / kontrol lampu. Perhatikan: slot tampil saat gelap ATAU saat lampu sedang menyala,
+    // supaya pengguna bisa mematikan lampu kapan saja.
+    final showTorchSlot = _hasCameraPermission && (cam.isTorchOn || (cam.isDark && !cam.darkDismissed));
 
     final banner = _resolveBanner(global, cam);
     final hasBanner = banner != null;
@@ -357,33 +357,44 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
               onAction: _requestCameraPermission,
             )
           else if (!warmingUp)
-            ..._buildDetectionZone(context, bottomInset, dets, cam, isDark),
+            ..._buildDetectionZone(context, bottomInset, dets, cam, showTorchSlot),
 
-          // ContextualActionSlot — tawaran nyalakan lampu saat gelap.
+          // ContextualActionSlot — tawaran / kontrol lampu senter.
           // Selalu di posisi yang sama: tepat di atas BottomActionBar.
-          if (isDark)
+          if (showTorchSlot)
             Positioned(
               left: 0, right: 0,
               bottom: bottomInset + AppSizes.bottomActionBarHeight,
               child: ContextualActionSlot(
-                message: 'Sekitar gelap — perlu nyalakan lampu?',
-                primaryLabel: 'Nyalakan Lampu',
-                primaryIcon: Icons.flashlight_on_rounded,
+                message: cam.isTorchOn
+                    ? 'Lampu senter menyala'
+                    : 'Sekitar gelap — perlu nyalakan lampu?',
+                primaryLabel: cam.isTorchOn ? 'Matikan Lampu' : 'Nyalakan Lampu',
+                primaryIcon: cam.isTorchOn
+                    ? Icons.flashlight_off_rounded
+                    : Icons.flashlight_on_rounded,
                 onPrimary: () {
-                  cam.setTorch(true);
-                  TtsQueue().speak('Lampu dinyalakan.', tier: SpeechTier.info);
+                  if (cam.isTorchOn) {
+                    cam.setTorch(false);
+                    TtsQueue().speak('Lampu dimatikan.', tier: SpeechTier.info);
+                  } else {
+                    cam.setTorch(true);
+                    TtsQueue().speak('Lampu dinyalakan.', tier: SpeechTier.info);
+                  }
                 },
                 secondaryLabel: 'Lewati',
                 secondaryIcon: Icons.close_rounded,
                 onSecondary: () {
-                  // Hanya menyembunyikan tawaran. Deteksi tetap jalan, dan
-                  // peringatan gelap berkala tetap terdengar — pengguna berhak
-                  // tahu penglihatan aplikasi sedang terbatas.
-                  cam.dismissDarkOffer();
-                  TtsQueue().speak(
-                    'Baik, lampu tidak dinyalakan. Deteksi tetap berjalan.',
-                    tier: SpeechTier.info,
-                  );
+                  if (cam.isTorchOn) {
+                    cam.setTorch(false);
+                    TtsQueue().speak('Lampu dimatikan.', tier: SpeechTier.info);
+                  } else {
+                    cam.dismissDarkOffer();
+                    TtsQueue().speak(
+                      'Baik, lampu tidak dinyalakan. Deteksi tetap berjalan.',
+                      tier: SpeechTier.info,
+                    );
+                  }
                 },
               ),
             ),
@@ -423,10 +434,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     return null;
   }
 
-  List<Widget> _buildDetectionZone(BuildContext context, double bottomInset, List<Detection> dets, CameraProvider cam, bool isDark) {
+  List<Widget> _buildDetectionZone(BuildContext context, double bottomInset, List<Detection> dets, CameraProvider cam, bool showTorchSlot) {
     final widgets = <Widget>[];
     // Jika slot lampu aktif, geser semua kartu ke atas sejumlah tinggi slot.
-    final slotExtra = isDark ? ContextualActionSlot.slotHeightWithMsg : 0.0;
+    final slotExtra = showTorchSlot ? ContextualActionSlot.slotHeightWithMsg : 0.0;
 
     if (_debugOverride == 'DO-21') {
       widgets.add(_bottomSlot(bottomInset, const AlertCard(

@@ -25,8 +25,8 @@ class MoneyScreen extends StatefulWidget {
 /// dan UG-12a/UG-12b apa adanya, supaya panel debug bisa menunjukkan kedua
 /// varian secara terpisah (mis. UG-09b: campuran Rp20.000×2 + Rp5.000×1).
 enum MoneyDebugState {
-  ug01, ug02, ug03, ug04, ug05, ug06, ug07, ug08, ug09a, ug09b,
-  ug10, ug11, ug12a, ug12b, ug13, ug14, ug15, ug16, ug17, ug18,
+  ug01, ug02, ug03, ug04, ug05, ug06, ug07, ug08,
+  ug10, ug12a, ug12b, ug13, ug14, ug15, ug16, ug18,
 }
 
 extension _DebugMeta on MoneyDebugState {
@@ -35,12 +35,11 @@ extension _DebugMeta on MoneyDebugState {
         MoneyDebugState.ug03 => 'UG-03', MoneyDebugState.ug04 => 'UG-04',
         MoneyDebugState.ug05 => 'UG-05', MoneyDebugState.ug06 => 'UG-06',
         MoneyDebugState.ug07 => 'UG-07', MoneyDebugState.ug08 => 'UG-08',
-        MoneyDebugState.ug09a => 'UG-09a', MoneyDebugState.ug09b => 'UG-09b',
-        MoneyDebugState.ug10 => 'UG-10', MoneyDebugState.ug11 => 'UG-11',
+        MoneyDebugState.ug10 => 'UG-10',
         MoneyDebugState.ug12a => 'UG-12a', MoneyDebugState.ug12b => 'UG-12b',
         MoneyDebugState.ug13 => 'UG-13', MoneyDebugState.ug14 => 'UG-14',
         MoneyDebugState.ug15 => 'UG-15', MoneyDebugState.ug16 => 'UG-16',
-        MoneyDebugState.ug17 => 'UG-17', MoneyDebugState.ug18 => 'UG-18',
+        MoneyDebugState.ug18 => 'UG-18',
       };
 
   String get title => switch (this) {
@@ -52,17 +51,13 @@ extension _DebugMeta on MoneyDebugState {
         MoneyDebugState.ug06 => 'Ragu',
         MoneyDebugState.ug07 => 'Bukan uang',
         MoneyDebugState.ug08 => 'Tidak terdeteksi (5 detik)',
-        MoneyDebugState.ug09a => 'Beberapa lembar sama (2×Rp20.000)',
-        MoneyDebugState.ug09b => 'Beberapa lembar berbeda (Rp20.000×2 + Rp5.000×1)',
         MoneyDebugState.ug10 => 'Terlipat / terpotong',
-        MoneyDebugState.ug11 => 'Lembar berturut-turut (total berjalan)',
         MoneyDebugState.ug12a => 'Silau',
         MoneyDebugState.ug12b => 'Gelap',
         MoneyDebugState.ug13 => 'Offline',
         MoneyDebugState.ug14 => 'Izin kamera belum ada',
         MoneyDebugState.ug15 => 'Senyap / TTS mati',
         MoneyDebugState.ug16 => 'Font scale 200%',
-        MoneyDebugState.ug17 => 'Total direset',
         MoneyDebugState.ug18 => 'Uang asing / rusak',
       };
 }
@@ -476,22 +471,6 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         return const _RenderSpec(frame: FrameFit.fit, badgeBusy: true);
       case MoneyState.detected:
         return _RenderSpec(card: NominalCard(amount: p.lastAmount, onReplay: () => _replay(p.lastAmount)));
-      case MoneyState.multiple:
-        return _RenderSpec(
-          card: NominalCard(
-            amount: p.sessionTotal,
-            breakdown: p.sessionBreakdown,
-            onReplay: () => _replay(p.sessionTotal),
-          ),
-        );
-      case MoneyState.consecutive:
-        return _RenderSpec(
-          card: NominalCard(
-            amount: p.lastAmount,
-            runningTotal: p.sessionTotal,
-            onReplay: () => _replay(p.lastAmount),
-          ),
-        );
       case MoneyState.uncertain:
         return const _RenderSpec(
           frame: FrameFit.fit,
@@ -517,14 +496,6 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             tier: AlertTier.warning,
             title: 'Uang asing atau rusak',
             description: 'Belum bisa membaca nilainya. Nilai tukar tidak ditebak.',
-          ),
-        );
-      case MoneyState.resetAnnounce:
-        return _RenderSpec(
-          card: AlertCard(
-            tier: AlertTier.info,
-            title: 'Total direset',
-            description: 'Total ${formatRupiah(p.resetAnnounceTotal)} sudah selesai dihitung.',
           ),
         );
     }
@@ -560,26 +531,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         );
       case MoneyDebugState.ug08:
         return const _RenderSpec(frame: FrameFit.empty, pillOverride: 'Cari tempat yang lebih terang');
-      case MoneyDebugState.ug09a:
-        return _RenderSpec(
-          card: NominalCard(amount: 40000, breakdown: const {20000: 2}, onReplay: () => _replay(40000)),
-        );
-      case MoneyDebugState.ug09b:
-        return _RenderSpec(
-          card: NominalCard(
-            amount: 45000,
-            breakdown: const {20000: 2, 5000: 1},
-            onReplay: () => _replay(45000),
-          ),
-        );
       case MoneyDebugState.ug10:
         return const _RenderSpec(
           frame: FrameFit.tooClose,
           pillOverride: 'Ratakan uang, ada bagian di luar bingkai',
-        );
-      case MoneyDebugState.ug11:
-        return _RenderSpec(
-          card: NominalCard(amount: 10000, runningTotal: 60000, onReplay: () => _replay(10000)),
         );
       case MoneyDebugState.ug12a:
         return const _RenderSpec(frame: FrameFit.fit, pillOverride: 'Miringkan sedikit');
@@ -602,18 +557,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       case MoneyDebugState.ug15:
         return _RenderSpec(
           card: NominalCard(amount: 25000, onReplay: () => _replay(25000)),
-          note: 'TTS senyap: kartu bertahan sampai lembar berikutnya, getar 3× pendek menandai deteksi.',
+          note: 'TTS senyap: kartu bertahan sampai deteksi berikutnya, getar 3× pendek menandai deteksi.',
         );
       case MoneyDebugState.ug16:
         return _RenderSpec(card: NominalCard(amount: 75000, onReplay: () => _replay(75000)));
-      case MoneyDebugState.ug17:
-        return const _RenderSpec(
-          card: AlertCard(
-            tier: AlertTier.info,
-            title: 'Total direset',
-            description: 'Total Rp95.000 sudah selesai dihitung.',
-          ),
-        );
       case MoneyDebugState.ug18:
         return const _RenderSpec(
           frame: FrameFit.empty,
