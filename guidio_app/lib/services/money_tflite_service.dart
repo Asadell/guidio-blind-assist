@@ -77,22 +77,39 @@ class MoneyTFLiteService {
   /// Model dilatih pada dataset gabungan Emisi 2016 & 2022 (7 pecahan lengkap).
   static const List<int> unsupportedValues = [];
 
+  /// Inferensi dijalankan lewat [IsolateInterpreter], bukan [Interpreter]
+  /// langsung, supaya tidak menahan thread UI.
+  ///
+  /// Ini penting bukan karena alasan estetika. Antrean suara dijadwalkan dari
+  /// thread yang sama, jadi setiap milidetik yang dihabiskan interpreter di
+  /// thread UI muncul sebagai TTS yang tersendat. Untuk pengguna tunanetra,
+  /// suara yang patah-patah lebih merusak daripada gambar yang patah-patah,
+  /// karena suara itulah satu-satunya keluaran yang mereka pakai.
+  ///
+  /// Tiga service inferensi lain di aplikasi ini (`tflite_service`,
+  /// `yolo_navigasi_service`, `pidnet_service`) sudah memakai pola ini.
+  /// Service uang tertinggal, dan itu tidak disengaja.
+  IsolateInterpreter? _isolate;
   Interpreter? _interpreter;
   bool _loading = false;
 
-  bool get isReady => _interpreter != null;
+  bool get isReady => _isolate != null;
 
   Future<bool> load() async {
-    if (_interpreter != null || _loading) return _interpreter != null;
+    if (_isolate != null || _loading) return _isolate != null;
     _loading = true;
     try {
       final options = InterpreterOptions()..threads = 2;
       _interpreter = await Interpreter.fromAsset(_modelAsset, options: options);
+      _isolate = await IsolateInterpreter.create(
+        address: _interpreter!.address,
+      );
       debugPrint('[MoneyTFLite] Model siap: $_modelAsset');
       return true;
     } catch (e) {
       debugPrint('[MoneyTFLite] Gagal memuat model: $e');
       _interpreter = null;
+      _isolate = null;
       return false;
     } finally {
       _loading = false;
@@ -100,6 +117,8 @@ class MoneyTFLiteService {
   }
 
   void dispose() {
+    _isolate?.close();
+    _isolate = null;
     _interpreter?.close();
     _interpreter = null;
   }
@@ -113,7 +132,7 @@ class MoneyTFLiteService {
     CameraImage image, {
     double cropRatio = 0.7,
   }) async {
-    if (_interpreter == null) {
+    if (_isolate == null) {
       return const MoneyResult.unavailable();
     }
     try {
@@ -131,7 +150,7 @@ class MoneyTFLiteService {
           cropRatio: cropRatio,
         ),
       );
-      return _runInference(input);
+      return await _runInference(input);
     } catch (e) {
       debugPrint('[MoneyTFLite] classifyCameraImage error: $e');
       return const MoneyResult.failure('Gagal membaca gambar. Coba lagi.');
@@ -140,22 +159,40 @@ class MoneyTFLiteService {
 
   /// Klasifikasi dari JPEG (dipakai tombol "paksa deteksi ulang").
   Future<MoneyResult> classifyJpeg(Uint8List jpegBytes, {double cropRatio = 0.7}) async {
-    if (_interpreter == null) return const MoneyResult.unavailable();
+    if (_isolate == null) return const MoneyResult.unavailable();
     try {
       final input = await compute(
         _prepareJpeg,
         _JpegArgs(bytes: jpegBytes, cropRatio: cropRatio),
       );
-      return _runInference(input);
+      return await _runInference(input);
     } catch (e) {
       debugPrint('[MoneyTFLite] classifyJpeg error: $e');
       return const MoneyResult.failure('Gagal membaca gambar. Coba lagi.');
     }
   }
 
-  MoneyResult _runInference(List<List<List<List<double>>>> input) {
+  Future<MoneyResult> _runInference(Float32List input) async {
     final output = List.generate(1, (_) => List<double>.filled(classValues.length, 0));
-    _interpreter!.run(input, output);
+
+    // Tensor dikirim sebagai VIEW Uint8List di atas buffer Float32List yang
+    // sama, bukan sebagai Float32List itu sendiri. Tidak ada penyalinan: yang
+    // berubah cuma tipe statis yang dilihat tflite_flutter.
+    //
+    // Alasannya ada di `Tensor.getInputShapeIfDifferent`, yang hanya
+    // mengecualikan `ByteBuffer` dan `Uint8List` dari penyimpulan bentuk.
+    // Buffer datar bertipe lain akan disimpulkan berbentuk [150528], lalu
+    // tensor masukan di-resize dan model gagal: "Node number 108 (CONV_2D)
+    // failed to prepare".
+    //
+    // Yang berbahaya: lewat IsolateInterpreter kegagalan itu TIDAK melempar
+    // apa pun. Tensor keluaran cuma tidak pernah ditulis, jadi `output` tetap
+    // berisi nol dan setiap pecahan terbaca sebagai Rp1.000 dengan keyakinan
+    // 0%. Persis jenis kegagalan diam-diam yang membuat mode uang berbahaya.
+    await _isolate!.runForMultipleInputs(
+      [input.buffer.asUint8List()],
+      {0: output},
+    );
     final probs = output[0];
 
     var bestIndex = 0;
@@ -274,7 +311,11 @@ class _JpegArgs {
 
 const int _size = MoneyTFLiteService._inputSize;
 
-/// Nilai piksel untuk area padding, SETELAH normalisasi.
+/// Nilai piksel untuk area bantalan, SETELAH normalisasi.
+///
+/// Dipakai lewat `Float32List.fillRange` sebelum kotak gambar ditimpa.
+/// Float32List lahir berisi 0,0, jadi langkah pengisian itu tidak bisa
+/// dilewati: 0,0 berarti abu-abu tengah, bukan hitam.
 ///
 /// Training memakai `tf.image.resize_with_pad`, yang mengisi bantalan dengan
 /// 0 pada rentang mentah [0,255]. Setelah `x/127.5 - 1` itu jadi -1,0. Nilai
@@ -332,43 +373,54 @@ class _Letterbox {
 /// Kesalahan seperti ini tidak memunculkan error apa pun. Interpreter tetap
 /// menerima tensornya, hanya prediksinya yang diam-diam memburuk - dan di
 /// mode uang itu berarti nominal keliru dibacakan ke pengguna tunanetra.
-List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
+Float32List _prepareInput(_PrepareArgs a) {
+  final out = Float32List(_size * _size * 3);
   final cropW = math.max(1, (a.width * a.cropRatio).round());
   final cropH = math.max(1, (a.height * a.cropRatio).round());
   final offsetX = (a.width - cropW) ~/ 2;
   final offsetY = (a.height - cropH) ~/ 2;
 
   final lb = _Letterbox(cropW, cropH);
-  final pad = List<double>.filled(3, _padValue, growable: false);
+  final yLen = a.yPlane.length;
+  final uLen = a.uPlane.length;
+  final vLen = a.vPlane.length;
 
-  return [
-    List.generate(_size, (ty) {
-      return List.generate(_size, (tx) {
-        if (!lb.contains(tx, ty)) return pad;
+  // Bantalan diisi lebih dulu, lalu hanya kotak dalamnya yang ditimpa.
+  // Float32List lahir berisi 0,0 dan bantalan harus -1,0, jadi pengisian
+  // ini wajib; melewatkannya memberi model bingkai abu-abu yang tidak
+  // pernah dilihatnya saat training.
+  out.fillRange(0, out.length, _padValue);
 
-        final sy = offsetY + lb.srcY(ty).clamp(0, cropH - 1);
-        final sx = offsetX + lb.srcX(tx).clamp(0, cropW - 1);
+  var o = (lb.padY * _size + lb.padX) * 3;
+  final rowSkip = (_size - lb.dstW) * 3;
 
-        final yIdx = sy * a.yRowStride + sx;
-        final uvIdx = (sy ~/ 2) * a.uvRowStride + (sx ~/ 2) * a.uvPixelStride;
+  for (int ty = 0; ty < lb.dstH; ty++) {
+    final sy = offsetY + (ty / lb.scale).floor().clamp(0, cropH - 1);
+    final yRow = sy * a.yRowStride;
+    final uvRow = (sy >> 1) * a.uvRowStride;
 
-        final yVal = yIdx < a.yPlane.length ? a.yPlane[yIdx] & 0xFF : 0;
-        final uVal = uvIdx < a.uPlane.length ? (a.uPlane[uvIdx] & 0xFF) - 128 : 0;
-        final vVal = uvIdx < a.vPlane.length ? (a.vPlane[uvIdx] & 0xFF) - 128 : 0;
+    for (int tx = 0; tx < lb.dstW; tx++) {
+      final sx = offsetX + (tx / lb.scale).floor().clamp(0, cropW - 1);
 
-        final r = (yVal + 1.402 * vVal).clamp(0, 255).toDouble();
-        final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toDouble();
-        final b = (yVal + 1.772 * uVal).clamp(0, 255).toDouble();
+      final yIdx = yRow + sx;
+      final uvIdx = uvRow + (sx >> 1) * a.uvPixelStride;
 
-        // Normalisasi ke [-1, 1] - preprocessing mobilenet_v2 TIDAK ada di
-        // dalam graf model ini, jadi harus dikerjakan di sini.
-        return [r / 127.5 - 1.0, g / 127.5 - 1.0, b / 127.5 - 1.0];
-      });
-    }),
-  ];
+      final yVal = yIdx < yLen ? a.yPlane[yIdx] & 0xFF : 0;
+      final uVal = (uvIdx < uLen ? a.uPlane[uvIdx] & 0xFF : 128) - 128;
+      final vVal = (uvIdx < vLen ? a.vPlane[uvIdx] & 0xFF : 128) - 128;
+
+      // Normalisasi ke [-1, 1]. Praproses mobilenet_v2 TIDAK ada di dalam
+      // graf model ini, jadi harus dikerjakan di sini.
+      out[o++] = ((yVal + 1.402 * vVal).clamp(0, 255)) / 127.5 - 1.0;
+      out[o++] = ((yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255)) / 127.5 - 1.0;
+      out[o++] = ((yVal + 1.772 * uVal).clamp(0, 255)) / 127.5 - 1.0;
+    }
+    o += rowSkip;
+  }
+  return out;
 }
 
-List<List<List<List<double>>>> _prepareJpeg(_JpegArgs a) {
+Float32List _prepareJpeg(_JpegArgs a) {
   final decoded = img.decodeImage(a.bytes);
   if (decoded == null) {
     throw StateError('JPEG tidak bisa dibaca');
@@ -402,18 +454,20 @@ List<List<List<List<double>>>> _prepareJpeg(_JpegArgs a) {
     height: lb.dstH,
     interpolation: img.Interpolation.linear,
   );
-  final pad = List<double>.filled(3, _padValue, growable: false);
+  final out = Float32List(_size * _size * 3);
+  out.fillRange(0, out.length, _padValue);
 
-  return [
-    List.generate(_size, (y) {
-      return List.generate(_size, (x) {
-        if (!lb.contains(x, y)) return pad;
-        final p = resized.getPixel(
-          (x - lb.padX).clamp(0, lb.dstW - 1),
-          (y - lb.padY).clamp(0, lb.dstH - 1),
-        );
-        return [p.r / 127.5 - 1.0, p.g / 127.5 - 1.0, p.b / 127.5 - 1.0];
-      });
-    }),
-  ];
+  var o = (lb.padY * _size + lb.padX) * 3;
+  final rowSkip = (_size - lb.dstW) * 3;
+
+  for (int y = 0; y < lb.dstH; y++) {
+    for (int x = 0; x < lb.dstW; x++) {
+      final p = resized.getPixel(x, y);
+      out[o++] = p.r / 127.5 - 1.0;
+      out[o++] = p.g / 127.5 - 1.0;
+      out[o++] = p.b / 127.5 - 1.0;
+    }
+    o += rowSkip;
+  }
+  return out;
 }

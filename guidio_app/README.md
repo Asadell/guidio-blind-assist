@@ -173,6 +173,73 @@ berarti kerugian uang nyata.
 
 ---
 
+### Anggaran kinerja dan RAM
+
+Target perangkat: RAM 3 sampai 4 GB. Di kelas itu yang membunuh kelancaran
+bukan kecepatan CPU, melainkan **tekanan garbage collector**. Setiap alokasi
+besar yang berulang memicu GC pause, dan karena antrean suara dijadwalkan dari
+thread UI, GC pause muncul sebagai TTS yang tersendat. Bagi pengguna tunanetra
+suara yang patah lebih merusak daripada gambar yang patah.
+
+Empat jalur inferensi kini memakai pola yang sama:
+
+| Service | Buffer masukan | Interpreter |
+|---|---|---|
+| `tflite_service` (SSD rintangan) | `Uint8List` datar | `IsolateInterpreter` |
+| `yolo_navigasi_service` | datar | `IsolateInterpreter` |
+| `pidnet_service` | datar | `IsolateInterpreter` |
+| `money_tflite_service` | `Float32List` datar | `IsolateInterpreter` |
+
+Service uang adalah yang terakhir menyusul. Sebelumnya ia membangun
+`List<List<List<List<double>>>>`, yaitu **50.401 objek List dan 150.528 double
+ter-boxing** per inferensi, sekitar 3,8 MB sampah heap. Semua itu juga harus
+diserialisasi melewati port isolate `compute()`. Sekarang: satu `Float32List`
+602.112 byte, sekali alokasi, transfer nyaris gratis. Inferensinya juga pindah
+dari thread UI ke `IsolateInterpreter`.
+
+Hasil inferensi diverifikasi tidak berubah sedikit pun oleh
+`test/money_pipeline_test.dart`: kelima fixture menghasilkan keyakinan yang
+sama persis sebelum dan sesudah perubahan.
+
+#### Jebakan yang ditemukan saat mengerjakannya
+
+`Tensor.getInputShapeIfDifferent` di `tflite_flutter` hanya mengecualikan
+`ByteBuffer` dan `Uint8List` dari penyimpulan bentuk. Buffer datar bertipe lain,
+termasuk `Float32List`, akan disimpulkan berbentuk `[150528]`, lalu tensor
+masukan di-resize dan model gagal dengan
+`Node number 108 (CONV_2D) failed to prepare`.
+
+Lewat `IsolateInterpreter`, kegagalan itu **tidak melempar apa pun**. Tensor
+keluaran cuma tidak pernah ditulis, jadi hasilnya nol semua dan setiap pecahan
+terbaca Rp1.000 dengan keyakinan 0%. Karena itu tensor dikirim sebagai view
+`Uint8List` di atas buffer `Float32List` yang sama, tanpa penyalinan.
+
+Jenis kegagalan seperti ini yang membuat suite uji wajib punya assertion keras,
+bukan `if (detected) { ... }`.
+
+### Kesiapan Play Store (.aab)
+
+| Syarat | Status |
+|---|---|
+| `targetSdk` 35 atau lebih (wajib sejak Agustus 2025) | 36 |
+| `minSdk` | 26 |
+| Alignment halaman 16 KB untuk pustaka native (wajib untuk target Android 15+) | Semua `.so` arm64 sudah `0x4000` atau `0x10000` |
+| NDK | r28 (`28.2.13676358`), 16 KB by default |
+| `blobs/libtensorflowlite_c-linux.so` ikut ke bundle? | **Tidak.** Ia pustaka desktop untuk `flutter test`, tidak terdaftar di `pubspec.yaml` bagian assets |
+| Model tak terpakai ikut ke APK? | Tidak. Assets disebut satu per satu, bukan `- assets/models/` |
+
+Verifikasi ulang alignment kapan saja:
+
+```bash
+for so in $(find build -path "*arm64-v8a*" -name "*.so"); do
+  echo "$(basename $so) $(readelf -lW $so | awk '/LOAD/{print $NF}' | sort -u | tr '\n' ' ')"
+done
+```
+
+Nilai apa pun di bawah `0x4000` akan ditolak Play Store untuk target Android 15+.
+
+---
+
 ## 4. Intent parsing lokal: CommandParser
 
 `lib/core/voice/command_parser.dart`
