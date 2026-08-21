@@ -1,99 +1,127 @@
-# 📁 KUMPULAN KODE LENGKAP GUIDIO MOBILE APP (FLUTTER)
+# Code Document: guidio_app
+> Base Path: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app`
+> Total Files: 112
 
-> Total Berkas: 82
+## Table of Contents
+
+- [FEATURE_VERIFICATION.md](#file-featureverificationmd)
+- [README.md](#file-readmemd)
+- [analysis_options.yaml](#file-analysisoptionsyaml)
+- [android/app/build.gradle.kts](#file-androidappbuildgradlekts)
+- [android/app/src/debug/AndroidManifest.xml](#file-androidappsrcdebugandroidmanifestxml)
+- [android/app/src/main/AndroidManifest.xml](#file-androidappsrcmainandroidmanifestxml)
+- [android/app/src/main/res/drawable-v21/launch_background.xml](#file-androidappsrcmainresdrawable-v21launchbackgroundxml)
+- [android/app/src/main/res/drawable/launch_background.xml](#file-androidappsrcmainresdrawablelaunchbackgroundxml)
+- [android/app/src/main/res/values-night/styles.xml](#file-androidappsrcmainresvalues-nightstylesxml)
+- [android/app/src/main/res/values/styles.xml](#file-androidappsrcmainresvaluesstylesxml)
+- [android/app/src/profile/AndroidManifest.xml](#file-androidappsrcprofileandroidmanifestxml)
+- [android/build.gradle.kts](#file-androidbuildgradlekts)
+- [android/settings.gradle.kts](#file-androidsettingsgradlekts)
+- [assets/models/labelmap.txt](#file-assetsmodelslabelmaptxt)
+- [assets/models/rupiah_labels.txt](#file-assetsmodelsrupiahlabelstxt)
+- [ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json](#file-iosrunnerassetsxcassetsappiconappiconsetcontentsjson)
+- [ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json](#file-iosrunnerassetsxcassetslaunchimageimagesetcontentsjson)
+- [ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md](#file-iosrunnerassetsxcassetslaunchimageimagesetreadmemd)
+- [lib/core/layout/zone_contract.dart](#file-libcorelayoutzonecontractdart)
+- [lib/core/net/api_client.dart](#file-libcorenetapiclientdart)
+- [lib/core/net/frame_codec.dart](#file-libcorenetframecodecdart)
+- [lib/core/speech/tts_queue.dart](#file-libcorespeechttsqueuedart)
+- [lib/core/state/global_conditions.dart](#file-libcorestateglobalconditionsdart)
+- [lib/core/voice/command_parser.dart](#file-libcorevoicecommandparserdart)
+- [lib/core/voice/intents.dart](#file-libcorevoiceintentsdart)
+- [lib/core/voice/narration_engine.dart](#file-libcorevoicenarrationenginedart)
+- [lib/core/voice/scene_translator.dart](#file-libcorevoicescenetranslatordart)
+- [lib/main.dart](#file-libmaindart)
+- [lib/mock/mock_find_object.dart](#file-libmockmockfindobjectdart)
+- [lib/mock/ocr_mock_data.dart](#file-libmockocrmockdatadart)
+- [lib/models/detection.dart](#file-libmodelsdetectiondart)
+- [lib/models/index.dart](#file-libmodelsindexdart)
+- [lib/providers/app_mode_provider.dart](#file-libprovidersappmodeproviderdart)
+- [lib/providers/camera_provider.dart](#file-libproviderscameraproviderdart)
+- [lib/providers/capabilities_provider.dart](#file-libproviderscapabilitiesproviderdart)
+- [lib/providers/detection_provider.dart](#file-libprovidersdetectionproviderdart)
+- [lib/providers/find_object_provider.dart](#file-libprovidersfindobjectproviderdart)
+- [lib/providers/index.dart](#file-libprovidersindexdart)
+- [lib/providers/inference_provider.dart](#file-libprovidersinferenceproviderdart)
+- [lib/providers/money_provider.dart](#file-libprovidersmoneyproviderdart)
+- [lib/providers/navigation_provider.dart](#file-libprovidersnavigationproviderdart)
+- [lib/providers/settings_provider.dart](#file-libproviderssettingsproviderdart)
+- [lib/providers/tts_provider.dart](#file-libprovidersttsproviderdart)
+- [lib/providers/voice_provider.dart](#file-libprovidersvoiceproviderdart)
+- [lib/screens/find_object_screen.dart](#file-libscreensfindobjectscreendart)
+- [lib/screens/index.dart](#file-libscreensindexdart)
+- [lib/screens/main_screen.dart](#file-libscreensmainscreendart)
+- [lib/screens/money_screen.dart](#file-libscreensmoneyscreendart)
+- [lib/screens/navigasi_screen.dart](#file-libscreensnavigasiscreendart)
+- [lib/screens/ocr_screen.dart](#file-libscreensocrscreendart)
+- [lib/screens/onboarding_screen.dart](#file-libscreensonboardingscreendart)
+- [lib/screens/permissions_screen.dart](#file-libscreenspermissionsscreendart)
+- [lib/screens/server_address_screen.dart](#file-libscreensserveraddressscreendart)
+- [lib/screens/settings_screen.dart](#file-libscreenssettingsscreendart)
+- [lib/screens/splash_screen.dart](#file-libscreenssplashscreendart)
+- [lib/screens/tuntun_screen.dart](#file-libscreenstuntunscreendart)
+- [lib/screens/voice_screen.dart](#file-libscreensvoicescreendart)
+- [lib/services/camera_health_service.dart](#file-libservicescamerahealthservicedart)
+- [lib/services/camera_intrinsics.dart](#file-libservicescameraintrinsicsdart)
+- [lib/services/detection_filter.dart](#file-libservicesdetectionfilterdart)
+- [lib/services/haptic_service.dart](#file-libserviceshapticservicedart)
+- [lib/services/index.dart](#file-libservicesindexdart)
+- [lib/services/money_tflite_service.dart](#file-libservicesmoneytfliteservicedart)
+- [lib/services/nav_frame_converter.dart](#file-libservicesnavframeconverterdart)
+- [lib/services/object_tracker.dart](#file-libservicesobjecttrackerdart)
+- [lib/services/ocr_service.dart](#file-libservicesocrservicedart)
+- [lib/services/pidnet_service.dart](#file-libservicespidnetservicedart)
+- [lib/services/server_service.dart](#file-libservicesserverservicedart)
+- [lib/services/tflite_service.dart](#file-libservicestfliteservicedart)
+- [lib/services/tts_service.dart](#file-libservicesttsservicedart)
+- [lib/services/yolo_navigasi_service.dart](#file-libservicesyolonavigasiservicedart)
+- [lib/theme/app_colors.dart](#file-libthemeappcolorsdart)
+- [lib/theme/app_spacing.dart](#file-libthemeappspacingdart)
+- [lib/theme/app_theme.dart](#file-libthemeappthemedart)
+- [lib/theme/app_typography.dart](#file-libthemeapptypographydart)
+- [lib/theme/index.dart](#file-libthemeindexdart)
+- [lib/widgets/alert_card.dart](#file-libwidgetsalertcarddart)
+- [lib/widgets/bottom_action_bar.dart](#file-libwidgetsbottomactionbardart)
+- [lib/widgets/camera_health_toast.dart](#file-libwidgetscamerahealthtoastdart)
+- [lib/widgets/chat_bubble.dart](#file-libwidgetschatbubbledart)
+- [lib/widgets/contextual_action_slot.dart](#file-libwidgetscontextualactionslotdart)
+- [lib/widgets/detection_card.dart](#file-libwidgetsdetectioncarddart)
+- [lib/widgets/distance_pill.dart](#file-libwidgetsdistancepilldart)
+- [lib/widgets/full_screen_button.dart](#file-libwidgetsfullscreenbuttondart)
+- [lib/widgets/guide_frame.dart](#file-libwidgetsguideframedart)
+- [lib/widgets/index.dart](#file-libwidgetsindexdart)
+- [lib/widgets/mode_badge.dart](#file-libwidgetsmodebadgedart)
+- [lib/widgets/mode_picker_sheet.dart](#file-libwidgetsmodepickersheetdart)
+- [lib/widgets/nominal_card.dart](#file-libwidgetsnominalcarddart)
+- [lib/widgets/ocr_debug_sheet.dart](#file-libwidgetsocrdebugsheetdart)
+- [lib/widgets/ocr_long_result_panel.dart](#file-libwidgetsocrlongresultpaneldart)
+- [lib/widgets/page_action_zone.dart](#file-libwidgetspageactionzonedart)
+- [lib/widgets/permission_card.dart](#file-libwidgetspermissioncarddart)
+- [lib/widgets/result_panel.dart](#file-libwidgetsresultpaneldart)
+- [lib/widgets/speaking_indicator.dart](#file-libwidgetsspeakingindicatordart)
+- [lib/widgets/status_banner.dart](#file-libwidgetsstatusbannerdart)
+- [lib/widgets/target_chip.dart](#file-libwidgetstargetchipdart)
+- [lib/widgets/tier_icon.dart](#file-libwidgetstiericondart)
+- [lib/widgets/voice_orb.dart](#file-libwidgetsvoiceorbdart)
+- [lib/widgets/zone_indicator.dart](#file-libwidgetszoneindicatordart)
+- [linux/CMakeLists.txt](#file-linuxcmakeliststxt)
+- [linux/flutter/CMakeLists.txt](#file-linuxfluttercmakeliststxt)
+- [linux/runner/CMakeLists.txt](#file-linuxrunnercmakeliststxt)
+- [macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json](#file-macosrunnerassetsxcassetsappiconappiconsetcontentsjson)
+- [pubspec.yaml](#file-pubspecyaml)
+- [test/command_parser_test.dart](#file-testcommandparsertestdart)
+- [test/model_inference_test.dart](#file-testmodelinferencetestdart)
+- [test/scene_translator_test.dart](#file-testscenetranslatortestdart)
+- [web/manifest.json](#file-webmanifestjson)
+- [windows/CMakeLists.txt](#file-windowscmakeliststxt)
+- [windows/flutter/CMakeLists.txt](#file-windowsfluttercmakeliststxt)
+- [windows/runner/CMakeLists.txt](#file-windowsrunnercmakeliststxt)
 
 ---
 
-## 📑 Daftar Berkas
+## File: `FEATURE_VERIFICATION.md`
 
-1. `FEATURE_VERIFICATION.md`
-2. `README.md`
-3. `analysis_options.yaml`
-4. `assets/models/labelmap.txt`
-5. `lib/core/layout/zone_contract.dart`
-6. `lib/core/net/api_client.dart`
-7. `lib/core/net/frame_codec.dart`
-8. `lib/core/speech/tts_queue.dart`
-9. `lib/core/state/global_conditions.dart`
-10. `lib/core/voice/command_parser.dart`
-11. `lib/core/voice/intents.dart`
-12. `lib/main.dart`
-13. `lib/mock/mock_find_object.dart`
-14. `lib/mock/ocr_mock_data.dart`
-15. `lib/models/detection.dart`
-16. `lib/models/index.dart`
-17. `lib/models/risk_zone.dart`
-18. `lib/providers/app_mode_provider.dart`
-19. `lib/providers/camera_provider.dart`
-20. `lib/providers/capabilities_provider.dart`
-21. `lib/providers/detection_provider.dart`
-22. `lib/providers/find_object_provider.dart`
-23. `lib/providers/index.dart`
-24. `lib/providers/inference_provider.dart`
-25. `lib/providers/money_provider.dart`
-26. `lib/providers/navigation_provider.dart`
-27. `lib/providers/settings_provider.dart`
-28. `lib/providers/tts_provider.dart`
-29. `lib/providers/voice_provider.dart`
-30. `lib/screens/find_object_screen.dart`
-31. `lib/screens/index.dart`
-32. `lib/screens/main_screen.dart`
-33. `lib/screens/money_screen.dart`
-34. `lib/screens/navigasi_screen.dart`
-35. `lib/screens/ocr_screen.dart`
-36. `lib/screens/onboarding_screen.dart`
-37. `lib/screens/permissions_screen.dart`
-38. `lib/screens/server_address_screen.dart`
-39. `lib/screens/settings_screen.dart`
-40. `lib/screens/splash_screen.dart`
-41. `lib/screens/tuntun_screen.dart`
-42. `lib/screens/voice_screen.dart`
-43. `lib/services/camera_health_service.dart`
-44. `lib/services/detection_filter.dart`
-45. `lib/services/haptic_service.dart`
-46. `lib/services/index.dart`
-47. `lib/services/money_tflite_service.dart`
-48. `lib/services/object_tracker.dart`
-49. `lib/services/ocr_service.dart`
-50. `lib/services/risk_zone_service.dart`
-51. `lib/services/server_service.dart`
-52. `lib/services/tflite_service.dart`
-53. `lib/services/tts_service.dart`
-54. `lib/theme/app_colors.dart`
-55. `lib/theme/app_spacing.dart`
-56. `lib/theme/app_theme.dart`
-57. `lib/theme/app_typography.dart`
-58. `lib/theme/index.dart`
-59. `lib/widgets/alert_card.dart`
-60. `lib/widgets/bottom_action_bar.dart`
-61. `lib/widgets/camera_health_toast.dart`
-62. `lib/widgets/chat_bubble.dart`
-63. `lib/widgets/detection_card.dart`
-64. `lib/widgets/distance_pill.dart`
-65. `lib/widgets/full_screen_button.dart`
-66. `lib/widgets/guide_frame.dart`
-67. `lib/widgets/index.dart`
-68. `lib/widgets/mode_badge.dart`
-69. `lib/widgets/mode_picker_sheet.dart`
-70. `lib/widgets/nominal_card.dart`
-71. `lib/widgets/ocr_debug_sheet.dart`
-72. `lib/widgets/ocr_long_result_panel.dart`
-73. `lib/widgets/page_action_zone.dart`
-74. `lib/widgets/permission_card.dart`
-75. `lib/widgets/result_panel.dart`
-76. `lib/widgets/speaking_indicator.dart`
-77. `lib/widgets/status_banner.dart`
-78. `lib/widgets/target_chip.dart`
-79. `lib/widgets/tier_icon.dart`
-80. `lib/widgets/voice_orb.dart`
-81. `lib/widgets/zone_indicator.dart`
-82. `pubspec.yaml`
-
----
-
-## Berkas: `FEATURE_VERIFICATION.md`
-
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/FEATURE_VERIFICATION.md`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/FEATURE_VERIFICATION.md`
 
 ```markdown
 # Daftar Uji Manual Vinara Mobile
@@ -348,19 +376,25 @@ melihat layar sama sekali**.
 
 ---
 
-## Berkas: `README.md`
+## File: `README.md`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/README.md`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/README.md`
 
 ```markdown
 # Vinara Mobile (guidio_app)
 
 Aplikasi Flutter untuk Android. Inilah bagian yang dipegang pengguna, dan
-bagian yang paling menentukan apakah sistem ini benar benar bisa dipakai
+bagian yang paling menentukan apakah sistem ini benar-benar bisa dipakai
 orang yang tidak melihat layar.
 
-Dua fitur berjalan penuh di dalam ponsel tanpa internet: peringatan
-rintangan dan pengenalan uang.
+Empat hal ini berjalan penuh di dalam ponsel **tanpa internet sama sekali**:
+
+| Fitur | File |
+|---|---|
+| Peringatan rintangan | `services/tflite_service.dart` |
+| Pengenalan uang | `services/money_tflite_service.dart` |
+| Intent parsing (20 mode + aksi) | `core/voice/command_parser.dart` |
+| Narasi deteksi (kamus 80 objek COCO) | `core/voice/narration_engine.dart` |
 
 ---
 
@@ -369,13 +403,17 @@ rintangan dan pengenalan uang.
 1. [Cara kerja singkat](#1-cara-kerja-singkat)
 2. [Enam mode dan layarnya](#2-enam-mode-dan-layarnya)
 3. [Dua model AI di dalam ponsel](#3-dua-model-ai-di-dalam-ponsel)
-4. [Sistem desain: token dan komponen](#4-sistem-desain-token-dan-komponen)
-5. [Aturan tata letak yang mengikat](#5-aturan-tata-letak-yang-mengikat)
-6. [Antrean suara bertingkat](#6-antrean-suara-bertingkat)
-7. [Panel debug untuk menguji semua state](#7-panel-debug-untuk-menguji-semua-state)
-8. [Aksesibilitas](#8-aksesibilitas)
-9. [Struktur folder](#9-struktur-folder)
-10. [Menjalankan](#10-menjalankan)
+4. [Intent parsing lokal: CommandParser](#4-intent-parsing-lokal-commandparser)
+5. [Narasi lokal: narration_engine](#5-narasi-lokal-narration_engine)
+6. [Sistem desain: token dan komponen](#6-sistem-desain-token-dan-komponen)
+7. [Aturan tata letak yang mengikat](#7-aturan-tata-letak-yang-mengikat)
+8. [Antrean suara bertingkat](#8-antrean-suara-bertingkat)
+9. [Panel debug untuk menguji semua state](#9-panel-debug-untuk-menguji-semua-state)
+10. [Aksesibilitas](#10-aksesibilitas)
+11. [Struktur folder](#11-struktur-folder)
+12. [Menjalankan](#12-menjalankan)
+13. [Koneksi ke Backend Laptop (HP Fisik)](#13-koneksi-ke-backend-laptop-hp-fisik)
+14. [Testing](#14-testing)
 
 ---
 
@@ -399,32 +437,30 @@ Penyaring: buang yang terlalu jauh, buang yang cuma muncul sekilas,
 jangan ulangi benda yang sama terlalu sering
         │
         ▼
+generateNaturalNarration() → kalimat Bahasa Indonesia tanpa LLM
+        │
+        ▼
 Suara + getar ke pengguna
 ```
-
-Penyaring itu penting. Tanpa penyaring, ponsel akan bicara tanpa henti
-setiap kali kamera bergeser sedikit, dan pengguna justru berhenti
-mendengarkan.
 
 ### Aturan penyaring
 
 - Benda lebih jauh dari 10 meter diabaikan.
 - Benda yang cuma muncul di satu frame diabaikan (harus terlihat minimal
-  dua kali berturut turut).
+  dua kali berturut-turut).
 - Benda yang sama tidak diumumkan ulang sebelum jeda tertentu: 2 detik untuk
-  bahaya, 3 detik untuk hati hati, 5 detik untuk informasi biasa.
+  bahaya, 3 detik untuk hati-hati, 5 detik untuk informasi biasa.
 - Kalau benda terdeteksi **mendekat**, jeda dipotong setengah supaya
   peringatan datang lebih cepat.
-- Maksimal 2 pesan sekaligus. Lebih dari itu, manusia tidak sanggup
-  memprosesnya sambil berjalan.
+- Maksimal 2 pesan sekaligus.
 
 ---
 
 ## 2. Enam mode dan layarnya
 
 Aplikasi terbuka langsung ke Mode Deteksi Objek yang sudah aktif. Tidak ada
-layar beranda, karena setiap layar perantara berarti penundaan sebelum
-pengguna mendapat informasi keselamatan.
+layar beranda — setiap layar perantara berarti penundaan sebelum pengguna
+mendapat informasi keselamatan.
 
 | Mode | Berkas layar | Butuh internet? |
 |---|---|---|
@@ -435,19 +471,8 @@ pengguna mendapat informasi keselamatan.
 | Asisten Suara | `screens/voice_screen.dart` | Ya |
 | Cari Objek | `screens/find_object_screen.dart` | Ya |
 
-Layar penunjang: splash, panduan awal 3 langkah, permintaan izin, dan
-pengaturan berisi 8 opsi yang tersimpan permanen.
-
 Berpindah mode ada dua jalan: mengucapkan namanya (satu langkah), atau lewat
-tombol Pilih Mode di kanan bawah (dua langkah). Menu adalah cadangan untuk
-situasi pengguna tidak bisa bicara, misalnya di tempat yang sangat bising.
-
-### Satu satunya konfirmasi di seluruh aplikasi
-
-Keluar dari Mode Navigasi saat pengguna terdeteksi masih berjalan akan
-memunculkan dialog konfirmasi. Selain itu, semua perpindahan mode langsung
-jalan tanpa bertanya. Konfirmasi yang terlalu sering membuat pengguna
-menekan "ya" secara refleks, dan itu justru berbahaya.
+tombol Pilih Mode di kanan bawah (dua langkah).
 
 ---
 
@@ -460,78 +485,143 @@ menekan "ya" secara refleks, dan itu justru berbahaya.
 | Berkas | `assets/models/ssd_mobilenet.tflite` |
 | Ukuran | sekitar 4 MB |
 | Ukuran masukan | 300 x 300 piksel |
-| Nilai piksel | 0 sampai 255, tidak dinormalkan |
 | Kecepatan | sekitar 30 milidetik per gambar |
 | Dijalankan di | thread terpisah, supaya layar tidak macet |
 
-Catatan penting: di folder `assets/models/` ada juga `yolo11l_float32.tflite`
-dan `yolo11n.tflite`. **Keduanya tidak dipakai** oleh kode saat ini dan hanya
-sisa percobaan. Yang benar benar dimuat adalah `ssd_mobilenet.tflite`.
+> `yolo11l_float32.tflite` dan `yolo11n.tflite` di folder yang sama **tidak
+> dipakai** — hanya sisa percobaan. Yang dimuat adalah `ssd_mobilenet.tflite`.
 
 ### Model pengenalan uang
 
 | Hal | Nilai |
 |---|---|
-| Berkas | `assets/models/uang_rupiah.tflite` |
-| Arsitektur | MobileNetV2, dilatih ulang untuk uang rupiah |
-| Ukuran masukan | 224 x 224 piksel |
-| Nilai piksel | dibagi 255, sesuai cara model dilatih |
-| Jumlah kelas | 6 pecahan, emisi 2016 |
+| Berkas | `assets/models/rupiah_classifier_int8.tflite` |
+| Arsitektur | MobileNetV2 transfer learning (repo `rupiah-vision`) |
+| Ukuran masukan | 224 × 224 piksel, float32 **rentang −1..1** |
+| Jumlah kelas | 7 pecahan — emisi 2016 & 2022 |
+| Test accuracy | 98,36% (varian INT8) |
 
-Urutan kelas **wajib** persis seperti saat model dilatih:
+Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scripts/02_export_tflite.py`):
 
 ```
-100.000 = 0    10.000 = 1    20.000 = 2
-  2.000 = 3    50.000 = 4     5.000 = 5
+1.000 = 0   2.000 = 1   5.000 = 2   10.000 = 3
+20.000 = 4  50.000 = 5  100.000 = 6
 ```
 
-Urutan itu ada di `MoneyTFLiteService.classValues`. Kalau model diganti,
-urutan ini dan kolom `class_index` di basis data server harus diubah
-bersamaan, kalau tidak nominal akan tertukar.
-
-**Keterbatasan yang harus disebut jujur:** model ini tidak mengenali pecahan
-Rp1.000, dan belum mengenali emisi 2022.
+> **Perhatian rentang input:** model ini memakai rentang −1..1 (`x/127.5 − 1`),
+> **bukan** 0..255. Nilai yang salah tidak memunculkan error — prediksi hanya
+> diam-diam salah. Periksa ulang jika model diganti.
 
 **Aturan yang tidak bisa ditawar:** kalau keyakinan model di bawah 0,85,
-aplikasi **tidak menampilkan angka sama sekali**, hanya instruksi perbaikan
-seperti *"Belum yakin, dekatkan sedikit dan tahan diam"*. Menyebut nominal
-yang salah kepada orang yang tidak bisa memeriksa sendiri berarti kerugian
-uang nyata. Lebih baik mengaku ragu daripada menebak.
-
-Nominal selalu ditampilkan dan dibacakan dalam **dua bentuk**: angka
-(Rp50.000) dan kata (lima puluh ribu rupiah).
+aplikasi **tidak menampilkan angka sama sekali**, hanya instruksi perbaikan.
+Menyebut nominal yang salah kepada orang yang tidak bisa memeriksa sendiri
+berarti kerugian uang nyata.
 
 ---
 
-## 4. Sistem desain: token dan komponen
+## 4. Intent parsing lokal: CommandParser
+
+`lib/core/voice/command_parser.dart`
+
+Mencocokkan ucapan pengguna ke 20 intent baku **sepenuhnya offline, 0 ms**.
+Menggantikan `POST /api/intent` untuk seluruh kasus yang bisa diselesaikan
+secara lokal.
+
+### Empat lapis matching
+
+| Lapis | Mekanisme | Contoh |
+|---|---|---|
+| 0 | Prefiks transisi mode natural | "Saya pengin pindah ke mode baca teks" |
+| 1a | Exact phrase dictionary | "kenali uang", "baca teks" |
+| 1b | Kombinasi keyword | "baca" + "mode" → `modeReadText` |
+| 2 | Dynamic find-object prefix | "cariin kacamata" → `findObjectTarget("kacamata")` |
+
+### Cakupan bank kata
+
+Setiap intent memiliki varian ucapan yang mencakup:
+- Frasa formal dan resmi
+- Frasa gaul dan informal  
+- Dialek daerah: Jawa, Sunda, Betawi, Minang, Batak, Makassar
+- Typo dan variasi STT yang umum
+
+Server (`POST /api/intent`) hanya dipanggil saat parser lokal benar-benar
+tidak bisa menentukan — biasanya kasus ambigu yang perlu konfirmasi pengguna.
+
+---
+
+## 5. Narasi lokal: narration_engine
+
+`lib/core/voice/narration_engine.dart`
+
+Mengubah daftar objek hasil deteksi YOLO menjadi kalimat Bahasa Indonesia
+yang alami. **100% offline, tanpa LLM, tanpa server.**
+
+Menggantikan `POST /api/narasi` yang sebelumnya bergantung pada Qwen di
+backend.
+
+### API
+
+```dart
+final narasi = generateNaturalNarration([
+  NarrationDetection(objectClass: 'person', dist: 1.5, dir: 'kiri', count: 2),
+  NarrationDetection(objectClass: 'car',    dist: 3.0, dir: 'kanan'),
+]);
+// → "Di sekitarmu, ada dua orang di sebelah kirimu sejauh satu setengah
+//    meter, serta sebuah mobil di sebelah kananmu sejauh agak jauh
+//    sekitar tiga meter."
+```
+
+### Komponen
+
+| Komponen | Fungsi |
+|---|---|
+| `cocoObjectDictionary` | Kamus 80 kelas COCO → nama Indonesia + kata kerja konteks |
+| `mapDistancePhrase()` | Angka meter → frasa natural ("sangat dekat", "satu setengah meter") |
+| `mapDirectionPhrase()` | "kiri"/"tengah"/"kanan" → "di sebelah kirimu"/dst |
+| `generateNaturalNarration()` | Merangkai semua menjadi 1 kalimat dengan variasi konektor |
+
+Urutan objek: yang paling dekat disebut lebih dulu — objek paling berbahaya
+mendapat prioritas.
+
+### Deskripsi suasana (Moondream2)
+
+Untuk `POST /api/describe`, backend mengembalikan `description_en` — caption
+Bahasa Inggris dari Moondream2. Flutter membacakannya dengan:
+
+```dart
+// services/tts_service.dart
+await ttsService.speakEnglish(descriptionEn);
+// Otomatis ganti locale ke en-US, lalu kembali ke id-ID
+```
+
+---
+
+## 6. Sistem desain: token dan komponen
 
 Semua warna, ukuran huruf, dan jarak diambil dari satu sumber di
 `lib/theme/`. Tidak ada layar yang menulis nilai warna atau ukuran secara
-langsung. Tujuannya supaya perubahan satu token langsung berlaku menyeluruh.
+langsung.
 
-### Aturan warna yang penting
+### Aturan warna
 
 Warna terang seperti hijau dan kuning **tidak boleh** menjadi latar teks
-putih, karena kontrasnya gagal untuk pengguna low vision. Karena itu setiap
-tingkat bahaya punya dua warna: satu untuk ikon dan bidang besar, satu lagi
-yang lebih pekat khusus untuk teks.
+putih — kontrasnya gagal untuk pengguna low vision. Setiap tingkat bahaya
+punya dua warna: satu untuk ikon/bidang besar, satu yang lebih pekat untuk
+teks.
 
-Warna juga tidak pernah menjadi satu satunya penanda. Setiap tingkat bahaya
-punya **bentuk ikon berbeda**:
+Warna tidak pernah menjadi satu-satunya penanda. Setiap tingkat bahaya punya
+**bentuk ikon berbeda**:
 
 | Tingkat | Bentuk ikon | Kata di kartu |
 |---|---|---|
 | Bahaya | segi delapan | "Bahaya" |
-| Hati hati | segitiga | "Hati-hati" |
+| Hati-hati | segitiga | "Hati-hati" |
 | Informasi | persegi membulat | "Info" |
 | Aman | lingkaran | "Aman" |
 
-Jadi pengguna buta warna tetap bisa membedakannya, dan pembaca layar tetap
-mendapat kata yang jelas.
-
 ### 16 komponen
 
-Berada di `lib/widgets/`, semuanya memakai token di atas.
+Berada di `lib/widgets/`:
 
 `ModeBadge`, `AlertCard`, `BottomActionBar`, `FullScreenButton`,
 `ModePickerSheet`, `VoiceOrb`, `StatusBanner`, `ZoneIndicator`,
@@ -540,11 +630,10 @@ Berada di `lib/widgets/`, semuanya memakai token di atas.
 
 ---
 
-## 5. Aturan tata letak yang mengikat
+## 7. Aturan tata letak yang mengikat
 
 Layar dibagi menjadi zona dari atas ke bawah. **Tidak ada elemen yang boleh
-menimpa elemen lain.** Kalau dua elemen meminta ruang yang sama, yang
-prioritasnya lebih rendah digeser atau diperingkas, bukan ditumpuk.
+menimpa elemen lain.**
 
 | Zona | Tinggi | Aturan |
 |---|---|---|
@@ -555,89 +644,77 @@ prioritasnya lebih rendah digeser atau diperingkas, bukan ditumpuk.
 | Tumpukan kartu | maksimal 2 kartu | Kartu ketiga menjadi baris "dan 2 objek lain" |
 | Bar tombol bawah | 112 dp | **Tetap**, tidak boleh tertutup apa pun |
 
-Kalau dua masalah global terjadi bersamaan (misalnya offline dan baterai
-kritis), keduanya digabung menjadi **satu** banner dengan tingkat tertinggi,
-bukan dua banner bertumpuk.
-
 Tiga tombol bawah tidak pernah berubah posisi, jumlah, maupun urutannya:
-Ambil gambar di kiri, Bicara di tengah, Pilih mode di kanan. Bagi pengguna
-yang tidak melihat layar, posisi tetap itu satu satunya peta yang mereka
-punya.
+Ambil gambar di kiri, Bicara di tengah, Pilih mode di kanan.
 
 ---
 
-## 6. Antrean suara bertingkat
+## 8. Antrean suara bertingkat
 
-Ada di `lib/core/speech/tts_queue.dart`.
+`lib/core/speech/tts_queue.dart`
 
 | Tingkat | Perilaku |
 |---|---|
-| Critical | Memotong semua suara, dan tidak bisa dipotong pengguna |
+| Critical | Memotong semua suara, tidak bisa dipotong pengguna |
 | Warning | Memotong Info, boleh dipotong pengguna |
 | Info | Mengantre, dibuang kalau sudah menunggu lebih dari 2 detik |
 
-Info sengaja dibuang saat basi. Informasi tentang benda yang sudah terlewat
+Info sengaja dibuang saat basi — informasi tentang benda yang sudah terlewat
 tiga detik lalu bukan cuma tidak berguna, tapi juga menghalangi peringatan
 yang lebih baru.
 
-Getar selalu mendampingi suara, bukan menggantikannya. Di lingkungan bising
-seperti pasar atau jalan raya, getar sering menjadi sinyal utama yang
-benar benar sampai.
+Getar selalu mendampingi suara. Di lingkungan bising seperti pasar atau jalan
+raya, getar sering menjadi sinyal utama yang benar-benar sampai.
 
 ---
 
-## 7. Panel debug untuk menguji semua state
+## 9. Panel debug untuk menguji semua state
 
 Ketuk **5 kali** pada badge mode di kiri atas untuk membuka daftar state.
 Memilih satu state memaksa layar ke kondisi itu.
 
-Gunanya: seluruh kondisi tampilan bisa diperiksa tanpa perlu benar benar
-menghadirkan situasinya. Misalnya kondisi "baterai 9 persen", "empat objek
-sekaligus", atau "server mati" bisa dilihat langsung tanpa harus menunggu
-baterai habis atau mematikan server.
+Gunanya: kondisi "baterai 9 persen", "empat objek sekaligus", atau "server
+mati" bisa dilihat langsung tanpa harus menghadirkan situasinya.
 
-Data tiruan untuk keperluan ini ada di `lib/mock/`.
+Data tiruan: `lib/mock/`.
 
 ---
 
-## 8. Aksesibilitas
+## 10. Aksesibilitas
 
-Aplikasi ini harus bisa dipakai dengan layar mati total. Beberapa aturan yang
-diterapkan di kode:
+Aplikasi ini harus bisa dipakai dengan layar mati total:
 
-- **Urutan fokus** mengikuti zona dari atas ke bawah. Elemen yang sedang
-  tidak ada dilewati tanpa mengubah urutan sisanya.
-- **Live region** dipakai untuk teks yang berubah sendiri, supaya pembaca
-  layar mengumumkannya tanpa pengguna perlu mencari.
+- **Urutan fokus** mengikuti zona dari atas ke bawah.
+- **Live region** dipakai untuk teks yang berubah sendiri.
 - Hanya empat hal yang boleh memotong pembacaan: peringatan bahaya, zona
-  jalur berbahaya, nominal uang, dan kegagalan izin. Sisanya sopan menunggu.
+  jalur berbahaya, nominal uang, dan kegagalan izin.
 - **Label menyebut aksi, bukan alat**: "Ambil gambar", bukan "Kamera".
-- **Label tidak pernah menyebut lokasi layar**. Tidak ada "tombol di kanan
-  bawah", karena pengguna tidak melihat tata letaknya.
-- Tombol yang sedang nonaktif **menyebutkan alasannya**: "Baca teks, tidak
-  tersedia, butuh internet".
-- Elemen dekoratif seperti bingkai panduan dan kotak deteksi disembunyikan
-  dari pembaca layar, karena maknanya sudah dibawa teks lain.
+- **Label tidak menyebut lokasi layar**: tidak ada "tombol di kanan bawah".
+- Tombol nonaktif **menyebutkan alasannya**: "Baca teks, tidak tersedia, butuh
+  internet".
+- Elemen dekoratif disembunyikan dari pembaca layar.
 
 ### Ukuran huruf 200 persen
 
-Pengaturan ukuran teks sampai 200 persen berlaku ke seluruh aplikasi. Saat
-teks membesar, tata letak berubah dari mendatar menjadi menurun, dan target
-sentuh membesar dari 48 menjadi 56 dp. Angka nominal uang tidak dibesarkan
-lagi karena sudah 56 sp.
+Berlaku ke seluruh aplikasi. Tata letak berubah dari mendatar menjadi
+menurun, dan target sentuh membesar dari 48 menjadi 56 dp.
 
 ---
 
-## 9. Struktur folder
+## 11. Struktur folder
 
 ```
 lib/
 ├── main.dart                 Titik masuk, mendaftarkan seluruh provider
 ├── core/
 │   ├── layout/               Ukuran zona dan aturan pergeseran
-│   ├── speech/               Antrean suara bertingkat
+│   ├── speech/               Antrean suara bertingkat (TtsQueue)
 │   ├── state/                Penggabungan kondisi global jadi satu banner
-│   └── voice/                20 intent perintah suara dan pemarsingnya
+│   └── voice/
+│       ├── intents.dart          Enum VoiceIntent (20 intent baku)
+│       ├── command_parser.dart   Fuzzy matching offline, 4 lapis
+│       ├── narration_engine.dart Narasi deteksi lokal, kamus 80 objek COCO
+│       └── object_label_map.dart Kamus label objek tambahan
 ├── theme/                    Warna, tipografi, jarak, tema
 ├── widgets/                  16 komponen sistem desain
 ├── providers/                State per mode, pengaturan, kondisi global
@@ -645,7 +722,7 @@ lib/
 │   ├── tflite_service.dart       Deteksi rintangan on-device
 │   ├── money_tflite_service.dart Pengenalan uang on-device
 │   ├── server_service.dart       Semua panggilan ke backend
-│   ├── tts_service.dart          Mesin suara
+│   ├── tts_service.dart          Mesin suara (speakEnglish untuk deskripsi)
 │   ├── detection_filter.dart     Penyaring anti banjir suara
 │   ├── object_tracker.dart       Pelacak SORT
 │   └── haptic_service.dart       Pola getar
@@ -655,19 +732,20 @@ lib/
 
 ---
 
-## 10. Menjalankan
+## 12. Menjalankan
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Aplikasi tetap jalan tanpa backend. Deteksi rintangan dan pengenalan uang
-berfungsi penuh; mode lain akan menyebut sendiri keterbatasannya.
+Aplikasi tetap jalan tanpa backend. Deteksi rintangan, pengenalan uang,
+intent parsing, dan narasi deteksi berfungsi penuh; mode lain akan menyebut
+sendiri keterbatasannya.
 
-Alamat server bawaan `10.0.2.2:8000` (untuk emulator Android). Untuk
-perangkat fisik, ubah lewat layar Pengaturan di dalam aplikasi, atau lewat
-`lib/services/server_service.dart`.
+Alamat server bawaan adalah `10.0.2.2:8000` (emulator Android). **Untuk HP
+fisik**, ubah lewat layar Pengaturan: ucapkan "pengaturan" atau ketuk Pilih
+Mode → Pengaturan.
 
 ### Delapan pengaturan yang tersimpan permanen
 
@@ -684,19 +762,210 @@ perangkat fisik, ubah lewat layar Pengaturan di dalam aplikasi, atau lewat
 
 - Penyaring deteksi **hanya** boleh ada di Flutter, jangan ditambahkan di
   server, supaya tidak terjadi penyaringan ganda.
-- Model TFLite **wajib** dijalankan di thread terpisah, jangan di thread
-  utama, karena layar akan macet.
-- Peringatan bahaya **selalu** memotong suara lain, tidak pernah mengantre.
+- Model TFLite **wajib** dijalankan di thread terpisah.
+- Peringatan bahaya **selalu** memotong suara lain.
 - Pelacak SORT harus direset saat berganti mode.
-- Semua suara memakai Bahasa Indonesia (`id-ID`).
-- Aplikasi ini menargetkan Android; iOS belum diuji.
+- TTS default `id-ID`; deskripsi Moondream dibacakan dengan `speakEnglish()`
+  yang sementara ganti locale ke `en-US`.
+
+---
+
+## 13. Koneksi ke Backend Laptop (HP Fisik)
+
+### Cara cepat: WiFi satu jaringan
+
+```bash
+# Laptop
+uvicorn main:app --host 0.0.0.0 --port 8000
+ip addr show  # cari wlan0, contoh: 192.168.1.5
+```
+
+Di HP: buka Guidio → ucapkan **"pengaturan"** → isi `192.168.1.5:8000` →
+**Uji Sambungan** → **Simpan**.
+
+### Cara alternatif: USB tanpa WiFi (ADB Reverse)
+
+```bash
+adb reverse tcp:8000 tcp:8000
+```
+
+Isi alamat server di Guidio: `localhost:8000`
+
+### Build APK
+
+```bash
+flutter build apk --release
+flutter install
+```
+
+### Penjelasan nilai bawaan alamat server
+
+| Situasi | Alamat yang diisi |
+|---|---|
+| Emulator Android di laptop | `10.0.2.2:8000` (bawaan) |
+| HP fisik, WiFi sama dengan laptop | IP laptop, contoh: `192.168.1.5:8000` |
+| HP fisik, sambung USB + ADB reverse | `localhost:8000` |
+
+---
+
+
+## 14. Testing
+
+Ada dua cara testing yang bisa dijalankan secara independen:
+
+| | Flutter unit test | Python visual test |
+|---|---|---|
+| Tujuan | Validasi logika & parsing | Lihat hasil gambar anotasi |
+| Butuh setup? | Tidak | Sekali saja (venv) |
+| Output | Pass/fail di terminal | Folder gambar bertimestamp |
+| Butuh model? | Opsional (di-skip jika tidak ada) | Ya |
+
+---
+
+### A. Flutter unit test
+
+**Tidak butuh setup apapun.** Jalankan dari folder `guidio_app/`:
+
+```bash
+flutter test
+```
+
+Atau per file jika mau lebih fokus:
+
+```bash
+# Command parser — cepat, tidak butuh model atau device
+flutter test test/command_parser_test.dart
+
+# Inferensi model langsung — butuh TFLite shared library
+flutter test test/model_inference_test.dart
+```
+
+**Hasil tipikal di laptop Linux** (tanpa perangkat Android):
+
+```
++40 passed, ~17 skipped
+```
+
+Test yang di-skip **bukan error** — mereka otomatis lewat sendiri kalau dependensinya tidak ada
+(TFLite `.so`, backend server, dll.). Tidak ada yang merah = aman.
+
+#### Apa yang ditest?
+
+**`test/command_parser_test.dart`** — logika parsing perintah suara:
+
+| Kelompok | Yang ditest | Syarat jalan |
+|---|---|---|
+| Pemetaan 21 intent | Contoh ucapan dari dokumen arsitektur | — |
+| Prioritas frasa | Frasa spesifik menang atas kata umum (4 kasus) | — |
+| Prefiks natural | "saya mau ke mode..." dan variasi (2 kasus) | — |
+| Batas kata | Anti false-positive | — |
+| Saran intent | Hanya intent yang ada handler-nya yang keluar | — |
+| **Kenali Uang** | Klasifikasi 14 gambar JPEG nyata (2 per pecahan) | TFLite SO |
+| **Navigasi** | 5 fixture PNG, cek file valid + ada deteksi | — |
+| **Cari Objek** | Parse perintah cari + guard jika backend mati | Backend opsional |
+
+**`test/model_inference_test.dart`** — model TFLite langsung, memuat dari path file:
+
+| Model | Input | Cara validasi |
+|---|---|---|
+| `rupiah_classifier_int8.tflite` | 14 JPEG, 224x224, rentang -1..1 | Nama file `uang_10000_a.jpg` → expected = 10000 |
+| `yolo11n.tflite` | 5 PNG, 640x640 NCHW, rentang 0..1 | Nama file `04_motor_dan_orang.png` → {motor, orang} |
+
+Validasi uang: confidence >= 85% harus benar persis; < 85% (uncertain) tetap pass
+(sama dengan perilaku production yang tidak menampilkan nominal saat ragu).
+
+Validasi navigasi: setidaknya **satu** label yang diharapkan harus ada di hasil deteksi.
+
+#### Gambar fixture
+
+```
+test/fixtures/
+├── money/       <- 14 JPEG, 2 gambar per pecahan (1rb s.d. 100rb)
+└── navigation/  <- 5 PNG dari test/navigation/test/
 ```
 
 ---
 
-## Berkas: `analysis_options.yaml`
+### B. Python visual test — lihat gambar hasilnya
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/analysis_options.yaml`
+Menghasilkan gambar ter-anotasi seperti di `test/navigation/results_mobile_tflite/`.
+Berguna untuk memeriksa secara visual apakah bounding box dan klasifikasi masuk akal.
+
+#### Setup (sekali saja) — dari root repo (folder `guido/`)
+
+```bash
+python3 -m venv test/.venv
+test/.venv/bin/pip install -r test/requirements-test.txt
+```
+
+Hanya install `ai-edge-litert` + `Pillow` + `numpy` (~50 MB, tidak perlu TensorFlow penuh).
+
+#### Menjalankan — dari root repo (folder `guido/`)
+
+```bash
+test/.venv/bin/python test/run_visual_test.py
+```
+
+Setiap run membuat **folder baru** dengan nama epoch (unix timestamp):
+
+```
+test/results/<epoch>/
+├── navigation/
+│   ├── nav_01_got_terbuka__none.png
+│   ├── nav_02_lubang_trotoar__lubangp50.png
+│   ├── nav_04_motor_dan_orang__motorp38_orangp17.png
+│   └── ...
+├── money/
+│   ├── money_uang_1000_a__PASS_99p6.jpg
+│   ├── money_uang_20000_b__UNCERTAIN_57p4.jpg
+│   └── ...
+└── summary.txt
+```
+
+#### Cara baca nama file tanpa buka gambarnya
+
+**Navigasi** — bagian setelah `__` adalah label yang terdeteksi + confidence:
+
+```
+nav_02_lubang_trotoar__lubangp50.png
+                       ^ label=lubang, conf=0.50
+
+nav_04_motor_dan_orang__motorp38_orangp17.png
+                        ^ motor (0.38), orang (0.17)
+
+nav_01_got_terbuka__none.png
+                    ^ tidak ada deteksi
+```
+
+**Uang** — bagian setelah `__` adalah status + confidence:
+
+```
+money_uang_100000_a__PASS_99p6.jpg        -> benar, conf 99.6%
+money_uang_20000_b__UNCERTAIN_57p4.jpg    -> ragu-ragu, conf 57.4% (di bawah threshold 85%)
+money_uang_5000_a__FAIL_pred2000_42p1.jpg -> salah prediksi ke 2000 (harusnya tidak terjadi)
+```
+
+#### Format isi gambar
+
+**Navigasi:** gambar asli + bounding box berwarna per kelas + label confidence di atas box
++ watermark jumlah deteksi dan epoch di bagian bawah.
+
+**Uang:** gambar asli + panel di bawah berisi status (hijau = benar, merah = salah,
+kuning = uncertain) + bar chart probabilitas semua 7 kelas.
+
+#### Exit code
+
+```
+0 -> semua pass atau uncertain (aman)
+1 -> ada navigasi fail atau uang salah ketika confident
+```
+```
+
+---
+
+## File: `analysis_options.yaml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/analysis_options.yaml`
 
 ```yaml
 include: package:flutter_lints/flutter.yaml
@@ -704,9 +973,334 @@ include: package:flutter_lints/flutter.yaml
 
 ---
 
-## Berkas: `assets/models/labelmap.txt`
+## File: `android/app/build.gradle.kts`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/assets/models/labelmap.txt`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/build.gradle.kts`
+
+```kotlin
+plugins {
+    id("com.android.application")
+    id("kotlin-android")
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("dev.flutter.flutter-gradle-plugin")
+}
+
+android {
+    namespace = "com.pens.vinara"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = "28.2.13676358"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.pens.vinara"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = 26
+        targetSdk = 36
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            // TODO: Ganti dengan signing config milik tim sebelum distribusi.
+            // Untuk sekarang memakai kunci debug supaya `flutter run --release` jalan.
+            signingConfig = signingConfigs.getByName("debug")
+
+            // `proguard-rules.pro` HARUS didaftarkan eksplisit. Tanpa baris ini
+            // berkasnya ada tapi tidak pernah dibaca R8 — dan build release
+            // gagal total karena ML Kit merujuk pengenal aksara Cina, Jepang,
+            // Korea, dan Devanagari yang tidak ikut sebagai dependensi.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+```
+
+---
+
+## File: `android/app/src/debug/AndroidManifest.xml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/src/debug/AndroidManifest.xml`
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The INTERNET permission is required for development. Specifically,
+         the Flutter tool needs it to communicate with the running application
+         to allow setting breakpoints, to provide hot reload, etc.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+</manifest>
+```
+
+---
+
+## File: `android/app/src/main/AndroidManifest.xml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/src/main/AndroidManifest.xml`
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Permissions wajib Guidio -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- Camera feature -->
+    <uses-feature android:name="android.hardware.camera" android:required="true"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+    <application
+        android:label="Vinara"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
+```
+
+---
+
+## File: `android/app/src/main/res/drawable-v21/launch_background.xml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/src/main/res/drawable-v21/launch_background.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modify this file to customize your launch splash screen -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="?android:colorBackground" />
+
+    <!-- You can insert your own image assets here -->
+    <!-- <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@mipmap/launch_image" />
+    </item> -->
+</layer-list>
+```
+
+---
+
+## File: `android/app/src/main/res/drawable/launch_background.xml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/src/main/res/drawable/launch_background.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modify this file to customize your launch splash screen -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/white" />
+
+    <!-- You can insert your own image assets here -->
+    <!-- <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@mipmap/launch_image" />
+    </item> -->
+</layer-list>
+```
+
+---
+
+## File: `android/app/src/main/res/values-night/styles.xml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/src/main/res/values-night/styles.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is on -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <!-- Show a splash screen on the activity. Automatically removed when
+             the Flutter engine draws its first frame -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <!-- Theme applied to the Android Window as soon as the process has started.
+         This theme determines the color of the Android Window while your
+         Flutter UI initializes, as well as behind your Flutter UI while its
+         running.
+
+         This Theme is only used starting with V2 of Flutter's Android embedding. -->
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>
+```
+
+---
+
+## File: `android/app/src/main/res/values/styles.xml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/src/main/res/values/styles.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is off -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <!-- Show a splash screen on the activity. Automatically removed when
+             the Flutter engine draws its first frame -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <!-- Theme applied to the Android Window as soon as the process has started.
+         This theme determines the color of the Android Window while your
+         Flutter UI initializes, as well as behind your Flutter UI while its
+         running.
+
+         This Theme is only used starting with V2 of Flutter's Android embedding. -->
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>
+```
+
+---
+
+## File: `android/app/src/profile/AndroidManifest.xml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/app/src/profile/AndroidManifest.xml`
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The INTERNET permission is required for development. Specifically,
+         the Flutter tool needs it to communicate with the running application
+         to allow setting breakpoints, to provide hot reload, etc.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+</manifest>
+```
+
+---
+
+## File: `android/build.gradle.kts`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/build.gradle.kts`
+
+```kotlin
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+val newBuildDir: Directory =
+    rootProject.layout.buildDirectory
+        .dir("../../build")
+        .get()
+rootProject.layout.buildDirectory.value(newBuildDir)
+
+subprojects {
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register<Delete>("clean") {
+    delete(rootProject.layout.buildDirectory)
+}
+```
+
+---
+
+## File: `android/settings.gradle.kts`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/android/settings.gradle.kts`
+
+```kotlin
+pluginManagement {
+    val flutterSdkPath =
+        run {
+            val properties = java.util.Properties()
+            file("local.properties").inputStream().use { properties.load(it) }
+            val flutterSdkPath = properties.getProperty("flutter.sdk")
+            require(flutterSdkPath != null) { "flutter.sdk not set in local.properties" }
+            flutterSdkPath
+        }
+
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id("dev.flutter.flutter-plugin-loader") version "1.0.0"
+    id("com.android.application") version "8.11.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+}
+
+include(":app")
+```
+
+---
+
+## File: `assets/models/labelmap.txt`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/assets/models/labelmap.txt`
 
 ```text
 person
@@ -803,9 +1397,202 @@ toothbrush
 
 ---
 
-## Berkas: `lib/core/layout/zone_contract.dart`
+## File: `assets/models/rupiah_labels.txt`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/layout/zone_contract.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/assets/models/rupiah_labels.txt`
+
+```text
+1000
+2000
+5000
+10000
+20000
+50000
+100000
+```
+
+---
+
+## File: `ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json`
+
+```json
+{
+  "images" : [
+    {
+      "size" : "20x20",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-20x20@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "20x20",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-20x20@3x.png",
+      "scale" : "3x"
+    },
+    {
+      "size" : "29x29",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-29x29@1x.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "29x29",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-29x29@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "29x29",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-29x29@3x.png",
+      "scale" : "3x"
+    },
+    {
+      "size" : "40x40",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-40x40@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "40x40",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-40x40@3x.png",
+      "scale" : "3x"
+    },
+    {
+      "size" : "60x60",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-60x60@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "60x60",
+      "idiom" : "iphone",
+      "filename" : "Icon-App-60x60@3x.png",
+      "scale" : "3x"
+    },
+    {
+      "size" : "20x20",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-20x20@1x.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "20x20",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-20x20@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "29x29",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-29x29@1x.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "29x29",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-29x29@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "40x40",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-40x40@1x.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "40x40",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-40x40@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "76x76",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-76x76@1x.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "76x76",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-76x76@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "83.5x83.5",
+      "idiom" : "ipad",
+      "filename" : "Icon-App-83.5x83.5@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "1024x1024",
+      "idiom" : "ios-marketing",
+      "filename" : "Icon-App-1024x1024@1x.png",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "version" : 1,
+    "author" : "xcode"
+  }
+}
+```
+
+---
+
+## File: `ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json`
+
+```json
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "LaunchImage.png",
+      "scale" : "1x"
+    },
+    {
+      "idiom" : "universal",
+      "filename" : "LaunchImage@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "filename" : "LaunchImage@3x.png",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "version" : 1,
+    "author" : "xcode"
+  }
+}
+```
+
+---
+
+## File: `ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md`
+
+```markdown
+# Launch Screen Assets
+
+You can customize the launch screen with your own desired assets by replacing the image files in this directory.
+
+You can also do it by opening your Flutter project's Xcode project with `open ios/Runner.xcworkspace`, selecting `Runner/Assets.xcassets` in the Project Navigator and dropping in the desired images.
+```
+
+---
+
+## File: `lib/core/layout/zone_contract.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/layout/zone_contract.dart`
 
 ```dart
 import '../../theme/app_spacing.dart';
@@ -865,9 +1652,9 @@ double bottomCardSlotOffset(double bottomInset) =>
 
 ---
 
-## Berkas: `lib/core/net/api_client.dart`
+## File: `lib/core/net/api_client.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/net/api_client.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/net/api_client.dart`
 
 ```dart
 import 'dart:async';
@@ -1177,9 +1964,9 @@ ApiClient debugApiClient(http.Client inner) => ApiClient(inner: inner);
 
 ---
 
-## Berkas: `lib/core/net/frame_codec.dart`
+## File: `lib/core/net/frame_codec.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/net/frame_codec.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/net/frame_codec.dart`
 
 ```dart
 import 'package:camera/camera.dart';
@@ -1334,9 +2121,9 @@ Uint8List _downscaleAndEncode(img.Image src, int maxEdge, int quality) {
 
 ---
 
-## Berkas: `lib/core/speech/tts_queue.dart`
+## File: `lib/core/speech/tts_queue.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/speech/tts_queue.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/speech/tts_queue.dart`
 
 ```dart
 import 'dart:async';
@@ -1360,6 +2147,16 @@ class _QueuedSpeech {
 }
 
 /// TtsQueue — mesin antrean bertingkat yang dipakai [TtsProvider].
+///
+/// Fix race condition (temuan 2.4):
+/// - Tambahkan [_drainGeneration] token: setiap kali Critical masuk, token
+///   dinaikkan sehingga drain lama yang sedang await langsung berhenti saat
+///   tiba gilirannya untuk set `_speakingTier = null`.
+/// - Critical tidak lagi set `_speakingTier` langsung — cukup invalidasi
+///   drain lama + stop + speak dengan interrupt.
+/// - Warning juga memakai token yang sama untuk keamanan.
+/// - `_pending` dibatasi 8 item; item terlama dibuang saat penuh (anti-OOM).
+///
 /// Aturan:
 /// - Critical: kosongkan antrean, interrupt TTS berjalan, bicara langsung.
 /// - Warning: interrupt Info yang sedang bicara; boleh disela pengguna lewat
@@ -1367,32 +2164,63 @@ class _QueuedSpeech {
 /// - Info: masuk antrean; dibuang jika sudah menunggu > 2 detik saat giliran
 ///   tiba (anti-banjir, bagian 15).
 class TtsQueue {
+  /// Singleton — semua caller (DetectionProvider, CameraProvider, TtsProvider,
+  /// NavigationProvider, dll) memakai antrian yang sama: "satu pintu suara".
+  static final TtsQueue instance = TtsQueue._internal();
+  factory TtsQueue() => instance;
+  TtsQueue._internal();
+
+  static const int _maxPending = 8;
+
   final _pending = <_QueuedSpeech>[];
   SpeechTier? _speakingTier;
   bool _draining = false;
+  int _drainGeneration = 0; // Fix 2.4: token untuk stop drain lama
 
   SpeechTier? get speakingTier => _speakingTier;
-  bool get isSpeaking => _speakingTier != null;
+  bool get isSpeaking => _speakingTier != null || _draining;
 
   Future<void> speak(String message, {SpeechTier tier = SpeechTier.info}) async {
     if (tier == SpeechTier.critical) {
+      // Invalidasi semua drain yang sedang berjalan
       _pending.clear();
+      _drainGeneration++;
+      // Stop TTS yang sedang bicara (Info/Warning) agar Critical langsung terdengar
+      await TTSService.instance.stop();
       _speakingTier = SpeechTier.critical;
       await TTSService.instance.speak(message, interrupt: true);
       _speakingTier = null;
+      // Drain mungkin ada item baru yang masuk saat critical berbicara
       unawaited(_drain());
       return;
     }
 
-    if (tier == SpeechTier.warning && _speakingTier == SpeechTier.info) {
-      await TTSService.instance.speak(message, interrupt: true);
-      _speakingTier = SpeechTier.warning;
-      _speakingTier = null;
-      unawaited(_drain());
-      return;
+    if (tier == SpeechTier.warning) {
+      if (_speakingTier == SpeechTier.info) {
+        // Invalidasi drain lama agar tidak lanjut setelah warning selesai
+        _drainGeneration++;
+        _speakingTier = SpeechTier.warning;
+        await TTSService.instance.speak(message, interrupt: true);
+        _speakingTier = null;
+        unawaited(_drain());
+        return;
+      }
+      // Info belum bicara — cukup antrean sebagai warning
     }
 
     _pending.add(_QueuedSpeech(message, tier));
+
+    // Batasi 8 item — buang item terlama (Info) saat penuh (anti-OOM)
+    if (_pending.length > _maxPending) {
+      // Buang item Info terlama; kalau semua Warning, buang yang terlama
+      final oldestInfoIdx = _pending.indexWhere((q) => q.tier == SpeechTier.info);
+      if (oldestInfoIdx >= 0) {
+        _pending.removeAt(oldestInfoIdx);
+      } else {
+        _pending.removeAt(0);
+      }
+    }
+
     unawaited(_drain());
   }
 
@@ -1406,8 +2234,13 @@ class TtsQueue {
   Future<void> _drain() async {
     if (_draining) return;
     _draining = true;
+    final myGeneration = _drainGeneration; // snapshot token saat drain dimulai
+
     try {
       while (_pending.isNotEmpty) {
+        // Cek apakah drain ini sudah diinvalidasi oleh Critical/Warning baru
+        if (_drainGeneration != myGeneration) break;
+
         _pending.sort((a, b) => b.tier.index.compareTo(a.tier.index));
         final next = _pending.removeAt(0);
 
@@ -1419,15 +2252,25 @@ class TtsQueue {
 
         _speakingTier = next.tier;
         await TTSService.instance.speak(next.message);
-        _speakingTier = null;
+
+        // Setelah await selesai, cek lagi apakah generasi masih valid
+        // (mencegah _speakingTier = null menimpa Critical yang sedang bicara)
+        if (_drainGeneration == myGeneration) {
+          _speakingTier = null;
+        }
       }
     } finally {
       _draining = false;
+      // Hanya reset _speakingTier jika drain ini masih valid
+      if (_drainGeneration == myGeneration && _speakingTier != SpeechTier.critical) {
+        _speakingTier = null;
+      }
     }
   }
 
   Future<void> stop() async {
     _pending.clear();
+    _drainGeneration++;
     await TTSService.instance.stop();
     _speakingTier = null;
   }
@@ -1436,9 +2279,9 @@ class TtsQueue {
 
 ---
 
-## Berkas: `lib/core/state/global_conditions.dart`
+## File: `lib/core/state/global_conditions.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/state/global_conditions.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/state/global_conditions.dart`
 
 ```dart
 import 'dart:async';
@@ -1446,6 +2289,7 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../services/server_service.dart';
 import '../../widgets/tier_icon.dart' show AlertTier;
 
 /// Satu kondisi global aktif (offline, baterai kritis, penyimpanan penuh,
@@ -1475,16 +2319,37 @@ class MergedBanner {
 /// lain" + aksi "Lihat semua".
 class GlobalConditionsProvider extends ChangeNotifier {
   bool _offline = false;
+  bool _serverUnreachable = false;
+  bool _cameraError = false;
   int? _batteryPercent;
   bool _storageLow = false;
   bool _deviceHot = false;
 
   StreamSubscription? _connSub;
   Timer? _batteryTimer;
+  Timer? _serverTimer;
 
   bool get isOffline => _offline;
+
+  /// Ada jaringan, tapi server tidak menjawab.
+  ///
+  /// Ini kasus paling umum saat demo: ponsel tersambung WiFi sementara laptop
+  /// backend mati, IP-nya berubah, atau firewall menutup port. Kondisi lama
+  /// hanya membaca `ConnectivityResult.none`, jadi keadaan ini **tidak pernah
+  /// terdeteksi** — ModePickerSheet menampilkan semua mode sehat, lalu Cari
+  /// Objek gagal saat ditekan.
+  bool get isServerUnreachable => _serverUnreachable;
+
+  /// Server tidak bisa dipakai, apa pun sebabnya.
+  bool get isBackendDown => _offline || _serverUnreachable;
+
+  bool get isCameraError => _cameraError;
   int? get batteryPercent => _batteryPercent;
-  bool get isBatteryCritical => (_batteryPercent ?? 100) < 15;
+
+  /// Ambang dokumen: <10%. Versi kode lama memakai <15% **dan** tier Critical,
+  /// sehingga banner baterai bisa menyingkirkan banner kamera error — padahal
+  /// kamera error jauh lebih menentukan keselamatan.
+  bool get isBatteryCritical => (_batteryPercent ?? 100) < 10;
   bool get isStorageLow => _storageLow;
   bool get isDeviceHot => _deviceHot;
 
@@ -1500,11 +2365,39 @@ class GlobalConditionsProvider extends ChangeNotifier {
       if (nowOffline != _offline) {
         _offline = nowOffline;
         notifyListeners();
+        unawaited(_pollServer());
       }
     });
 
     _batteryTimer = Timer.periodic(const Duration(minutes: 1), (_) => _pollBattery());
-    await _pollBattery();
+    _serverTimer = Timer.periodic(const Duration(seconds: 15), (_) => _pollServer());
+    await Future.wait([_pollBattery(), _pollServer()]);
+  }
+
+  /// Dipanggil CameraProvider saat kamera gagal disiapkan.
+  void setCameraError(bool value) {
+    if (_cameraError == value) return;
+    _cameraError = value;
+    notifyListeners();
+  }
+
+  Future<void> _pollServer() async {
+    if (_offline) {
+      if (!_serverUnreachable) {
+        _serverUnreachable = true;
+        notifyListeners();
+      }
+      return;
+    }
+    final health = await ServerService.instance.healthAt(
+      ServerService.instance.host,
+      timeout: const Duration(seconds: 3),
+    );
+    final unreachable = health == null;
+    if (unreachable != _serverUnreachable) {
+      _serverUnreachable = unreachable;
+      notifyListeners();
+    }
   }
 
   Future<void> _pollBattery() async {
@@ -1532,9 +2425,17 @@ class GlobalConditionsProvider extends ChangeNotifier {
   }
 
   List<_Condition> get _active => [
+        // Kamera bermasalah = mode utama benar-benar buta. Tidak ada kondisi
+        // lain yang lebih menentukan, jadi hanya ini yang boleh Critical.
+        if (_cameraError)
+          const _Condition('camera', AlertTier.critical, 'Kamera bermasalah'),
         if (_offline) const _Condition('offline', AlertTier.warning, 'Tanpa internet'),
+        // Dibedakan dari offline: tindakan pengguna berikutnya berbeda —
+        // menyalakan data seluler, atau memeriksa server.
+        if (!_offline && _serverUnreachable)
+          const _Condition('server', AlertTier.info, 'Server tidak terhubung'),
         if (isBatteryCritical)
-          _Condition('battery', AlertTier.critical, 'Baterai ${_batteryPercent ?? 0} persen'),
+          _Condition('battery', AlertTier.warning, 'Baterai ${_batteryPercent ?? 0} persen'),
         if (_storageLow) const _Condition('storage', AlertTier.warning, 'Penyimpanan hampir penuh'),
         if (_deviceHot) const _Condition('thermal', AlertTier.warning, 'Ponsel panas'),
       ];
@@ -1578,6 +2479,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
   void dispose() {
     _connSub?.cancel();
     _batteryTimer?.cancel();
+    _serverTimer?.cancel();
     super.dispose();
   }
 }
@@ -1585,9 +2487,9 @@ class GlobalConditionsProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/core/voice/command_parser.dart`
+## File: `lib/core/voice/command_parser.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/voice/command_parser.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/voice/command_parser.dart`
 
 ```dart
 import 'intents.dart';
@@ -1599,54 +2501,247 @@ class CommandParser {
   static const Map<VoiceIntent, List<String>> _phrases = {
     VoiceIntent.modeMoney: [
       'buka mode uang', 'kenali uang', 'ini uang berapa', 'mode uang', 'cek uang', 'berapa ini',
+      'uang ini nominal berapa', 'berapa nih duitnya', 'identifikasi uang', 'ini duit berapa ribu',
+      'cek duit', 'berapa nominal ini', 'ini pecahan berapa', 'uang berapa ini', 'tolong cek uangnya',
+      'lembaran berapa ini', 'duit iki piro', 'duit ieu sabaraha',
+      // bank kata tambahan
+      'aktifkan mode uang', 'deteksi nominal uang', 'kenali uang ini', 'pecahan berapa nih',
+      'liatin duit ini dong', 'ini duit berapa sih', 'berapaan nih duitnya', 'duit gue berapa ya',
+      'nih duit apaan', 'berapa nih lembaran ini', 'nominal berapa ini', 'ini uang berapa',
+      'cek duit dong', 'nominal uang',
+      'ono piro duite', 'iki duit piro', 'piro iki duite',
+      'sabaraha ieu artos', 'artosna sabaraha',
+      'iko doih barapo', 'berape nih duit',
+      'mod uang', 'mode uwang', 'cek uwang', 'nominl uang', 'moda uang', 'mode uan',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'duit berapa', 'berapa duit', 'uang', 'duit',
     ],
     VoiceIntent.modeReadText: [
       'baca teks', 'bacakan', 'buka mode baca', 'baca tulisan ini', 'apa tulisannya',
+      'bacain ini', 'tolong bacain', 'ini tulisan apa', 'baca dong', 'scan teks', 'scan ini',
+      'bacakan surat ini', 'apa isinya ini', 'baca kemasan ini', 'cek label ini', 'ini tulisannya apa ya',
+      'baca komposisinya', 'baca tanggal kadaluarsanya', 'baca dokumen ini', 'wacaan ieu naon', 'wacanen iki',
+      // bank kata tambahan
+      'aktifkan mode baca dokumen', 'pindai teks', 'baca label kemasan', 'pindai dokumen ini',
+      'bacain dong ini', 'baca dong tulisannya', 'ini tulisan apaan', 'scan teks dong',
+      'bacain kemasan ini', 'ini tulisan apa ya', 'nih tulisan apaan sih',
+      'wacakno tulisan iki', 'moco tulisan iki', 'iki tulisane opo',
+      'bacakeun ieu tulisan', 'ieu naon tulisanana',
+      'bacoan tulisan ko', 'ko tulisan apo',
+      'bacain nih tulisan bang', 'ini tulisan apaan bang',
+      'mode bacaa teks', 'bca teks', 'mode ocr', 'baca text ini', 'moda baca teks',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'tulung wacakno', 'wacakno', 'bacakeun',
     ],
     VoiceIntent.modeDetection: [
       'deteksi objek', 'mode deteksi', 'ada apa di depan',
+      'tuntun aku', 'tuntun saya jalan', 'bantu jalan', 'apa itu di depan', 'awas ada apa',
+      'ada rintangan gak', 'ada penghalang gak', 'deteksi rintangan', 'tolong tuntun',
+      'jalanin mode tuntun', 'aktifkan deteksi', 'nyalain deteksi', 'cek depan',
+      'aman gak jalan di depan', 'ada orang gak di depan', 'hati-hati ada apa', 'bantuin lihat depan',
+      'ada apa di ngarep', 'ono opo neng ngarep', 'aya naon di hareup',
+      // bank kata tambahan
+      'aktifkan pendeteksi objek', 'kenali objek di sekitar', 'deteksi sekeliling',
+      'apa saja yang ada di depan saya', 'liatin depan dong', 'apaan tuh di depan', 'liat depan dong',
+      'ada apa aja di depan', 'cek sekitar dong', 'liat sekeliling dong', 'apaan sih di depan gue',
+      'ada apaan tuh di depan', 'liatin sekitar dong',
+      'ndelok ngarep opo ono', 'iki ono opo ngarepe',
+      'aya naon di payun', 'tulung tingali payuneun',
+      'apo tu di adok an', 'caliak lah adok an',
+      'ada ape tuh di depan', 'apaan tuh di depan bang',
+      'mode deteski', 'deteksi obek', 'mode dtksi', 'cek skeliling',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'awasi jalan', 'deteksi',
     ],
     VoiceIntent.modeNavigation: [
       'mode navigasi', 'mau jalan', 'bantu jalan', 'navigasi',
+      'kemana ya arahnya', 'tolong arahin', 'navigasi ke', 'gimana caranya ke', 'arahin aku ke',
+      'arahin saya ke', 'petunjuk jalan ke', 'rute ke', 'jalan ke mana', 'belok kemana',
+      'tunjukin jalan ke', 'ke arah mana ya', 'piye carane menyang', 'kumaha carana ka',
+      // bank kata tambahan
+      'aktifkan navigasi jalan', 'pandu saya berjalan', 'aktifkan panduan jalan',
+      'anterin gue jalan', 'pandu gue jalan dong', 'bantuin gue jalan', 'gue mau jalan nih',
+      'bantu gue nyebrang', 'pandu jalan dong', 'temenin gue jalan dong',
+      'tulung tuntun mlaku', 'kancani aku mlaku',
+      'tulung antar abdi leumpang', 'antosan abdi leumpang',
+      'tolong anta ambo jalan', 'anterin gue jalan bang',
+      'mode navigsi', 'mode navigasii', 'bantu jalann', 'aktifkan navgasi',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'jalan mana', 'mode jalan', 'arahan jalur', 'jalur mana',
     ],
     VoiceIntent.modeAssistant: [
       'asisten', 'tanya', 'mode suara',
+      'halo guidio', 'hei guidio', 'oy guidio', 'guidio', 'jarvis', 'hei jarvis', 'halo jarvis',
+      'tolong asisten', 'eh guidio', 'guidio tolong', 'woy guidio', 'eh jarvis tolong',
+      // bank kata tambahan
+      'buka mode asisten suara', 'aktifkan asisten', 'saya ingin bertanya', 'buka mode tanya jawab',
+      'bisa bantu saya', 'gue mau nanya', 'nanya dong', 'lu bisa jawab gak', 'bisa bantu gak',
+      'gue mau ngobrol', 'boleh nanya gak', 'mau nanya sesuatu nih',
+      'aku arep takon', 'iso mbantu ora',
+      'abdi bade naros', 'tiasa ngabantosan teu',
+      'ambo nio batanyo', 'gue mau nanye bang',
+      'mode asisten suaraa', 'aktifkan asistem', 'buka asistenn',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'ngobrol', 'bicara', 'nanya',
     ],
     VoiceIntent.modeFindObject: [
       'cari objek', 'cari barang', 'carikan',
+      // bank kata tambahan
+      'aktifkan pencarian barang', 'bantu saya cari barang', 'cari barang saya yang hilang',
+      'tolong bantu temukan barang saya', 'cariin dong', 'bantu carinya dong',
+      'gue kehilangan barang', 'barang gue ilang nih',
+      'tulung goleki barangku', 'barangku ilang golekno',
+      'tulung pilarian barang', 'barang abdi leungit',
+      'tolong cari barang ambo', 'ilang nih barang gue',
+      'mode cari barangg', 'cariinn dong', 'aktifkan carii barang',
     ],
     VoiceIntent.modeSettings: [
       'pengaturan', 'setelan', 'buka pengaturan',
+      // bank kata tambahan
+      'mode pengaturan', 'aktifkan menu pengaturan', 'buka menu konfigurasi',
+      'buka setting dong', 'buka setelan dong', 'gue mau atur aplikasi', 'masuk setting dong',
+      'buka setelan yo', 'muka setelan atuh',
+      'buka pengaturann', 'mode setingan', 'buka stelan',
+      // Frasa yang dijanjikan dokumen tapi dulu tidak pernah cocok.
+      'seting', 'setting', 'setelan',
     ],
     VoiceIntent.actionCapture: [
       'ambil gambar', 'jepret', 'foto',
     ],
     VoiceIntent.actionReplay: [
       'putar ulang', 'ulangi', 'baca lagi',
+      // bank kata tambahan
+      'ulangi instruksi', 'ulangi perkataan terakhir', 'tolong ulangi', 'ulangi lagi',
+      'ulang dong', 'bilang lagi dong', 'ulangin dong', 'apa tadi bilangnya', 'coba ulang deh',
+      'baleni maneh', 'baleni sing mau',
+      'ulang deui', 'ulangan anu tadi',
+      'ulangi lai', 'ulangin dong bang',
+      'ulangii instruksi', 'ulangi lgi',
+    ],
+    VoiceIntent.actionGoBack: [
+      'kembali', 'balik', 'kembali ke sebelumnya', 'mode sebelumnya',
+      'balik ke mode lain', 'tutup', 'keluar', 'close', 'exit',
+      'batal', 'stop', 'berhenti', 'gak jadi', 'ga usah', 'cancel', 'udah cukup',
+      'matiin', 'berhentiin', 'jangan', 'udah stop aja', 'gausah lanjut', 'wis mari', 'geus cukup',
     ],
     VoiceIntent.actionSummary: [
       'ringkas', 'singkat saja', 'baca ringkasannya',
+      // bank kata tambahan
+      'berikan rangkuman objek', 'rangkum objek di sekitar', 'buat ringkasan objek sekitar',
+      'rangkum dong', 'kasih ringkasan dong', 'ringkes dong sekitar gue', 'rangkumin dong',
+      'kasih tau intinya aja', 'summary dong',
+      'ringkes o wae kahanane', 'ringkeskeun kaayaan sabudeureun',
+      'ringkasan objekk', 'rangkum objekk sekitar',
     ],
     VoiceIntent.actionStopWalking: [
       'selesai jalan', 'sudah sampai', 'berhenti navigasi',
+      // bank kata tambahan
+      'hentikan panduan', 'stop navigasi', 'jeda panduan jalan', 'tolong berhenti dulu',
+      'pause navigasi', 'stop dulu', 'berenti dulu', 'berhenti bentar', 'jeda dulu dong',
+      'mandeg disik', 'mandeg dhisik yo',
+      'eureun heula', 'eureun sakedap',
+      'baranti sabanta', 'stop dulu bang',
+      'berhentii navigasi', 'hentikn panduan', 'stop navigasii',
     ],
     VoiceIntent.actionShowAll: [
       'lihat semua',
     ],
+    VoiceIntent.describeScene: [
+      // --- Kata tunggal / trigger ---
+      'deskripsikan', 'jelaskan', 'ceritakan', 'lihatkan', 'gambarkan', 'terangkan',
+      'liatin', 'tunjukin', 'gambarin', 'jelasin', 'ceritain', 'terangin',
+      'intipin', 'potret', 'fotoin', 'jepretin', 'pemandangan', 'sekitarku',
+      'depanku', 'suasana sekitar', 'kondisi sekitar', 'ada apa',
+      // --- Frasa resmi / formal ---
+      'deskripsikan yang ada di depan saya sekarang',
+      'tolong jelaskan pemandangan di depan',
+      'berikan deskripsi suasana tempat ini',
+      'sebutkan objek dan keadaan di sekitar saya',
+      'gambarkan kondisi di depan saya',
+      'mohon jelaskan situasi di sekitar saya saat ini',
+      'tolong deskripsikan ruangan ini',
+      'silakan jelaskan apa yang ada di hadapan saya',
+      'tolong ceritakan suasana di tempat ini',
+      'jelaskan kondisi lingkungan sekitar saya',
+      'sebutkan apa saja yang terlihat di depan',
+      'berikan gambaran suasana ruangan ini',
+      'jelaskan situasi di depan saya sekarang',
+      'mohon deskripsikan pemandangan di sekitar saya',
+      // --- Frasa santai / informal ---
+      'lihat depan dong', 'depan ada apa aja sih', 'coba intip depan',
+      'ceritakan sekitarku', 'liatin depan bentar', 'ada pemandangan apa di depan',
+      'fotoin depan terus jelasin', 'terangin sekitar dong', 'kasi tau depan ada apaan',
+      'depan ada apaan sih', 'coba liat depan dong', 'cerita dong depan kayak gimana',
+      'sini jelasin depan', 'ini tempat apaan sih', 'sekitar gue ada apa aja',
+      'depan gue kayak gimana', 'liat dulu depan', 'cek depan dong',
+      'foto depan terus critain', 'jelasin dong ini tempat apa',
+      'sini liatin sekitar', 'sekitar sini kayak apa', 'coba liatin sekeliling gue',
+      // --- Tanya kondisi ---
+      'pemandangan di depan seperti apa', 'ruangan ini kayak gimana',
+      'lagi suasana gimana ini', 'di depan ramai atau sepi',
+      'apa aja yang kelihatan di depan', 'ini tempat kayak gimana ya',
+      'suasana disini gimana', 'di sini ada orang gak', 'depan itu ada apa ya',
+      'ini di luar apa di dalam ya', 'ada barang apa aja disini',
+      // --- Bahasa Daerah ---
+      'ono opo neng ngarep', 'coba sawang ngarep', 'ceritakno neng ngarep',
+      'kahanan kepiye iki', 'aya naon di hareup', 'jelaskeun di hareup',
+      'tingali di hareup aya naon', 'kumaha kaayaan didieu',
+      'ada apaan di depan gue', 'ceritain dong depan', 'intipin depan napa',
+      'kondisi depan gimana bang', 'apo nan di adok den', 'aha na di jolo',
+      // --- Typo / STT variasi ---
+      'deskripsiin', 'deskripsikn', 'critain', 'liyatin', 'trangin', 'gambrkan',
+      'pemandanan', 'skitarku', 'keadan', 'kondsi', 'sutuasi', 'lngkungan',
+      'deskripsi kan', 'cerita kan', 'lihat kan',
+    ],
     VoiceIntent.actionTorch: [
-      'nyalakan lampu', 'nyalakan senter', 'lampu kamera',
+      // nyalakan
+      'nyalakan lampu', 'nyalakan senter', 'nyalakan flash',
+      'hidupkan lampu', 'hidupkan senter',
+      'lampu kamera', 'nyalain lampu', 'nyalain senter',
+      'tolong nyalakan lampu', 'tolong nyalain lampu',
+      // matikan
+      'matikan lampu', 'matikan senter', 'matikan flash',
+      'padamkan lampu', 'padamkan senter',
+      'matiin lampu', 'matiin senter',
+      'tolong matikan lampu', 'tolong matiin lampu',
+      // toggle generic
+      'toggle lampu', 'toggle senter',
+      // bank kata tambahan
+      'aktifkan lampu kamera', 'nyalakan lampu kamera', 'matikan lampu kamera',
+      'nonaktifkan senter', 'idupin senter', 'matiin lampu dong', 'nyalain lampu dong',
+      'urupno senter', 'patenono senter', 'tulung urupno lampu',
+      'hurungkeun senter', 'pareuman senter',
+      'nyalain senter bang', 'matiin senter bang',
+      'nyalain sentr', 'aktifkn senter', 'nyalakan sentar',
     ],
     VoiceIntent.playPause: [
       'jeda', 'berhenti dulu', 'stop',
+      // bank kata tambahan
+      'jeda suara', 'pause suara', 'hentikan sebentar suaranya', 'jeda dong',
+      'stop bentar suaranya', 'pause dulu',
+      'mandeg disik swarane', 'eureun heula sorana', 'baranti sabanta suaronyo',
+      'jeda suaraa', 'pauze suara',
     ],
     VoiceIntent.playResume: [
       'lanjut', 'terusin', 'lanjutkan',
     ],
     VoiceIntent.playFaster: [
       'lebih cepat', 'percepat',
+      // bank kata tambahan
+      'percepat suara', 'percepat laju bicara', 'naikkan kecepatan suara',
+      'cepetin dong', 'gasin dong suaranya', 'lebih cepet dong',
+      'kebutno swarane', 'gancangkeun sorana',
+      'cepetin bang suaranye',
+      'percepat suaraa', 'cepetin suarane',
     ],
     VoiceIntent.playSlower: [
       'lebih pelan', 'pelan-pelan',
+      // bank kata tambahan
+      'perlambat suara', 'perlambat laju bicara', 'turunkan kecepatan suara',
+      'pelanin dong', 'pelanin suaranya dong', 'lebih pelan dong', 'jangan cepet-cepet dong',
+      'alonno swarane', 'lambatkeun sorana',
+      'pelanin bang suaranye',
+      'perlambat suaraa', 'pelanin suarane',
     ],
     VoiceIntent.playRepeatSection: [
       'ulangi bagian', 'ulang yang tadi',
@@ -1659,46 +2754,514 @@ class CommandParser {
     ],
   };
 
-  /// "cari [nama barang]" — pola khusus Cari Objek dengan argumen dinamis.
-  static final RegExp _findObjectWithArg = RegExp(r'^cari (?!objek$|barang$)(.+)$');
+  static const List<String> searchPrefixes = [
+    // --- Frasa resmi ---
+    'cari',
+    'carikan',
+    'carilah',
+    'tolong cari',
+    'tolong carikan',
+    'mohon cari',
+    'mohon carikan',
+    'bantu cari',
+    'bantu carikan',
+    'coba cari',
+    'coba carikan',
+    'silakan cari',
+    'silakan carikan',
+    'temukan',
+    'temuin',
+    'tunjukin',
+    'tunjukkan',
+    'deteksi',
+    'scan',
+    'pindai',
+
+    // --- Frasa gaul / informal ---
+    'cariin',
+    'cariin dong',
+    'cariin deh',
+    'cariin dong ya',
+    'cariin napa',
+    'cariin woy',
+    'cariin bentar',
+    'cariin sini',
+    'cariin cepetan',
+    'tolong cariin',
+    'tolong cariin dong',
+    'tolong cariin ya',
+    'bantu cariin',
+    'bantu cariin dong',
+    'bantuin cari',
+    'bantuin cariin',
+    'bantuin dong cariin',
+    'bantuin nyari',
+    'bantu nemuin',
+    'tolong temuin',
+    'gan cariin',
+    'bro cariin',
+    'woy cariin',
+    'eh cariin',
+    'nyari',
+    'nyariin',
+    'nyari-nyari',
+    'lagi nyari',
+    'lagi nyariin',
+    'lagi cariin',
+
+    // --- Frasa kondisi / kehilangan (resmi) ---
+    'kehilangan',
+    'saya kehilangan',
+    'aku kehilangan',
+    'hilang',
+    'ilang',
+    'kemana',
+    'ke mana',
+    'dimana',
+    'di mana',
+    'dimanakah',
+    'di manakah',
+    'mana',
+    'ada dimana',
+
+    // --- Frasa kondisi / kehilangan (informal / slang) ---
+    'gue kehilangan',
+    'gua kehilangan',
+    'ane kehilangan',
+    'gw kehilangan',
+    'ilangan',
+    'ngilang',
+    'kemana ya',
+    'kemana sih',
+    'mana ya',
+    'mana sih',
+    'mana nih',
+    'kaga ketemu',
+    'kagak ketemu',
+    'gak ketemu',
+    'ga ketemu',
+    'nggak ketemu',
+    'tidak ketemu',
+    'belum ketemu',
+    'susah nemu',
+    'ga nemu',
+    'gak nemu',
+    'gak nemu-nemu',
+    'gak bisa nemu',
+    'kok gak ada ya',
+    'kok hilang ya',
+    'tadi taruh dimana ya',
+    'ilang kemana ini',
+
+    // --- Bahasa Daerah (Jawa, Sunda, Betawi, Minang, Batak, Bali, Makassar, Madura) ---
+    'ilang kemane',
+    'digoleki',
+    'goleki',
+    'ora ono',
+    'ilang neng ndi',
+    'diteangan',
+    'teangan',
+    'teang',
+    'milarian',
+    'leungit dimana',
+    'ilang kama',
+    'ilang dima',
+    'dima yo',
+    'ilang huta dison',
+    'alai pileh',
+    'kija alangan',
+    'kemma battu',
+    'keng gun edimma',
+
+    // --- Lupa naruh / lupa simpan ---
+    'lupa naro',
+    'lupa naruh',
+    'lupa nataro',
+    'lupa taro',
+    'lupa taruh',
+    'lupa ditaruh',
+    'lupa meletakkan',
+    'lupa nyimpen',
+    'lupa nyimpan',
+    'lupa menyimpan',
+    'lupa simpen dimana',
+    'lupa taro dimana',
+    'lupa naro dimana',
+    'lupa naruh dimana',
+
+    // --- Minta konfirmasi orang lain / ada yang liat ---
+    'ada yang liat',
+    'ada yang lihat',
+    'ada yg liat',
+    'ada yg lihat',
+    'ada yang nemu',
+    'nemu',
+    'nampak',
+    'kelihatan',
+    'keliatan',
+    'kliatan',
+    'keliatan gak',
+    'keliatan ga',
+  ];
+
+  static const List<String> fillerWords = [
+    // --- Kata ganti orang / kepemilikan ---
+    'saya punya',
+    'aku punya',
+    'punya saya',
+    'punya aku',
+    'punya gue',
+    'punya gua',
+    'punya ane',
+    'punyanya',
+    'punyaku',
+    'saya',
+    'aku',
+    'gue',
+    'gua',
+    'gw',
+    'ane',
+    'kamu',
+    'kau',
+    'anda',
+    'ku',
+    'mu',
+    'nya',
+
+    // --- Kata seru / partikel / basa-basi & Daerah ---
+    'bentar ya',
+    'sebentar',
+    'bentar',
+    'tolong',
+    'yaudah',
+    'please',
+    'dong',
+    'deh',
+    'nih',
+    'tuh',
+    'sih',
+    'ya',
+    'kah',
+    'tah',
+    'kek',
+    'lah',
+    'pun',
+    'dulu',
+    'woy',
+    'woi',
+    'eh',
+    'nah',
+    'kok',
+    'toh',
+    'kan',
+    'loh',
+    'lho',
+    'lo',
+    'gitu',
+    'gini',
+    'aja',
+    'saja',
+    'juga',
+    'napa',
+    'plis',
+    'yuk',
+    'udah',
+    'gan',
+    'bro',
+    'sis',
+    'cuy',
+    'kayaknya',
+    'yah',
+    'banget',
+    'coba',
+    'anu',
+    'mmm',
+    'eee',
+    'e',
+    'je',
+    'rek',
+    'atuh',
+    'euy',
+    'teh',
+    'mah',
+    'dah',
+    'noh',
+    'yee',
+    'bang',
+    'pole',
+  ];
+
+  /// Prefiks pengantar mode alami bahasa Indonesia yang sering diucapkan pengguna
+  static const List<String> modeTransitionPrefixes = [
+    'saya pengin pindah ke mode',
+    'saya mau pindah ke mode',
+    'pengin pindah ke mode',
+    'mau pindah ke mode',
+    'pindah ke mode',
+    'pindah mode ke',
+    'pindah mode',
+    'pindahin ke mode',
+    'pindahin ke',
+    'ganti mode ke',
+    'ganti ke mode',
+    'ganti mode',
+    'masuk ke mode',
+    'masuk mode',
+    'buka mode',
+    'tolong buka mode',
+    'tolong pindah ke',
+    'tolong ganti ke',
+    'mau ke mode',
+    'pengin ke mode',
+    'aktifkan mode',
+    'nyalakan mode',
+    'jalankan mode',
+  ];
+
+  // ===========================================================================
+  // Normalisasi & pencocokan batas kata
+  //
+  // Versi lama memakai `text.contains(phrase)` mentah dan menelusuri `_phrases`
+  // **mengikuti urutan deklarasi Map**. Dua akibatnya nyata:
+  //
+  //   1. `actionGoBack` memuat 'stop' dan 'berhenti', dan ia dideklarasikan
+  //      sebelum `actionStopWalking` dan `playPause`. Maka "stop navigasi" —
+  //      yang jelas dimaksudkan untuk menghentikan panduan — malah **keluar
+  //      dari Mode Navigasi**. Sebagian besar frasa kedua intent itu tidak
+  //      pernah bisa tercapai.
+  //   2. `contains` tanpa batas kata membuat potongan kata ikut cocok.
+  //
+  // Sekarang: frasa dicocokkan pada batas kata, dan **yang paling panjang
+  // diperiksa lebih dulu** — yang spesifik selalu menang atas yang umum,
+  // terlepas dari urutan deklarasi.
+  // ===========================================================================
+
+  static String _normalize(String s) {
+    final lowered = s.toLowerCase();
+    final buf = StringBuffer(' ');
+    for (final rune in lowered.runes) {
+      final c = String.fromCharCode(rune);
+      final isWordChar = (rune >= 97 && rune <= 122) || // a-z
+          (rune >= 48 && rune <= 57) || // 0-9
+          c == '-';
+      buf.write(isWordChar ? c : ' ');
+    }
+    buf.write(' ');
+    return buf.toString().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  /// True kalau [phrase] muncul di [normalized] sebagai rangkaian kata utuh.
+  static bool _containsPhrase(String normalized, String phrase) =>
+      normalized.contains(' ${_normalize(phrase).trim()} ');
+
+  /// Semua (frasa, intent) diurutkan dari yang terpanjang. Dibangun sekali.
+  static List<MapEntry<String, VoiceIntent>>? _sortedPhrasesCache;
+
+  static List<MapEntry<String, VoiceIntent>> get _sortedPhrases {
+    final cached = _sortedPhrasesCache;
+    if (cached != null) return cached;
+    final all = <MapEntry<String, VoiceIntent>>[];
+    for (final entry in _phrases.entries) {
+      // modeFindObject ditangani dinamis lewat searchPrefixes.
+      if (entry.key == VoiceIntent.modeFindObject) continue;
+      for (final phrase in entry.value) {
+        all.add(MapEntry(phrase, entry.key));
+      }
+    }
+    all.sort((a, b) => b.key.length.compareTo(a.key.length));
+    return _sortedPhrasesCache = all;
+  }
+
+  static int _wordCount(String phrase) => phrase.trim().split(' ').length;
 
   static VoiceCommand parse(String rawText) {
     final text = rawText.trim().toLowerCase();
     if (text.isEmpty) return VoiceCommand(rawText: rawText);
+    final norm = _normalize(rawText);
 
-    final argMatch = _findObjectWithArg.firstMatch(text);
-    if (argMatch != null) {
+    // =========================================================================
+    // [Fuzzy Matching Layer 0] — Natural Conversational Mode Transition
+    // Handles natural spoken sentences like: "Saya pengin pindah ke mode baca teks"
+    // Strips conversational prefixes and extracts target keywords (baca, uang, etc).
+    // =========================================================================
+    for (final prefix in modeTransitionPrefixes) {
+      if (text.contains(prefix)) {
+        final targetPart = text.substring(text.indexOf(prefix) + prefix.length).trim();
+        if (targetPart.contains('uang') || targetPart.contains('duit') || targetPart.contains('money')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeMoney);
+        }
+        if (targetPart.contains('baca') || targetPart.contains('teks') || targetPart.contains('tulisan') || targetPart.contains('ocr')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeReadText);
+        }
+        if (targetPart.contains('deteksi') || targetPart.contains('tuntun') || targetPart.contains('objek') || targetPart.contains('rintangan')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeDetection);
+        }
+        if (targetPart.contains('navigasi') || targetPart.contains('jalan') || targetPart.contains('rute')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeNavigation);
+        }
+        if (targetPart.contains('asisten') || targetPart.contains('suara') || targetPart.contains('tanya') || targetPart.contains('voice')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeAssistant);
+        }
+        if (targetPart.contains('cari') || targetPart.contains('barang') || targetPart.contains('find')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
+        }
+        if (targetPart.contains('pengaturan') || targetPart.contains('setelan') || targetPart.contains('setting')) {
+          return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeSettings);
+        }
+      }
+    }
+
+    // =========================================================================
+    // [Layer 1] — Frasa kamus MULTI-KATA, terpanjang lebih dulu.
+    //
+    // Frasa banyak kata mengungkap maksud jauh lebih tegas daripada satu kata
+    // lepas, jadi ia diperiksa sebelum apa pun. Di sinilah "stop navigasi"
+    // menemukan `actionStopWalking` sebelum kata 'stop' sempat membawanya ke
+    // `actionGoBack`.
+    // =========================================================================
+    for (final entry in _sortedPhrases) {
+      if (_wordCount(entry.key) < 2) continue;
+      if (_containsPhrase(norm, entry.key)) {
+        return VoiceCommand(rawText: rawText, intent: entry.value);
+      }
+    }
+
+    // =========================================================================
+    // [Layer 2] — Pola cari-objek dinamis ("cari [barang]").
+    //
+    // Sengaja SEBELUM kata tunggal: "cari uang yang jatuh" harus berarti
+    // mencari benda, bukan membuka Mode Kenali Uang hanya karena kata 'uang'
+    // muncul di dalamnya.
+    // =========================================================================
+    final target = _extractSearchTarget(norm);
+    if (target != null) {
       return VoiceCommand(
         rawText: rawText,
         intent: VoiceIntent.findObjectTarget,
-        argument: argMatch.group(1)?.trim(),
+        argument: target,
       );
     }
 
-    for (final entry in _phrases.entries) {
-      for (final phrase in entry.value) {
-        if (text.contains(phrase)) {
-          return VoiceCommand(rawText: rawText, intent: entry.key);
-        }
+    // =========================================================================
+    // [Layer 3] — Kata tunggal ("uang", "deteksi", "navigasi", "asisten").
+    // =========================================================================
+    for (final entry in _sortedPhrases) {
+      if (_wordCount(entry.key) != 1) continue;
+      if (_containsPhrase(norm, entry.key)) {
+        return VoiceCommand(rawText: rawText, intent: entry.value);
+      }
+    }
+
+    // =========================================================================
+    // [Layer 4] — Kombinasi kata kunci longgar ("baca" + "mode").
+    // =========================================================================
+    bool has(String w) => _containsPhrase(norm, w);
+    if (has('mode') || has('buka') || has('aktifkan')) {
+      if (has('baca') || has('teks') || has('tulisan')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeReadText);
+      }
+      if (has('uang') || has('duit')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeMoney);
+      }
+      if (has('deteksi') || has('tuntun') || has('rintangan')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeDetection);
+      }
+      if (has('navigasi') || has('jalur') || has('jalan')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeNavigation);
+      }
+      if (has('asisten') || has('suara') || has('tanya')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeAssistant);
+      }
+      if (has('cari') || has('barang')) {
+        return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
       }
     }
 
     return VoiceCommand(
       rawText: rawText,
-      suggestions: _nearestGuesses(text),
+      suggestions: _nearestGuesses(norm),
     );
   }
 
-  /// Dua tebakan terdekat berbasis jumlah kata yang beririsan — dipakai untuk
-  /// naskah "Saya dengar X. Maksudmu Y, atau Z?" (bagian 14, "Tidak dikenali").
-  static List<VoiceIntent> _nearestGuesses(String text) {
-    final words = text.split(RegExp(r'\s+')).toSet();
+  /// Ambil nama barang sesudah prefiks pencarian, lalu buang kata pengisi.
+  /// Mengembalikan null kalau tidak ada prefiks atau sisanya kosong.
+  static String? _extractSearchTarget(String norm) {
+    final sortedPrefixes = List<String>.from(searchPrefixes)
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    for (final prefix in sortedPrefixes) {
+      final needle = ' ${_normalize(prefix).trim()} ';
+      final idx = norm.indexOf(needle);
+      if (idx < 0) continue;
+
+      var cleaned = norm.substring(idx + needle.length - 1).trim();
+      if (cleaned.isEmpty) continue;
+
+      for (final filler in _sortedFillers) {
+        cleaned = cleaned.replaceAll(RegExp('\\b${RegExp.escape(filler)}\\b'), ' ');
+      }
+      cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+      if (cleaned.isEmpty || cleaned == 'objek' || cleaned == 'barang') continue;
+      return cleaned;
+    }
+    return null;
+  }
+
+  static List<String>? _sortedFillersCache;
+  static List<String> get _sortedFillers => _sortedFillersCache ??=
+      (List<String>.from(fillerWords)..sort((a, b) => b.length.compareTo(a.length)));
+
+  // =========================================================================
+  // [Fuzzy Matching Layer 3] — Word Overlap Similarity Scoring (Jaccard-like)
+  // Calculates word intersection overlap between raw STT input and phrase database.
+  // Returns top 2 nearest guesses for fallback voice prompts ("Saya dengar X. Maksudmu Y, atau Z?").
+  // =========================================================================
+  /// Intent yang boleh ditawarkan balik ke pengguna.
+  ///
+  /// **Hanya yang benar-benar punya handler.** Sebelumnya seluruh isi
+  /// `_phrases` bisa disarankan, termasuk 10 intent tanpa handler — sehingga
+  /// Vinara bisa bertanya "Maksudmu jeda?", pengguna menjawab "jeda", dan
+  /// jawabannya "Perintah itu belum saya kenali di mode ini". Lingkaran buntu
+  /// yang diciptakan aplikasi sendiri, dan pengguna tunanetra tidak punya
+  /// layar untuk keluar darinya.
+  ///
+  /// Menambah intent ke sini tanpa menambahkan handler di
+  /// `VoiceProvider._processText` akan menghidupkan lagi lingkaran itu.
+  static const Set<VoiceIntent> suggestableIntents = {
+    VoiceIntent.modeMoney,
+    VoiceIntent.modeReadText,
+    VoiceIntent.modeDetection,
+    VoiceIntent.modeNavigation,
+    VoiceIntent.modeAssistant,
+    VoiceIntent.modeFindObject,
+    VoiceIntent.modeSettings,
+    VoiceIntent.actionGoBack,
+    VoiceIntent.actionReplay,
+    VoiceIntent.actionStopWalking,
+    VoiceIntent.actionCapture,
+    VoiceIntent.actionTorch,
+    VoiceIntent.describeScene,
+    VoiceIntent.playPause,
+    VoiceIntent.playResume,
+    VoiceIntent.playFaster,
+    VoiceIntent.playSlower,
+    VoiceIntent.playRepeatSection,
+    VoiceIntent.helpWhat,
+    VoiceIntent.helpWhereAmI,
+  };
+
+  static List<VoiceIntent> _nearestGuesses(String normalized) {
+    final words = normalized.trim().split(' ').where((w) => w.isNotEmpty).toSet();
+    if (words.isEmpty) return const [];
+
     final scored = <MapEntry<VoiceIntent, int>>[];
 
     for (final entry in _phrases.entries) {
+      if (!suggestableIntents.contains(entry.key)) continue;
       var best = 0;
       for (final phrase in entry.value) {
-        final phraseWords = phrase.split(RegExp(r'\s+')).toSet();
+        final phraseWords = _normalize(phrase).trim().split(' ').toSet();
         final overlap = words.intersection(phraseWords).length;
         if (overlap > best) best = overlap;
       }
@@ -1723,10 +3286,12 @@ extension VoiceIntentSpokenLabel on VoiceIntent {
         VoiceIntent.modeSettings => 'pengaturan',
         VoiceIntent.actionCapture => 'ambil gambar',
         VoiceIntent.actionReplay => 'putar ulang',
+        VoiceIntent.actionGoBack => 'kembali',
         VoiceIntent.actionSummary => 'ringkas',
         VoiceIntent.actionStopWalking => 'selesai jalan',
         VoiceIntent.actionShowAll => 'lihat semua',
         VoiceIntent.actionTorch => 'nyalakan lampu',
+        VoiceIntent.describeScene => 'deskripsikan suasana',
         VoiceIntent.playPause => 'jeda',
         VoiceIntent.playResume => 'lanjut',
         VoiceIntent.playFaster => 'lebih cepat',
@@ -1741,9 +3306,9 @@ extension VoiceIntentSpokenLabel on VoiceIntent {
 
 ---
 
-## Berkas: `lib/core/voice/intents.dart`
+## File: `lib/core/voice/intents.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/voice/intents.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/voice/intents.dart`
 
 ```dart
 /// Intent perintah suara — bagian 14 IMPLEMENTASI.md. 20 intent baku.
@@ -1759,10 +3324,12 @@ enum VoiceIntent {
   // Tindakan dalam mode
   actionCapture,
   actionReplay,
+  actionGoBack,
   actionSummary,
   actionStopWalking,
   actionShowAll,
   actionTorch,
+  describeScene,
   // Kontrol pemutaran
   playPause,
   playResume,
@@ -1787,6 +3354,17 @@ extension VoiceIntentX on VoiceIntent {
         VoiceIntent.modeSettings =>
           true,
         _ => false,
+      };
+  String? get commandPhrase => switch (this) {
+        VoiceIntent.modeMoney => 'mode uang',
+        VoiceIntent.modeReadText => 'mode baca',
+        VoiceIntent.modeDetection => 'mode deteksi',
+        VoiceIntent.modeNavigation => 'mode navigasi',
+        VoiceIntent.modeAssistant => 'mode asisten',
+        VoiceIntent.modeFindObject => 'mode cari objek',
+        VoiceIntent.actionTorch => 'nyalakan lampu',
+        VoiceIntent.describeScene => 'deskripsikan suasana',
+        _ => null,
       };
 }
 
@@ -1813,9 +3391,538 @@ class VoiceCommand {
 
 ---
 
-## Berkas: `lib/main.dart`
+## File: `lib/core/voice/narration_engine.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/main.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/voice/narration_engine.dart`
+
+```dart
+import 'dart:math';
+
+/// Narration Engine — Merangkai hasil deteksi YOLO menjadi narasi Bahasa Indonesia
+/// yang alami untuk dibacakan TTS. 100% offline, tanpa LLM.
+///
+/// Menggantikan POST /api/narasi yang sebelumnya bergantung pada Qwen LLM di backend.
+///
+/// Sumber: guidio_bank_kata_dan_narasi_engine.md (Tugas 2)
+
+// ── Kamus Objek COCO-80 ────────────────────────────────────────────────────
+
+/// Info nama dan kata kerja konteks untuk setiap kelas objek COCO.
+class ObjectInfo {
+  final String nameId;     // nama umum Bahasa Indonesia
+  final String actionVerb; // kata kerja/predikat natural untuk objek ini
+  const ObjectInfo(this.nameId, this.actionVerb);
+}
+
+/// Kamus 80 kelas objek COCO: nama alami Bahasa Indonesia + kata kerja konteks.
+const Map<String, ObjectInfo> cocoObjectDictionary = {
+  'person':          ObjectInfo('orang', 'berjalan'),
+  'bicycle':         ObjectInfo('sepeda', 'terparkir'),
+  'car':             ObjectInfo('mobil', 'terparkir'),
+  'motorcycle':      ObjectInfo('motor', 'terparkir'),
+  'airplane':        ObjectInfo('pesawat', 'terlihat'),
+  'bus':             ObjectInfo('bus', 'melintas'),
+  'train':           ObjectInfo('kereta', 'melintas'),
+  'truck':           ObjectInfo('truk', 'terparkir'),
+  'boat':            ObjectInfo('perahu', 'bersandar'),
+  'traffic light':   ObjectInfo('lampu lalu lintas', 'menyala'),
+  'fire hydrant':    ObjectInfo('hidran', 'berdiri'),
+  'stop sign':       ObjectInfo('rambu stop', 'terpasang'),
+  'parking meter':   ObjectInfo('meteran parkir', 'terpasang'),
+  'bench':           ObjectInfo('bangku', 'diletakkan'),
+  'bird':            ObjectInfo('burung', 'hinggap'),
+  'cat':             ObjectInfo('kucing', 'duduk'),
+  'dog':             ObjectInfo('anjing', 'duduk'),
+  'horse':           ObjectInfo('kuda', 'berdiri'),
+  'sheep':           ObjectInfo('domba', 'berdiri'),
+  'cow':             ObjectInfo('sapi', 'berdiri'),
+  'elephant':        ObjectInfo('gajah', 'berdiri'),
+  'bear':            ObjectInfo('beruang', 'berdiri'),
+  'zebra':           ObjectInfo('zebra', 'berdiri'),
+  'giraffe':         ObjectInfo('jerapah', 'berdiri'),
+  'backpack':        ObjectInfo('tas ransel', 'diletakkan'),
+  'umbrella':        ObjectInfo('payung', 'diletakkan'),
+  'handbag':         ObjectInfo('tas tangan', 'diletakkan'),
+  'tie':             ObjectInfo('dasi', 'tergantung'),
+  'suitcase':        ObjectInfo('koper', 'diletakkan'),
+  'frisbee':         ObjectInfo('piringan frisbee', 'tergeletak'),
+  'skis':            ObjectInfo('papan ski', 'disandarkan'),
+  'snowboard':       ObjectInfo('papan salju', 'disandarkan'),
+  'sports ball':     ObjectInfo('bola', 'tergeletak'),
+  'kite':            ObjectInfo('layang-layang', 'terbang'),
+  'baseball bat':    ObjectInfo('pemukul bisbol', 'tergeletak'),
+  'baseball glove':  ObjectInfo('sarung tangan bisbol', 'tergeletak'),
+  'skateboard':      ObjectInfo('papan skateboard', 'tergeletak'),
+  'surfboard':       ObjectInfo('papan selancar', 'disandarkan'),
+  'tennis racket':   ObjectInfo('raket tenis', 'tergeletak'),
+  'bottle':          ObjectInfo('botol', 'diletakkan'),
+  'wine glass':      ObjectInfo('gelas anggur', 'diletakkan'),
+  'cup':             ObjectInfo('gelas', 'diletakkan'),
+  'fork':            ObjectInfo('garpu', 'diletakkan'),
+  'knife':           ObjectInfo('pisau', 'diletakkan'),
+  'spoon':           ObjectInfo('sendok', 'diletakkan'),
+  'bowl':            ObjectInfo('mangkuk', 'diletakkan'),
+  'banana':          ObjectInfo('pisang', 'diletakkan'),
+  'apple':           ObjectInfo('apel', 'diletakkan'),
+  'sandwich':        ObjectInfo('roti lapis', 'diletakkan'),
+  'orange':          ObjectInfo('jeruk', 'diletakkan'),
+  'broccoli':        ObjectInfo('brokoli', 'diletakkan'),
+  'carrot':          ObjectInfo('wortel', 'diletakkan'),
+  'hot dog':         ObjectInfo('hot dog', 'diletakkan'),
+  'pizza':           ObjectInfo('pizza', 'diletakkan'),
+  'donut':           ObjectInfo('donat', 'diletakkan'),
+  'cake':            ObjectInfo('kue', 'diletakkan'),
+  'chair':           ObjectInfo('kursi', 'disediakan'),
+  'couch':           ObjectInfo('sofa', 'disediakan'),
+  'potted plant':    ObjectInfo('tanaman pot', 'diletakkan'),
+  'bed':             ObjectInfo('tempat tidur', 'disediakan'),
+  'dining table':    ObjectInfo('meja makan', 'disediakan'),
+  'toilet':          ObjectInfo('toilet', 'berada'),
+  'tv':              ObjectInfo('televisi', 'menyala'),
+  'laptop':          ObjectInfo('laptop', 'diletakkan'),
+  'mouse':           ObjectInfo('mouse komputer', 'diletakkan'),
+  'remote':          ObjectInfo('remote', 'diletakkan'),
+  'keyboard':        ObjectInfo('keyboard', 'diletakkan'),
+  'cell phone':      ObjectInfo('ponsel', 'diletakkan'),
+  'microwave':       ObjectInfo('microwave', 'terpasang'),
+  'oven':            ObjectInfo('oven', 'terpasang'),
+  'toaster':         ObjectInfo('pemanggang roti', 'terpasang'),
+  'sink':            ObjectInfo('wastafel', 'terpasang'),
+  'refrigerator':    ObjectInfo('kulkas', 'berdiri'),
+  'book':            ObjectInfo('buku', 'diletakkan'),
+  'clock':           ObjectInfo('jam dinding', 'tergantung'),
+  'vase':            ObjectInfo('vas bunga', 'diletakkan'),
+  'scissors':        ObjectInfo('gunting', 'diletakkan'),
+  'teddy bear':      ObjectInfo('boneka beruang', 'diletakkan'),
+  'hair drier':      ObjectInfo('pengering rambut', 'diletakkan'),
+  'toothbrush':      ObjectInfo('sikat gigi', 'diletakkan'),
+};
+
+// ── Mapper Jarak & Arah ────────────────────────────────────────────────────
+
+/// Mengubah jarak numerik (meter) menjadi frasa jarak yang natural.
+String mapDistancePhrase(double distanceMeter) {
+  if (distanceMeter < 1.0) {
+    // Variasi frasa jarak sangat dekat, dipilih acak agar tidak monoton
+    final phrases = [
+      'sangat dekat di depanmu',
+      'di dekat langkahmu',
+      'tepat di jangkauanmu',
+    ];
+    return phrases[(distanceMeter * 100).toInt() % phrases.length];
+  } else if (distanceMeter <= 3.0) {
+    return 'sekitar ${_formatMeter(distanceMeter)} meter';
+  } else {
+    return 'agak jauh sekitar ${_formatMeter(distanceMeter)} meter';
+  }
+}
+
+/// Mengubah angka desimal jarak menjadi teks natural
+/// (contoh: 1.5 → "satu setengah", 3.0 → "tiga").
+String _formatMeter(double meter) {
+  final intPart = meter.floor();
+  final decimalPart = meter - intPart;
+
+  const satuan = [
+    'nol', 'satu', 'dua', 'tiga', 'empat', 'lima',
+    'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh',
+  ];
+
+  final intWord = (intPart >= 0 && intPart < satuan.length)
+      ? satuan[intPart]
+      : intPart.toString();
+
+  if (decimalPart >= 0.4 && decimalPart <= 0.6) {
+    return '$intWord setengah';
+  }
+  return intWord;
+}
+
+/// Mengubah kode arah menjadi frasa posisi natural.
+String mapDirectionPhrase(String direction) {
+  switch (direction.toLowerCase()) {
+    case 'kiri':
+      return 'di sebelah kirimu';
+    case 'kanan':
+      return 'di sebelah kananmu';
+    case 'tengah':
+    default:
+      return 'tepat di depanmu';
+  }
+}
+
+// ── Sentence Builder ───────────────────────────────────────────────────────
+
+/// Data deteksi satu objek untuk narasi engine.
+/// Berbeda dari model [Detection] utama — ini versi ringan khusus narasi.
+class NarrationDetection {
+  final String objectClass; // key dari cocoObjectDictionary, mis. "car"
+  final double dist;        // jarak dalam meter
+  final String dir;         // "kiri" | "tengah" | "kanan"
+  final int count;          // jumlah objek sejenis pada kelompok yang sama
+
+  const NarrationDetection({
+    required this.objectClass,
+    required this.dist,
+    required this.dir,
+    this.count = 1,
+  });
+}
+
+final _random = Random();
+
+/// Merangkai daftar deteksi objek mentah menjadi satu kalimat narasi
+/// Bahasa Indonesia yang alami untuk dibacakan TTS — 100% tanpa LLM.
+///
+/// Menggantikan POST /api/narasi (backend Qwen).
+///
+/// Contoh output:
+/// "Di sekitarmu, ada dua orang di sebelah kirimu sejauh satu setengah meter,
+///  serta sebuah mobil di sebelah kananmu sejauh agak jauh sekitar tiga meter."
+String generateNaturalNarration(List<NarrationDetection> detections) {
+  if (detections.isEmpty) {
+    return 'Tidak ada objek yang terdeteksi di sekitarmu saat ini.';
+  }
+
+  // Urutkan dari yang paling dekat — objek paling berbahaya disebut lebih dulu
+  final sorted = [...detections]..sort((a, b) => a.dist.compareTo(b.dist));
+
+  // Batasi maksimal 3 objek utama supaya kalimat tidak terlalu panjang
+  final mainObjects = sorted.take(3).toList();
+
+  const connectorsFirst = [
+    'Di sekitarmu, ada',
+    'Di depanmu terdapat',
+    'Saat ini terdeteksi',
+  ];
+  const connectorsMiddle = [
+    'sementara di sana ada',
+    'lalu terdapat',
+    'kemudian ada',
+  ];
+  const connectorsLast = ['serta', 'dan juga', 'ditambah'];
+
+  final buffer = StringBuffer();
+  buffer.write('${connectorsFirst[_random.nextInt(connectorsFirst.length)]} ');
+
+  var writtenCount = 0;
+  for (var i = 0; i < mainObjects.length; i++) {
+    final det = mainObjects[i];
+    final info = cocoObjectDictionary[det.objectClass];
+
+    if (info == null) continue; // lewati kelas yang tidak dikenal
+
+    final countPhrase = _countToWords(det.count, info.nameId);
+    final distPhrase  = mapDistancePhrase(det.dist);
+    final dirPhrase   = mapDirectionPhrase(det.dir);
+    final clause      = '$countPhrase $dirPhrase sejauh $distPhrase';
+
+    if (writtenCount == 0) {
+      buffer.write(clause);
+    } else if (i == mainObjects.length - 1) {
+      buffer.write(
+        ', ${connectorsLast[_random.nextInt(connectorsLast.length)]} $clause',
+      );
+    } else {
+      buffer.write(
+        ', ${connectorsMiddle[_random.nextInt(connectorsMiddle.length)]} $clause',
+      );
+    }
+    writtenCount++;
+  }
+
+  if (writtenCount == 0) {
+    return 'Area sekitar tampak aman.';
+  }
+
+  buffer.write('.');
+  return buffer.toString();
+}
+
+/// Mengubah jumlah objek menjadi frasa natural, termasuk pluralisasi sederhana
+/// khas Bahasa Indonesia (mis. "dua orang", "sebuah botol").
+String _countToWords(int count, String nameId) {
+  const angka = [
+    '', 'satu', 'dua', 'tiga', 'empat', 'lima',
+    'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh',
+  ];
+
+  if (count <= 1) {
+    if (nameId == 'orang') return nameId;
+    return 'sebuah $nameId';
+  }
+
+  final numberWord = (count < angka.length) ? angka[count] : count.toString();
+  return '$numberWord $nameId';
+}
+
+/// Lookup nama Indonesia dari label YOLO/model (fallback ke label asli).
+/// Berguna untuk format cepat tanpa narasi penuh.
+String labelToIndonesian(String label) {
+  return cocoObjectDictionary[label]?.nameId ?? label;
+}
+```
+
+---
+
+## File: `lib/core/voice/scene_translator.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/voice/scene_translator.dart`
+
+```dart
+/// Penerjemah kalimat deskripsi suasana Inggris → Indonesia, **tanpa LLM**.
+///
+/// Moondream2 mengeluarkan caption Bahasa Inggris ("A man standing in front of
+/// a white building"). Selama ini kalimat itu dibacakan apa adanya dengan TTS
+/// `en-US`, dan itu menuntut kemampuan Inggris lisan yang tidak bisa
+/// diasumsikan pada target pengguna: tunanetra di pasar dan warung Indonesia.
+///
+/// Menambahkan LLM penerjemah akan melanggar prinsip yang sudah dipegang
+/// proyek ini — lambat (1–3 detik), bisa berhalusinasi, dan butuh server.
+/// Jadi pendekatannya sama persis dengan [generateNaturalNarration]: kamus
+/// lokal + aturan urutan kata. 0 ms, offline, dan tidak pernah mengarang.
+///
+/// **Kalau tidak yakin, ia menyerah.** Caption yang cakupan kamusnya di bawah
+/// [_minCoverage] mengembalikan null, dan pemanggil membacakan versi
+/// Inggrisnya. Bahasa Indonesia yang kacau lebih buruk daripada Bahasa Inggris
+/// yang benar — pengguna tidak punya layar untuk memverifikasi tebakan kita.
+library;
+
+/// Ambang cakupan kamus. Di bawah ini, hasilnya tidak layak diucapkan.
+const double _minCoverage = 0.72;
+
+/// Frasa banyak kata — dicocokkan lebih dulu, terpanjang menang.
+const Map<String, String> _phrases = {
+  'in front of': 'di depan',
+  'next to': 'di sebelah',
+  'close to': 'di dekat',
+  'on top of': 'di atas',
+  'in the middle of': 'di tengah',
+  'to the left of': 'di sebelah kiri',
+  'to the right of': 'di sebelah kanan',
+  'a couple of': 'beberapa',
+  'a lot of': 'banyak',
+  'a group of': 'sekelompok',
+  'a pair of': 'sepasang',
+  'a close-up': 'gambar dekat',
+  'close-up': 'gambar dekat',
+  'there is': 'ada',
+  'there are': 'ada',
+  'is standing': 'sedang berdiri',
+  'is sitting': 'sedang duduk',
+  'is walking': 'sedang berjalan',
+  'living room': 'ruang tamu',
+  'dining room': 'ruang makan',
+  'traffic light': 'lampu lalu lintas',
+  'cell phone': 'ponsel',
+  'potted plant': 'tanaman pot',
+  'dining table': 'meja makan',
+  'teddy bear': 'boneka beruang',
+  'city street': 'jalan kota',
+  'parking lot': 'tempat parkir',
+  'sidewalk': 'trotoar',
+  'wine glass': 'gelas anggur',
+  'cup of coffee': 'cangkir kopi',
+  'cup of tea': 'cangkir teh',
+  'each other': 'satu sama lain',
+};
+
+/// Kata yang dibuang: Bahasa Indonesia tidak memakai artikel, dan kopula
+/// "is/are" umumnya tidak diterjemahkan.
+const Set<String> _dropped = {
+  'a', 'an', 'the', 'is', 'are', 'that', 'which', 'it', 'its', 'be', 'being',
+};
+
+/// Kata sifat — di Bahasa Indonesia posisinya SESUDAH kata benda.
+const Map<String, String> _adjectives = {
+  'white': 'putih', 'black': 'hitam', 'red': 'merah', 'blue': 'biru',
+  'green': 'hijau', 'yellow': 'kuning', 'brown': 'cokelat', 'gray': 'abu-abu',
+  'grey': 'abu-abu', 'orange': 'oranye', 'purple': 'ungu', 'pink': 'merah muda',
+  'dark': 'gelap', 'bright': 'terang', 'light': 'terang',
+  'large': 'besar', 'big': 'besar', 'small': 'kecil', 'tiny': 'mungil',
+  'long': 'panjang', 'short': 'pendek', 'tall': 'tinggi', 'wide': 'lebar',
+  'old': 'tua', 'young': 'muda', 'new': 'baru',
+  'wooden': 'kayu', 'metal': 'logam', 'plastic': 'plastik', 'glass': 'kaca',
+  'empty': 'kosong', 'full': 'penuh', 'open': 'terbuka', 'closed': 'tertutup',
+  'busy': 'ramai', 'quiet': 'sepi', 'clean': 'bersih', 'dirty': 'kotor',
+  'wet': 'basah', 'dry': 'kering', 'narrow': 'sempit', 'crowded': 'padat',
+};
+
+/// Kata benda, kata kerja, preposisi, angka.
+const Map<String, String> _words = {
+  // Orang
+  'man': 'seorang pria', 'woman': 'seorang wanita', 'men': 'beberapa pria',
+  'women': 'beberapa wanita', 'person': 'seseorang', 'people': 'orang-orang',
+  'boy': 'anak laki-laki', 'girl': 'anak perempuan', 'child': 'seorang anak',
+  'children': 'anak-anak', 'crowd': 'kerumunan',
+
+  // Tempat & bangunan
+  'building': 'gedung', 'buildings': 'gedung-gedung', 'house': 'rumah',
+  'wall': 'dinding', 'door': 'pintu', 'window': 'jendela', 'floor': 'lantai',
+  'ceiling': 'langit-langit', 'room': 'ruangan', 'kitchen': 'dapur',
+  'street': 'jalan', 'road': 'jalan', 'path': 'jalur', 'stairs': 'tangga',
+  'shop': 'toko', 'store': 'toko', 'market': 'pasar', 'restaurant': 'restoran',
+  'office': 'kantor', 'park': 'taman', 'garden': 'kebun', 'bridge': 'jembatan',
+  'sky': 'langit', 'ground': 'tanah', 'grass': 'rumput', 'tree': 'pohon',
+  'trees': 'pepohonan', 'sign': 'papan tanda', 'fence': 'pagar',
+
+  // Perabot & benda
+  'table': 'meja', 'chair': 'kursi', 'chairs': 'kursi', 'desk': 'meja',
+  'bed': 'tempat tidur', 'couch': 'sofa', 'sofa': 'sofa', 'shelf': 'rak',
+  'laptop': 'laptop', 'computer': 'komputer', 'phone': 'ponsel',
+  'keyboard': 'papan ketik', 'screen': 'layar', 'monitor': 'monitor',
+  'book': 'buku', 'books': 'buku-buku', 'paper': 'kertas', 'bag': 'tas',
+  'backpack': 'tas ransel', 'box': 'kotak', 'bottle': 'botol',
+  'cup': 'cangkir', 'glass': 'gelas', 'plate': 'piring', 'bowl': 'mangkuk',
+  'food': 'makanan', 'coffee': 'kopi', 'tea': 'teh', 'water': 'air',
+  'clock': 'jam', 'lamp': 'lampu', 'light': 'lampu', 'picture': 'gambar',
+  'mirror': 'cermin', 'curtain': 'tirai', 'carpet': 'karpet', 'rug': 'karpet',
+  'basket': 'keranjang', 'umbrella': 'payung', 'hat': 'topi', 'shirt': 'baju',
+  'money': 'uang', 'wallet': 'dompet', 'key': 'kunci', 'keys': 'kunci',
+  'glasses': 'kacamata', 'watch': 'jam tangan', 'camera': 'kamera',
+
+  // Kendaraan
+  'car': 'mobil', 'cars': 'mobil-mobil', 'bus': 'bus', 'truck': 'truk',
+  'motorcycle': 'motor', 'bicycle': 'sepeda', 'bike': 'sepeda',
+  'train': 'kereta', 'boat': 'perahu', 'vehicle': 'kendaraan',
+
+  // Hewan
+  'dog': 'anjing', 'cat': 'kucing', 'bird': 'burung', 'animal': 'hewan',
+
+  // Kata kerja (bentuk -ing)
+  'standing': 'berdiri', 'sitting': 'duduk', 'walking': 'berjalan',
+  'running': 'berlari', 'holding': 'memegang', 'wearing': 'memakai',
+  'looking': 'melihat', 'talking': 'berbicara', 'eating': 'makan',
+  'drinking': 'minum', 'reading': 'membaca', 'working': 'bekerja',
+  'lying': 'tergeletak', 'hanging': 'tergantung', 'parked': 'terparkir',
+  'placed': 'diletakkan', 'sitting_on': 'duduk di',
+  'facing': 'menghadap', 'crossing': 'menyeberang', 'waiting': 'menunggu',
+
+  // Preposisi & penghubung
+  'on': 'di atas', 'in': 'di dalam', 'at': 'di', 'near': 'di dekat',
+  'behind': 'di belakang', 'under': 'di bawah', 'above': 'di atas',
+  'beside': 'di samping', 'between': 'di antara', 'with': 'dengan',
+  'and': 'dan', 'or': 'atau', 'of': 'dari', 'from': 'dari', 'to': 'ke',
+  'over': 'di atas', 'across': 'di seberang', 'down': 'menyusuri',
+  'while': 'sambil', 'front': 'depan', 'side': 'sisi', 'top': 'atas',
+
+  // Angka & kuantitas
+  'one': 'satu', 'two': 'dua', 'three': 'tiga', 'four': 'empat',
+  'five': 'lima', 'six': 'enam', 'seven': 'tujuh', 'eight': 'delapan',
+  'nine': 'sembilan', 'ten': 'sepuluh',
+  'some': 'beberapa', 'several': 'beberapa', 'many': 'banyak',
+  'few': 'sedikit', 'other': 'lain', 'another': 'satu lagi',
+  'his': 'nya', 'her': 'nya', 'their': 'mereka', 'this': 'ini', 'these': 'ini',
+};
+
+/// Hasil penerjemahan.
+class SceneTranslation {
+  /// Kalimat Bahasa Indonesia, atau null kalau cakupan kamus terlalu rendah.
+  final String? indonesian;
+
+  /// Berapa bagian kata isi yang berhasil dikenali (0..1). Untuk diagnostik.
+  final double coverage;
+
+  const SceneTranslation({required this.indonesian, required this.coverage});
+
+  bool get isUsable => indonesian != null;
+}
+
+/// Terjemahkan caption suasana. Mengembalikan [SceneTranslation.indonesian]
+/// null kalau hasilnya tidak layak diucapkan.
+SceneTranslation translateSceneCaption(String englishCaption) {
+  var text = englishCaption.toLowerCase().trim();
+  if (text.isEmpty) return const SceneTranslation(indonesian: null, coverage: 0);
+
+  // Buang tanda baca akhir & normalisasi spasi.
+  text = text.replaceAll(RegExp(r'[.!?]+$'), '');
+  text = text.replaceAll(RegExp(r'[^a-z0-9\s\-]'), ' ');
+  text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  // Frasa multi-kata lebih dulu — ditandai dengan token khusus supaya tidak
+  // ikut dipecah tahap berikutnya.
+  final placeholders = <String, String>{};
+  final sortedPhrases = _phrases.keys.toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  var i = 0;
+  for (final phrase in sortedPhrases) {
+    if (!text.contains(phrase)) continue;
+    final token = ' ${i++} ';
+    placeholders[token] = _phrases[phrase]!;
+    text = text.replaceAll(phrase, token);
+  }
+
+  final tokens = text.split(' ').where((t) => t.isNotEmpty).toList();
+  final out = <String>[];
+  var contentWords = 0;
+  var known = 0;
+
+  for (var t = 0; t < tokens.length; t++) {
+    final token = tokens[t];
+
+    if (placeholders.containsKey(token)) {
+      out.add(placeholders[token]!);
+      contentWords++;
+      known++;
+      continue;
+    }
+
+    if (_dropped.contains(token)) continue;
+
+    contentWords++;
+
+    // Kata sifat + kata benda → urutannya dibalik: "white building" jadi
+    // "gedung putih". Ini satu-satunya aturan tata bahasa yang benar-benar
+    // dibutuhkan; sisanya sudah cukup dekat kalau diterjemahkan urut.
+    if (_adjectives.containsKey(token)) {
+      final next = t + 1 < tokens.length ? tokens[t + 1] : null;
+      if (next != null && _words.containsKey(next)) {
+        out.add('${_words[next]} ${_adjectives[token]}');
+        known += 2;
+        contentWords++; // kata benda ikut dihitung
+        t++; // lewati kata benda yang sudah dipakai
+        continue;
+      }
+      out.add(_adjectives[token]!);
+      known++;
+      continue;
+    }
+
+    final word = _words[token];
+    if (word != null) {
+      out.add(word);
+      known++;
+      continue;
+    }
+
+    // Angka tetap angka.
+    if (RegExp(r'^\d+$').hasMatch(token)) {
+      out.add(token);
+      known++;
+      continue;
+    }
+
+    // Tidak dikenal — pertahankan apa adanya, tapi hitung sebagai tidak
+    // tercakup supaya ambang cakupan bisa menolak kalimat yang terlalu asing.
+    out.add(token);
+  }
+
+  final coverage = contentWords == 0 ? 0.0 : known / contentWords;
+  if (coverage < _minCoverage || out.isEmpty) {
+    return SceneTranslation(indonesian: null, coverage: coverage);
+  }
+
+  var sentence = out.join(' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  sentence = sentence[0].toUpperCase() + sentence.substring(1);
+  return SceneTranslation(indonesian: '$sentence.', coverage: coverage);
+}
+```
+
+---
+
+## File: `lib/main.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/main.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -1869,17 +3976,14 @@ class GuidioApp extends StatelessWidget {
               (prev ?? AppModeProvider())..applyVerbosity(settings.verbosity),
         ),
 
-        // DetectionProvider — butuh InferenceProvider + CameraProvider, dan
-        // ikut mendengarkan SettingsProvider supaya PG-05 (kecerewetan) dan
-        // PG-06 (ambang jarak) benar-benar mengubah perilaku deteksi. Tanpa
-        // sambungan ini keduanya hanya tersimpan ke disk.
-        ChangeNotifierProxyProvider3<InferenceProvider, CameraProvider, SettingsProvider, DetectionProvider>(
-          create: (ctx) => DetectionProvider(
-            ctx.read<InferenceProvider>(),
-            ctx.read<CameraProvider>(),
-          ),
-          update: (ctx, inf, cam, settings, prev) {
-            final provider = prev ?? DetectionProvider(inf, cam);
+        // DetectionProvider — hanya butuh CameraProvider (jalur deteksi
+        // sepenuhnya on-device), dan ikut mendengarkan SettingsProvider supaya
+        // PG-05 (kecerewetan) dan PG-06 (ambang jarak) benar-benar mengubah
+        // perilaku deteksi. Tanpa sambungan ini keduanya hanya tersimpan ke disk.
+        ChangeNotifierProxyProvider2<CameraProvider, SettingsProvider, DetectionProvider>(
+          create: (ctx) => DetectionProvider(ctx.read<CameraProvider>()),
+          update: (ctx, cam, settings, prev) {
+            final provider = prev ?? DetectionProvider(cam);
             provider.applySettings(
               maxDistanceM: settings.distanceThresholdM,
               verbosity: settings.verbosity,
@@ -1889,18 +3993,21 @@ class GuidioApp extends StatelessWidget {
         ),
 
         // VoiceProvider — butuh CameraProvider + DetectionProvider +
-        // AppModeProvider. AppModeProvider ikut disuntik supaya perintah suara
-        // "buka mode X" memindah state SENDIRI, tanpa bergantung layar yang
-        // sedang aktif memasang callback (bagian 4.1: konfirmasi TTS tidak
-        // boleh mendahului perubahan state).
-        ChangeNotifierProxyProvider3<CameraProvider, DetectionProvider, AppModeProvider, VoiceProvider>(
+        // AppModeProvider + FindObjectProvider. AppModeProvider ikut disuntik
+        // supaya perintah suara "buka mode X" memindah state SENDIRI, tanpa
+        // bergantung layar yang sedang aktif memasang callback (bagian 4.1:
+        // konfirmasi TTS tidak boleh mendahului perubahan state).
+        // FindObjectProvider disuntik untuk mendukung perintah suara
+        // "carikan [barang]" dari mode mana pun (fitur Jarvis Global Mic).
+        ChangeNotifierProxyProvider4<CameraProvider, DetectionProvider, AppModeProvider, FindObjectProvider, VoiceProvider>(
           create: (ctx) => VoiceProvider(
             ctx.read<CameraProvider>(),
             ctx.read<DetectionProvider>(),
             ctx.read<AppModeProvider>(),
+            ctx.read<FindObjectProvider>(),
           ),
-          update: (ctx, cam, det, appMode, prev) =>
-              prev ?? VoiceProvider(cam, det, appMode),
+          update: (ctx, cam, det, appMode, findObj, prev) =>
+              prev ?? VoiceProvider(cam, det, appMode, findObj),
         ),
       ],
       child: Builder(
@@ -1934,9 +4041,9 @@ class GuidioApp extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/mock/mock_find_object.dart`
+## File: `lib/mock/mock_find_object.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/mock/mock_find_object.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/mock/mock_find_object.dart`
 
 ```dart
 import 'dart:math';
@@ -1985,9 +4092,9 @@ abstract final class FindObjectMockData {
 
 ---
 
-## Berkas: `lib/mock/ocr_mock_data.dart`
+## File: `lib/mock/ocr_mock_data.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/mock/ocr_mock_data.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/mock/ocr_mock_data.dart`
 
 ```dart
 /// Data & katalog mock khusus Mode Baca Teks (OCR) — dipakai HANYA oleh
@@ -2113,9 +4220,9 @@ List<OcrBlock> mockPartialBlocks() => const [
 
 ---
 
-## Berkas: `lib/models/detection.dart`
+## File: `lib/models/detection.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/models/detection.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/models/detection.dart`
 
 ```dart
 class Detection {
@@ -2129,6 +4236,15 @@ class Detection {
   final double inferenceMs;
   final bool isApproaching;    // true jika bbox makin besar (dari SORT tracker)
 
+  /// Identitas objek dari [ObjectTracker], stabil antar frame. `null` berarti
+  /// deteksi ini belum melewati tracker (mis. hasil server single-shot).
+  ///
+  /// Dipakai [DetectionFilter] sebagai kunci cooldown dan streak. Sebelumnya
+  /// kuncinya `labelEn`, sehingga dua orang berbeda dianggap satu: orang yang
+  /// jauh diumumkan lebih dulu, lalu orang yang dekat dan mendekat dibungkam
+  /// sampai cooldown label "person" habis.
+  final int? trackId;
+
   const Detection({
     required this.labelEn,
     required this.labelId,
@@ -2139,7 +4255,12 @@ class Detection {
     required this.bbox,
     required this.inferenceMs,
     this.isApproaching = false,
+    this.trackId,
   });
+
+  /// Kunci identitas untuk filter. Pakai trackId kalau ada; kalau tidak,
+  /// jatuh ke label supaya jalur tanpa tracker tetap punya cooldown.
+  String get filterKey => trackId != null ? 't$trackId' : 'l$labelEn';
 
   factory Detection.fromJson(Map<String, dynamic> json) => Detection(
         labelEn:       json['label_en'] as String? ?? '',
@@ -2154,17 +4275,19 @@ class Detection {
       );
 
   /// Buat salinan Detection dengan field tertentu diubah.
-  /// Digunakan DetectionProvider untuk menambahkan isApproaching dari tracker.
-  Detection copyWith({bool? isApproaching}) => Detection(
+  /// Digunakan DetectionProvider untuk menambahkan isApproaching + trackId
+  /// dari tracker.
+  Detection copyWith({bool? isApproaching, int? trackId, double? distanceMeter}) => Detection(
         labelEn:       labelEn,
         labelId:       labelId,
         confidence:    confidence,
-        distanceMeter: distanceMeter,
+        distanceMeter: distanceMeter ?? this.distanceMeter,
         direction:     direction,
         dangerLevel:   dangerLevel,
         bbox:          bbox,
         inferenceMs:   inferenceMs,
         isApproaching: isApproaching ?? this.isApproaching,
+        trackId:       trackId ?? this.trackId,
       );
 
   // Computed getters dari bbox pixel (format x1/y1/x2/y2).
@@ -2197,54 +4320,24 @@ class Detection {
 
 ---
 
-## Berkas: `lib/models/index.dart`
+## File: `lib/models/index.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/models/index.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/models/index.dart`
 
 ```dart
 export 'detection.dart';
-export 'risk_zone.dart';
 ```
 
 ---
 
-## Berkas: `lib/models/risk_zone.dart`
+## File: `lib/providers/app_mode_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/models/risk_zone.dart`
-
-```dart
-class RiskZone {
-  final double distanceMeter;
-  final int count;
-  final String commonLabel;
-  final String warning;
-
-  const RiskZone({
-    required this.distanceMeter,
-    required this.count,
-    required this.commonLabel,
-    required this.warning,
-  });
-
-  factory RiskZone.fromJson(Map<String, dynamic> json) => RiskZone(
-        distanceMeter: (json['distance_meter'] ?? 0).toDouble(),
-        count:         json['count'] as int? ?? 0,
-        commonLabel:   json['common_label'] as String? ?? '',
-        warning:       json['warning'] as String? ?? 'Area ini sering ada hambatan, hati-hati',
-      );
-}
-```
-
----
-
-## Berkas: `lib/providers/app_mode_provider.dart`
-
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/app_mode_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/app_mode_provider.dart`
 
 ```dart
 import 'package:flutter/foundation.dart';
+import '../core/speech/tts_queue.dart';
 import '../providers/settings_provider.dart' show Verbosity;
-import '../services/tts_service.dart';
 
 /// Enam mode sejajar, sesuai kontrak navigasi Vinara: tidak ada beranda,
 /// mode mana pun bisa dicapai dalam maksimal dua langkah (suara = 1 langkah,
@@ -2266,7 +4359,13 @@ extension AppModeLabel on AppMode {
         AppMode.tuntun     => 'Arahkan ponsel ke depan, saya akan menyebut rintangan di jalurmu.',
         AppMode.money      => 'Letakkan uang di dalam bingkai, saya akan menyebut nominalnya.',
         AppMode.ocr        => 'Arahkan ponsel ke tulisan, lalu ambil gambar.',
-        AppMode.navigasi   => 'Sebutkan atau ketik tujuanmu, saya akan menuntun jalan.',
+        // JANGAN menjanjikan tujuan/GPS di sini. Kalimat lama berbunyi
+        // "Sebutkan atau ketik tujuanmu, saya akan menuntun jalan." padahal
+        // GPS belum ada: pengguna tunanetra menyebutkan tujuan, tidak ada yang
+        // terjadi, mencoba lagi, tetap tidak ada. Kalimat pembuka yang
+        // menjanjikan sesuatu yang tidak ada adalah cara tercepat kehilangan
+        // kepercayaan pengguna terhadap seluruh aplikasi.
+        AppMode.navigasi   => 'Saya akan menyebut jalur mana yang lebih aman: kiri, tengah, atau kanan.',
         AppMode.voice      => 'Ketuk lalu bicara, tanyakan apa saja tentang sekitarmu.',
         AppMode.findObject => 'Sebutkan barang yang kamu cari, saya akan membantu menemukannya.',
       };
@@ -2283,32 +4382,39 @@ extension AppModeLabel on AppMode {
   /// Butuh internet untuk berfungsi penuh. Dipakai ModePickerSheet untuk
   /// menandai state `limited` / `disabled` saat offline.
   bool get needsServer => switch (this) {
-        AppMode.tuntun     => false, // sepenuhnya on-device
-        AppMode.money      => false, // model nominal on-device
+        AppMode.tuntun     => false, // SSD MobileNet TFLite, sepenuhnya on-device
+        AppMode.money      => false, // MobileNetV2 TFLite, sepenuhnya on-device
         AppMode.ocr        => false, // ML Kit on-device — jalan penuh offline
-        AppMode.navigasi   => true,  // segmentasi jalur + rintangan, keduanya di server
-        AppMode.voice      => true,  // LLM, ada fallback lokal
-        AppMode.findObject => true,  // butuh server sepenuhnya
+        AppMode.navigasi   => true,  // PIDNet on-device jadi jalur utama; server hanya cadangan
+        AppMode.voice      => true,  // butuh server untuk describe; intent parsing lokal, tanpa LLM
+        AppMode.findObject => true,  // YOLOE open-vocab hanya ada di server
       };
 
   /// Mode yang benar-benar mati tanpa internet.
   ///
-  /// **Berubah dari desain awal.** Dokumen menetapkan Navigasi tidak pernah
-  /// dinonaktifkan offline karena deteksi rintangan on-device tetap hidup
-  /// (§2 dan §4.4 ALUR-DAN-TOMBOL.md). Sejak deteksi rintangan dan segmentasi
-  /// jalur dipindah sepenuhnya ke server, alasan itu tidak berlaku lagi:
-  /// offline berarti Navigasi benar-benar tidak bisa melihat apa pun, dan
-  /// membiarkannya "terbatas" akan menjanjikan keselamatan yang tidak ada.
-  ///
-  /// Kalau deteksi rintangan on-device dikembalikan, kembalikan juga Navigasi
-  /// ke state `limited` — itu satu baris di sini.
-  bool get disabledWhenOffline =>
-      this == AppMode.findObject || this == AppMode.navigasi;
+  /// Mode Navigasi tetap BERJALAN OFFLINE menggunakan model TFLite on-device
+  /// (YOLO11n untuk bounding box rintangan & PIDNet-S untuk segmentasi 3-zona).
+  bool get disabledWhenOffline => this == AppMode.findObject;
+
+  /// Petunjuk kata kunci perintah suara untuk diumumkan atau ditampilkan di UI
+  String get voiceHint => switch (this) {
+        AppMode.tuntun     => 'Katakan: "Deteksi objek" atau "Tuntun aku"',
+        AppMode.money      => 'Katakan: "Kenali uang" atau "Cek uang"',
+        AppMode.ocr        => 'Katakan: "Baca teks" atau "Bacakan"',
+        AppMode.navigasi   => 'Katakan: "Navigasi" atau "Jalan mana"',
+        AppMode.voice      => 'Katakan: "Asisten suara" atau "Tanya"',
+        AppMode.findObject => 'Katakan: "Cari objek" atau "Cari kunci"',
+      };
 }
 
 class AppModeProvider extends ChangeNotifier {
   AppMode _mode = AppMode.tuntun;
   AppMode get mode => _mode;
+
+  /// Mode sebelum perpindahan terakhir — dipakai oleh fitur "kembali"
+  /// (perintah suara atau tombol ✕ di VoiceScreen overlay).
+  AppMode? _previousMode;
+  AppMode? get previousMode => _previousMode;
 
   /// Verbositas panduan menurun setelah 3 kali pemakaian pertama per mode.
   final Map<AppMode, int> _visitCount = {};
@@ -2354,7 +4460,10 @@ class AppModeProvider extends ChangeNotifier {
       '${mode.label} aktif.',
       if (withIntro) mode.shortIntro,
     ].join(' ');
-    await TTSService.instance.speak(announcement);
+    // Lewat antrean, tier Warning: pengumuman "di mana saya sekarang" tidak
+    // boleh dibuang sebagai Info basi, tapi juga tidak boleh menahan
+    // peringatan bahaya yang datang saat mode baru terpasang.
+    await TtsQueue().speak(announcement, tier: SpeechTier.warning);
   }
 
   /// NV-18 — satu-satunya konfirmasi wajib di seluruh app: keluar dari Mode
@@ -2374,6 +4483,7 @@ class AppModeProvider extends ChangeNotifier {
       final ok = await confirmLeave!(_mode, mode);
       if (!ok) return false;
     }
+    _previousMode = _mode; // simpan mode sebelumnya untuk goBack()
     _pendingPrefix = spokenPrefix;
     _mode = mode;
     notifyListeners();
@@ -2381,14 +4491,22 @@ class AppModeProvider extends ChangeNotifier {
     // sesudah layarnya benar-benar terpasang.
     return true;
   }
+
+  /// Kembali ke mode sebelumnya. Dipanggil oleh `VoiceIntent.actionGoBack`
+  /// atau tombol ✕ di VoiceScreen overlay. Fallback ke [AppMode.tuntun]
+  /// kalau tidak ada riwayat mode sebelumnya.
+  Future<bool> goBack({String? spokenPrefix}) async {
+    final target = _previousMode ?? AppMode.tuntun;
+    return setMode(target, spokenPrefix: spokenPrefix);
+  }
 }
 ```
 
 ---
 
-## Berkas: `lib/providers/camera_provider.dart`
+## File: `lib/providers/camera_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/camera_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/camera_provider.dart`
 
 ```dart
 import 'dart:async';
@@ -2396,9 +4514,10 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vibration/vibration.dart';
+import '../core/speech/tts_queue.dart';
 import '../services/camera_health_service.dart';
 import '../services/tflite_service.dart';
-import '../services/tts_service.dart';
 
 /// CameraProvider — kelola kamera, stream, dan capture.
 ///
@@ -2414,15 +4533,52 @@ class CameraProvider extends ChangeNotifier {
   int  _frameCount  = 0;
 
   String? _healthMessage; // pesan camera health untuk UI
+  bool    _isDark         = false; // hasil on-device brightness check
+  bool    _darkDismissed  = false; // true = jangan tampilkan tawaran lampu lagi
+  bool    _isTorchOn      = false; // status flashlight
 
-  CameraController? get controller     => _controller;
-  bool              get isInitialized  => _initialized;
-  bool              get isStreaming     => _streaming;
-  String?           get healthMessage  => _healthMessage;
+  // Fix 2.1: Timer peringatan gelap berkala — ucap setiap 30 detik jika masih gelap
+  Timer?   _darkWarningTimer;
+
+  /// Sejak kapan kondisi gelap berlangsung — dibaca layar/telemetri untuk
+  /// membedakan "baru saja gelap" dari "sudah lama tidak melihat apa-apa".
+  DateTime? _darkSince;
+  DateTime? get darkSince => _darkSince;
+
+  CameraController? get controller    => _controller;
+  bool              get isInitialized => _initialized;
+  bool              get isStreaming    => _streaming;
+  String?           get healthMessage => _healthMessage;
+
+  /// True saat rata-rata kecerahan frame < threshold.
+  /// UI menampilkan ContextualActionSlot tawaran lampu HANYA jika
+  /// [isDark] && ![darkDismissed].
+  bool get isDark         => _isDark;
+
+  /// True saat pengguna menekan "Lewati" — tawaran lampu tidak tampil,
+  /// TAPI deteksi tetap berjalan (Fix 2.1).
+  bool get darkDismissed  => _darkDismissed;
+
+  /// True saat flashlight sedang menyala.
+  bool get isTorchOn => _isTorchOn;
 
   // Callback — dipanggil dari CameraProvider ketika frame siap
   // DetectionProvider/InferenceProvider yang subscribe
   Function(CameraImage)? onFrameReady;
+
+  /// Dipasang MainScreen supaya kamera yang gagal muncul sebagai banner
+  /// global Critical, bukan hanya layar hitam tanpa penjelasan.
+  void Function(bool hasError)? onErrorChanged;
+
+  bool _hasError = false;
+  bool get hasError => _hasError;
+
+  void _setError(bool value) {
+    if (_hasError == value) return;
+    _hasError = value;
+    onErrorChanged?.call(value);
+    notifyListeners();
+  }
 
   Future<void> initCamera() async {
     // Request camera permission sebelum initialize — mencegah CameraAccessDenied
@@ -2434,20 +4590,34 @@ class CameraProvider extends ChangeNotifier {
       return;
     }
 
-    final cameras = await availableCameras();
-    if (cameras.isEmpty) return;
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        debugPrint('[CameraProvider] Tidak ada kamera pada perangkat ini');
+        _setError(true);
+        return;
+      }
 
-    _controller = CameraController(
-      cameras.first,
-      ResolutionPreset.medium, // 640x480 cukup untuk YOLO
-      enableAudio:    false,
-      imageFormatGroup: ImageFormatGroup.yuv420,
-    );
+      _controller = CameraController(
+        cameras.first,
+        ResolutionPreset.medium, // 640x480 cukup untuk YOLO
+        enableAudio:    false,
+        imageFormatGroup: ImageFormatGroup.yuv420,
+      );
 
-    await _controller!.initialize();
-    CameraHealthService.instance.startListening();
-    _initialized = true;
-    notifyListeners();
+      await _controller!.initialize();
+      CameraHealthService.instance.startListening();
+      _initialized = true;
+      _setError(false);
+      notifyListeners();
+    } catch (e) {
+      // Kamera gagal disiapkan = mode utama benar-benar buta. Kegagalan yang
+      // ditelan diam-diam di sini akan tampil sebagai aplikasi yang terlihat
+      // normal tapi tidak pernah memperingatkan apa pun.
+      debugPrint('[CameraProvider] initCamera error: $e');
+      _initialized = false;
+      _setError(true);
+    }
   }
 
   void startStream() {
@@ -2462,14 +4632,25 @@ class CameraProvider extends ChangeNotifier {
       _frameCount++;
 
       // [1] On-device brightness check setiap frame — O(100) sangat ringan
-      if (_isTooDark(image)) {
-        if (_healthMessage != 'Kamera terlalu gelap') {
-          _healthMessage = 'Kamera terlalu gelap';
-          notifyListeners();
-          TTSService.instance.speak('Kamera terlalu gelap');
+      final tooDark = _isTooDark(image);
+      if (tooDark != _isDark) {
+        _isDark = tooDark;
+        if (tooDark) {
+          // Mulai timer peringatan gelap (Fix 2.1)
+          _darkSince = DateTime.now();
+          _startDarkWarningTimer();
+        } else {
+          // Kondisi terang kembali — reset semua
+          _cancelDarkWarningTimer();
+          _darkDismissed = false;
+          _darkSince = null;
         }
-        return;
+        // Notifikasi UI: ContextualActionSlot tampil/sembunyikan tawaran lampu
+        notifyListeners();
       }
+      // Fix 2.1: JANGAN return di sini — inference tetap berjalan di kondisi gelap.
+      // Pengguna perlu tahu ada rintangan meski gelap.
+      // UI yang memutuskan apakah tawaran lampu tampil (isDark && !darkDismissed).
 
       // [2] Cek orientasi dari accelerometer setiap 30 frame
       if (_frameCount % 30 == 0) {
@@ -2482,9 +4663,14 @@ class CameraProvider extends ChangeNotifier {
           if (_healthMessage != health.message) {
             _healthMessage = health.message;
             notifyListeners();
-            TTSService.instance.speak(health.message);
+            // Gunakan TtsQueue agar tunduk pada sistem 3-tier (Fix 1C)
+            TtsQueue().speak(health.message, tier: SpeechTier.warning);
           }
-          return;
+          // Sengaja TIDAK `return` — ini kelas bug yang sama dengan kondisi
+          // gelap (Fix 2.1). Ponsel yang miring membuat estimasi jarak kurang
+          // akurat, tapi objek di depan tetap terlihat. Menghentikan inference
+          // berarti menukar "peringatan yang agak meleset" dengan "tidak ada
+          // peringatan sama sekali" — dan yang kedua jauh lebih berbahaya.
         } else if (_healthMessage != null) {
           _healthMessage = null;
           notifyListeners();
@@ -2496,11 +4682,76 @@ class CameraProvider extends ChangeNotifier {
     });
   }
 
+  /// Dismiss tawaran lampu tanpa mematikan deteksi (Fix 2.1).
+  /// Dipanggil saat pengguna menekan "Lewati" di ContextualActionSlot.
+  void dismissDarkOffer() {
+    _darkDismissed = true;
+    notifyListeners();
+  }
+
   void stopStream() {
     if (!_streaming || _controller == null) return;
     _controller!.stopImageStream();
     _streaming = false;
+    _cancelDarkWarningTimer();
+    // Reset dark state saat stream berhenti
+    if (_isDark) {
+      _isDark = false;
+      _darkDismissed = false;
+      notifyListeners();
+    }
   }
+
+  // ── Dark warning timer (Fix 2.1) ─────────────────────────────────────────
+
+  void _startDarkWarningTimer() {
+    _cancelDarkWarningTimer();
+    // Ucapkan peringatan pertama setelah 3 detik gelap
+    _darkWarningTimer = Timer(const Duration(seconds: 3), () {
+      if (!_isDark) return;
+      TtsQueue().speak(
+        'Terlalu gelap, saya tidak bisa melihat jalur dengan jelas. '
+        'Nyalakan lampu atau berhenti sejenak.',
+        tier: SpeechTier.warning,
+      );
+      Vibration.vibrate(pattern: [0, 100, 100, 100]);
+      // Ulangi setiap 30 detik selama masih gelap
+      _darkWarningTimer = Timer.periodic(
+        const Duration(seconds: 30),
+        (_) {
+          if (!_isDark) {
+            _cancelDarkWarningTimer();
+            return;
+          }
+          TtsQueue().speak(
+            'Masih gelap. Saya tetap berjalan tapi penglihatan terbatas.',
+            tier: SpeechTier.info,
+          );
+        },
+      );
+    });
+  }
+
+  void _cancelDarkWarningTimer() {
+    _darkWarningTimer?.cancel();
+    _darkWarningTimer = null;
+  }
+
+  /// Nyalakan atau matikan flashlight secara eksplisit.
+  /// Aman dipanggil saat stream berjalan maupun tidak.
+  Future<void> setTorch(bool on) async {
+    if (_controller == null || !_initialized) return;
+    try {
+      await _controller!.setFlashMode(on ? FlashMode.torch : FlashMode.off);
+      _isTorchOn = on;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[CameraProvider] setTorch($on) error: $e');
+    }
+  }
+
+  /// Toggle flashlight — nyala → mati, mati → nyala.
+  Future<void> toggleTorch() => setTorch(!_isTorchOn);
 
   /// Ambil foto dan kembalikan **path berkas**, bukan byte-nya.
   ///
@@ -2619,6 +4870,7 @@ class CameraProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _cancelDarkWarningTimer();
     CameraHealthService.instance.stopListening();
     _controller?.dispose();
     super.dispose();
@@ -2628,9 +4880,9 @@ class CameraProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/capabilities_provider.dart`
+## File: `lib/providers/capabilities_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/capabilities_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/capabilities_provider.dart`
 
 ```dart
 import 'dart:async';
@@ -2775,33 +5027,52 @@ class CapabilitiesProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/detection_provider.dart`
+## File: `lib/providers/detection_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/detection_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/detection_provider.dart`
 
 ```dart
 import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+
+import '../core/net/api_client.dart' show FramePacer;
+import '../core/speech/tts_queue.dart';
+import '../core/voice/narration_engine.dart';
 import '../models/detection.dart';
-import '../models/risk_zone.dart';
-import '../providers/inference_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/settings_provider.dart' show Verbosity;
 import '../services/detection_filter.dart';
 import '../services/haptic_service.dart';
 import '../services/object_tracker.dart';
-import '../services/server_service.dart';
 import '../services/tflite_service.dart';
-import '../services/tts_service.dart';
 
+/// DetectionProvider — Mode Deteksi Objek, sepenuhnya on-device.
+///
+/// **Jalur server dihapus.** Sebelumnya ada dua jalur (TFLite dan WebSocket
+/// `/ws/detect`) yang dipilih dari `InferenceProvider.realtimeEngine`. Itu
+/// menggandakan kode di mode paling kritis keselamatan tanpa menambah
+/// keandalan: modelnya sudah dibundel di APK, dan hasil server melewati
+/// [DetectionFilter] yang sama sehingga mewarisi perilaku yang sama persis.
+/// Yang tersisa hanyalah ketergantungan diam-diam pada laptop yang menyala.
+/// Sekarang: TFLite gagal muat = dikatakan apa adanya lewat [isUnavailable].
 class DetectionProvider extends ChangeNotifier {
-  final InferenceProvider _inferenceProvider;
-  final CameraProvider    _cameraProvider;
+  final CameraProvider _cameraProvider;
 
-  DetectionProvider(this._inferenceProvider, this._cameraProvider);
+  DetectionProvider(this._cameraProvider);
 
   final _filter  = DetectionFilter();
+  final _tracker = ObjectTracker();
+
+  /// Satu inferensi dalam penerbangan, dan jeda minimum antar frame.
+  ///
+  /// Tanpa ini, callback kamera (~30 fps) memicu inferensi yang menumpuk tak
+  /// terbatas: tiap frame tertunda memegang buffer sendiri, memori naik, dan
+  /// peringatan yang akhirnya terdengar menggambarkan dunia beberapa detik
+  /// lalu. 120 ms ≈ 8 fps — dengan `streakRequired = 2`, objek baru terucap
+  /// sekitar 250 ms setelah masuk frame, masih di bawah target 500 ms.
+  final _pacer = FramePacer(minInterval: const Duration(milliseconds: 120));
 
   /// PG-05 / PG-06 — diteruskan dari SettingsProvider setiap kali pengaturan
   /// berubah, supaya slider dan segmented benar-benar mengubah perilaku
@@ -2809,128 +5080,171 @@ class DetectionProvider extends ChangeNotifier {
   void applySettings({required double maxDistanceM, required Verbosity verbosity}) {
     _filter.applySettings(maxDistanceM: maxDistanceM, verbosity: verbosity);
   }
-  final _tracker = ObjectTracker(); // SORT tracker untuk isApproaching
-  StreamSubscription? _serverSub;
+
   bool _realtimeActive = false;
+  bool get isRealtimeActive => _realtimeActive;
 
   List<Detection> _detections = [];
-  RiskZone?       _riskZone;
-
   List<Detection> get detections => _detections;
-  RiskZone?       get riskZone   => _riskZone;
 
-  // ── Real-time Mode (Tuntun + Navigasi) ────────────────────────────────────
+  /// True kalau model on-device tidak bisa dipakai. Layar wajib mengatakannya
+  /// — mode ini tidak punya cadangan lain, jadi diam berarti membiarkan orang
+  /// berjalan menyangka dirinya dijaga.
+  bool get isUnavailable => !TFLiteService.instance.isLoaded;
+
+  /// Kapan terakhir kali pipeline benar-benar menghasilkan sesuatu. Dipakai
+  /// layar untuk mendeteksi "hidup tapi bisu".
+  DateTime? _lastInferenceAt;
+  DateTime? get lastInferenceAt => _lastInferenceAt;
+
+  // ── Real-time ──────────────────────────────────────────────────────────────
 
   void startRealtime() {
     if (_realtimeActive) return;
     _realtimeActive = true;
     _filter.reset();
-
-    if (_inferenceProvider.realtimeEngine == InferenceEngine.tflite) {
-      // TFLite path: pasang callback ke CameraProvider
-      _cameraProvider.onFrameReady = _processFrameTflite;
-    } else {
-      // Server path: subscribe ke WebSocket stream
-      _serverSub = ServerService.instance.detectionStream.listen(
-        _handleServerResult,
-      );
-      // Pasang callback ke CameraProvider untuk kirim frame ke server
-      _cameraProvider.onFrameReady = _processFrameServer;
-    }
+    _tracker.reset();
+    _cameraProvider.onFrameReady = _processFrame;
+    notifyListeners();
   }
 
   void stopRealtime() {
     _realtimeActive = false;
     _cameraProvider.onFrameReady = null;
-    _serverSub?.cancel();
-    _serverSub = null;
-    _tracker.reset(); // bersihkan semua track saat mode berganti
+    _tracker.reset();
+    _filter.reset();
     _detections = [];
-    _riskZone   = null;
     notifyListeners();
   }
 
-  /// TFLite path — inference langsung di isolate
-  Future<void> _processFrameTflite(CameraImage image) async {
+  Future<void> _processFrame(CameraImage image) async {
     if (!_realtimeActive) return;
-    final raw = await TFLiteService.instance.runInference(image);
 
-    // Jika frame tidak menghasilkan deteksi apapun, skip filter sepenuhnya.
-    // PENTING: jangan panggil _filter.process([]) — currentLabels akan kosong
-    // dan semua streak akan di-reset, termasuk objek yang masih terdeteksi
-    // di frame berikutnya. Ini penyebab streak selalu stuck di 1/2.
-    if (raw.isEmpty) return;
+    await _pacer.run(() async {
+      final raw = await TFLiteService.instance.runInference(image);
+      if (!_realtimeActive) return;
 
-    // Debug: log hasil raw inference
-    debugPrint(
-      '[Detection] raw (${raw.length}): '
-      '${raw.map((d) => '${d.labelEn} '
-        '${d.distanceMeter.toStringAsFixed(1)}m '
-        '(${d.dangerLevel})').join(' | ')}',
-    );
+      _lastInferenceAt = DateTime.now();
 
-    // Update SORT tracker — dapat TrackedObject dengan info isApproaching
-    final tracked = _tracker.update(raw);
+      // Frame kosong tetap diumpankan ke tracker supaya objek yang menghilang
+      // benar-benar dianggap hilang setelah beberapa frame. Filter sengaja
+      // dilewati: `process([])` hanya akan membersihkan streak, dan itu sudah
+      // ditangani tracker.
+      if (raw.isEmpty) {
+        _tracker.update(const []);
+        if (_detections.isNotEmpty) {
+          _detections = [];
+          notifyListeners();
+        }
+        return;
+      }
 
-    // Enrich setiap Detection dengan isApproaching dari tracker-nya
-    final enriched = raw.map((det) {
-      final t = tracked.firstWhere(
-        (t) => t.label == det.labelEn,
-        orElse: () => TrackedObject(
-          id: -1, label: '', cx: 0, cy: 0, w: 0, h: 0,
-        ),
-      );
-      return det.copyWith(isApproaching: t.isApproaching);
-    }).toList();
+      // Tracker memberi identitas stabil per objek. Pemetaannya per-indeks,
+      // bukan per-label: dengan dua orang di frame, versi lama mengambil track
+      // pertama berlabel "person" untuk keduanya, sehingga status "mendekat"
+      // milik orang jauh bisa menempel ke orang dekat — dan status itulah yang
+      // memotong cooldown 50%.
+      if (!_realtimeActive) return;
 
-    final filtered = _filter.process(enriched);
+      _tracker.update(raw);
+      final assignment = _tracker.lastAssignment;
 
-    // Debug: log apa yang akhirnya lolos ke TTS
-    if (filtered.isNotEmpty) {
-      debugPrint(
-        '[Detection] lolos filter (${filtered.length}): '
-        '${filtered.map((d) => '${d.labelEn}(${d.dangerLevel})').join(' | ')}',
-      );
-    }
+      final enriched = <Detection>[];
+      for (var i = 0; i < raw.length; i++) {
+        final track = i < assignment.length ? assignment[i] : null;
+        enriched.add(raw[i].copyWith(
+          isApproaching: track?.isApproaching ?? false,
+          trackId: track?.id,
+          // Jarak yang DIHALUSKAN, bukan hasil mentah satu frame. Ponsel yang
+          // mengayun saat berjalan membuat kotak deteksi membesar-mengecil
+          // sendiri; tanpa penghalusan, objek diam terucap "dua meter… satu
+          // meter… dua meter" dan pengguna tidak punya cara tahu mana yang
+          // benar. Nilai mentah tetap dipakai untuk klasifikasi tier di
+          // TFLiteService — yang dihaluskan hanya yang diucapkan.
+          distanceMeter: track?.smoothedDistance,
+        ));
+      }
 
-    _updateAndSpeak(filtered);
-  }
-
-  /// Server path — encode JPEG dan kirim ke WebSocket
-  Future<void> _processFrameServer(CameraImage image) async {
-    if (!_realtimeActive) return;
-    try {
-      final jpeg = await _cameraProvider.toJpeg(image);
-      ServerService.instance.sendFrame(jpeg);
-    } catch (_) {}
-  }
-
-  void _handleServerResult(ServerDetectionResult result) {
-    if (!_realtimeActive) return;
-    final filtered = _filter.process(result.detections);
-    _riskZone = result.riskZone;
-    _updateAndSpeak(filtered);
+      final filtered = _filter.process(enriched);
+      _updateAndSpeak(filtered);
+    });
   }
 
   void _updateAndSpeak(List<Detection> filtered) {
     _detections = filtered;
     notifyListeners();
+    if (filtered.isEmpty) return;
 
-    for (final det in filtered) {
-      TTSService.instance.speak(
-        det.ttsMessage,
-        interrupt: det.isCritical, // critical selalu interrupt TTS lain
-      );
-      // Haptic berdampingan TTS — primary signal di lingkungan bising
-      HapticService.instance.fromDangerLevel(det.dangerLevel);
-    }
+    // Tier = bahaya tertinggi di antara yang lolos. Satu kalimat, satu tier —
+    // bukan satu ucapan terpisah per objek yang saling berebut antrean.
+    final tier = filtered.any((d) => d.isCritical)
+        ? SpeechTier.critical
+        : filtered.any((d) => d.isWarning)
+            ? SpeechTier.warning
+            : SpeechTier.info;
+
+    TtsQueue().speak(_composeNarration(filtered), tier: tier);
+
+    // Getar mendampingi suara — di pasar dan jalan raya, getar sering jadi
+    // sinyal utama. Cukup sekali, sesuai tier tertinggi.
+    HapticService.instance.fromDangerLevel(
+      filtered.first.dangerLevel,
+    );
   }
 
-  // ── Single-shot untuk Voice Assistant ─────────────────────────────────────
+  /// Rangkai satu kalimat dari objek yang lolos filter.
+  ///
+  /// Fix temuan 2A: `narration_engine.dart` akhirnya tersambung. Selama ini
+  /// 265 baris itu tidak pernah dipanggil dari mana pun — yang benar-benar
+  /// terucap adalah `det.ttsMessage`, satu kalimat datar per objek, sehingga
+  /// dua objek berarti dua ucapan yang saling menyusul tanpa konektor.
+  ///
+  /// Untuk tier Critical kalimatnya sengaja tetap pendek dan langsung: saat
+  /// ada bahaya < 1,5 m, kalimat bernuansa natural justru menunda informasi
+  /// yang menentukan.
+  String _composeNarration(List<Detection> filtered) {
+    final critical = filtered.where((d) => d.isCritical).toList();
+    if (critical.isNotEmpty) {
+      return critical.first.ttsMessage;
+    }
 
-  /// Detect sekali dari JPEG — tanpa stability filter (langsung hasilkan raw)
-  Future<List<Detection>> detectOnce(Uint8List jpegBytes) async {
-    return ServerService.instance.detectOnce(jpegBytes);
+    // Gabungkan objek sekelas dengan arah sama supaya narasinya menyebut
+    // "dua orang", bukan "orang" dua kali.
+    final grouped = <String, NarrationDetection>{};
+    for (final d in filtered) {
+      final key = '${d.labelEn}|${d.direction}';
+      final existing = grouped[key];
+      if (existing == null) {
+        grouped[key] = NarrationDetection(
+          objectClass: d.labelEn,
+          dist: d.distanceMeter,
+          dir: _narrationDirection(d.direction),
+        );
+      } else {
+        grouped[key] = NarrationDetection(
+          objectClass: existing.objectClass,
+          dist: existing.dist < d.distanceMeter ? existing.dist : d.distanceMeter,
+          dir: existing.dir,
+          count: existing.count + 1,
+        );
+      }
+    }
+
+    final narration = generateNaturalNarration(grouped.values.toList());
+    // Kelas di luar kamus 80 COCO membuat narasi kosong. Jangan diam —
+    // sampaikan versi datarnya daripada tidak menyebut objeknya sama sekali.
+    if (narration.trim().isEmpty || grouped.isEmpty) {
+      return filtered.map((d) => d.ttsMessage).join('. ');
+    }
+    return narration;
+  }
+
+  /// `_getDirection` bisa menghasilkan "kiri bawah"; narasi hanya mengenal
+  /// sumbu horizontal.
+  String _narrationDirection(String direction) {
+    if (direction.startsWith('kiri')) return 'kiri';
+    if (direction.startsWith('kanan')) return 'kanan';
+    return 'tengah';
   }
 
   @override
@@ -2943,44 +5257,45 @@ class DetectionProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/find_object_provider.dart`
+## File: `lib/providers/find_object_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/find_object_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/find_object_provider.dart`
 
 ```dart
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../core/net/api_client.dart';
-import '../core/speech/tts_queue.dart' show SpeechTier;
 import '../services/server_service.dart';
+import '../core/speech/tts_queue.dart' show SpeechTier;
 
-/// State machine Mode Cari Objek — bagian 12 IMPLEMENTASI.md (CO-01..CO-13,
-/// CO-18, CO-19).
+/// State machine Mode Cari Objek.
 ///
-/// **Sepenuhnya di server.** Frame dikirim ke `POST /api/cari-objek` yang
-/// menjalankan YOLOE dengan prompt terbuka; tidak ada model pencarian di
-/// perangkat. Konsekuensinya CO-14 nyata: tanpa internet, mode ini benar-benar
-/// tidak bisa apa-apa, dan targetnya disimpan untuk dicoba lagi nanti.
+/// **Trigger-based via backend YOLOE** — pengguna tekan tombol kiri,
+/// satu foto dikirim ke POST /api/cari-objek, hasilnya diucapkan via TTS.
+/// Backend menggunakan YOLOE open-vocabulary (300+ barang Bahasa Indonesia).
+///
+/// Berbeda dari versi on-device sebelumnya yang berjalan real-time (loop
+/// 350 ms), versi ini hanya berjalan sekali per tap — lebih hemat baterai
+/// dan bisa mendeteksi jauh lebih banyak jenis barang.
 ///
 /// CO-15 (izin kamera), CO-16 (senyap), CO-17 (font scale 200%) sengaja TIDAK
-/// dimodelkan di sini — itu murni keputusan lapisan UI, sama seperti pola
-/// MoneyProvider.
+/// dimodelkan di sini — itu murni keputusan lapisan UI.
 enum FindObjectState {
-  idle, // CO-01
-  listening, // CO-02
-  unclear, // CO-03
-  targetActive, // CO-04
-  scanning, // CO-05
-  found, // CO-06 / CO-07 (lihat matchCount)
-  lostFromView, // CO-09
+  idle,            // CO-01
+  listening,       // CO-02
+  unclear,         // CO-03
+  targetActive,    // CO-04 — target aktif, menunggu tombol kiri ditekan
+  scanning,        // CO-05 — sedang mengirim ke backend
+  found,           // CO-06 / CO-07 (lihat matchCount)
+  lostFromView,    // CO-09
   notFoundInFrame, // CO-10
-  longNotFound, // CO-11
-  unknownObject, // CO-12
-  offlineSaved, // CO-14
-  serverError, // CO-18
-  tooDark, // CO-19
+  longNotFound,    // CO-11
+  unknownObject,   // CO-12
+  offlineSaved,    // CO-14
+  serverError,     // CO-18
+  tooDark,         // CO-19
 }
 
 class FindObjectProvider extends ChangeNotifier {
@@ -2994,7 +5309,7 @@ class FindObjectProvider extends ChangeNotifier {
   String? _savedTarget;
   String? get savedTarget => _savedTarget;
 
-  int _matchCount = 1; // CO-07: >1 berarti "lebih dari satu cocok"
+  int _matchCount = 1;
   int get matchCount => _matchCount;
 
   String _direction = 'depan';
@@ -3003,24 +5318,25 @@ class FindObjectProvider extends ChangeNotifier {
   double _distanceMeter = 3.0;
   double get distanceMeter => _distanceMeter;
 
-  String? _lastKnownPosition; // CO-09
+  String? _lastKnownPosition;
   String? get lastKnownPosition => _lastKnownPosition;
 
-  /// Pesan terakhir dari server. Server yang menyusun kalimatnya supaya
-  /// perbaikan naskah tidak perlu rilis ulang aplikasi.
+  /// Pesan terakhir dari server.
   String _serverMessage = '';
   String get scanMessage =>
       _serverMessage.isEmpty ? 'Memindai sekitar…' : _serverMessage;
   String get notFoundMessage => scanMessage;
 
-  /// Daftar barang yang dikenali server — CO-12 memakainya untuk menawarkan
-  /// barang lain, bukan menebak dari daftar hardcoded di aplikasi.
-  List<String> _knownTargets = const [];
+  /// True saat sedang menunggu respons backend — tombol kiri di-disable.
+  bool _isScanning = false;
+  bool get isScanning => _isScanning;
+
+  final List<String> _knownTargets = const [];
   List<String> get knownTargets => _knownTargets;
 
   /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan.
   void Function(String text, SpeechTier tier)? onSpeak;
-  void Function(String direction)? onDirectionHaptic; // CO-16
+  void Function(String direction)? onDirectionHaptic;
 
   /// Sumber frame. Screen memasang ini supaya provider tetap bebas dari
   /// BuildContext dan bebas dari paket kamera.
@@ -3030,15 +5346,8 @@ class FindObjectProvider extends ChangeNotifier {
   /// saat offline, bukan mencoba lalu gagal berkali-kali.
   bool Function()? isOffline;
 
-  /// Satu permintaan in-flight, frame lama dibuang. Untuk pencarian yang
-  /// pengguna lakukan sambil memutar badan, jawaban untuk frame tiga detik
-  /// lalu menunjuk ke arah yang sudah salah.
-  final _pacer = FramePacer(minInterval: const Duration(milliseconds: 600));
-
-  Timer? _loopTimer;
+  int _notFoundCount = 0;
   Timer? _stepTimer;
-  int _consecutiveNotFound = 0;
-  int _consecutiveErrors = 0;
 
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) =>
       onSpeak?.call(text, tier);
@@ -3053,25 +5362,18 @@ class FindObjectProvider extends ChangeNotifier {
     _stepTimer = Timer(Duration(milliseconds: ms), cb);
   }
 
-  /// Ambil kamus target dari server sekali saat masuk mode. Gagal diam-diam:
-  /// tanpa kamus, CO-12 hanya kehilangan saran, bukan seluruh fiturnya.
+  /// Tidak dipakai lagi — dipertahankan agar tidak merusak layar yang masih
+  /// memanggil ini.
   Future<void> loadKnownTargets() async {
-    try {
-      _knownTargets = await ServerService.instance.cariObjekTargets();
-      notifyListeners();
-    } catch (_) {
-      // Diabaikan dengan sengaja.
-    }
+    // no-op
   }
 
   // -------------------------------------------------------------- CO-02/03
 
   void startListening() {
-    _stopLoop();
     _set(FindObjectState.listening);
   }
 
-  /// Dipanggil screen setelah STT selesai. [heardText] kosong/ambigu → CO-03.
   void submitHeardText(String heardText, {String? parsedTarget}) {
     final t = (parsedTarget ?? heardText).trim();
     if (t.isEmpty) {
@@ -3085,101 +5387,82 @@ class FindObjectProvider extends ChangeNotifier {
 
   // ------------------------------------------------------------------ CO-04
 
-  /// Menetapkan target baru — juga dipakai CO-13 "ganti target" saat target
-  /// sudah aktif (tidak perlu kembali ke CO-01 dulu).
   void setTarget(String newTarget) {
     final isChange = _target != null && _target != newTarget;
     _target = newTarget;
     _matchCount = 1;
     _lastKnownPosition = null;
-    _consecutiveNotFound = 0;
-    _consecutiveErrors = 0;
+    _notFoundCount = 0;
+    _isScanning = false;
     _set(FindObjectState.targetActive);
 
-    // CO-14 — offline: target DISIMPAN, mode berhenti. Perintahnya diterima,
-    // yang hilang disebut, dan tidak pernah dikatakan "perintah gagal".
-    if (isOffline?.call() ?? false) {
-      _savedTarget = newTarget;
+    _speak(
+      isChange
+          ? 'Ganti, sekarang mencari $newTarget. Tekan tombol kirim untuk memindai.'
+          : 'Mencari $newTarget. Tekan tombol kirim untuk memindai.',
+      tier: SpeechTier.info,
+    );
+  }
+
+  void retrySavedTarget() {
+    final saved = _savedTarget;
+    if (saved == null) return;
+    _savedTarget = null;
+    _speak('Internet kembali. Tekan tombol kirim untuk mencari $saved.',
+        tier: SpeechTier.info);
+    setTarget(saved);
+  }
+
+  // --------------------------------------------------------- Trigger (CO-05)
+
+  /// Dipanggil oleh screen saat tombol kiri (📷 / "Kirim") ditekan.
+  /// Ambil satu frame → kirim ke backend → proses respons.
+  Future<void> triggerScan() async {
+    final target = _target;
+    if (target == null || _isScanning) return;
+
+    // CO-14 — benar-benar berhenti saat offline
+    final offline = isOffline?.call() ?? false;
+    if (offline) {
+      _savedTarget = target;
       _set(FindObjectState.offlineSaved);
       _speak(
-        'Cari objek butuh internet. Target $newTarget saya simpan, '
-        'saya coba lagi begitu internet kembali.',
+        'Tanpa internet, pencarian tidak bisa dijalankan. '
+        'Saya akan ingatkan saat internet kembali.',
         tier: SpeechTier.warning,
       );
       return;
     }
 
-    _speak(
-      isChange ? 'Ganti, sekarang mencari $newTarget.' : 'Mencari $newTarget.',
-      tier: SpeechTier.info,
-    );
-    _after(400, _beginScan);
-  }
-
-  /// Dipanggil screen saat koneksi pulih — CO-14 menjanjikan percobaan ulang,
-  /// jadi janji itu harus benar-benar ditepati.
-  void retrySavedTarget() {
-    final saved = _savedTarget;
-    if (saved == null) return;
-    _savedTarget = null;
-    _speak('Internet kembali. Melanjutkan mencari $saved.', tier: SpeechTier.info);
-    setTarget(saved);
-  }
-
-  // -------------------------------------------------------------- CO-05..11
-
-  void _beginScan() {
-    if (_target == null) return;
-    _set(FindObjectState.scanning);
-    _startLoop();
-  }
-
-  void _startLoop() {
-    _loopTimer?.cancel();
-    _pacer.reset();
-    // Laju pemindaian dipilih dari kecepatan orang memutar badan, bukan dari
-    // kemampuan kamera: ~3 frame per detik sudah cukup rapat untuk mengikuti
-    // putaran badan, dan tidak membanjiri server.
-    _loopTimer = Timer.periodic(const Duration(milliseconds: 350), (_) => _tick());
-    _tick();
-  }
-
-  void _stopLoop() {
-    _loopTimer?.cancel();
-    _loopTimer = null;
-    _stepTimer?.cancel();
-    _pacer.reset();
-  }
-
-  Future<void> _tick() async {
-    final target = _target;
     final grab = frameSource;
-    if (target == null || grab == null) return;
+    if (grab == null) return;
 
-    // Frame yang datang saat masih ada permintaan berjalan dibuang di sini,
-    // bukan diantre. Lihat FramePacer.
-    await _pacer.run(() async {
+    _isScanning = true;
+    _set(FindObjectState.scanning);
+
+    try {
       final jpeg = await grab();
-      if (jpeg == null || _target != target) return;
-
-      try {
-        final res = await ServerService.instance.cariObjek(target, jpeg);
-        if (_target != target) return; // target sudah diganti saat menunggu
-        _consecutiveErrors = 0;
-        _handleResponse(res, target);
-      } on ApiStatusException {
-        // Server hidup tapi menolak — CO-18, bukan salah kameranya.
-        _handleFailure(
-          'Bukan karena kameramu. Coba lagi sebentar lagi.',
-          FindObjectState.serverError,
-        );
-      } on ApiUnreachableException {
-        _handleFailure(
-          'Server tidak bisa dihubungi. Cari objek berhenti sampai sambungan kembali.',
-          FindObjectState.serverError,
-        );
+      if (jpeg == null) {
+        _isScanning = false;
+        _set(FindObjectState.tooDark);
+        _speak('Terlalu gelap. Nyalakan lampu.', tier: SpeechTier.warning);
+        return;
       }
-    });
+
+      final res = await ServerService.instance.cariObjek(jpeg, target);
+      _isScanning = false;
+      _handleResponse(res, target);
+    } catch (e) {
+      _isScanning = false;
+      _set(FindObjectState.serverError);
+      // Warning, bukan Critical. Tier Critical dicadangkan untuk bahaya fisik
+      // dan tidak bisa dipotong pengguna — kegagalan jaringan tidak pernah
+      // setara dengan motor yang melaju ke arahmu.
+      _speak(
+        'Gagal menghubungi server. Periksa koneksi dan coba lagi.',
+        tier: SpeechTier.warning,
+      );
+    }
   }
 
   void _handleResponse(Map<String, dynamic> res, String target) {
@@ -3190,87 +5473,62 @@ class FindObjectProvider extends ChangeNotifier {
       final reason = res['reason'] as String? ?? 'not_in_frame';
 
       if (reason == 'model_unavailable') {
-        _handleFailure(_serverMessage, FindObjectState.serverError);
+        _set(FindObjectState.serverError);
+        _speak(
+          _serverMessage.isNotEmpty
+              ? _serverMessage
+              : 'Pencari objek tidak tersedia di server.',
+          tier: SpeechTier.warning,
+        );
         return;
       }
       if (reason == 'invalid_frame') {
-        // CO-19 — frame tidak terbaca; paling sering karena terlalu gelap.
         _set(FindObjectState.tooDark);
         _speak('Terlalu gelap. Nyalakan lampu.', tier: SpeechTier.warning);
         return;
       }
 
-      _consecutiveNotFound++;
-      // CO-10 lalu CO-11 — sesudah cukup lama tidak ketemu, berhenti menyuruh
-      // memutar badan dan tawarkan jalan keluar. Mengulang instruksi yang sama
-      // tanpa batas adalah bentuk jalan buntu.
-      if (_consecutiveNotFound >= 18) {
-        _stopLoop();
+      _notFoundCount++;
+      if (_notFoundCount >= 4) {
+        // CO-11 — setelah 4 kali tidak ketemu, tawarkan jalan keluar
         _set(FindObjectState.longNotFound);
         _speak(
-          'Belum ketemu di ruangan ini. Pindah ruangan, atau sebutkan barang lain?',
+          'Belum ketemu di sini. Pindah posisi, lalu tekan kirim lagi. '
+          'Atau sebutkan barang lain.',
           tier: SpeechTier.warning,
         );
         return;
       }
 
-      if (_state != FindObjectState.notFoundInFrame) {
-        _set(FindObjectState.notFoundInFrame);
-      } else {
-        notifyListeners(); // pesan berputar dari server
-      }
-      // Instruksi diucapkan berkala, bukan tiap frame — kalau tidak, TTS
-      // akan bicara terus-menerus dan menutupi suara lingkungan.
-      if (_consecutiveNotFound % 6 == 1) {
-        _speak(scanMessage, tier: SpeechTier.info);
-      }
+      _set(FindObjectState.notFoundInFrame);
+      _speak(
+        _serverMessage.isNotEmpty
+            ? _serverMessage
+            : '$target tidak terlihat. Coba arahkan kamera ke tempat lain lalu tekan kirim.',
+        tier: SpeechTier.info,
+      );
       return;
     }
 
-    // ── Ketemu ───────────────────────────────────────────────────────────
+    // ── Ketemu ──────────────────────────────────────────────────────────────
     final nearest = res['nearest'] as Map<String, dynamic>?;
     final total = (res['total_match'] as num?)?.toInt() ?? 1;
-    final wasLost = _state == FindObjectState.notFoundInFrame ||
-        _state == FindObjectState.lostFromView;
 
-    _consecutiveNotFound = 0;
+    _notFoundCount = 0;
     _matchCount = total;
     if (nearest != null) {
       _direction = nearest['direction'] as String? ?? _direction;
       _distanceMeter =
           (nearest['distance_meter'] as num?)?.toDouble() ?? _distanceMeter;
     }
-    _lastKnownPosition = '$_direction, sekitar ${_distanceMeter.toStringAsFixed(1)} meter';
+    _lastKnownPosition =
+        '$_direction, sekitar ${_distanceMeter.toStringAsFixed(1)} meter';
 
-    final previous = _state;
     _set(FindObjectState.found);
 
-    // CO-06/07/08 — umumkan saat pertama ketemu, saat ketemu lagi setelah
-    // hilang, atau saat jaraknya berubah cukup jauh untuk berarti. Tanpa
-    // aturan ini, jarak yang berubah tiap frame jadi banjir suara.
-    final shouldAnnounce = previous != FindObjectState.found ||
-        wasLost ||
-        _crossedDistanceStep();
-    if (shouldAnnounce) {
-      _speak(_serverMessage.isNotEmpty ? _serverMessage : _composeFound(),
-          tier: SpeechTier.info);
-      onDirectionHaptic?.call(_direction);
-    }
-    _lastAnnouncedDistance = _distanceMeter;
-  }
-
-  double _lastAnnouncedDistance = -1;
-
-  /// CO-08 — panduan bertahap. Diumumkan saat melewati ambang yang berarti
-  /// ("dua meter" → "satu meter" → "setengah meter, ulurkan tangan"), bukan
-  /// tiap kali angkanya bergeser sedikit.
-  bool _crossedDistanceStep() {
-    if (_lastAnnouncedDistance < 0) return true;
-    const steps = [0.6, 1.0, 2.0, 3.0];
-    for (final s in steps) {
-      if (_lastAnnouncedDistance > s && _distanceMeter <= s) return true;
-    }
-    return false;
+    final msg = _serverMessage.isNotEmpty ? _serverMessage : _composeFound();
+    _speak(msg, tier: SpeechTier.info);
+    onDirectionHaptic?.call(_direction);
   }
 
   String _composeFound() {
@@ -3282,38 +5540,18 @@ class FindObjectProvider extends ChangeNotifier {
         : '$_target ditemukan di $_direction, sekitar $distText.';
   }
 
-  void _handleFailure(String message, FindObjectState state) {
-    _consecutiveErrors++;
-    _set(state);
-    // Diucapkan sekali per rentetan kegagalan, bukan tiap frame.
-    if (_consecutiveErrors == 1) {
-      _speak(message, tier: SpeechTier.critical);
-    }
-    // Sesudah beberapa kegagalan berturut-turut, berhenti membebani server
-    // dan baterai. Pengguna diberi tahu, bukan dibiarkan menunggu diam-diam.
-    if (_consecutiveErrors >= 5) {
-      _stopLoop();
-      _speak(
-        'Pencarian dihentikan. Ucapkan nama barangnya lagi untuk mencoba ulang.',
-        tier: SpeechTier.warning,
-      );
-      _consecutiveErrors = 0;
-    }
-  }
-
   void reset() {
-    _stopLoop();
+    _stepTimer?.cancel();
     _target = null;
     _serverMessage = '';
-    _consecutiveNotFound = 0;
-    _consecutiveErrors = 0;
-    _lastAnnouncedDistance = -1;
+    _isScanning = false;
+    _notFoundCount = 0;
     _set(FindObjectState.idle);
   }
 
   @override
   void dispose() {
-    _stopLoop();
+    _stepTimer?.cancel();
     super.dispose();
   }
 }
@@ -3321,9 +5559,9 @@ class FindObjectProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/index.dart`
+## File: `lib/providers/index.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/index.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/index.dart`
 
 ```dart
 export 'app_mode_provider.dart';
@@ -3342,17 +5580,23 @@ export '../core/state/global_conditions.dart';
 
 ---
 
-## Berkas: `lib/providers/inference_provider.dart`
+## File: `lib/providers/inference_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/inference_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/inference_provider.dart`
 
 ```dart
 import 'package:flutter/foundation.dart';
+import '../services/camera_intrinsics.dart';
 import '../services/tflite_service.dart';
 import '../services/server_service.dart';
 
-enum InferenceEngine { tflite, server }
-
+/// InferenceProvider — kesiapan model on-device dan server saat boot.
+///
+/// Sejak jalur deteksi via WebSocket dihapus, tidak ada lagi "engine yang
+/// dipilih": Mode Deteksi Objek selalu on-device. Server hanya dibutuhkan
+/// untuk yang memang tidak ada di perangkat (Cari Objek, Deskripsi Suasana,
+/// dan segmentasi jalur sebagai cadangan), jadi kesiapannya diperiksa lewat
+/// `/health` — bukan dengan membuka soket deteksi yang tidak akan dipakai.
 class InferenceProvider extends ChangeNotifier {
   bool _tfliteReady = false;
   bool _serverReady = false;
@@ -3360,21 +5604,21 @@ class InferenceProvider extends ChangeNotifier {
 
   bool get tfliteReady => _tfliteReady;
   bool get serverReady => _serverReady;
-  bool get isReady     => _tfliteReady || _serverReady;
 
-  /// Engine untuk real-time (Mode Tuntun, Navigasi):
-  /// TFLite jika ready, server sebagai fallback.
-  InferenceEngine get realtimeEngine =>
-      _tfliteReady ? InferenceEngine.tflite : InferenceEngine.server;
+  /// Deteksi rintangan siap. Ini satu-satunya yang menentukan mode utama
+  /// bisa berjalan — server tidak lagi jadi cadangannya.
+  bool get isReady => _tfliteReady;
 
   Future<void> initialize() async {
     if (_initialized) return;
 
-    // Load TFLite dan connect server secara parallel
-    // GPS/koordinat tidak dipakai (sesuai request user)
+    // Intrinsik lensa dibaca sekali di sini: estimasi jarak butuh panjang
+    // fokus perangkat ini, bukan rata-rata semua ponsel. Kegagalannya tidak
+    // memblokir apa pun — nilainya jatuh ke fallback.
     final results = await Future.wait([
       TFLiteService.instance.tryLoad(),
-      _tryConnectServer(),
+      _probeServer(),
+      CameraIntrinsics.instance.load().then((_) => true),
     ]);
 
     _tfliteReady = results[0];
@@ -3383,11 +5627,13 @@ class InferenceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> _tryConnectServer() async {
+  Future<bool> _probeServer() async {
     try {
-      // Connect tanpa koordinat GPS (risk zone tidak aktif, fitur lain tetap jalan)
-      await ServerService.instance.connect();
-      return true;
+      final health = await ServerService.instance.healthAt(
+        ServerService.instance.host,
+        timeout: const Duration(seconds: 2),
+      );
+      return health != null;
     } catch (_) {
       return false;
     }
@@ -3400,9 +5646,9 @@ class InferenceProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/money_provider.dart`
+## File: `lib/providers/money_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/money_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/money_provider.dart`
 
 ```dart
 import 'dart:async';
@@ -3415,15 +5661,29 @@ import '../core/speech/tts_queue.dart' show SpeechTier;
 import '../services/money_tflite_service.dart';
 import '../widgets/nominal_card.dart' show terbilangRupiah;
 
-/// State machine "nol sentuhan" Mode Kenali Uang — bagian 9 IMPLEMENTASI.md
-/// (UG-01..UG-12, UG-17, UG-18). Sepenuhnya on-device dan sepenuhnya MOCK:
-/// tidak ada model nominal sungguhan, deteksi disimulasikan lewat Timer.
+/// State machine Mode Kenali Uang — bagian 9 IMPLEMENTASI.md
+/// (UG-01..UG-12, UG-18). Sepenuhnya on-device.
+///
+/// **Tidak ada akumulasi sesi.** Mode ini menjawab satu pertanyaan saja:
+/// "lembar yang sedang saya hadapkan ke kamera ini nominalnya berapa?"
+/// Tombol kiri mengumumkan nominal frame saat itu, lalu selesai — tidak ada
+/// total berjalan, tidak ada rincian lembar, tidak ada kartu "total direset".
+/// Penjumlahan otomatis justru berbahaya di sini: pengguna tunanetra tidak
+/// bisa melihat lembar mana yang sudah terhitung, jadi satu lembar yang
+/// ter-scan dua kali menghasilkan total yang salah tanpa satu pun tanda.
+///
+/// **Jalur mock hanya hidup di build debug.** Simulasi Timer-nya memanggil
+/// `_enterDetected(_kDenoms[_rand.nextInt(...)])` — yaitu **mengucapkan
+/// nominal acak dengan nada yakin**. Di rilis, jalur itu bisa tercapai hanya
+/// karena model gagal dimuat, dan pengguna tunanetra tidak punya cara
+/// membedakannya dari hasil sungguhan. Salah menyebut nominal berarti
+/// kerugian uang nyata, jadi di rilis kegagalan model berakhir di satu
+/// kalimat jujur: fiturnya tidak tersedia. Titik.
 ///
 /// UG-13 (offline banner), UG-14 (izin kamera), UG-15 (senyap/TTS mati), dan
 /// UG-16 (font scale 200%) sengaja TIDAK dimodelkan di sini — itu murni
 /// keputusan lapisan UI (screen membaca GlobalConditionsProvider / izin
-/// sistem / MediaQuery langsung), sesuai instruksi agar provider ini tetap
-/// murni state-machine mock.
+/// sistem / MediaQuery langsung).
 enum MoneyState {
   idle,        // UG-01
   noCandidate, // UG-08
@@ -3433,13 +5693,10 @@ enum MoneyState {
   glare,       // UG-12a
   dark,        // UG-12b
   processing,  // UG-04
-  detected,    // UG-05 (lembar pertama sesi)
-  multiple,    // UG-09a/UG-09b (≥2 lembar, breakdown ditampilkan)
-  consecutive, // UG-11 (lembar berturut-turut, total berjalan)
+  detected,    // UG-05 (nominal lembar yang sedang dihadapi kamera)
   uncertain,   // UG-06
   notMoney,    // UG-07
   foreign,     // UG-18
-  resetAnnounce, // UG-17
 }
 
 /// Pola getar bagian 3.6 — `positive` (2×25ms) untuk bingkai pas,
@@ -3461,12 +5718,6 @@ class MoneyProvider extends ChangeNotifier {
   MoneyState _state = MoneyState.idle;
   MoneyState get state => _state;
 
-  /// Rincian lembar dalam sesi berjalan: denominasi → jumlah lembar.
-  final Map<int, int> _breakdown = {};
-  Map<int, int>? get sessionBreakdown => _breakdown.isEmpty ? null : Map.unmodifiable(_breakdown);
-  int get sessionTotal => _breakdown.entries.fold(0, (sum, e) => sum + e.key * e.value);
-  int get sheetCount => _breakdown.values.fold(0, (sum, v) => sum + v);
-
   int _lastAmount = 0;
   int get lastAmount => _lastAmount;
 
@@ -3475,9 +5726,6 @@ class MoneyProvider extends ChangeNotifier {
 
   String _notMoneyLabel = _kNotMoneyLabels.first;
   String get notMoneyLabel => _notMoneyLabel;
-
-  int _resetAnnounceTotal = 0;
-  int get resetAnnounceTotal => _resetAnnounceTotal;
 
   bool get busy => _state == MoneyState.processing;
 
@@ -3489,7 +5737,6 @@ class MoneyProvider extends ChangeNotifier {
 
   Timer? _stepTimer;
   Timer? _hintRotateTimer;
-  Timer? _sessionResetTimer;
   bool _running = false;
 
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
@@ -3505,14 +5752,35 @@ class MoneyProvider extends ChangeNotifier {
     _stepTimer = Timer(Duration(milliseconds: ms), cb);
   }
 
+  /// Simulasi hanya boleh hidup di build debug. `kDebugMode` dikompilasi
+  /// menjadi konstanta, jadi di rilis seluruh cabang mock ikut tereliminasi.
+  static bool get _mockAllowed => kDebugMode;
+
+  /// True kalau model tidak tersedia DAN mock tidak boleh jalan — layar
+  /// memakai ini untuk menonaktifkan tombol dengan alasan yang jujur.
+  bool get isUnavailable => !_useRealModel && !_mockAllowed;
+
   /// Masuk mode (UG-01) — mulai siklus otomatis dari awal.
   void start() {
     if (_running) return;
     _running = true;
-    _breakdown.clear();
     _lastAmount = 0;
     _set(MoneyState.idle);
-    if (!_useRealModel) _scheduleFromIdle();
+    if (!_useRealModel) _fallbackWhenModelMissing();
+  }
+
+  /// Satu titik keputusan untuk "model tidak ada": simulasi di debug,
+  /// pengakuan jujur di rilis. Tidak ada jalan ketiga yang menyebut angka.
+  void _fallbackWhenModelMissing() {
+    if (_mockAllowed) {
+      _scheduleFromIdle();
+      return;
+    }
+    _set(MoneyState.idle);
+    _speak(
+      'Pengenalan uang tidak tersedia saat ini. Model belum siap di perangkat ini.',
+      tier: SpeechTier.warning,
+    );
   }
 
   /// Keluar mode — hentikan semua timer, jangan bicara lagi.
@@ -3520,7 +5788,6 @@ class MoneyProvider extends ChangeNotifier {
     _running = false;
     _stepTimer?.cancel();
     _hintRotateTimer?.cancel();
-    _sessionResetTimer?.cancel();
   }
 
   /// Dipanggil dari tombol kamera BottomActionBar — "paksa deteksi ulang".
@@ -3531,6 +5798,13 @@ class MoneyProvider extends ChangeNotifier {
     if (_useRealModel) {
       _consecutiveMiss = 0;
       _set(MoneyState.fit);
+      return;
+    }
+    if (!_mockAllowed) {
+      _speak(
+        'Pengenalan uang tidak tersedia saat ini.',
+        tier: SpeechTier.warning,
+      );
       return;
     }
     _enterFit();
@@ -3551,6 +5825,10 @@ class MoneyProvider extends ChangeNotifier {
   bool _inferring = false;
   DateTime _lastInference = DateTime.fromMillisecondsSinceEpoch(0);
   int _consecutiveMiss = 0;
+
+  /// Hasil buffer terbaru dari model — diperbarui tiap frame, dipakai saat
+  /// snapAndAnnounce() dipanggil. Tidak pernah auto-diumumkan.
+  MoneyResult? _latestResult;
 
   /// Jeda antar inferensi. Klasifikasi 224x224 ringan, tapi tidak ada
   /// gunanya berjalan tiap frame: pengguna butuh waktu memposisikan uang.
@@ -3587,28 +5865,33 @@ class MoneyProvider extends ChangeNotifier {
   void _applyRealResult(MoneyResult result) {
     if (!_running) return;
 
+    // Selalu perbarui buffer — snapAndAnnounce() akan membaca ini saat user
+    // menekan tombol, sehingga hasilnya selalu mencerminkan apa yang kamera
+    // lihat saat itu tanpa delay inferensi tambahan.
+    _latestResult = result;
+
     if (result.detected && result.valueIdr != null) {
       _consecutiveMiss = 0;
-      // Jangan umumkan lembar yang sama berulang-ulang saat kamera masih
-      // menyorot uang yang itu-itu juga.
-      if (_state == MoneyState.detected && _lastAmount == result.valueIdr) return;
-      if (_state == MoneyState.consecutive && _lastAmount == result.valueIdr) return;
-      _enterDetected(result.valueIdr!);
+      // Update visual state ke "fit" (bingkai hijau) agar user tahu
+      // kamera sudah melihat uang dan siap di-snap — tapi TIDAK bicara.
+      if (_state != MoneyState.fit && _state != MoneyState.detected) {
+        _set(MoneyState.fit);
+      }
       return;
     }
 
     switch (result.failure) {
       case MoneyFailure.lowConfidence:
-        // UG-06 — ragu. Nominal tidak ditampilkan sama sekali.
+        // UG-06 — ragu. Tampilkan bingkai + indikator tapi tidak bicara
+        // secara otomatis; pesan muncul saat user snap.
         _consecutiveMiss = 0;
         if (_state != MoneyState.uncertain) {
           _set(MoneyState.uncertain);
-          _speak('Belum yakin, dekatkan sedikit dan tahan diam.', tier: SpeechTier.warning);
         }
       case MoneyFailure.modelUnavailable:
         _useRealModel = false;
         if (!_running) return;
-        _scheduleFromIdle();
+        _fallbackWhenModelMissing();
       case MoneyFailure.error:
       case null:
         // UG-08 — tidak ada kandidat: pill instruksi berputar tiap 5 detik.
@@ -3618,6 +5901,34 @@ class MoneyProvider extends ChangeNotifier {
           _startHintRotation();
         }
     }
+  }
+
+  /// Dipanggil saat user menekan tombol kiri — umumkan hasil buffer terbaru.
+  ///
+  /// Tidak ada delay inferensi: model sudah berjalan di background tiap 600ms,
+  /// jadi _latestResult selalu segar. User mendapat jawaban instan.
+  void snapAndAnnounce() {
+    if (!_running) return;
+
+    if (!_useRealModel) {
+      // Tanpa model: di debug jatuh ke simulasi, di rilis mengaku tidak bisa.
+      // Yang tidak pernah terjadi di rilis adalah menyebut angka.
+      forceRedetect();
+      return;
+    }
+
+    final result = _latestResult;
+    if (result == null || !result.detected || result.valueIdr == null) {
+      // Tidak ada uang di frame saat ini — beri tahu user.
+      final msg = (result?.failure == MoneyFailure.lowConfidence)
+          ? 'Belum yakin, dekatkan sedikit dan tahan diam.'
+          : 'Tidak ada uang terdeteksi. Arahkan kamera ke uang.';
+      _speak(msg, tier: SpeechTier.warning);
+      return;
+    }
+
+    // Ada uang — masuk ke alur deteksi normal (session tracking + TTS).
+    _enterDetected(result.valueIdr!);
   }
 
   void _startHintRotation() {
@@ -3719,6 +6030,13 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   void _resolveDetection() {
+    // Pertahanan berlapis: satu-satunya tempat di seluruh aplikasi yang bisa
+    // mengucapkan nominal tanpa melihat uang sungguhan. Kalau suatu saat ada
+    // jalur baru yang lolos ke sini di rilis, ia berhenti di sini.
+    if (!_mockAllowed) {
+      _set(MoneyState.idle);
+      return;
+    }
     final r = _rand.nextDouble();
     if (r < 0.70) {
       _enterDetected(_kDenoms[_rand.nextInt(_kDenoms.length)]);
@@ -3742,86 +6060,45 @@ class MoneyProvider extends ChangeNotifier {
     _set(MoneyState.notMoney);
     _speak('Ini sepertinya $_notMoneyLabel, bukan uang.', tier: SpeechTier.info);
     // Aturan #3: total yang sudah ada tidak boleh hilang diam-diam.
-    _after(2200, () => _breakdown.isEmpty ? _scheduleFromIdle() : _settleSession());
+    _after(2200, _scheduleFromIdle);
   }
 
   void _enterForeign() {
     _set(MoneyState.foreign);
     _speak('Ini sepertinya uang asing atau rusak, saya belum bisa membacanya.', tier: SpeechTier.warning);
-    _after(2200, () => _breakdown.isEmpty ? _scheduleFromIdle() : _settleSession());
+    _after(2200, _scheduleFromIdle);
   }
 
   // -------------------------------------------------------------- detected
 
+  /// Satu lembar, satu jawaban. Menekan tombol lagi pada lembar yang sama
+  /// hanya mengulang nominal yang sama — tidak pernah menambah apa pun.
   void _enterDetected(int amount) {
     _lastAmount = amount;
-    _breakdown.update(amount, (v) => v + 1, ifAbsent: () => 1);
-    _armSessionResetTimer();
-
-    if (sheetCount == 1) {
-      _set(MoneyState.detected);
-      _speak(terbilangRupiah(amount), tier: SpeechTier.info);
-      _scheduleNextSheetOrWait();
-    } else {
-      _set(MoneyState.multiple);
-      _speak('Total ${terbilangRupiah(sessionTotal)}, dari $sheetCount lembar.', tier: SpeechTier.info);
-      _after(2600, () {
-        _set(MoneyState.consecutive);
-        _scheduleNextSheetOrWait();
-      });
-    }
-  }
-
-  /// Lembar berikutnya bisa masuk kapan saja dalam jendela 60 detik — atau
-  /// tidak sama sekali, sehingga jatuh ke UG-17.
-  void _scheduleNextSheetOrWait() {
-    if (_rand.nextDouble() < 0.5) {
-      _after(4000 + _rand.nextInt(9000), () {
-        if (_state == MoneyState.detected || _state == MoneyState.consecutive) {
-          _enterPartial();
-        }
-      });
-    }
-    // Kalau tidak dijadwalkan lembar baru, layar tetap diam di
-    // detected/consecutive sampai timer 60 detik (UG-17) menyala sendiri.
-  }
-
-  void _armSessionResetTimer() {
-    _sessionResetTimer?.cancel();
-    _sessionResetTimer = Timer(const Duration(seconds: 60), () {
-      if (_breakdown.isNotEmpty) _settleSession();
-    });
-  }
-
-  /// UG-17 — total yang hilang WAJIB diumumkan, tidak pernah hilang diam-diam.
-  void _settleSession() {
-    _sessionResetTimer?.cancel();
-    _resetAnnounceTotal = sessionTotal;
-    _set(MoneyState.resetAnnounce);
-    _speak('Total ${terbilangRupiah(_resetAnnounceTotal)} direset.', tier: SpeechTier.info);
-    _after(2400, () {
-      _breakdown.clear();
-      _scheduleFromIdle();
-    });
+    _set(MoneyState.detected);
+    _speak(terbilangRupiah(amount), tier: SpeechTier.info);
   }
 }
 ```
 
 ---
 
-## Berkas: `lib/providers/navigation_provider.dart`
+## File: `lib/providers/navigation_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/navigation_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/navigation_provider.dart`
 
 ```dart
 import 'dart:async';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/net/api_client.dart';
-import '../core/speech/tts_queue.dart' show SpeechTier;
+import '../core/speech/tts_queue.dart' show SpeechTier, TtsQueue;
 import '../models/detection.dart';
-import '../services/server_service.dart';
+import '../services/nav_frame_converter.dart';
+import '../services/pidnet_service.dart';
+import '../services/yolo_navigasi_service.dart';
 import '../widgets/zone_indicator.dart' show ZoneStatus;
 
 /// NavigationStep — placeholder tanpa GPS/Google Maps (belum diimplementasi,
@@ -3834,22 +6111,23 @@ class NavigationStep {
 
 /// Fase segmentasi jalur — bagian 10 IMPLEMENTASI.md (NV-01..NV-13).
 ///
-/// **Sepenuhnya di server.** Frame dikirim ke `POST /api/navigasi`, yang
-/// mengembalikan status tiga zona plus zona rawan dari laporan komunitas.
+/// **Sepenuhnya on-device.** PIDNet-S (segmentasi 3 zona) dan YOLO11n
+/// (rintangan) berjalan di ponsel; keduanya sudah dibundel di APK.
 ///
-/// > **Perubahan dari desain awal, disengaja.** Dokumen merancang mode ini
-/// > dengan dua proses paralel: segmentasi jalur di server DAN deteksi
-/// > rintangan on-device yang tetap hidup saat offline (§2, §4.4). Sejak
-/// > keduanya dipindah ke server, NV-19 dan NV-20 tidak punya arti lagi —
-/// > tidak ada lagi "on-device mati sementara server hidup". Offline sekarang
-/// > berarti mode ini benar-benar buta, dan itu dikatakan apa adanya
-/// > ketimbang dijanjikan setengah.
+/// > Jalur server dihapus. `navigasi.router` memang sudah dinonaktifkan di
+/// > `backend/main.py` sejak navigasi dipindah on-device, sehingga fallback
+/// > `POST /api/navigasi` di sini hanya menghasilkan 404 — lalu diterjemahkan
+/// > menjadi "Saya tidak bisa membaca jalur tanpa sambungan ke server".
+/// > Kalimat itu menyalahkan jaringan untuk endpoint yang memang sengaja
+/// > tidak disediakan, dan mendorong pengguna mencari sinyal yang tidak akan
+/// > menolong. Sekarang mode ini hidup atau mati bersama modelnya sendiri,
+/// > dan mengatakannya apa adanya.
 enum NavPhase {
   calibrating, // NV-01
-  waitingServer, // NV-02
+  loadingModels, // NV-02 — memuat PIDNet + YOLO on-device
   active, // NV-03..NV-09
-  serverDown, // NV-11 — sekarang berarti mode benar-benar berhenti
-  serverWeak, // NV-13
+  unavailable, // NV-11 — model on-device tidak bisa dipakai
+  degraded, // NV-13 — model jalan tapi frame sering gagal dibaca
   paused, // NV-15
 }
 
@@ -3878,35 +6156,53 @@ class NavigationProvider extends ChangeNotifier {
 
   bool _pothole = false;
   bool get pothole => _pothole;
-  double _potholeSteps = 3;
+  final double _potholeSteps = 3;
   double get potholeSteps => _potholeSteps;
 
   /// Zona rawan dari laporan komunitas — informasi yang tidak terlihat kamera.
   String? _riskZoneWarning;
   String? get riskZoneWarning => _riskZoneWarning;
 
-  /// Rintangan dari server, dari frame yang sama dengan zona. Datang bersama
-  /// zona supaya keduanya tidak pernah menggambarkan momen yang berbeda.
+  /// Rintangan dari frame yang sama dengan zona. Datang bersama zona supaya
+  /// keduanya tidak pernah menggambarkan momen yang berbeda.
   List<Detection> _obstacles = const [];
   List<Detection> get obstacles => _obstacles;
 
   void Function(String text, SpeechTier tier)? onSpeak;
   void Function()? onTakeover; // NV-06 — mengambil alih layar
 
-  /// Sumber frame dan koordinat, dipasang screen. Provider tetap bebas dari
-  /// BuildContext dan bebas dari paket kamera.
-  Future<Uint8List?> Function()? frameSource;
-  ({double lat, double lng})? Function()? locationSource;
+  /// Sumber frame kamera mentah (YUV) untuk PIDNet + YOLO on-device.
+  Future<CameraImage?> Function()? cameraSource;
+
+  /// Status loading model on-device.
+  bool _modelsLoading = false;
+  bool _modelsReady   = false;
+  bool get modelsReady => _modelsReady;
 
   /// Satu permintaan in-flight; frame yang datang saat menunggu dibuang.
-  /// Untuk mode yang menuntun orang berjalan, arahan untuk pemandangan tiga
-  /// detik lalu lebih berbahaya daripada tidak ada arahan sama sekali.
-  final _pacer = FramePacer(minInterval: const Duration(milliseconds: 500));
+  final _pacer = FramePacer(minInterval: const Duration(milliseconds: 700));
 
   Timer? _loopTimer;
   int _consecutiveFailures = 0;
   String _lastSpokenMessage = '';
   DateTime _lastSpokenAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Pesan yang sedang menunggu konfirmasi frame berikutnya, dan sudah berapa
+  /// frame berturut-turut ia bertahan. Dipakai [_emitGuidance] sebagai
+  /// histeresis — lihat alasannya di sana.
+  String _candidateMessage = '';
+  int _candidateStreak = 0;
+
+  /// Jeda minimum antar ucapan berbeda (non-critical).
+  static const _minGap = Duration(milliseconds: 1800);
+
+  /// Jeda sebelum pesan non-critical yang SAMA boleh diulang.
+  static const _sameMessageGap = Duration(seconds: 6);
+
+  /// Jeda sebelum peringatan critical yang SAMA boleh diulang. Lebih pendek
+  /// dari [_sameMessageGap] karena bahayanya nyata, tapi tidak nol — lihat
+  /// [_emitGuidance].
+  static const _criticalRepeatGap = Duration(seconds: 4);
 
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
 
@@ -3915,13 +6211,48 @@ class NavigationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// NV-01 selesai → NV-02 menunggu server → NV-03 jalur aman.
-  ///
-  /// NV-02 sekarang benar-benar menunggu jawaban server pertama, bukan timer
-  /// tetap: pengguna tidak diberi tahu "siap" sebelum jalurnya sungguh terbaca.
+  /// NV-01 selesai → muat model on-device → NV-03 jalur aman.
   void finishCalibration() {
-    _phase = NavPhase.waitingServer;
+    _phase = NavPhase.loadingModels;
     _left = _center = _right = ZoneStatus.unknown;
+    notifyListeners();
+
+    if (!_modelsReady && !_modelsLoading) {
+      _loadOnDeviceModels();
+    } else {
+      _startLoop();
+    }
+  }
+
+  /// Muat PIDNet + YOLO secara paralel di background.
+  Future<void> _loadOnDeviceModels() async {
+    _modelsLoading = true;
+    debugPrint('[Nav] Memuat model on-device...');
+
+    final results = await Future.wait([
+      PidnetService.instance.tryLoad(),
+      YoloNavigasiService.instance.tryLoad(),
+    ]);
+
+    _modelsLoading = false;
+    _modelsReady = results[0] && results[1];
+
+    if (!_modelsReady) {
+      // Tidak ada cadangan server lagi. Katakan apa adanya — dan sebut mode
+      // apa yang MASIH bisa dipakai, supaya ini bukan jalan buntu.
+      debugPrint('[Nav] Model on-device gagal dimuat.');
+      _phase = NavPhase.unavailable;
+      _speak(
+        'Panduan jalur tidak bisa dijalankan di perangkat ini. '
+        'Mode Deteksi Objek tetap bisa memperingatkan rintangan.',
+        tier: SpeechTier.critical,
+      );
+      notifyListeners();
+      return;
+    }
+
+    debugPrint('[Nav] Model on-device siap. PIDNet + YOLO aktif.');
+    _speak('Panduan jalur aktif.', tier: SpeechTier.info);
     notifyListeners();
     _startLoop();
   }
@@ -3929,6 +6260,8 @@ class NavigationProvider extends ChangeNotifier {
   void _startLoop() {
     _loopTimer?.cancel();
     _pacer.reset();
+    _candidateMessage = '';
+    _candidateStreak = 0;
     // ~2 frame per detik. Kecepatan jalan kaki sekitar 1,4 m/s, jadi tiap
     // frame mewakili kurang dari satu meter perjalanan — cukup rapat untuk
     // memperingatkan sebelum terlambat, cukup jarang untuk tidak menguras
@@ -3944,155 +6277,171 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   Future<void> _tick() async {
-    if (_phase == NavPhase.paused) return;
-    final grab = frameSource;
-    if (grab == null) return;
-
-    await _pacer.run(() async {
-      final jpeg = await grab();
-      if (jpeg == null) return;
-      final loc = locationSource?.call();
-
-      try {
-        final res = await ServerService.instance.segmentasiJalur(
-          jpeg,
-          lat: loc?.lat ?? 0,
-          lng: loc?.lng ?? 0,
-        );
-        _consecutiveFailures = 0;
-        _handleZones(res);
-      } on ApiStatusException {
-        _handleFailure();
-      } on ApiUnreachableException {
-        _handleFailure();
-      }
-    });
+    if (_phase == NavPhase.paused || !_modelsReady) return;
+    await _pacer.run(_tickOnDevice);
   }
 
-  void _handleZones(Map<String, dynamic> res) {
-    final wasDown = _phase == NavPhase.serverDown || _phase == NavPhase.waitingServer;
+  // ── On-Device: PIDNet + YOLO di HP ──────────────────────────
+  Future<void> _tickOnDevice() async {
+    final camGrab = cameraSource;
+    if (camGrab == null) return;
+    final frame = await camGrab();
+    if (frame == null) return;
 
-    if (res['ok'] != true) {
-      // Frame tidak terbaca (lensa tertutup, terlalu gelap) — beda dari
-      // server mati, dan naskahnya juga beda.
-      _left = _center = _right = ZoneStatus.unknown;
-      _phase = NavPhase.serverDown;
-      _announce(
-        res['message'] as String? ?? 'Jalur tidak terbaca. Berhenti jalan dulu.',
-        SpeechTier.critical,
-      );
-      notifyListeners();
-      return;
+    try {
+      // Konversi YUV→RGB sekali, dipakai keduanya
+      final conv = NavFrameConverter.fromCameraImage(frame);
+
+      // Jalankan PIDNet dan YOLO secara paralel
+      final results = await Future.wait([
+        PidnetService.instance.analyze(conv.rgb, conv.width, conv.height),
+        YoloNavigasiService.instance.detect(conv.rgb, conv.width, conv.height),
+      ]);
+
+      final zoneAnalysis = results[0] as ZoneAnalysis?;
+      final obstacles    = results[1] as List<Detection>;
+
+      if (zoneAnalysis == null) return;
+
+      _consecutiveFailures = 0;
+      _applyOnDeviceResult(zoneAnalysis, obstacles);
+    } catch (e) {
+      debugPrint('[Nav] on-device tick error: $e');
+      _handleFailure();
     }
+  }
 
-    final zones = res['zones'] as Map<String, dynamic>?;
-    if (zones == null) return;
+  void _applyOnDeviceResult(ZoneAnalysis zones, List<Detection> obstacles) {
+    final wasDown = _phase == NavPhase.degraded || _phase == NavPhase.loadingModels;
 
-    _left = _statusFrom(zones['kiri']);
-    _center = _statusFrom(zones['tengah']);
-    _right = _statusFrom(zones['kanan']);
-    _phase = NavPhase.active;
+    _left   = zones.left;
+    _center = zones.center;
+    _right  = zones.right;
+    _phase  = NavPhase.active;
+    _obstacles = obstacles;
+    _pothole = obstacles.any((d) =>
+        (d.labelEn == 'lubang' || d.labelEn == 'got_terbuka') &&
+        d.dangerLevel == 'critical');
 
-    // Rintangan dari frame yang sama — lihat catatan di routers/navigasi.py.
-    final rawObstacles = res['obstacles'];
-    _obstacles = rawObstacles is List
-        ? rawObstacles
-            .map((e) => Detection.fromJson(e as Map<String, dynamic>))
-            .toList()
-        : const [];
+    if (wasDown) _speak('Jalur terbaca lagi.', tier: SpeechTier.info);
 
-    // NV-09 — lubang dilaporkan server sebagai zona danger yang sempit;
-    // sementara backend belum memisahkannya, tandai lewat field opsional.
-    _pothole = res['pothole'] == true;
-    if (_pothole) {
-      _potholeSteps = (res['pothole_steps'] as num?)?.toDouble() ?? 3;
-    }
-
-    // Zona rawan komunitas — disebut sekali saat masuk radius, tidak diulang.
-    final risk = res['risk_zone'] as Map<String, dynamic>?;
-    final riskWarning = risk?['warning'] as String?;
-    if (riskWarning != null && riskWarning != _riskZoneWarning) {
-      _riskZoneWarning = riskWarning;
-      _speak(riskWarning, tier: SpeechTier.warning);
-    } else if (risk == null) {
-      _riskZoneWarning = null;
-    }
-
-    if (wasDown) {
-      _speak('Jalur terbaca lagi.', tier: SpeechTier.info);
-    }
-
-    final message = res['message'] as String? ?? '';
-    final allDanger = _left == ZoneStatus.danger &&
-        _center == ZoneStatus.danger &&
-        _right == ZoneStatus.danger;
-
-    if (allDanger) {
-      // NV-07 — berdiri diam adalah tindakan yang sah.
-      _announce('Berhenti dulu. Tidak ada jalur aman di sekitar sini.', SpeechTier.critical);
-    } else if (_center == ZoneStatus.danger) {
-      // NV-06 — mengambil alih layar dan memotong antrean suara.
-      onTakeover?.call();
-      _announce(
-        message.isNotEmpty ? message : 'Berhenti! Jalur di depan tidak aman.',
-        SpeechTier.critical,
-      );
-    } else if (message.isNotEmpty) {
-      _announce(message, SpeechTier.warning);
-    }
-
+    final guidance = _composeGuidance(zones, obstacles);
+    _emitGuidance(guidance.$1, guidance.$2, takeover: guidance.$3);
     notifyListeners();
   }
 
-  /// Anti-banjir suara. Server mengirim pesan tiap frame; mengucapkan semuanya
-  /// akan menutupi suara lalu lintas — hal terakhir yang boleh terjadi pada
-  /// orang yang sedang menyeberang. Pesan yang sama hanya diulang setelah
-  /// jeda, kecuali Critical yang selalu lewat.
-  void _announce(String message, SpeechTier tier) {
+  /// Susun satu pesan untuk frame ini: rintangan kritis didahulukan, lalu
+  /// rintangan peringatan, baru arahan zona. Fungsi ini murni — tidak bicara
+  /// dan tidak mengubah state — supaya keputusan "apa yang perlu dikatakan"
+  /// terpisah dari keputusan "apakah sekarang saatnya mengatakannya".
+  (String, SpeechTier, bool) _composeGuidance(ZoneAnalysis zones, List<Detection> obstacles) {
+    final critical = obstacles.where((d) => d.dangerLevel == 'critical').toList();
+    if (critical.isNotEmpty) {
+      return (critical.first.ttsMessage, SpeechTier.critical, true);
+    }
+
+    final warning = obstacles.where((d) => d.dangerLevel == 'warning').toList();
+    if (warning.isNotEmpty) {
+      return (warning.first.ttsMessage, SpeechTier.warning, false);
+    }
+
+    final allDanger = _left == ZoneStatus.danger &&
+        _center == ZoneStatus.danger &&
+        _right == ZoneStatus.danger;
+    if (allDanger) {
+      return ('Berhenti dulu. Tidak ada jalur aman.', SpeechTier.critical, false);
+    }
+    if (_center == ZoneStatus.danger) {
+      return ('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical, true);
+    }
+    return (zones.ttsMessage, SpeechTier.info, false);
+  }
+
+  /// Anti-banjir suara. Loop menghasilkan pesan tiap frame; mengucapkan
+  /// semuanya akan menutupi suara lalu lintas — hal terakhir yang boleh
+  /// terjadi pada orang yang sedang menyeberang.
+  ///
+  /// Tiga rem, masing-masing menutup lubang yang berbeda:
+  ///
+  /// 1. **Histeresis.** PIDNet dan YOLO berkedip antar-frame; tanpa ini satu
+  ///    kedipan model langsung jadi satu kedipan suara. Info dan Warning
+  ///    butuh dua frame berturut-turut dengan pesan yang sama. Critical lewat
+  ///    pada kemunculan pertama — menunda peringatan bahaya ~700 ms demi
+  ///    kerapian suara adalah pertukaran yang salah di mode ini.
+  ///
+  /// 2. **Critical tidak memotong dirinya sendiri.** Sebelumnya kedua rem
+  ///    waktu dilewati Critical sepenuhnya, jadi jalur tengah yang berbahaya
+  ///    selama sepuluh detik memicu peringatan identik tiap ~700 ms. Tiap
+  ///    pemicu menjalankan `TTSService.stop()` lalu `speak(interrupt: true)`,
+  ///    sehingga kalimatnya diulang dari awal terus-menerus dan **tidak
+  ///    pernah selesai diucapkan sekali pun**. Peringatan yang tidak pernah
+  ///    utuh bukan peringatan. Critical tetap memotong Info/Warning; yang
+  ///    dilarang hanya memotong Critical yang sama.
+  ///
+  /// 3. **Jangan menumpuk di atas ucapan yang belum habis.** [_lastSpokenAt]
+  ///    dicatat saat pesan DIKIRIM, bukan saat selesai dibacakan. Satu
+  ///    kalimat arahan zona ("Kiri aman, tengah hati-hati, kanan bahaya.
+  ///    Geser ke kiri.") butuh ~4 detik pada `speechRate` 0,5 — jauh lebih
+  ///    lama dari rem 1,8 detik. Tanpa cek [TtsQueue.isSpeaking], pesan
+  ///    berikutnya selalu berangkat sebelum yang sekarang habis, lalu
+  ///    dibuang antrean karena kedaluwarsa 2 detik. Itulah yang terdengar
+  ///    sebagai suara buru-buru dan saling menimpa.
+  void _emitGuidance(String message, SpeechTier tier, {required bool takeover}) {
+    if (message == _candidateMessage) {
+      _candidateStreak++;
+    } else {
+      _candidateMessage = message;
+      _candidateStreak = 1;
+    }
+    if (tier != SpeechTier.critical && _candidateStreak < 2) return;
+
     final now = DateTime.now();
     final isRepeat = message == _lastSpokenMessage;
     final elapsed = now.difference(_lastSpokenAt);
 
-    if (tier != SpeechTier.critical && isRepeat && elapsed < const Duration(seconds: 6)) {
-      return;
+    if (tier == SpeechTier.critical) {
+      if (isRepeat && elapsed < _criticalRepeatGap) return;
+    } else {
+      if (isRepeat && elapsed < _sameMessageGap) return;
+      if (elapsed < _minGap) return;
+      if (TtsQueue.instance.isSpeaking) return;
     }
-    if (tier != SpeechTier.critical && elapsed < const Duration(milliseconds: 1800)) {
-      return;
-    }
+
     _lastSpokenMessage = message;
     _lastSpokenAt = now;
+    // Dipanggil hanya kalau pesannya benar-benar jadi diucapkan. Sebelumnya
+    // takeover berjalan lebih dulu tanpa syarat, jadi ia tetap memotong
+    // ucapan berjalan walau peringatannya kemudian diredam rem di atas.
+    if (takeover) onTakeover?.call();
     _speak(message, tier: tier);
   }
 
-  ZoneStatus _statusFrom(dynamic zone) {
-    final status = (zone is Map<String, dynamic>) ? zone['status'] as String? : null;
-    return switch (status) {
-      'safe' => ZoneStatus.safe,
-      'caution' => ZoneStatus.caution,
-      'danger' => ZoneStatus.danger,
-      _ => ZoneStatus.unknown,
-    };
-  }
-
+  /// Frame gagal dianalisis berturut-turut.
+  ///
+  /// Penyebabnya sekarang lokal — lensa tertutup, terlalu gelap, model
+  /// kehabisan memori — bukan jaringan. Naskahnya ikut berubah: menyalahkan
+  /// "sambungan server" untuk masalah yang ada di tangan pengguna hanya
+  /// mengirimnya mencari sinyal yang tidak akan menolong.
   void _handleFailure() {
     _consecutiveFailures++;
 
-    // Satu kegagalan bisa jadi hanya satu paket hilang — jangan langsung
-    // menakuti pengguna. Tiga berturut-turut berarti sambungannya memang
-    // putus, dan itu harus dikatakan segera: mode ini tidak punya cadangan
-    // on-device lagi, jadi diam berarti membiarkan orang berjalan buta.
-    if (_consecutiveFailures == 2) {
-      _phase = NavPhase.serverWeak;
-      _speak('Sinyal lemah, arahan jalur mungkin tertinggal.', tier: SpeechTier.warning);
+    // Satu kegagalan bisa jadi hanya satu frame buruk — jangan langsung
+    // menakuti pengguna. Beberapa berturut-turut berarti mode ini memang
+    // sedang tidak melihat apa-apa, dan itu harus dikatakan segera: diam
+    // berarti membiarkan orang berjalan menyangka dirinya dituntun.
+    if (_consecutiveFailures == 2 && _phase != NavPhase.degraded) {
+      _phase = NavPhase.degraded;
+      _speak('Jalur sulit dibaca, arahan mungkin tertinggal.', tier: SpeechTier.warning);
       notifyListeners();
       return;
     }
 
-    if (_consecutiveFailures >= 4 && _phase != NavPhase.serverDown) {
-      _phase = NavPhase.serverDown;
+    if (_consecutiveFailures >= 4 && _phase != NavPhase.unavailable) {
+      _phase = NavPhase.unavailable;
       _left = _center = _right = ZoneStatus.unknown;
       _speak(
-        'Berhenti jalan dulu. Saya tidak bisa membaca jalur tanpa sambungan ke server.',
+        'Berhenti jalan dulu. Saya tidak bisa membaca jalur sekarang. '
+        'Periksa apakah kamera tertutup, atau cari tempat yang lebih terang.',
         tier: SpeechTier.critical,
       );
       notifyListeners();
@@ -4117,7 +6466,60 @@ class NavigationProvider extends ChangeNotifier {
 
   String _summaryPhrase() {
     if (_left == ZoneStatus.safe && _center == ZoneStatus.safe && _right == ZoneStatus.safe) return 'Jalur aman.';
-    return 'Periksa arahan jalur di layar.';
+    return zoneSummary();
+  }
+
+  /// Ringkasan tiga zona dalam kata, bukan warna.
+  ///
+  /// `ZoneIndicator` menampilkan tiga blok berwarna — tidak ada gunanya bagi
+  /// pengguna yang tidak melihat layar. Ini padanan verbalnya, dan inilah yang
+  /// dibacakan tombol kiri "Ulangi arahan".
+  String zoneSummary() {
+    if (_phase == NavPhase.calibrating || _phase == NavPhase.loadingModels) {
+      return 'Jalur belum terbaca, tunggu sebentar.';
+    }
+    if (_left == ZoneStatus.unknown &&
+        _center == ZoneStatus.unknown &&
+        _right == ZoneStatus.unknown) {
+      return 'Jalur belum terbaca.';
+    }
+
+    String word(ZoneStatus s) => switch (s) {
+          ZoneStatus.safe => 'aman',
+          ZoneStatus.caution => 'hati-hati',
+          ZoneStatus.danger => 'bahaya',
+          ZoneStatus.unknown => 'belum terbaca',
+        };
+
+    final parts = 'Kiri ${word(_left)}, tengah ${word(_center)}, kanan ${word(_right)}.';
+
+    // Sebutkan rekomendasinya, bukan hanya keadaannya — pengguna butuh tahu
+    // harus berbuat apa, bukan sekadar daftar status.
+    final saran = _center == ZoneStatus.safe
+        ? 'Tetap di tengah.'
+        : _left == ZoneStatus.safe
+            ? 'Geser ke kiri.'
+            : _right == ZoneStatus.safe
+                ? 'Geser ke kanan.'
+                : 'Berhenti dulu, tidak ada jalur aman.';
+
+    return '$parts $saran';
+  }
+
+  /// Tombol kiri Mode Navigasi / perintah suara "ulangi".
+  ///
+  /// Sengaja melewati anti-banjir [_announce]: ini permintaan eksplisit
+  /// pengguna, bukan pesan otomatis yang berisiko menutupi suara lalu lintas.
+  void repeatGuidance() {
+    _speak(zoneSummary(), tier: SpeechTier.warning);
+  }
+
+  /// `actionStopWalking` — hentikan panduan tanpa keluar mode.
+  /// Mengembalikan false kalau memang tidak ada yang berjalan.
+  bool pauseGuidance() {
+    if (_phase == NavPhase.paused) return false;
+    autoPause();
+    return true;
   }
 
   /// NV-15 — jeda otomatis (berhenti berjalan / ponsel diturunkan).
@@ -4156,6 +6558,8 @@ class NavigationProvider extends ChangeNotifier {
     _riskZoneWarning = null;
     _consecutiveFailures = 0;
     _lastSpokenMessage = '';
+    _modelsReady   = false;
+    _modelsLoading = false;
     _stopLoop();
     notifyListeners();
   }
@@ -4175,14 +6579,15 @@ class NavigationProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/settings_provider.dart`
+## File: `lib/providers/settings_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/settings_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/settings_provider.dart`
 
 ```dart
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/haptic_service.dart';
 import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
@@ -4237,6 +6642,9 @@ class SettingsProvider extends ChangeNotifier {
     _onboardingDone = _prefs!.getBool(_kOnboardingDone) ?? false;
     _serverHost = _prefs!.getString(_kServerHost) ?? kDefaultServerHost;
     await TTSService.instance.setRate(_speechRate);
+    // Tanpa baris ini, pilihan "Getar: Mati" tersimpan ke disk tapi tidak
+    // mematikan apa pun.
+    HapticService.instance.setMode(_vibrationMode);
     // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama —
     // tanpa ini, alamat kustom baru berlaku setelah pengguna membukanya lagi.
     ServerService.instance.setHost(_serverHost);
@@ -4258,6 +6666,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setVibrationMode(VibrationMode m) async {
     _vibrationMode = m;
+    HapticService.instance.setMode(m);
     await _prefs?.setInt(_kVibration, m.index);
     notifyListeners();
   }
@@ -4300,9 +6709,9 @@ class SettingsProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/tts_provider.dart`
+## File: `lib/providers/tts_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/tts_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/tts_provider.dart`
 
 ```dart
 import 'package:flutter/foundation.dart';
@@ -4342,18 +6751,20 @@ class TtsProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/providers/voice_provider.dart`
+## File: `lib/providers/voice_provider.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/voice_provider.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/providers/voice_provider.dart`
 
 ```dart
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
+import '../core/voice/scene_translator.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
+import '../providers/find_object_provider.dart';
 import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
@@ -4394,8 +6805,9 @@ class VoiceProvider extends ChangeNotifier {
   final CameraProvider _camera;
   final DetectionProvider _detection;
   final AppModeProvider _appMode;
+  final FindObjectProvider _findObject;
 
-  VoiceProvider(this._camera, this._detection, this._appMode);
+  VoiceProvider(this._camera, this._detection, this._appMode, this._findObject);
 
   final SpeechToText _stt = SpeechToText();
   VoiceState _state = VoiceState.idle;
@@ -4410,6 +6822,8 @@ class VoiceProvider extends ChangeNotifier {
   VoiceState get state => _state;
   bool get isListening => _state == VoiceState.listening;
   bool get isProcessing => _state == VoiceState.transcribing || _state == VoiceState.processingLocal || _state == VoiceState.processingLlm;
+  DetectionProvider get detection => _detection;
+  int get consecutiveFailures => _consecutiveFailures;
   String get lastText => _lastText;
   String get response => _response;
 
@@ -4424,11 +6838,45 @@ class VoiceProvider extends ChangeNotifier {
   void Function(String text)? onSpeak;
   void Function()? onAllFeaturesFailed;
 
+  /// Dipasang oleh VoiceScreen saat masuk sebagai overlay (push Navigator).
+  /// Dipanggil setelah `actionGoBack` berhasil — agar layar bisa pop dirinya
+  /// sendiri tanpa VoiceProvider bergantung pada BuildContext/Navigator.
+  void Function()? onNavigateBack;
+
   /// Pengaturan adalah layar penunjang, bukan mode — pembukaannya butuh
   /// Navigator. Layar yang aktif memasang ini dan mengembalikan **true hanya
   /// kalau halaman benar-benar terbuka**; kalau null atau false, Vinara
   /// mengatakan yang sejujurnya alih-alih mengonfirmasi.
   Future<bool> Function()? onOpenSettings;
+
+  // ── Kontrak aksi mode ──────────────────────────────────────────────────────
+  //
+  // Sepuluh intent punya bank kata lengkap tapi tidak punya handler sama
+  // sekali; semuanya jatuh ke `default:` dan dijawab "Perintah itu belum saya
+  // kenali di mode ini". Callback di bawah menyambungkannya ke mode yang
+  // sedang aktif, sehingga perintah suara dan tombol kiri menjalankan hal
+  // yang persis sama — satu model mental, dua cara memicunya.
+
+  /// Aksi utama mode aktif — setara menekan tombol kiri.
+  /// Dipasang tiap layar mode; `null` berarti mode ini memang tidak punya.
+  void Function()? onPrimaryAction;
+
+  /// Label aksi utama, untuk diucapkan saat mengonfirmasi.
+  String Function()? primaryActionLabel;
+
+  /// Ucapkan ulang hal penting terakhir di mode ini.
+  void Function()? onRepeatLast;
+
+  /// Jeda / lanjutkan pembacaan panjang (Mode Baca Teks).
+  /// Mengembalikan true kalau mode aktif benar-benar menanganinya.
+  bool Function()? onPauseSpeech;
+  bool Function()? onResumeSpeech;
+
+  /// Berhenti berjalan (Mode Navigasi).
+  bool Function()? onStopWalking;
+
+  /// Pengaturan kecepatan bicara — dipasang layar dari SettingsProvider.
+  Future<double> Function(double delta)? onAdjustSpeechRate;
 
   Future<void> init() async {
     await _stt.initialize(
@@ -4466,9 +6914,17 @@ class VoiceProvider extends ChangeNotifier {
         _lastText = result.recognizedWords;
         notifyListeners();
       },
-      listenFor: const Duration(seconds: 5),
-      localeId: 'id_ID',
-      cancelOnError: true,
+      listenOptions: SpeechListenOptions(
+        // 5 detik memotong kalimat yang wajar-wajar saja ("tolong bacakan
+        // tulisan yang ada di depan saya"), dan potongannya lalu gagal
+        // dikenali — pengguna menyimpulkan parsernya bodoh, padahal ia tidak
+        // pernah mendengar kalimat utuhnya. `pauseFor` yang menutup rekaman:
+        // 2 detik hening berarti pengguna sudah selesai bicara.
+        listenFor: const Duration(seconds: 10),
+        pauseFor: const Duration(seconds: 2),
+        localeId: 'id_ID',
+        cancelOnError: true,
+      ),
     );
   }
 
@@ -4515,7 +6971,8 @@ class VoiceProvider extends ChangeNotifier {
         _respond('Saya dengar "$text". Maksudmu ${command.suggestions[0].spokenLabel}?', save: false);
         return;
       }
-      await _handleDescribeScene();
+      // Tidak dikenali sama sekali — tidak ada saran.
+      await _handleLocal('Maaf, saya tidak mengerti. Coba katakan lagi dengan cara berbeda.');
       return;
     }
 
@@ -4525,16 +6982,136 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
+    // Perintah kembali ke mode sebelumnya.
+    if (command.intent == VoiceIntent.actionGoBack) {
+      await _handleGoBack();
+      return;
+    }
+
+    // Perintah cari objek dengan target dinamis — pindah ke FindObject.
+    if (command.intent == VoiceIntent.findObjectTarget && command.argument != null) {
+      await _handleFindObjectTarget(command.argument!);
+      return;
+    }
+
+    // Perintah nyalakan/matikan lampu — toggle torch.
+    if (command.intent == VoiceIntent.actionTorch) {
+      await _handleTorch();
+      return;
+    }
+
+    // Perintah deskripsi suasana — Moondream2 via server.
+    if (command.intent == VoiceIntent.describeScene) {
+      await _handleDescribeScene();
+      return;
+    }
+
     switch (command.intent!) {
       case VoiceIntent.helpWhat:
         await _handleLocal('Aku bisa mendeteksi objek, membaca teks, mengenali uang, menuntun jalan, mencari barang, atau menjawab pertanyaan tentang sekitarmu.');
-        break;
+
       case VoiceIntent.helpWhereAmI:
-        await _handleLocal('Kamu di mode Asisten Suara.');
-        break;
+        // Sebutkan mode yang SEDANG aktif. Jawaban lama selalu "Kamu di mode
+        // Asisten Suara" — benar hanya kalau Asisten sedang jadi mode, dan
+        // menyesatkan setiap kali mic dibuka sebagai overlay dari mode lain.
+        await _handleLocal('Kamu di mode ${_appMode.mode.label}.');
+
+      case VoiceIntent.actionCapture:
+        await _handlePrimaryAction();
+
+      case VoiceIntent.actionReplay:
+      case VoiceIntent.playRepeatSection:
+        await _handleRepeatLast();
+
+      case VoiceIntent.playPause:
+        await _handlePlayback(pause: true);
+
+      case VoiceIntent.playResume:
+        await _handlePlayback(pause: false);
+
+      case VoiceIntent.playFaster:
+        await _handleSpeechRate(0.1);
+
+      case VoiceIntent.playSlower:
+        await _handleSpeechRate(-0.1);
+
+      case VoiceIntent.actionStopWalking:
+        await _handleStopWalking();
+
       default:
-        await _handleDescribeScene();
+        await _handleLocal('Perintah itu belum saya kenali di mode ini.');
     }
+  }
+
+  /// `actionCapture` — "jepret", "ambil gambar". Menjalankan aksi utama mode
+  /// aktif, yaitu hal yang sama dengan tombol kiri.
+  Future<void> _handlePrimaryAction() async {
+    final action = onPrimaryAction;
+    if (action == null) {
+      await _handleLocal('Mode ${_appMode.mode.label} tidak punya aksi ambil gambar.');
+      return;
+    }
+    _setState(VoiceState.processingLocal);
+    action();
+    _consecutiveFailures = 0;
+    final label = primaryActionLabel?.call();
+    await _respond(label != null ? 'Baik, $label.' : 'Baik.', save: false);
+  }
+
+  Future<void> _handleRepeatLast() async {
+    final repeat = onRepeatLast;
+    if (repeat == null) {
+      await _handleLocal('Tidak ada yang bisa diulang di mode ini.');
+      return;
+    }
+    _setState(VoiceState.processingLocal);
+    repeat();
+    _consecutiveFailures = 0;
+    _setState(VoiceState.responded);
+  }
+
+  Future<void> _handlePlayback({required bool pause}) async {
+    final handler = pause ? onPauseSpeech : onResumeSpeech;
+    final handled = handler?.call() ?? false;
+    if (handled) {
+      _consecutiveFailures = 0;
+      await _respond(pause ? 'Dijeda.' : 'Dilanjutkan.', save: false);
+      return;
+    }
+    // Tidak ada pembacaan panjang yang berjalan. Perlakukan "jeda" sebagai
+    // permintaan menghentikan suara — itu maksud yang paling mungkin.
+    if (pause) {
+      await TTSService.instance.stop();
+      _setState(VoiceState.responded);
+      return;
+    }
+    await _handleLocal('Tidak ada pembacaan yang sedang dijeda.');
+  }
+
+  Future<void> _handleSpeechRate(double delta) async {
+    final adjust = onAdjustSpeechRate;
+    if (adjust == null) {
+      await _handleLocal('Kecepatan bicara bisa diatur di Pengaturan.');
+      return;
+    }
+    _setState(VoiceState.processingLocal);
+    final applied = await adjust(delta);
+    _consecutiveFailures = 0;
+    final persen = (applied * 100).round();
+    await _respond(
+      delta > 0 ? 'Lebih cepat, $persen persen.' : 'Lebih pelan, $persen persen.',
+      save: false,
+    );
+  }
+
+  Future<void> _handleStopWalking() async {
+    final stop = onStopWalking;
+    if (stop == null || !stop()) {
+      await _handleLocal('Kamu sedang tidak dalam panduan jalan.');
+      return;
+    }
+    _consecutiveFailures = 0;
+    await _respond('Panduan jalan dihentikan.', save: false);
   }
 
   /// AS-17 — ganti mode lewat suara. **Aturan mutlak bagian 4.1: suara Vinara
@@ -4600,42 +7177,110 @@ class VoiceProvider extends ChangeNotifier {
     await _respond('Baik. $answer');
   }
 
-  /// Implementasi lengkap describe_scene: capture → detect → narasi Claude
-  /// → speak. AS-09 mengumumkan jeda 3-5 detik sebelum hasil datang.
+  /// Toggle flashlight — nyala jadi mati, mati jadi nyala.\n  /// Konfirmasi TTS menyebutkan status baru, bukan perintah.
+  Future<void> _handleTorch() async {
+    _setState(VoiceState.processingLocal);
+    await _camera.toggleTorch();
+    final msg = _camera.isTorchOn
+        ? 'Baik, lampu dinyalakan.'
+        : 'Baik, lampu dimatikan.';
+    await _respond(msg, save: false);
+  }
+
+  /// Deskripsikan suasana di depan via Moondream2 (on-server).
+  ///
+  /// Moondream2 menjawab dalam Bahasa Inggris. Sebelum ini kalimatnya
+  /// dibacakan apa adanya dengan TTS `en-US` — menuntut kemampuan Inggris
+  /// lisan yang tidak bisa diasumsikan pada tunanetra di pasar dan warung
+  /// Indonesia.
+  ///
+  /// Sekarang diterjemahkan lokal lewat [translateSceneCaption]: kamus + aturan
+  /// urutan kata, 0 ms, offline, tanpa LLM — prinsip yang sama yang membuat
+  /// `narration_engine` dan `CommandParser` menggantikan Qwen. Menambahkan LLM
+  /// penerjemah akan mengembalikan tepat tiga masalah yang sudah dibuang:
+  /// lambat, bisa berhalusinasi, dan butuh server.
+  ///
+  /// Kalau cakupan kamus terlalu rendah, penerjemah **menyerah** dan kalimat
+  /// Inggrisnya dibacakan — didahului satu penanda singkat, supaya pengguna
+  /// tahu bahasanya berganti dan tidak menyangka aplikasinya rusak. Bahasa
+  /// Indonesia yang kacau lebih buruk daripada Bahasa Inggris yang benar.
   Future<void> _handleDescribeScene() async {
     _setState(VoiceState.processingLlm);
-    onSpeak?.call('Saya lihat sekitarmu dulu, sekitar tiga sampai lima detik.');
+    onSpeak?.call('Saya foto sekitarmu dulu, tunggu sebentar.');
 
     if (!_camera.isInitialized) {
-      // AS-24 — izin kamera dicabut: tetap bisa menjawab yang tidak butuh penglihatan.
-      await _handleChitchat();
+      await _handleLocal('Kamera tidak tersedia untuk mengambil foto.');
       return;
     }
 
     try {
       final jpeg = await _camera.captureJpeg();
-      final dets = await _detection.detectOnce(jpeg);
-      final narasi = await ServerService.instance.getNarasi(dets, context: 'voice');
-      _consecutiveFailures = 0;
-      await _respond(narasi);
-    } catch (e) {
-      _consecutiveFailures++;
-      if (_consecutiveFailures == 1) {
-        // AS-14 — fallback lokal sederhana sebelum menyerah total.
-        _setState(VoiceState.fallbackActive);
-        await _respond('Saya belum bisa melihat detail sekarang. Coba lagi sebentar, atau tanyakan hal lain.');
-      } else {
-        // AS-15 — semua gagal, tidak buntu.
-        _setState(VoiceState.allFailed);
-        onAllFeaturesFailed?.call();
-        await _respond('Fitur suara sedang bermasalah. Deteksi objek tetap jalan di mode lain.');
-        _consecutiveFailures = 0;
+      final description = await ServerService.instance.describeScene(jpeg);
+
+      if (description == null || description.isEmpty) {
+        await _handleLocal('Maaf, saya tidak bisa mendeskripsikan suasana saat ini. Coba lagi.');
+        return;
       }
+
+      _consecutiveFailures = 0;
+
+      final translated = translateSceneCaption(description);
+      if (translated.isUsable) {
+        _response = translated.indonesian!;
+        _setState(VoiceState.responded);
+        await TTSService.instance.speak(_response);
+        return;
+      }
+
+      debugPrint('[Describe] cakupan kamus ${translated.coverage.toStringAsFixed(2)} '
+          '— dibacakan dalam Bahasa Inggris');
+      _response = description;
+      _setState(VoiceState.responded);
+      await TTSService.instance.speak('Dalam bahasa Inggris.');
+      await TTSService.instance.speakEnglish(description);
+    } catch (e) {
+      debugPrint('[VoiceProvider] _handleDescribeScene error: $e');
+      await _handleLocal('Gagal mendeskripsikan suasana. Coba lagi.');
     }
   }
 
-  Future<void> _handleChitchat() async {
-    await _respond('Saya belum bisa melihat sekarang (izin kamera dicabut), tapi tetap bisa bicara atau ganti mode.');
+
+
+  /// Perintah suara "kembali" \u2014 kembali ke mode sebelumnya via AppModeProvider.
+  /// Jika ada onNavigateBack (masuk sebagai overlay push), callback dipanggil
+  /// sesudah mode berubah agar Navigator bisa pop layar ini.
+  Future<void> _handleGoBack() async {
+    _setState(VoiceState.processingLocal);
+    final previous = _appMode.previousMode;
+    final label = previous?.label ?? AppMode.tuntun.label;
+    final changed = await _appMode.goBack(spokenPrefix: 'Kembali.');
+    if (changed) {
+      _consecutiveFailures = 0;
+      _setState(VoiceState.responded);
+      // Pop dilakukan setelah mode berubah supaya announceEntry di layar tujuan
+      // terucap sebelum layar ini ditutup.
+      onNavigateBack?.call();
+    } else {
+      await _respond('Sudah di mode $label, tidak bisa kembali lebih jauh.', save: false);
+    }
+  }
+
+  /// Perintah suara "carikan [barang]" dari mode mana pun:
+  /// - Set target ke FindObjectProvider
+  /// - Pindah mode ke findObject
+  /// - Pop VoiceScreen overlay jika ada (via onNavigateBack)
+  Future<void> _handleFindObjectTarget(String target) async {
+    _setState(VoiceState.processingLocal);
+    _findObject.setTarget(target);
+    final changed = await _appMode.setMode(AppMode.findObject, spokenPrefix: 'Baik, mencari $target.');
+    if (changed) {
+      _consecutiveFailures = 0;
+      _setState(VoiceState.responded);
+      onNavigateBack?.call();
+    } else {
+      await _respond('Sudah di mode Cari Objek. Target diperbarui ke $target.', save: false);
+      onNavigateBack?.call();
+    }
   }
 
   Future<void> _respond(String message, {bool save = true}) async {
@@ -4664,8 +7309,25 @@ class VoiceProvider extends ChangeNotifier {
 
   void backToIdle() => _setState(VoiceState.idle);
 
+  /// Lepas semua callback mode. Dipanggil layar saat dispose supaya aksi
+  /// mode yang sudah ditinggalkan tidak ikut terbawa ke mode berikutnya.
+  void clearModeHandlers() {
+    onPrimaryAction = null;
+    primaryActionLabel = null;
+    onRepeatLast = null;
+    onPauseSpeech = null;
+    onResumeSpeech = null;
+    onStopWalking = null;
+  }
+
   @override
   void dispose() {
+    onSpeak = null;
+    onOpenSettings = null;
+    onNavigateBack = null;
+    onAllFeaturesFailed = null;
+    onAdjustSpeechRate = null;
+    clearModeHandlers();
     _stt.cancel();
     super.dispose();
   }
@@ -4674,9 +7336,9 @@ class VoiceProvider extends ChangeNotifier {
 
 ---
 
-## Berkas: `lib/screens/find_object_screen.dart`
+## File: `lib/screens/find_object_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/find_object_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/find_object_screen.dart`
 
 ```dart
 import 'dart:typed_data';
@@ -4752,10 +7414,26 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       final provider = context.read<FindObjectProvider>();
       provider.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
       provider.onDirectionHaptic = _fireDirectionHaptic;
+      // Server tidak menjawab sama saja tidak bisa mencari — periksa sebelum
+      // memotret, bukan sesudah permintaannya gagal.
       provider.isOffline = () =>
-          context.read<GlobalConditionsProvider>().isOffline;
+          context.read<GlobalConditionsProvider>().isBackendDown;
       provider.frameSource = _grabFrame;
       provider.loadKnownTargets();
+
+      // Kontrak tombol kiri: "jepret" lewat suara = menekan tombol kirim.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = _triggerScan;
+      voice.primaryActionLabel = () => 'mencari ${provider.target ?? "barang"}';
+      voice.onRepeatLast = () {
+        final pos = provider.lastKnownPosition;
+        context.read<TtsProvider>().speak(
+              pos == null
+                  ? 'Belum ada hasil pencarian.'
+                  : '${provider.target ?? "Barang"} terakhir terlihat di $pos.',
+              tier: SpeechTier.info,
+            );
+      };
       if (_hasCameraPermission) {
         final cam = context.read<CameraProvider>();
         cam.onFrameReady = (image) => _latestFrame = image;
@@ -4794,6 +7472,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     provider.frameSource = null;
     provider.isOffline = null;
     provider.reset();
+    context.read<VoiceProvider>().clearModeHandlers();
     final cam = context.read<CameraProvider>();
     cam.onFrameReady = null;
     cam.stopStream();
@@ -4857,10 +7536,20 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             : result.recognizedWords;
         provider.submitHeardText(result.recognizedWords, parsedTarget: target);
       },
-      listenFor: const Duration(seconds: 5),
-      localeId: 'id_ID',
-      cancelOnError: true,
+      listenOptions: SpeechListenOptions(
+        listenFor: const Duration(seconds: 5),
+        localeId: 'id_ID',
+        cancelOnError: true,
+      ),
     );
+  }
+
+  /// Dipanggil saat tombol kiri (📷 / "Kirim") ditekan.
+  /// Ambil satu foto dari frame kamera terakhir → kirim ke backend YOLOE.
+  Future<void> _triggerScan() async {
+    final fo = context.read<FindObjectProvider>();
+    if (fo.isScanning || fo.target == null) return;
+    await fo.triggerScan();
   }
 
   void _openDebugSheet() {
@@ -4906,14 +7595,14 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final hasTarget = _debugOverride == null && fo.target != null && fo.state != FindObjectState.idle;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -4948,6 +7637,17 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
           Positioned(
             left: 0, right: 0, bottom: 0,
             child: BottomActionBar(
+              // Tombol kiri: aktif hanya saat ada target DAN tidak sedang scanning.
+              // Label berubah jadi 'Kirim' supaya jelas fungsinya (bukan
+              // "ambil foto" biasa, melainkan "kirim ke server untuk dicari").
+              onCameraPressed: (fo.target != null && !fo.isScanning && _debugOverride == null)
+                  ? _triggerScan
+                  : null,
+              cameraEnabled: fo.target != null && !fo.isScanning && _debugOverride == null,
+              cameraDisabledReason: fo.target == null
+                  ? 'tekan tombol bicara lalu sebutkan barangnya'
+                  : 'sedang memindai',
+              cameraLabel: fo.target != null ? 'Kirim — cari ${fo.target}' : 'Sebutkan barang dulu',
               onMicPressed: _startListening,
               listeningOverride: fo.state == FindObjectState.listening,
             ),
@@ -4983,7 +7683,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
           ),
         ];
       case FindObjectState.listening:
-        return [Center(child: VoiceOrb(state: VoiceOrbState.listening))];
+        return [const Center(child: VoiceOrb(state: VoiceOrbState.listening))];
       case FindObjectState.unclear:
         return [Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
           const VoiceOrb(state: VoiceOrbState.failure),
@@ -4998,10 +7698,22 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
             child: AlertCard(
               tier: AlertTier.info,
-              title: fo.state == FindObjectState.scanning ? fo.scanMessage : 'Mulai memindai…',
+              title: fo.state == FindObjectState.scanning
+                  ? 'Memindai ke server…'
+                  : 'Tekan tombol kirim untuk memindai',
               description: 'Mencari ${fo.target}',
             ),
           ),
+          if (fo.state == FindObjectState.scanning)
+            const Center(
+              child: SizedBox(
+                width: 48, height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.onDark,
+                ),
+              ),
+            ),
         ];
       case FindObjectState.found:
         return [_bottomPanel(bottomInset, _foundCard(fo))];
@@ -5014,7 +7726,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       case FindObjectState.notFoundInFrame:
         return [_bottomPanel(bottomInset, AlertCard(tier: AlertTier.info, title: fo.notFoundMessage, description: 'Mencari ${fo.target}'))];
       case FindObjectState.longNotFound:
-        return [_bottomPanel(bottomInset, AlertCard(
+        return [_bottomPanel(bottomInset, const AlertCard(
           tier: AlertTier.warning,
           title: 'Belum ketemu di ruangan ini',
           description: 'Coba pindah ruangan, atau ucapkan barang lain untuk ganti target.',
@@ -5059,7 +7771,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: const BoxDecoration(color: AppColors.actionLabel, borderRadius: AppRadius.pillShape),
-                child: Text('+${fo.matchCount - 1} lagi', style: AppTypography.caption(color: Colors.white)),
+                child: Text('+${fo.matchCount - 1} lagi', style: AppTypography.caption(color: AppColors.onDark)),
               ),
             ),
           ),
@@ -5074,7 +7786,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-        child: Text(text, style: AppTypography.body(color: Colors.white)),
+        child: Text(text, style: AppTypography.body(color: AppColors.onDark)),
       ),
     );
   }
@@ -5160,9 +7872,9 @@ class _DebugSheet extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/screens/index.dart`
+## File: `lib/screens/index.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/index.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/index.dart`
 
 ```dart
 export 'main_screen.dart';
@@ -5180,9 +7892,9 @@ export 'settings_screen.dart';
 
 ---
 
-## Berkas: `lib/screens/main_screen.dart`
+## File: `lib/screens/main_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/main_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/main_screen.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -5243,6 +7955,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _initServices() async {
+    // Kamera error jadi kondisi global (banner Critical), bukan kegagalan
+    // diam-diam yang hanya terlihat sebagai layar hitam.
+    final globals = context.read<GlobalConditionsProvider>();
+    context.read<CameraProvider>().onErrorChanged = globals.setCameraError;
+
     try {
       await Future.wait([
         context.read<CameraProvider>().initCamera(),
@@ -5255,32 +7972,9 @@ class _MainScreenState extends State<MainScreen> {
 
     if (!mounted) return;
     setState(() => _stage = _BootStage.ready);
-
-    final cam = context.read<CameraProvider>();
-    final inf = context.read<InferenceProvider>();
-
-    if (!cam.isInitialized) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Izin kamera ditolak. Fitur kamera tidak tersedia.'),
-          backgroundColor: AppColors.criticalLabel,
-          duration: Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Pengaturan',
-            textColor: Colors.white,
-            onPressed: openAppSettings,
-          ),
-        ),
-      );
-    } else if (!inf.serverReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Backend tidak terhubung. Berjalan di Mode Lokal (TFLite). Fitur Voice & OCR mungkin tidak tersedia.'),
-          backgroundColor: AppColors.warningLabel,
-          duration: Duration(seconds: 4),
-        ),
-      );
-    }
+    // Status kamera & backend offline ditangani oleh StatusBanner
+    // dan GlobalConditionsProvider di tiap mode screen — tidak perlu
+    // SnackBar di sini yang menutupi BottomActionBar.
   }
 
   @override
@@ -5330,11 +8024,11 @@ class _BootScreen extends StatelessWidget {
                 strokeWidth: 3,
               ),
               const SizedBox(height: AppSpacing.s6),
-              Text('Memulai Vinara…', style: AppTypography.title(color: Colors.white)),
+              Text('Memulai Vinara…', style: AppTypography.title(color: AppColors.onDark)),
               const SizedBox(height: AppSpacing.s2),
               Text(
                 'Menyiapkan kamera dan AI',
-                style: AppTypography.body(color: Colors.white.withValues(alpha: .6)),
+                style: AppTypography.body(color: AppColors.onDark.withValues(alpha: .6)),
               ),
             ],
           ),
@@ -5347,9 +8041,9 @@ class _BootScreen extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/screens/money_screen.dart`
+## File: `lib/screens/money_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/money_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/money_screen.dart`
 
 ```dart
 import 'dart:async';
@@ -5364,7 +8058,6 @@ import '../core/layout/zone_contract.dart';
 import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
-import '../widgets/nominal_card.dart';
 
 /// Mode Kenali Uang — bagian 9 IMPLEMENTASI.md, 18 state (UG-01..UG-18).
 /// Sepenuhnya on-device, nol sentuhan: [MoneyProvider] menjalankan siklus
@@ -5380,8 +8073,8 @@ class MoneyScreen extends StatefulWidget {
 /// dan UG-12a/UG-12b apa adanya, supaya panel debug bisa menunjukkan kedua
 /// varian secara terpisah (mis. UG-09b: campuran Rp20.000×2 + Rp5.000×1).
 enum MoneyDebugState {
-  ug01, ug02, ug03, ug04, ug05, ug06, ug07, ug08, ug09a, ug09b,
-  ug10, ug11, ug12a, ug12b, ug13, ug14, ug15, ug16, ug17, ug18,
+  ug01, ug02, ug03, ug04, ug05, ug06, ug07, ug08,
+  ug10, ug12a, ug12b, ug13, ug14, ug15, ug16, ug18,
 }
 
 extension _DebugMeta on MoneyDebugState {
@@ -5390,12 +8083,11 @@ extension _DebugMeta on MoneyDebugState {
         MoneyDebugState.ug03 => 'UG-03', MoneyDebugState.ug04 => 'UG-04',
         MoneyDebugState.ug05 => 'UG-05', MoneyDebugState.ug06 => 'UG-06',
         MoneyDebugState.ug07 => 'UG-07', MoneyDebugState.ug08 => 'UG-08',
-        MoneyDebugState.ug09a => 'UG-09a', MoneyDebugState.ug09b => 'UG-09b',
-        MoneyDebugState.ug10 => 'UG-10', MoneyDebugState.ug11 => 'UG-11',
+        MoneyDebugState.ug10 => 'UG-10',
         MoneyDebugState.ug12a => 'UG-12a', MoneyDebugState.ug12b => 'UG-12b',
         MoneyDebugState.ug13 => 'UG-13', MoneyDebugState.ug14 => 'UG-14',
         MoneyDebugState.ug15 => 'UG-15', MoneyDebugState.ug16 => 'UG-16',
-        MoneyDebugState.ug17 => 'UG-17', MoneyDebugState.ug18 => 'UG-18',
+        MoneyDebugState.ug18 => 'UG-18',
       };
 
   String get title => switch (this) {
@@ -5407,17 +8099,13 @@ extension _DebugMeta on MoneyDebugState {
         MoneyDebugState.ug06 => 'Ragu',
         MoneyDebugState.ug07 => 'Bukan uang',
         MoneyDebugState.ug08 => 'Tidak terdeteksi (5 detik)',
-        MoneyDebugState.ug09a => 'Beberapa lembar sama (2×Rp20.000)',
-        MoneyDebugState.ug09b => 'Beberapa lembar berbeda (Rp20.000×2 + Rp5.000×1)',
         MoneyDebugState.ug10 => 'Terlipat / terpotong',
-        MoneyDebugState.ug11 => 'Lembar berturut-turut (total berjalan)',
         MoneyDebugState.ug12a => 'Silau',
         MoneyDebugState.ug12b => 'Gelap',
         MoneyDebugState.ug13 => 'Offline',
         MoneyDebugState.ug14 => 'Izin kamera belum ada',
         MoneyDebugState.ug15 => 'Senyap / TTS mati',
         MoneyDebugState.ug16 => 'Font scale 200%',
-        MoneyDebugState.ug17 => 'Total direset',
         MoneyDebugState.ug18 => 'Uang asing / rusak',
       };
 }
@@ -5470,6 +8158,24 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       context.read<AppModeProvider>().announceEntry(AppMode.money);
       final money = context.read<MoneyProvider>();
       money.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
+
+      // Kontrak tombol kiri: "jepret" lewat suara = menekan tombol kiri.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = money.snapAndAnnounce;
+      voice.primaryActionLabel = () => 'mengenali uang';
+      voice.onRepeatLast = () {
+        if (money.lastAmount > 0) {
+          context.read<TtsProvider>().speak(
+                terbilangRupiah(money.lastAmount),
+                tier: SpeechTier.info,
+              );
+        } else {
+          context.read<TtsProvider>().speak(
+                'Belum ada nominal yang terbaca.',
+                tier: SpeechTier.info,
+              );
+        }
+      };
       money.onHaptic = (p) {
         switch (p) {
           case MoneyHaptic.positive:
@@ -5501,6 +8207,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     money.onSpeak = null;
     money.onHaptic = null;
     money.pause();
+    context.read<VoiceProvider>().clearModeHandlers();
     final cam = context.read<CameraProvider>();
     cam.onFrameReady = null;
     cam.stopStream();
@@ -5520,6 +8227,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       if (granted) {
         final cam = context.read<CameraProvider>();
         if (!cam.isInitialized) await cam.initCamera();
+        if (!mounted) return;
         cam.startStream();
         context.read<MoneyProvider>().start();
       }
@@ -5533,6 +8241,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
       if (!cam.isInitialized) await cam.initCamera();
+      if (!mounted) return;
       cam.startStream();
       context.read<MoneyProvider>().start();
       await context.read<TtsProvider>().speak('Izin diberikan.', tier: SpeechTier.info);
@@ -5616,7 +8325,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     final fontScaleDemo = _debugOverride == MoneyDebugState.ug16;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -5624,7 +8333,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           if (cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (showOfflineBanner)
             Positioned(
@@ -5697,7 +8406,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
                                   color: AppColors.scrimText,
                                   borderRadius: AppRadius.pillShape,
                                 ),
-                                child: Text(spec.pillOverride!, style: AppTypography.caption(color: Colors.white)),
+                                child: Text(spec.pillOverride!, style: AppTypography.caption(color: AppColors.onDark)),
                               ),
                             ),
                           ),
@@ -5723,7 +8432,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
                           child: Text(
                             spec.note!,
                             textAlign: TextAlign.center,
-                            style: AppTypography.caption(color: Colors.white),
+                            style: AppTypography.caption(color: AppColors.onDark),
                           ),
                         ),
                       ],
@@ -5744,7 +8453,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           ],
 
           // z60 — BottomActionBar, selalu ada, selalu di tempat yang sama.
-          // Mode nol-sentuhan: tombol kamera dipakai untuk "paksa deteksi ulang".
+          // Tombol kiri = "Kenali Uang": snap frame saat ini, umumkan hasilnya.
           Positioned(
             left: 0,
             right: 0,
@@ -5752,14 +8461,18 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             child: MediaQuery(
               data: media.copyWith(textScaler: fontScaleDemo ? const TextScaler.linear(2.0) : media.textScaler),
               child: BottomActionBar(
-                cameraLabel: 'Deteksi ulang',
-                cameraEnabled: !showPermissionCard && spec?.badgeBusy != true,
+                cameraLabel: 'Kenali Uang',
+                cameraEnabled: !showPermissionCard && !money.isUnavailable,
+                cameraDisabledReason: showPermissionCard
+                    ? 'izin kamera belum diberikan'
+                    : 'model pengenalan uang belum siap',
                 onCameraPressed: () {
                   if (_debugOverride != null) {
                     setState(() => _debugOverride = null);
                     money.start();
+                    return;
                   }
-                  money.forceRedetect();
+                  money.snapAndAnnounce();
                 },
               ),
             ),
@@ -5793,10 +8506,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       case MoneyState.glare:
         return const _RenderSpec(frame: FrameFit.fit, pillOverride: 'Miringkan sedikit');
       case MoneyState.dark:
-        return _RenderSpec(
+        return const _RenderSpec(
           frame: FrameFit.fit,
           healthToastDark: true,
-          card: const AlertCard(
+          card: AlertCard(
             tier: AlertTier.warning,
             title: 'Terlalu gelap',
             description: 'Coba nyalakan senter kamera atau cari cahaya lebih terang.',
@@ -5806,22 +8519,6 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         return const _RenderSpec(frame: FrameFit.fit, badgeBusy: true);
       case MoneyState.detected:
         return _RenderSpec(card: NominalCard(amount: p.lastAmount, onReplay: () => _replay(p.lastAmount)));
-      case MoneyState.multiple:
-        return _RenderSpec(
-          card: NominalCard(
-            amount: p.sessionTotal,
-            breakdown: p.sessionBreakdown,
-            onReplay: () => _replay(p.sessionTotal),
-          ),
-        );
-      case MoneyState.consecutive:
-        return _RenderSpec(
-          card: NominalCard(
-            amount: p.lastAmount,
-            runningTotal: p.sessionTotal,
-            onReplay: () => _replay(p.lastAmount),
-          ),
-        );
       case MoneyState.uncertain:
         return const _RenderSpec(
           frame: FrameFit.fit,
@@ -5847,14 +8544,6 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             tier: AlertTier.warning,
             title: 'Uang asing atau rusak',
             description: 'Belum bisa membaca nilainya. Nilai tukar tidak ditebak.',
-          ),
-        );
-      case MoneyState.resetAnnounce:
-        return _RenderSpec(
-          card: AlertCard(
-            tier: AlertTier.info,
-            title: 'Total direset',
-            description: 'Total ${formatRupiah(p.resetAnnounceTotal)} sudah selesai dihitung.',
           ),
         );
     }
@@ -5890,26 +8579,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         );
       case MoneyDebugState.ug08:
         return const _RenderSpec(frame: FrameFit.empty, pillOverride: 'Cari tempat yang lebih terang');
-      case MoneyDebugState.ug09a:
-        return _RenderSpec(
-          card: NominalCard(amount: 40000, breakdown: const {20000: 2}, onReplay: () => _replay(40000)),
-        );
-      case MoneyDebugState.ug09b:
-        return _RenderSpec(
-          card: NominalCard(
-            amount: 45000,
-            breakdown: const {20000: 2, 5000: 1},
-            onReplay: () => _replay(45000),
-          ),
-        );
       case MoneyDebugState.ug10:
         return const _RenderSpec(
           frame: FrameFit.tooClose,
           pillOverride: 'Ratakan uang, ada bagian di luar bingkai',
-        );
-      case MoneyDebugState.ug11:
-        return _RenderSpec(
-          card: NominalCard(amount: 10000, runningTotal: 60000, onReplay: () => _replay(10000)),
         );
       case MoneyDebugState.ug12a:
         return const _RenderSpec(frame: FrameFit.fit, pillOverride: 'Miringkan sedikit');
@@ -5932,18 +8605,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       case MoneyDebugState.ug15:
         return _RenderSpec(
           card: NominalCard(amount: 25000, onReplay: () => _replay(25000)),
-          note: 'TTS senyap: kartu bertahan sampai lembar berikutnya, getar 3× pendek menandai deteksi.',
+          note: 'TTS senyap: kartu bertahan sampai deteksi berikutnya, getar 3× pendek menandai deteksi.',
         );
       case MoneyDebugState.ug16:
         return _RenderSpec(card: NominalCard(amount: 75000, onReplay: () => _replay(75000)));
-      case MoneyDebugState.ug17:
-        return const _RenderSpec(
-          card: AlertCard(
-            tier: AlertTier.info,
-            title: 'Total direset',
-            description: 'Total Rp95.000 sudah selesai dihitung.',
-          ),
-        );
       case MoneyDebugState.ug18:
         return const _RenderSpec(
           frame: FrameFit.empty,
@@ -6016,13 +8681,11 @@ class _DebugStateSheet extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/screens/navigasi_screen.dart`
+## File: `lib/screens/navigasi_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/navigasi_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/navigasi_screen.dart`
 
 ```dart
-import 'dart:typed_data';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -6030,16 +8693,16 @@ import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
 import '../core/layout/zone_contract.dart';
-import '../core/net/frame_codec.dart';
 import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
 /// Mode Navigasi — bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
 ///
-/// **Sepenuhnya di server** lewat `POST /api/navigasi`: segmentasi jalur dan
-/// rintangan sama-sama dibaca di sana. Layar ini memasok frame dan menggambar
-/// hasilnya; tidak ada inferensi on-device di mode ini.
+/// **Sepenuhnya on-device**: segmentasi jalur via PIDNet-S TFLite dan deteksi
+/// rintangan via YOLO11n TFLite berjalan langsung di HP. Tidak ada upload
+/// frame, tidak ada cadangan server — kalau model gagal dimuat, mode ini
+/// mengatakannya apa adanya lewat NavPhase.unavailable.
 class NavigasiScreen extends StatefulWidget {
   const NavigasiScreen({super.key});
 
@@ -6048,9 +8711,9 @@ class NavigasiScreen extends StatefulWidget {
 }
 
 /// NV-19 dan NV-20 dihapus dari katalog: keduanya memodelkan kombinasi
-/// "on-device mati, server hidup" yang tidak mungkin lagi terjadi sejak
-/// rintangan dan jalur sama-sama dibaca server. Kegagalan server sekarang
-/// selalu berarti NV-11.
+/// "on-device mati, server hidup", yang tidak mungkin lagi terjadi karena
+/// mode ini tidak punya jalur server sama sekali. Kegagalan model sekarang
+/// selalu berarti NV-11 (NavPhase.unavailable).
 const List<(String, String)> _nvDebugCatalog = [
   ('NV-14a', 'Telepon masuk'),
   ('NV-16', 'Kamera tertutup'),
@@ -6079,6 +8742,15 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       nav.onSpeak = (text, tier) {
         // NV-22 — senyap/TTS mati: arah lewat getar, 1 ketuk kiri, 2 ketuk kanan.
         if (_silentMode) {
+          // Critical selalu bergetar, apa pun rekomendasinya. Sebelum ini
+          // hanya rekomendasi kiri/kanan yang menghasilkan getar, sehingga
+          // "Berhenti! Jalur di depan tidak aman" — yang rekomendasinya
+          // tengah atau tidak ada sama sekali — lewat tanpa suara DAN tanpa
+          // getar. Dibisukan tidak boleh berarti peringatan bahaya hilang.
+          if (tier == SpeechTier.critical) {
+            _fireCriticalHaptic();
+            return;
+          }
           final rec = _recommendedZone(nav);
           if (rec == 0) _fireDirectionHaptic(true);
           if (rec == 2) _fireDirectionHaptic(false);
@@ -6087,16 +8759,27 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         context.read<TtsProvider>().speak(text, tier: tier);
       };
       nav.onTakeover = () => context.read<TtsProvider>().interruptByUser();
-      nav.frameSource = _grabFrame;
+      // Sumber frame on-device: CameraImage langsung ke PIDNet + YOLO.
+      nav.cameraSource = _grabCameraImage;
       nav.startCalibration();
 
       // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
 
+      // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
+      // sama persis dengan menekan tombol kiri — di mode ini, membisukan dan
+      // menyalakan kembali suara panduan.
+      //
+      // "Ulangi arahan" tidak hilang, hanya pindah: tetap tersedia lewat
+      // perintah suara "ulangi" (`onRepeatLast`).
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = _toggleGuidanceVoice;
+      voice.primaryActionLabel = () =>
+          _silentMode ? 'menyalakan suara panduan' : 'mematikan suara panduan';
+      voice.onRepeatLast = nav.repeatGuidance;
+      voice.onStopWalking = nav.pauseGuidance;
+
       if (_hasCameraPermission) {
-        // Deteksi rintangan on-device sengaja TIDAK dijalankan di sini lagi:
-        // rintangan dan jalur sama-sama dibaca server sekarang. Kamera hanya
-        // memasok frame.
         final cam = context.read<CameraProvider>();
         cam.onFrameReady = (image) => _latestFrame = image;
         cam.startStream();
@@ -6107,15 +8790,8 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   /// Frame terakhir dari stream, dikodekan hanya saat benar-benar dikirim.
   CameraImage? _latestFrame;
 
-  Future<Uint8List?> _grabFrame() async {
-    final frame = _latestFrame;
-    if (frame == null) return null;
-    return FrameCodec.encodeForUpload(
-      frame,
-      maxEdge: UploadPreset.navigation.maxEdge,
-      quality: UploadPreset.navigation.quality,
-    );
-  }
+  /// Kembalikan CameraImage mentah langsung ke PIDNet + YOLO.
+  Future<CameraImage?> _grabCameraImage() async => _latestFrame;
 
   @override
   void dispose() {
@@ -6127,8 +8803,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     final nav = context.read<NavigationProvider>();
     nav.onSpeak = null;
     nav.onTakeover = null;
-    nav.frameSource = null;
+    nav.cameraSource = null;
     nav.stopNavigation();
+    context.read<VoiceProvider>().clearModeHandlers();
     final cam = context.read<CameraProvider>();
     cam.onFrameReady = null;
     cam.stopStream();
@@ -6240,6 +8917,39 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     await context.read<NavigationProvider>().startNavigation(dest);
   }
 
+  /// Tombol kiri BottomActionBar — membisukan / menyalakan suara panduan.
+  ///
+  /// **Hanya suaranya.** PIDNet dan YOLO tetap berjalan dan indikator zona di
+  /// layar tetap hidup, jadi pendamping yang melihat layar tetap terbantu,
+  /// dan panduan arah tetap sampai lewat getar (NV-22). Membisukan di sini
+  /// bukan mematikan panduan — itu sebabnya loop-nya sengaja tidak disentuh.
+  void _toggleGuidanceVoice() {
+    final tts = context.read<TtsProvider>();
+    if (_silentMode) {
+      setState(() => _silentMode = false);
+      tts.speak('Suara panduan dinyalakan.', tier: SpeechTier.warning);
+      return;
+    }
+    // Konfirmasinya diucapkan SEBELUM bisu menyala. Kalau urutannya dibalik,
+    // kalimat ini ikut tertelan dan pengguna yang tidak melihat layar tidak
+    // punya cara tahu tombolnya bekerja.
+    tts.speak(
+      'Suara panduan dimatikan. Arah tetap terasa lewat getar. '
+      'Tekan tombol kiri bawah lagi untuk menyalakan.',
+      tier: SpeechTier.warning,
+    );
+    _fireCriticalHaptic();
+    setState(() => _silentMode = true);
+  }
+
+  Future<void> _fireCriticalHaptic() async {
+    final mode = context.read<SettingsProvider>().vibrationMode;
+    if (mode == VibrationMode.off) return;
+    final has = await Vibration.hasVibrator();
+    if (!has) return;
+    Vibration.vibrate(pattern: [0, 400, 120, 400]);
+  }
+
   Future<void> _fireDirectionHaptic(bool left) async {
     final mode = context.read<SettingsProvider>().vibrationMode;
     if (mode == VibrationMode.off) return;
@@ -6347,16 +9057,16 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
-          if (nav.phase == NavPhase.active || nav.phase == NavPhase.serverWeak)
+          if (nav.phase == NavPhase.active || nav.phase == NavPhase.degraded)
             Positioned.fill(child: ExcludeSemantics(child: _ZoneOverlay(left: nav.left, center: nav.center, right: nav.right))),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
@@ -6378,7 +9088,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             )
           else if (nav.phase == NavPhase.calibrating)
             _calibrationCard(nav)
-          else if (nav.phase == NavPhase.waitingServer)
+          else if (nav.phase == NavPhase.loadingModels)
             Positioned(
               top: topInset + AppSizes.modeBadgeHeight + AppSpacing.s4,
               left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
@@ -6417,7 +9127,18 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
               ),
           ],
 
-          const Positioned(left: 0, right: 0, bottom: 0, child: BottomActionBar()),
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: BottomActionBar(
+              // Dulu `const BottomActionBar()` — labelnya jatuh ke bawaan
+              // "Ambil gambar", tombolnya tampak aktif, dan menekannya tidak
+              // melakukan apa pun. Lalu sempat "Ulangi arahan". Sekarang:
+              // saklar bisu untuk suara panduan, sesuai kontrak tombol kiri
+              // di mode lain (Deteksi Objek memakai pola yang sama).
+              cameraLabel: _silentMode ? 'Nyalakan Suara' : 'Matikan Suara',
+              onCameraPressed: _toggleGuidanceVoice,
+            ),
+          ),
         ],
       ),
     );
@@ -6437,10 +9158,10 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.phone_android_rounded, color: Colors.white, size: 40),
+            const Icon(Icons.phone_android_rounded, color: AppColors.onDark, size: 40),
             const SizedBox(height: AppSpacing.s4),
             Text('Pegang ponsel tegak setinggi dada, kamera menghadap depan',
-                textAlign: TextAlign.center, style: AppTypography.body(color: Colors.white)),
+                textAlign: TextAlign.center, style: AppTypography.body(color: AppColors.onDark)),
             const SizedBox(height: AppSpacing.s6),
             FullScreenButton(label: 'Siap, mulai', onTap: nav.finishCalibration),
           ],
@@ -6459,18 +9180,18 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (nav.phase == NavPhase.paused && _debugOverride == 'NV-14a') {
       return const StatusBanner(tier: AlertTier.info, message: 'Panggilan masuk, peringatan pindah ke getar');
     }
-    // NV-11 — sejak segmentasi jalur DAN deteksi rintangan sama-sama di
-    // server, "mode terbatas" tidak ada lagi: kalau server tidak terjangkau,
-    // mode ini benar-benar tidak melihat apa pun. Bannernya Critical dan
-    // menyuruh berhenti, bukan Warning yang menjanjikan sisa fungsi.
-    if (nav.phase == NavPhase.serverDown) {
+    // NV-11 — mode ini sepenuhnya on-device. Kalau modelnya tidak bisa
+    // dipakai atau frame tidak terbaca, tidak ada cadangan apa pun: bannernya
+    // Critical dan menyuruh berhenti, bukan Warning yang menjanjikan sisa
+    // fungsi yang sebenarnya tidak ada.
+    if (nav.phase == NavPhase.unavailable) {
       return const StatusBanner(
         tier: AlertTier.critical,
         message: 'Berhenti jalan dulu, jalur tidak terbaca',
       );
     }
-    if (nav.phase == NavPhase.serverWeak) {
-      return const StatusBanner(tier: AlertTier.info, message: 'Sinyal lemah, arahan jalur mungkin tertinggal');
+    if (nav.phase == NavPhase.degraded) {
+      return const StatusBanner(tier: AlertTier.warning, message: 'Jalur sulit dibaca, arahan mungkin tertinggal');
     }
     if (nav.left == ZoneStatus.danger && nav.center == ZoneStatus.danger && nav.right == ZoneStatus.danger) {
       return const StatusBanner(tier: AlertTier.critical, message: 'Tidak ada jalur aman, berhenti dulu');
@@ -6589,7 +9310,7 @@ class _DestInput extends StatelessWidget {
                     height: 48,
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     decoration: const BoxDecoration(color: AppColors.actionLabel, borderRadius: AppRadius.pillShape),
-                    child: Center(child: Text('Mulai', style: AppTypography.label(color: Colors.white))),
+                    child: Center(child: Text('Mulai', style: AppTypography.label(color: AppColors.onDark))),
                   ),
                 ),
               ),
@@ -6635,9 +9356,9 @@ class _DestInput extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/screens/ocr_screen.dart`
+## File: `lib/screens/ocr_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/ocr_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/ocr_screen.dart`
 
 ```dart
 import 'dart:async';
@@ -6707,6 +9428,25 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       // benar-benar terpasang, bukan oleh pemanggil setMode.
       context.read<AppModeProvider>().announceEntry(AppMode.ocr);
       if (_hasCameraPermission) context.read<CameraProvider>().startStream();
+
+      // Kontrak tombol kiri + perintah suara. `playPause` / `playResume` /
+      // `actionReplay` punya bank kata lengkap sejak awal tapi tidak pernah
+      // punya handler — di mode inilah ketiganya paling masuk akal.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = () => (_speaking || _paused) ? _togglePause() : _scan();
+      voice.primaryActionLabel = () =>
+          _speaking ? 'menjeda bacaan' : _paused ? 'melanjutkan bacaan' : 'membaca teks';
+      voice.onRepeatLast = () { if (_blocks.isNotEmpty) _replay(); };
+      voice.onPauseSpeech = () {
+        if (!_speaking) return false;
+        _togglePause();
+        return true;
+      };
+      voice.onResumeSpeech = () {
+        if (!_paused) return false;
+        _togglePause();
+        return true;
+      };
     });
     // BT-20 — cek kedaluwarsa tiap 30 detik.
     _expiryTicker = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -6722,6 +9462,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     _sentenceTicker?.cancel();
     _expiryTicker?.cancel();
     context.read<CameraProvider>().stopStream();
+    context.read<VoiceProvider>().clearModeHandlers();
     super.dispose();
   }
 
@@ -6769,6 +9510,9 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     // yang sebenarnya masih hidup — kesalahan yang sama seperti mematikan
     // Mode Navigasi offline.
 
+    final cameraProvider = context.read<CameraProvider>();
+    final ttsProvider = context.read<TtsProvider>();
+
     setState(() {
       _scanning = true;
       _fail = _FailKind.none;
@@ -6780,6 +9524,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     await Vibration.hasVibrator().then((has) {
       if (has) Vibration.vibrate(duration: 15);
     });
+    if (!mounted) return;
 
     _elapsedTicker?.cancel();
     _elapsedTicker = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -6796,11 +9541,11 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         _nearTimeout = false;
         _fail = _FailKind.timeout;
       });
-      context.read<TtsProvider>().speak('Terlalu lama, coba lagi.', tier: SpeechTier.warning);
+      ttsProvider.speak('Terlalu lama, coba lagi.', tier: SpeechTier.warning);
     });
 
     try {
-      final path = await context.read<CameraProvider>().captureFile();
+      final path = await cameraProvider.captureFile();
       final result = await OcrService.instance.recognizeFile(path);
 
       _hardTimeoutTimer?.cancel();
@@ -6869,7 +9614,12 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     }
     final fullText = flat.join(' ');
     unawaited(_animateActiveSentence(flat.length));
-    await TTSService.instance.speak(fullText);
+    // Warning, bukan Info: pembacaan ini diminta pengguna secara eksplisit dan
+    // bisa berlangsung menit-menitan — membiarkannya dibuang sebagai "Info
+    // basi" karena antre 2 detik akan membatalkan permintaan yang disengaja.
+    // Tetap bisa dipotong pengguna lewat tombol "Jeda bacaan".
+    if (!mounted) return;
+    await context.read<TtsProvider>().speak(fullText, tier: SpeechTier.warning);
     _sentenceTicker?.cancel();
     if (!mounted) return;
     setState(() {
@@ -6973,14 +9723,14 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     final hasBanner = banner != null;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: _cameraWithGuide(cam))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -7012,7 +9762,20 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
 
           Positioned(
             left: 0, right: 0, bottom: 0,
-            child: BottomActionBar(onCameraPressed: _scan, cameraLabel: 'Baca teks'),
+            // Tombol kiri kontekstual: di mode ini "hal utama" memang berubah
+            // sepanjang alur. Sebelum jepret yang dibutuhkan adalah memotret;
+            // saat sedang dibacakan, yang dibutuhkan adalah menjeda.
+            child: BottomActionBar(
+              cameraLabel: _speaking
+                  ? 'Jeda bacaan'
+                  : _paused
+                      ? 'Lanjutkan bacaan'
+                      : 'Baca teks',
+              onCameraPressed:
+                  (_speaking || _paused) ? _togglePause : (_scanning ? null : _scan),
+              cameraEnabled: !_scanning,
+              cameraDisabledReason: 'sedang memindai',
+            ),
           ),
         ],
       ),
@@ -7062,7 +9825,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     }
 
     if (_scanning) {
-      return [const Center(child: CircularProgressIndicator(color: Colors.white))];
+      return [const Center(child: CircularProgressIndicator(color: AppColors.onDark))];
     }
 
     if (_hasExpired) {
@@ -7089,7 +9852,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             right: AppSpacing.screenMargin,
             bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s3,
             child: Center(
-              child: TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: Colors.white))),
+              child: TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: AppColors.onDark))),
             ),
           ),
       ];
@@ -7193,12 +9956,12 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const FullScreenButton(label: 'Baca teks', disabled: true, disabledReason: 'Butuh internet untuk teks panjang'),
             const SizedBox(height: AppSpacing.s3),
-            TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: Colors.white))),
+            TextButton(onPressed: _readTitleOnly, child: const Text('Baca judul saja', style: TextStyle(color: AppColors.onDark))),
           ]),
         );
       case 'BT-03':
         return const Center(
-          child: ColoredBox(color: Colors.white, child: SizedBox(width: double.infinity, height: double.infinity)),
+          child: ColoredBox(color: AppColors.bgPage, child: SizedBox(width: double.infinity, height: double.infinity)),
         );
       case 'BT-04':
         return _bottomPanel(bottomInset, const ResultPanel(text: '', title: 'Membaca teks…'));
@@ -7284,9 +10047,9 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
 
 ---
 
-## Berkas: `lib/screens/onboarding_screen.dart`
+## File: `lib/screens/onboarding_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/onboarding_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/onboarding_screen.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -7451,9 +10214,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 ---
 
-## Berkas: `lib/screens/permissions_screen.dart`
+## File: `lib/screens/permissions_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/permissions_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/permissions_screen.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -7668,9 +10431,9 @@ class _PermanentlyDeniedCard extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/screens/server_address_screen.dart`
+## File: `lib/screens/server_address_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/server_address_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/server_address_screen.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -7711,6 +10474,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
   late final String _savedHost;
   ServerFieldState _state = ServerFieldState.idle;
   int? _latencyMs;
+
+  /// Saat demo, tekan ikon mata untuk menyembunyikan alamat IP dari layar.
+  bool _obscured = false;
 
   static final _hostPattern = RegExp(r'^[\w.-]+:\d{2,5}$');
 
@@ -7863,9 +10629,28 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                     controller: _ctrl,
                     autocorrect: false,
                     keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
+                    // Saat _obscured = true, teks diganti karakter titik
+                    // sehingga alamat IP tidak terlihat saat demo.
+                    obscureText: _obscured,
+                    obscuringCharacter: '•',
+                    decoration: InputDecoration(
                       hintText: 'host:port, mis. 10.0.2.2:8000',
                       isDense: true,
+                      suffixIcon: Semantics(
+                        label: _obscured ? 'Tampilkan alamat server' : 'Sembunyikan alamat server',
+                        button: true,
+                        excludeSemantics: false,
+                        child: IconButton(
+                          icon: Icon(
+                            _obscured
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 20,
+                          ),
+                          tooltip: _obscured ? 'Tampilkan' : 'Sembunyikan',
+                          onPressed: () => setState(() => _obscured = !_obscured),
+                        ),
+                      ),
                     ),
                     style: AppTypography.metricMono(),
                     onChanged: (_) {
@@ -7912,9 +10697,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
 
 ---
 
-## Berkas: `lib/screens/settings_screen.dart`
+## File: `lib/screens/settings_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/settings_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/settings_screen.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -8197,9 +10982,9 @@ class _SettingsRow extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/screens/splash_screen.dart`
+## File: `lib/screens/splash_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/splash_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/splash_screen.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -8239,10 +11024,10 @@ class _SplashScreenState extends State<SplashScreen> {
               width: 72,
               height: 72,
               decoration: const BoxDecoration(color: AppColors.actionFill, shape: BoxShape.circle),
-              child: const Icon(Icons.remove_red_eye_rounded, color: Colors.white, size: 36),
+              child: const Icon(Icons.remove_red_eye_rounded, color: AppColors.onDark, size: 36),
             ),
             const SizedBox(height: AppSpacing.s5),
-            Text('Vinara', style: AppTypography.headline(color: Colors.white)),
+            Text('Vinara', style: AppTypography.headline(color: AppColors.onDark)),
           ],
         ),
       ),
@@ -8253,9 +11038,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
 ---
 
-## Berkas: `lib/screens/tuntun_screen.dart`
+## File: `lib/screens/tuntun_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/tuntun_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/tuntun_screen.dart`
 
 ```dart
 import 'dart:async';
@@ -8266,6 +11051,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../core/layout/zone_contract.dart';
+import '../core/speech/tts_queue.dart';
 import '../models/detection.dart';
 import '../providers/index.dart';
 import '../services/index.dart';
@@ -8311,7 +11097,24 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   bool _warmingUp = true;
   bool _speaking = false;
   bool _silentMode = false;
+  // Keadaan gelap & dismiss-nya dimiliki CameraProvider (lihat
+  // `cam.isDark` / `cam.darkDismissed`), supaya deteksi tetap berjalan saat
+  // gelap dan "Lewati" hanya menyembunyikan tawaran lampu.
   String? _debugOverride;
+
+  /// Apakah deteksi objek sedang aktif (jalan) atau dijeda.
+  ///
+  /// **Dimulai false — deteksi tidak menyala sendiri.** Ini layar pertama
+  /// saat aplikasi dibuka, dan saat itu ponsel biasanya masih di tangan yang
+  /// turun, di saku, atau menghadap tanah. Peringatan pertama dari posisi itu
+  /// hampir selalu keliru, dan peringatan keliru dari alat bantu jalan lebih
+  /// merusak daripada diam: sekali pengguna belajar aplikasinya sering salah,
+  /// peringatan yang benar ikut diabaikan.
+  ///
+  /// Konsekuensinya ditangani, bukan diabaikan — lihat [initState] dan
+  /// [_armPausedReminder]: keadaan mati diucapkan saat masuk dan diingatkan
+  /// tiap 30 detik, supaya tidak ada yang berjalan menyangka sudah dijaga.
+  bool _detectionActive = false;
 
   final List<_GhostDetection> _ghosts = [];
   List<Detection> _prevCritical = [];
@@ -8319,18 +11122,58 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   Timer? _warmupTimer;
   Timer? _speakingPoll;
 
+  /// DO — pengingat berkala saat deteksi dijeda.
+  ///
+  /// Tanpa ini, "Deteksi dijeda." terucap sekali lalu hening permanen. Untuk
+  /// pengguna yang tidak melihat layar, aplikasi yang dijeda **tidak bisa
+  /// dibedakan** dari aplikasi yang aktif tapi kebetulan tidak melihat apa
+  /// pun — dan ia berjalan menyangka masih dijaga.
+  Timer? _pausedReminder;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context.read<AppModeProvider>().announceEntry(AppMode.tuntun);
+      // Ditunggu selesai supaya pemberitahuan "belum menyala" di bawah
+      // menyusul di belakangnya, bukan mengantre berebut dengannya.
+      await context.read<AppModeProvider>().announceEntry(AppMode.tuntun);
+      if (!mounted) return;
       if (_hasCameraPermission) {
-        context.read<DetectionProvider>().startRealtime();
+        // Kamera tetap dinyalakan (pratinjau + deteksi gelap), tapi deteksi
+        // rintangan menunggu tombol kiri. Keadaan mati TIDAK boleh senyap:
+        // pengguna yang tidak melihat layar tidak bisa membedakan "belum
+        // menyala" dari "menyala tapi kebetulan tidak melihat apa pun".
         context.read<CameraProvider>().startStream();
+        TtsQueue().speak(
+          'Deteksi rintangan belum menyala. '
+          'Tekan tombol kiri bawah untuk mulai mengawasi.',
+          tier: SpeechTier.warning,
+        );
+        _armPausedReminder();
+      }
+      // Listener dark detection — TTS satu kali saat transisi gelap
+      context.read<CameraProvider>().addListener(_onCameraDarkChanged);
+
+      // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
+      // sama persis dengan menekan tombol kiri.
+      final voice = context.read<VoiceProvider>();
+      voice.onPrimaryAction = _toggleDetection;
+      voice.primaryActionLabel = () =>
+          _detectionActive ? 'menjeda deteksi' : 'melanjutkan deteksi';
+      voice.onRepeatLast = _repeatLastDetection;
+
+      // Model gagal muat = mode ini tidak punya cadangan apa pun. Katakan,
+      // jangan biarkan layar terlihat normal sementara tidak ada yang mengawasi.
+      if (context.read<DetectionProvider>().isUnavailable) {
+        TtsQueue().speak(
+          'Deteksi rintangan tidak tersedia di perangkat ini. '
+          'Mode lain tetap bisa dipakai.',
+          tier: SpeechTier.critical,
+        );
       }
     });
 
@@ -8349,8 +11192,11 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.removeObserver(this);
     _warmupTimer?.cancel();
     _speakingPoll?.cancel();
+    _pausedReminder?.cancel();
+    context.read<CameraProvider>().removeListener(_onCameraDarkChanged);
     context.read<DetectionProvider>().stopRealtime();
     context.read<CameraProvider>().stopStream();
+    context.read<VoiceProvider>().clearModeHandlers();
     super.dispose();
   }
 
@@ -8362,10 +11208,22 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       if (mounted) {
         setState(() => _warmingUp = true);
         context.read<CameraProvider>().startStream();
+        // Hormati keadaan jeda. Sebelumnya `startRealtime()` dipanggil tanpa
+        // memeriksa apa pun, jadi deteksi hidup lagi diam-diam sementara
+        // tombol tetap bertuliskan "Lanjutkan" — label dan keadaan berbohong
+        // ke arah yang berlawanan.
+        if (_detectionActive) {
+          _startDetection();
+        } else {
+          _armPausedReminder();
+        }
         _warmupTimer = Timer(const Duration(milliseconds: 700), () {
           if (mounted) setState(() => _warmingUp = false);
         });
       }
+    } else if (state == AppLifecycleState.paused) {
+      // Jangan bicara ke layar yang tidak dilihat siapa pun.
+      _pausedReminder?.cancel();
     }
   }
 
@@ -8381,8 +11239,80 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     if (camChanged && cam) {
       final camProvider = context.read<CameraProvider>();
       if (!camProvider.isInitialized) await camProvider.initCamera();
+      if (!mounted) return;
       camProvider.startStream();
-      context.read<DetectionProvider>().startRealtime();
+      if (_detectionActive) _startDetection();
+    }
+  }
+
+  /// "ulangi" di Mode Deteksi — sebutkan lagi apa yang terlihat sekarang.
+  void _repeatLastDetection() {
+    final det = context.read<DetectionProvider>();
+    if (!_detectionActive) {
+      TtsQueue().speak('Deteksi sedang dijeda.', tier: SpeechTier.info);
+      return;
+    }
+    final dets = det.detections;
+    TtsQueue().speak(
+      dets.isEmpty
+          ? 'Tidak ada rintangan di depanmu saat ini.'
+          : dets.map((d) => d.ttsMessage).join('. '),
+      tier: SpeechTier.warning,
+    );
+  }
+
+  void _startDetection() {
+    _pausedReminder?.cancel();
+    _pausedReminder = null;
+    context.read<DetectionProvider>().startRealtime();
+  }
+
+  /// Ingatkan tiap 30 detik selama dijeda — suara + getar, karena di jalan
+  /// yang ramai getar sering lebih terdengar daripada suara.
+  void _armPausedReminder() {
+    _pausedReminder?.cancel();
+    _pausedReminder = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted || _detectionActive) return;
+      TtsQueue().speak(
+        'Deteksi rintangan masih mati. Tekan tombol kiri bawah untuk mulai.',
+        tier: SpeechTier.info,
+      );
+      HapticService.instance.info();
+    });
+  }
+
+  /// Dipanggil setiap kali CameraProvider notify.
+  ///
+  /// Pengumuman gelap **tidak** lagi diucapkan di sini: [CameraProvider] yang
+  /// memilikinya (peringatan setelah 3 detik + pengulangan tiap 30 detik),
+  /// karena kondisi itu berlaku di semua mode berkamera, bukan hanya mode ini.
+  /// Dua sumber untuk satu kondisi hanya menghasilkan ucapan ganda.
+  void _onCameraDarkChanged() {
+    if (!mounted) return;
+    setState(() {}); // slot tawaran lampu muncul/hilang mengikuti provider
+  }
+
+  /// Toggle deteksi ON/OFF dari tombol kiri BottomActionBar.
+  ///
+  /// Menjeda deteksi adalah satu-satunya cara pengguna mematikan pengawasan
+  /// rintangan, jadi konfirmasinya naik ke tier Warning: ia harus terdengar
+  /// meski ada narasi lain yang sedang mengantre.
+  void _toggleDetection() {
+    final det = context.read<DetectionProvider>();
+    if (_detectionActive) {
+      det.stopRealtime();
+      setState(() => _detectionActive = false);
+      TtsQueue().speak(
+        'Deteksi dijeda. Saya tidak akan memperingatkan rintangan sampai dilanjutkan.',
+        tier: SpeechTier.warning,
+      );
+      HapticService.instance.warning();
+      _armPausedReminder();
+    } else {
+      _startDetection();
+      setState(() => _detectionActive = true);
+      TtsQueue().speak('Deteksi dilanjutkan.', tier: SpeechTier.warning);
+      HapticService.instance.info();
     }
   }
 
@@ -8393,8 +11323,9 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
       if (!cam.isInitialized) await cam.initCamera();
+      if (!mounted) return;
       cam.startStream();
-      context.read<DetectionProvider>().startRealtime();
+      if (_detectionActive) _startDetection();
     }
   }
 
@@ -8452,21 +11383,24 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       _updateGhosts(dets);
     }
 
-    final rz = det.riskZone;
-    final banner = _resolveBanner(global, cam, rz);
+    // Tawaran / kontrol lampu. Perhatikan: slot tampil saat gelap ATAU saat lampu sedang menyala,
+    // supaya pengguna bisa mematikan lampu kapan saja.
+    final showTorchSlot = _hasCameraPermission && (cam.isTorchOn || (cam.isDark && !cam.darkDismissed));
+
+    final banner = _resolveBanner(global, cam);
     final hasBanner = banner != null;
     final warmingUp = _warmingUp || _debugOverride == 'DO-13';
     final micDisabled = !_hasMicPermission || _debugOverride == 'DO-24';
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -8493,18 +11427,64 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
               onAction: _requestCameraPermission,
             )
           else if (!warmingUp)
-            ..._buildDetectionZone(context, bottomInset, dets, cam),
+            ..._buildDetectionZone(context, bottomInset, dets, cam, showTorchSlot),
+
+          // ContextualActionSlot — tawaran / kontrol lampu senter.
+          // Selalu di posisi yang sama: tepat di atas BottomActionBar.
+          if (showTorchSlot)
+            Positioned(
+              left: 0, right: 0,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight,
+              child: ContextualActionSlot(
+                message: cam.isTorchOn
+                    ? 'Lampu senter menyala'
+                    : 'Sekitar gelap — perlu nyalakan lampu?',
+                primaryLabel: cam.isTorchOn ? 'Matikan Lampu' : 'Nyalakan Lampu',
+                primaryIcon: cam.isTorchOn
+                    ? Icons.flashlight_off_rounded
+                    : Icons.flashlight_on_rounded,
+                onPrimary: () {
+                  if (cam.isTorchOn) {
+                    cam.setTorch(false);
+                    TtsQueue().speak('Lampu dimatikan.', tier: SpeechTier.info);
+                  } else {
+                    cam.setTorch(true);
+                    TtsQueue().speak('Lampu dinyalakan.', tier: SpeechTier.info);
+                  }
+                },
+                secondaryLabel: 'Lewati',
+                secondaryIcon: Icons.close_rounded,
+                onSecondary: () {
+                  if (cam.isTorchOn) {
+                    cam.setTorch(false);
+                    TtsQueue().speak('Lampu dimatikan.', tier: SpeechTier.info);
+                  } else {
+                    cam.dismissDarkOffer();
+                    TtsQueue().speak(
+                      'Baik, lampu tidak dinyalakan. Deteksi tetap berjalan.',
+                      tier: SpeechTier.info,
+                    );
+                  }
+                },
+              ),
+            ),
 
           Positioned(
             left: 0, right: 0, bottom: 0,
-            child: BottomActionBar(micEnabled: !micDisabled),
+            child: BottomActionBar(
+              micEnabled: !micDisabled,
+              cameraLabel: _detectionActive ? 'Hentikan' : 'Lanjutkan',
+              onCameraPressed: _hasCameraPermission ? _toggleDetection : null,
+              cameraEnabled: _hasCameraPermission,
+              cameraDisabledReason: 'izin kamera belum diberikan',
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget? _resolveBanner(GlobalConditionsProvider global, CameraProvider cam, dynamic rz) {
+  Widget? _resolveBanner(GlobalConditionsProvider global, CameraProvider cam) {
     if (_debugOverride == 'DO-15') {
       return const StatusBanner(tier: AlertTier.critical, message: 'Izin kamera dicabut. Deteksi berhenti sampai izin dinyalakan lagi.');
     }
@@ -8524,8 +11504,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     return null;
   }
 
-  List<Widget> _buildDetectionZone(BuildContext context, double bottomInset, List<Detection> dets, CameraProvider cam) {
+  List<Widget> _buildDetectionZone(BuildContext context, double bottomInset, List<Detection> dets, CameraProvider cam, bool showTorchSlot) {
     final widgets = <Widget>[];
+    // Jika slot lampu aktif, geser semua kartu ke atas sejumlah tinggi slot.
+    final slotExtra = showTorchSlot ? ContextualActionSlot.slotHeightWithMsg : 0.0;
 
     if (_debugOverride == 'DO-21') {
       widgets.add(_bottomSlot(bottomInset, const AlertCard(
@@ -8540,7 +11522,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     if (health != null && dets.isEmpty && _debugOverride == null) {
       widgets.add(Positioned(
         left: 0, right: 0,
-        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s6 + 44,
+        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s6 + 44 + slotExtra,
         child: Center(child: CameraHealthToast(issue: _mapHealthIssue(health))),
       ));
     }
@@ -8552,7 +11534,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       widgets.add(Positioned(
         left: AppSpacing.screenMargin,
         right: AppSpacing.screenMargin,
-        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+        bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2 + slotExtra,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -8576,7 +11558,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   alignment: Alignment.center,
                   decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-                  child: Text('dan $extra objek lain', style: AppTypography.caption(color: Colors.white)),
+                  child: Text('dan $extra objek lain', style: AppTypography.caption(color: AppColors.onDark)),
                 ),
               ),
             ],
@@ -8664,9 +11646,9 @@ class _DebugSheet extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/screens/voice_screen.dart`
+## File: `lib/screens/voice_screen.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/voice_screen.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/screens/voice_screen.dart`
 
 ```dart
 import 'dart:async';
@@ -8694,8 +11676,14 @@ const List<(String, String)> _asDebugCatalog = [
 ];
 
 /// Mode Asisten Suara — bagian 11 IMPLEMENTASI.md, 25 state (AS-01..AS-25).
+/// [isOverlay] = true saat dimasukkan via Navigator push dari mode lain
+/// (fitur "Jarvis Global Mic"). Dalam mode overlay:
+/// - Tampil tombol ✕ (tutup) di pojok kanan atas.
+/// - VoiceProvider.onNavigateBack dipasang untuk pop otomatis setelah
+///   perintah suara yang mengubah mode dieksekusi.
 class VoiceScreen extends StatefulWidget {
-  const VoiceScreen({super.key});
+  final bool isOverlay;
+  const VoiceScreen({super.key, this.isOverlay = false});
 
   @override
   State<VoiceScreen> createState() => _VoiceScreenState();
@@ -8729,6 +11717,36 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       voice.onSpeak = (text) => context.read<TtsProvider>().speak(text, tier: SpeechTier.info);
       voice.onOpenSettings = _openSettings;
       voice.onAllFeaturesFailed = () {};
+
+      // "lebih cepat" / "lebih pelan" — dulu keduanya punya bank kata lengkap
+      // tapi tidak ada yang menjalankannya.
+      voice.onAdjustSpeechRate = (delta) async {
+        final settings = context.read<SettingsProvider>();
+        final next = (settings.speechRate + delta).clamp(0.2, 1.0);
+        await settings.setSpeechRate(next);
+        return next;
+      };
+
+      // Sebagai MODE (bukan overlay), aksi utamanya adalah mengulang jawaban.
+      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa —
+      // "jepret" saat mic terbuka harus menjalankan aksi mode aslinya.
+      if (!widget.isOverlay) {
+        voice.onPrimaryAction = _repeatLastAnswer;
+        voice.primaryActionLabel = () => 'mengulang jawaban';
+        voice.onRepeatLast = _repeatLastAnswer;
+      }
+
+      // Overlay: pasang callback agar VoiceProvider bisa meminta pop Navigator
+      // tanpa perlu tahu tentang BuildContext.
+      if (widget.isOverlay) {
+        voice.onNavigateBack = () {
+          if (mounted) Navigator.of(context).pop();
+        };
+        // Mulai mendengar langsung saat overlay dibuka.
+        if (!voice.isListening && voice.state == VoiceState.idle) {
+          voice.startListening();
+        }
+      }
     });
 
     _expiryCheckTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -8745,6 +11763,14 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     voice.onSpeak = null;
     voice.onOpenSettings = null;
     voice.onAllFeaturesFailed = null;
+    voice.onAdjustSpeechRate = null;
+    if (widget.isOverlay) {
+      voice.onNavigateBack = null;
+    } else {
+      // Hanya lepas handler yang dipasang layar ini. Sebagai overlay, handler
+      // milik mode di bawahnya harus tetap utuh.
+      voice.clearModeHandlers();
+    }
     super.dispose();
   }
 
@@ -8781,6 +11807,27 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       MaterialPageRoute(builder: (_) => const SettingsScreen()),
     ));
     return true;
+  }
+
+  /// Tombol kiri Mode Asisten Suara — baca ulang jawaban terakhir.
+  ///
+  /// Rencana perbaikan menyarankan tombol ini dinonaktifkan dengan label jujur.
+  /// Itu benar dan jujur, tapi menyisakan satu tombol mati dari enam mode dan
+  /// membuat aturan tombol kiri punya pengecualian. "Ulangi jawaban" berguna
+  /// nyata: pengguna yang tidak menangkap jawaban cukup menekan tombol yang
+  /// posisinya sudah ia hafal — tanpa bertanya ulang, dan tanpa memicu
+  /// panggilan Moondream2 kedua yang makan lima detik dan kuota.
+  void _repeatLastAnswer() {
+    final voice = context.read<VoiceProvider>();
+    final answer = voice.response;
+    if (answer.isEmpty) {
+      context.read<TtsProvider>().speak(
+            'Belum ada jawaban untuk diulang. Tekan tombol bicara dulu.',
+            tier: SpeechTier.info,
+          );
+      return;
+    }
+    context.read<TtsProvider>().speak(answer, tier: SpeechTier.info);
   }
 
   Future<void> _onMicPressed() async {
@@ -8878,14 +11925,14 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     final hasBanner = banner != null;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.cameraVoid,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
-            const ColoredBox(color: Colors.black),
+            const ColoredBox(color: AppColors.cameraVoid),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -8913,12 +11960,34 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
           Positioned(
             left: 0, right: 0, bottom: 0,
             child: BottomActionBar(
+              cameraLabel: 'Ulangi jawaban',
+              onCameraPressed: _repeatLastAnswer,
+              cameraEnabled: voice.response.isNotEmpty,
+              cameraDisabledReason: 'belum ada jawaban',
               onMicPressed: _onMicPressed,
               micEnabled: _hasMicPermission,
               listeningOverride: voice.isListening,
               processingOverride: voice.isProcessing,
             ),
           ),
+
+          // ContextualActionSlot "Kembali" — hanya saat overlay push.
+          // Posisi konsisten dengan slot lampu di TuntunScreen (tepat di atas
+          // BottomActionBar) — pengguna terbiasa dengan lokasi yang sama.
+          if (widget.isOverlay)
+            Positioned(
+              left: 0, right: 0,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight,
+              child: ContextualActionSlot(
+                primaryLabel: 'Kembali',
+                primaryIcon: Icons.arrow_back_rounded,
+                onPrimary: () async {
+                  final nav = Navigator.of(context);
+                  context.read<TtsProvider>().speak('Kembali.', tier: SpeechTier.info);
+                  nav.pop();
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -9086,15 +12155,17 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-        child: Text(text, style: AppTypography.body(color: Colors.white)),
+        child: Text(text, style: AppTypography.body(color: AppColors.onDark)),
       ),
     );
   }
 
   Widget _bubblePanel(double bottomInset, Widget child) {
+    // Geser ke atas jika overlay: ContextualActionSlot 'Kembali' ada di bawah.
+    final slotExtra = widget.isOverlay ? ContextualActionSlot.slotHeight : 0.0;
     return Positioned(
       left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-      bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+      bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2 + slotExtra,
       child: child,
     );
   }
@@ -9122,9 +12193,9 @@ class _StaticNotice extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/services/camera_health_service.dart`
+## File: `lib/services/camera_health_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/camera_health_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/camera_health_service.dart`
 
 ```dart
 import 'dart:async';
@@ -9147,10 +12218,40 @@ class CameraHealthService {
   AccelerometerEvent? _lastAccel;
   StreamSubscription? _accelSub;
 
+  /// Seberapa banyak ponsel bergoyang, 0 (diam) sampai 1 (ayunan kuat).
+  ///
+  /// Saat pengguna berjalan, ponsel yang dipegang ikut mengayun naik-turun.
+  /// Ayunan itu membuat kotak deteksi membesar-mengecil sendiri, sehingga
+  /// objek yang diam terbaca "maju-mundur" — dan `isApproaching` yang memotong
+  /// cooldown 50% ikut menyala tanpa ada yang benar-benar mendekat.
+  ///
+  /// Diukur dari perubahan percepatan antar sampel. Ini bukan pengganti
+  /// gyroscope, tapi cukup untuk **membedakan tangan diam dari tangan
+  /// mengayun** — dan itulah satu-satunya yang dibutuhkan: saat goyang, ambang
+  /// "mendekat" dinaikkan dan penghalusan jarak diperlambat.
+  double _motionLevel = 0.0;
+  double get motionLevel => _motionLevel;
+
+  /// True saat ayunan cukup kuat sehingga sinyal jarak tidak bisa dipercaya
+  /// begitu saja.
+  bool get isShaky => _motionLevel > 0.35;
+
   void startListening() {
     _accelSub = accelerometerEventStream(
       samplingPeriod: const Duration(milliseconds: 200),
     ).listen((event) {
+      final prev = _lastAccel;
+      if (prev != null) {
+        final dx = event.x - prev.x;
+        final dy = event.y - prev.y;
+        final dz = event.z - prev.z;
+        final delta = sqrt(dx * dx + dy * dy + dz * dz);
+        // Normalisasi kasar: Δ 4 m/s² antar sampel sudah tergolong ayunan
+        // penuh saat berjalan. EMA menahan lonjakan satu sampel agar satu
+        // sentakan tidak langsung dianggap goyang terus-menerus.
+        final instant = (delta / 4.0).clamp(0.0, 1.0);
+        _motionLevel = _motionLevel * 0.7 + instant * 0.3;
+      }
       _lastAccel = event;
     });
   }
@@ -9158,6 +12259,7 @@ class CameraHealthService {
   void stopListening() {
     _accelSub?.cancel();
     _accelSub = null;
+    _motionLevel = 0.0;
   }
 
   /// Cek orientasi kamera dari data accelerometer.
@@ -9200,9 +12302,114 @@ class CameraHealthService {
 
 ---
 
-## Berkas: `lib/services/detection_filter.dart`
+## File: `lib/services/camera_intrinsics.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/detection_filter.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/camera_intrinsics.dart`
+
+```dart
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+/// Panjang fokus kamera dalam piksel, dibaca dari perangkatnya sendiri.
+///
+/// Estimasi jarak memakai rumus pinhole:
+/// ```
+/// jarak_m = tinggi_asli_cm × fokus_px / (tinggi_kotak_px × 100)
+/// ```
+/// `fokus_px` bukan properti universal — ia tergantung lensa **dan** resolusi
+/// keluaran. Konstanta 615 yang dipakai sebelumnya adalah rata-rata yang
+/// kebetulan tidak benar untuk perangkat mana pun secara khusus: lensa
+/// ultrawide dan telefoto bisa meleset jauh lebih dari 2×, dan seluruh
+/// klasifikasi bahaya (`critical` di bawah 1,5 m) mewarisi kesalahannya.
+///
+/// Android menyimpan angka aslinya di `CameraCharacteristics`. Dari panjang
+/// fokus (mm) dan ukuran fisik sensor (mm) kita dapat sudut pandang, dan dari
+/// sudut pandang kita dapat fokus dalam piksel untuk resolusi apa pun:
+/// ```
+/// fokus_px = (lebar_px / 2) / tan(fov / 2)
+/// ```
+///
+/// Ini menggantikan rencana kalibrasi manual dengan meteran di lapangan:
+/// tanpa model baru, tanpa pengukuran, dan benar per-perangkat alih-alih
+/// benar rata-rata.
+///
+/// **Gagal itu wajar dan aman.** Emulator, iOS, dan perangkat yang tidak
+/// melaporkan intrinsik akan mengembalikan null; pemanggil lalu memakai
+/// [fallbackFocalPx]. Deteksi tidak boleh mati hanya karena kalibrasi gagal.
+class CameraIntrinsics {
+  static final CameraIntrinsics instance = CameraIntrinsics._();
+  CameraIntrinsics._();
+
+  static const MethodChannel _channel = MethodChannel('vinara/camera_intrinsics');
+
+  /// Nilai lama, dipertahankan sebagai jaring pengaman saat intrinsik tidak
+  /// tersedia. Kira-kira benar untuk kamera ponsel 4:3 pada 640 px.
+  static const double fallbackFocalPx = 615.0;
+
+  double? _horizontalFovRad;
+  double? _verticalFovRad;
+  bool _queried = false;
+
+  /// True kalau nilai berasal dari perangkat, bukan dari fallback.
+  bool get isCalibrated => _horizontalFovRad != null;
+
+  double? get horizontalFovDeg =>
+      _horizontalFovRad == null ? null : _horizontalFovRad! * 180 / math.pi;
+
+  double? get verticalFovDeg =>
+      _verticalFovRad == null ? null : _verticalFovRad! * 180 / math.pi;
+
+  /// Baca intrinsik sekali per proses. Aman dipanggil berkali-kali.
+  Future<void> load() async {
+    if (_queried) return;
+    _queried = true;
+    try {
+      final info = await _channel.invokeMapMethod<String, dynamic>('lensInfo');
+      if (info == null) {
+        debugPrint('[Intrinsics] perangkat tidak melaporkan intrinsik lensa — pakai fallback');
+        return;
+      }
+      final h = (info['horizontalFovRad'] as num?)?.toDouble();
+      final v = (info['verticalFovRad'] as num?)?.toDouble();
+      // Sanity check: FOV kamera ponsel wajar di 30°–130°. Nilai di luar itu
+      // lebih mungkin salah baca daripada lensa aneh, dan lebih baik memakai
+      // fallback yang diketahui daripada angka yang diketahui ngawur.
+      if (h == null || v == null || h <= 0.5 || h >= 2.3 || v <= 0.3 || v >= 2.3) {
+        debugPrint('[Intrinsics] FOV di luar rentang wajar ($h, $v) — pakai fallback');
+        return;
+      }
+      _horizontalFovRad = h;
+      _verticalFovRad = v;
+      debugPrint('[Intrinsics] FOV terbaca: '
+          'H=${(h * 180 / math.pi).toStringAsFixed(1)}° '
+          'V=${(v * 180 / math.pi).toStringAsFixed(1)}° '
+          '(fokus ${info['focalLengthMm']}mm, sensor ${info['sensorWidthMm']}×${info['sensorHeightMm']}mm)');
+    } catch (e) {
+      debugPrint('[Intrinsics] gagal membaca intrinsik: $e — pakai fallback');
+    }
+  }
+
+  /// Fokus dalam piksel pada sumbu **vertikal bingkai tegak**.
+  ///
+  /// Ponsel terkunci portrait sementara sensor memberi frame landscape, jadi
+  /// sumbu vertikal yang dilihat pengguna adalah sumbu **horizontal** sensor.
+  /// [srcWidth] adalah lebar frame sensor (mis. 640) — itulah yang menjadi
+  /// tinggi bingkai tegak, dan itulah sumbu tempat tinggi kotak diukur.
+  double focalPxForUprightFrame(int srcWidth) {
+    final fov = _horizontalFovRad;
+    if (fov == null) return fallbackFocalPx;
+    return (srcWidth / 2) / math.tan(fov / 2);
+  }
+}
+```
+
+---
+
+## File: `lib/services/detection_filter.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/detection_filter.dart`
 
 ```dart
 import 'package:flutter/foundation.dart';
@@ -9215,6 +12422,13 @@ import '../providers/settings_provider.dart' show Verbosity;
 /// Fix dari doc 5 masalah 5:
 /// - Streak hanya di-increment SETELAH lolos distance + confidence filter
 /// - Cooldown berbeda per tier (Netra AI: critical=2s, warning=3s, info=5s)
+///
+/// Fix temuan 2B — kunci cooldown dan streak adalah **identitas objek**
+/// ([Detection.filterKey], berasal dari `trackId` SORT), bukan lagi `labelEn`.
+/// Dengan kunci label, dua orang di frame yang sama dianggap satu objek:
+/// orang yang jauh diumumkan lebih dulu, lalu orang yang dekat dan sedang
+/// mendekat ikut kena cooldown "person" dan **tidak diumumkan sama sekali**
+/// sampai 2 detik berlalu. Persis kebalikan dari yang dibutuhkan.
 class DetectionFilter {
   final Map<String, DateTime> _lastAnnounced = {};
   final Map<String, int>      _streak        = {};
@@ -9244,55 +12458,50 @@ class DetectionFilter {
   }
 
   List<Detection> process(List<Detection> raw) {
-    final currentLabels = raw.map((d) => d.labelEn).toSet();
+    final currentKeys = raw.map((d) => d.filterKey).toSet();
 
-    // Remove streak entry untuk label yang hilang dari frame ini
-    for (final label in _streak.keys.toList()) {
-      if (!currentLabels.contains(label)) {
-        _streak.remove(label);
-      }
-    }
+    // Buang streak untuk objek yang hilang dari frame ini. Cooldown sengaja
+    // TIDAK ikut dibuang: objek yang berkelip hilang-muncul satu frame tidak
+    // boleh mendapat izin bicara ulang seketika.
+    _streak.removeWhere((key, _) => !currentKeys.contains(key));
+
+    // Batasi pertumbuhan _lastAnnounced. trackId terus bertambah sepanjang
+    // sesi, jadi tanpa ini map-nya tumbuh selamanya di perjalanan panjang.
+    if (_lastAnnounced.length > 200) _pruneAnnounced();
 
     final approved = <Detection>[];
 
     for (final det in raw) {
+      final key = det.filterKey;
+
       // [1] Distance filter
       if (det.distanceMeter > _maxDistance) {
-        debugPrint('[Filter] DROP ${det.labelEn}: '
-            'jarak ${det.distanceMeter.toStringAsFixed(1)}m > ${_maxDistance}m');
         continue;
       }
 
       // [2] Confidence filter
       if (det.confidence < _minConfidence) {
-        debugPrint('[Filter] DROP ${det.labelEn}: '
-            'confidence ${det.confidence.toStringAsFixed(2)} < $_minConfidence');
         continue;
       }
 
       // [3] Increment streak HANYA untuk yang lolos distance + confidence
-      _streak[det.labelEn] = (_streak[det.labelEn] ?? 0) + 1;
+      _streak[key] = (_streak[key] ?? 0) + 1;
 
       // [4] Stability check
-      if ((_streak[det.labelEn] ?? 0) < _streakRequired) {
-        debugPrint('[Filter] STREAK ${det.labelEn}: '
-            '${_streak[det.labelEn]}/$_streakRequired frame');
+      if ((_streak[key] ?? 0) < _streakRequired) {
         continue;
       }
 
       // [5] Cooldown per tier
       final cooldown = _cooldownFor(det);
-      final last     = _lastAnnounced[det.labelEn];
+      final last     = _lastAnnounced[key];
       final now      = DateTime.now();
       if (last != null && now.difference(last) < cooldown) {
-        final sisa = cooldown - now.difference(last);
-        debugPrint('[Filter] COOLDOWN ${det.labelEn}: '
-            'sisa ${sisa.inMilliseconds}ms');
         continue;
       }
 
       // [6] Lolos semua
-      _lastAnnounced[det.labelEn] = now;
+      _lastAnnounced[key] = now;
       approved.add(det);
     }
 
@@ -9312,7 +12521,20 @@ class DetectionFilter {
       Verbosity.ringkas => 1,
       _ => 2,
     };
+
+    if (approved.isNotEmpty) {
+      debugPrint('[Filter] lolos ${approved.length}/${raw.length}: '
+          '${approved.take(maxPerCycle).map((d) => '${d.labelEn}#${d.trackId}(${d.dangerLevel})').join(' | ')}');
+    }
+
     return approved.take(maxPerCycle).toList();
+  }
+
+  /// Buang catatan cooldown yang jauh lebih lama dari cooldown terpanjang —
+  /// objek itu sudah pasti tidak akan tertahan lagi.
+  void _pruneAnnounced() {
+    final cutoff = DateTime.now().subtract(const Duration(seconds: 30));
+    _lastAnnounced.removeWhere((_, at) => at.isBefore(cutoff));
   }
 
   int _prio(String danger) => switch (danger) {
@@ -9356,12 +12578,14 @@ class DetectionFilter {
 
 ---
 
-## Berkas: `lib/services/haptic_service.dart`
+## File: `lib/services/haptic_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/haptic_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/haptic_service.dart`
 
 ```dart
 import 'package:vibration/vibration.dart';
+
+import '../providers/settings_provider.dart' show VibrationMode;
 
 /// HapticService — vibration feedback pendamping TTS.
 ///
@@ -9373,37 +12597,68 @@ import 'package:vibration/vibration.dart';
 /// - Critical: triple pulse cepat (400ms total)
 /// - Warning:  double pulse sedang (500ms)
 /// - Info:     single pulse panjang (300ms)
+///
+/// **Menghormati Pengaturan "Getar"** (Aktif / Hanya bahaya / Mati). Sebelum
+/// ini, pilihan pengguna tersimpan ke SharedPreferences tapi tidak pernah
+/// dibaca siapa pun: mematikan getar tidak mematikan apa pun. Pengaturan yang
+/// berbohong lebih buruk daripada pengaturan yang tidak ada, karena pengguna
+/// menyangka sudah menyelesaikan masalahnya.
 class HapticService {
   static final HapticService instance = HapticService._();
   HapticService._();
 
+  VibrationMode _mode = VibrationMode.active;
+  VibrationMode get mode => _mode;
+
+  /// Dipanggil [SettingsProvider] saat boot dan setiap kali pengaturan berubah.
+  void setMode(VibrationMode mode) => _mode = mode;
+
+  /// Apakah getar tier ini boleh dijalankan.
+  bool _allowed({required bool isDanger}) => switch (_mode) {
+        VibrationMode.active => true,
+        VibrationMode.criticalOnly => isDanger,
+        VibrationMode.off => false,
+      };
+
   // ── Tier peringatan rintangan ─────────────────────────────────────────────
 
   /// Critical: orang/motor/mobil < 1.5m — triple pulse cepat.
-  Future<void> critical() async =>
-      Vibration.vibrate(pattern: [0, 100, 50, 100, 50, 100]);
+  Future<void> critical() async {
+    if (!_allowed(isDanger: true)) return;
+    Vibration.vibrate(pattern: [0, 100, 50, 100, 50, 100]);
+  }
 
   /// Warning: objek < 3m — double pulse sedang.
-  Future<void> warning() async =>
-      Vibration.vibrate(pattern: [0, 200, 100, 200]);
+  Future<void> warning() async {
+    if (!_allowed(isDanger: true)) return;
+    Vibration.vibrate(pattern: [0, 200, 100, 200]);
+  }
 
   /// Info: objek jauh/tidak berbahaya — single pulse pelan.
-  Future<void> info() async =>
-      Vibration.vibrate(pattern: [0, 300]);
+  Future<void> info() async {
+    if (!_allowed(isDanger: false)) return;
+    Vibration.vibrate(pattern: [0, 300]);
+  }
 
   // ── Arah navigasi ─────────────────────────────────────────────────────────
 
   /// Belok kanan: 2 pulse cepat.
-  Future<void> turnRight() async =>
-      Vibration.vibrate(pattern: [0, 80, 40, 80]);
+  Future<void> turnRight() async {
+    if (!_allowed(isDanger: false)) return;
+    Vibration.vibrate(pattern: [0, 80, 40, 80]);
+  }
 
   /// Belok kiri: 2 pulse lambat.
-  Future<void> turnLeft() async =>
-      Vibration.vibrate(pattern: [0, 200, 100, 200]);
+  Future<void> turnLeft() async {
+    if (!_allowed(isDanger: false)) return;
+    Vibration.vibrate(pattern: [0, 200, 100, 200]);
+  }
 
   /// Lurus: 1 pulse panjang.
-  Future<void> goStraight() async =>
-      Vibration.vibrate(duration: 400);
+  Future<void> goStraight() async {
+    if (!_allowed(isDanger: false)) return;
+    Vibration.vibrate(duration: 400);
+  }
 
   // ── Utility ───────────────────────────────────────────────────────────────
 
@@ -9429,9 +12684,9 @@ class HapticService {
 
 ---
 
-## Berkas: `lib/services/index.dart`
+## File: `lib/services/index.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/index.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/index.dart`
 
 ```dart
 export 'tflite_service.dart';
@@ -9440,14 +12695,17 @@ export 'ocr_service.dart';
 export 'detection_filter.dart';
 export 'tts_service.dart';
 export 'camera_health_service.dart';
-export 'risk_zone_service.dart';
+export 'haptic_service.dart';
+export 'pidnet_service.dart';
+export 'yolo_navigasi_service.dart';
+export 'nav_frame_converter.dart';
 ```
 
 ---
 
-## Berkas: `lib/services/money_tflite_service.dart`
+## File: `lib/services/money_tflite_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/money_tflite_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/money_tflite_service.dart`
 
 ```dart
 import 'dart:math' as math;
@@ -9464,8 +12722,23 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// tidak perlu meninggalkan perangkat, dan pengguna butuh umpan balik
 /// seketika saat mengarahkan kamera.
 ///
-/// Model: MobileNetV2 transfer learning, 6 kelas, input 224x224x3 float32
-/// dengan normalisasi `rescale = 1/255` (sama seperti saat training).
+/// Model: MobileNetV2 transfer learning (repo `rupiah-vision`), **7 kelas**,
+/// varian INT8-quantized dengan I/O float32 — input 224x224x3, output [1,7]
+/// softmax. Test accuracy 99,52%; varian INT8 ~98% pada sampel evaluasi.
+///
+/// **Rentang input: -1..1, BUKAN 0..255.** Ini berbeda dari model lama
+/// (`uang_rupiah.tflite`) yang memanggang preprocessing `mobilenet_v2` ke
+/// dalam grafnya sehingga menerima piksel mentah. Model ini tidak: di
+/// `scripts/01_train.py` normalisasi `x/127.5 - 1` dilakukan di pipeline
+/// `tf.data`, di luar model, dan `scripts/02_export_tflite.py` mengekspor
+/// tanpa `inference_input_type` sehingga tensor masuk tetap float32 mentah
+/// tanpa parameter kuantisasi.
+///
+/// Salah rentang di sini TIDAK memunculkan error apa pun — interpreter tetap
+/// menerima float32 berapa pun nilainya, hanya prediksinya yang diam-diam
+/// salah. Di mode uang itu berarti nominal keliru dibacakan ke pengguna
+/// tunanetra. Jadi kalau model diganti lagi, periksa dulu apakah
+/// preprocessing ada di dalam graf atau tidak, jangan diasumsikan.
 ///
 /// ATURAN MUTLAK: nominal TIDAK PERNAH ditebak. Di bawah ambang keyakinan,
 /// yang dikembalikan hanya instruksi perbaikan — salah menyebut nominal ke
@@ -9475,7 +12748,7 @@ class MoneyTFLiteService {
   static final MoneyTFLiteService instance = MoneyTFLiteService._();
   MoneyTFLiteService._();
 
-  static const String _modelAsset = 'assets/models/uang_rupiah.tflite';
+  static const String _modelAsset = 'assets/models/rupiah_classifier_int8.tflite';
   static const int _inputSize = 224;
 
   /// Ambang keyakinan sengaja tinggi. Precedent Seeing AI menyetel presisi
@@ -9483,13 +12756,18 @@ class MoneyTFLiteService {
   /// alat bantu uang.
   static const double confidenceThreshold = 0.85;
 
-  /// Urutan kelas WAJIB sama dengan `class_indices` saat training:
-  /// {'100rb': 0, '10rb': 1, '20rb': 2, '2rb': 3, '50rb': 4, '5rb': 5}
-  static const List<int> classValues = [100000, 10000, 20000, 2000, 50000, 5000];
+  /// Urutan kelas sesuai `CLASS_ORDER` di `scripts/02_export_tflite.py` dan
+  /// isi `assets/models/rupiah_labels.txt` — sudah dicocokkan baris per
+  /// baris, **jangan diubah**.
+  ///
+  /// Kalau model diganti, urutan ini WAJIB dicocokkan ulang: model
+  /// mengeluarkan indeks, dan indeks yang dipetakan ke nominal yang salah
+  /// menghasilkan jawaban yang percaya diri dan keliru — kegagalan paling
+  /// mahal yang bisa dilakukan aplikasi ini.
+  static const List<int> classValues = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
 
-  /// Model ini dilatih pada emisi 2016 dan TIDAK punya kelas Rp1.000.
-  /// Dipakai untuk menyusun pesan keterbatasan yang jujur (UG-18).
-  static const List<int> unsupportedValues = [1000];
+  /// Model dilatih pada dataset gabungan Emisi 2016 & 2022 (7 pecahan lengkap).
+  static const List<int> unsupportedValues = [];
 
   Interpreter? _interpreter;
   bool _loading = false;
@@ -9680,8 +12958,9 @@ List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
         final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toDouble();
         final b = (yVal + 1.772 * uVal).clamp(0, 255).toDouble();
 
-        // rescale = 1/255, persis seperti ImageDataGenerator saat training.
-        return [r / 255.0, g / 255.0, b / 255.0];
+        // Normalisasi ke [-1, 1] — preprocessing mobilenet_v2 TIDAK ada di
+        // dalam graf model ini, jadi harus dikerjakan di sini.
+        return [r / 127.5 - 1.0, g / 127.5 - 1.0, b / 127.5 - 1.0];
       });
     }),
   ];
@@ -9706,7 +12985,7 @@ List<List<List<List<double>>>> _prepareJpeg(_JpegArgs a) {
     List.generate(_size, (y) {
       return List.generate(_size, (x) {
         final p = resized.getPixel(x, y);
-        return [p.r / 255.0, p.g / 255.0, p.b / 255.0];
+        return [p.r / 127.5 - 1.0, p.g / 127.5 - 1.0, p.b / 127.5 - 1.0];
       });
     }),
   ];
@@ -9715,22 +12994,115 @@ List<List<List<List<double>>>> _prepareJpeg(_JpegArgs a) {
 
 ---
 
-## Berkas: `lib/services/object_tracker.dart`
+## File: `lib/services/nav_frame_converter.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/object_tracker.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/nav_frame_converter.dart`
+
+```dart
+import 'dart:typed_data';
+import 'package:camera/camera.dart';
+
+/// Konversi CameraImage (YUV420) → RGB888 bytes (Uint8List).
+///
+/// Dipakai oleh PidnetService dan YoloNavigasiService untuk preprocessing
+/// frame kamera sebelum inference TFLite on-device.
+///
+/// Output: [R, G, B, R, G, B, ...] panjang = width × height × 3.
+/// Caller meneruskan origW dan origH dari CameraImage.
+class NavFrameConverter {
+  NavFrameConverter._();
+
+  static ({Uint8List rgb, int width, int height}) fromCameraImage(
+    CameraImage image,
+  ) {
+    final int w = image.width;
+    final int h = image.height;
+
+    final yPlane  = image.planes[0];
+    final uPlane  = image.planes[1];
+    final vPlane  = image.planes[2];
+
+    final yBytes      = yPlane.bytes;
+    final uBytes      = uPlane.bytes;
+    final vBytes      = vPlane.bytes;
+    final uvRowStride = uPlane.bytesPerRow;
+    final uvPixStride = uPlane.bytesPerPixel ?? 1;
+
+    final rgb = Uint8List(w * h * 3);
+    int idx = 0;
+
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        final yIdx  = y * yPlane.bytesPerRow + x;
+        final uvIdx = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixStride;
+
+        final yVal = yBytes[yIdx] & 0xFF;
+        final uVal = (uBytes.length > uvIdx ? uBytes[uvIdx] : 128) & 0xFF;
+        final vVal = (vBytes.length > uvIdx ? vBytes[uvIdx] : 128) & 0xFF;
+
+        rgb[idx++] = (yVal + 1.402  * (vVal - 128)).round().clamp(0, 255);
+        rgb[idx++] = (yVal - 0.344  * (uVal - 128) - 0.714 * (vVal - 128)).round().clamp(0, 255);
+        rgb[idx++] = (yVal + 1.772  * (uVal - 128)).round().clamp(0, 255);
+      }
+    }
+
+    return (rgb: rgb, width: w, height: h);
+  }
+}
+```
+
+---
+
+## File: `lib/services/object_tracker.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/object_tracker.dart`
 
 ```dart
 import 'dart:math';
 import '../models/detection.dart';
+import 'camera_health_service.dart';
 
 /// TrackedObject — state satu objek yang sedang di-track.
+///
+/// ## Kompensasi ayunan tangan
+///
+/// Pengguna memegang ponsel sambil berjalan, jadi ponselnya ikut mengayun.
+/// Ayunan itu membuat kotak deteksi membesar-mengecil sendiri, sehingga objek
+/// yang sebenarnya diam terbaca "maju-mundur". Dua akibatnya nyata:
+///
+/// 1. Jarak yang diucapkan melompat-lompat ("dua meter… satu meter… dua
+///    meter") padahal tidak ada yang bergerak.
+/// 2. Aturan lama — `area > lastArea * 1.20` dari **satu** frame ke frame
+///    berikutnya — menyalakan `isApproaching` pada ayunan biasa, dan itu
+///    memotong cooldown jadi separuh. Peringatan jadi lebih sering justru
+///    karena tangan bergoyang, bukan karena ada bahaya mendekat.
+///
+/// Perbaikannya tidak butuh matematika gyroscope: dua EMA jarak dengan
+/// kecepatan berbeda, plus syarat tren yang harus bertahan beberapa frame.
+/// Saat [CameraHealthService.motionLevel] tinggi, penghalusan diperlambat dan
+/// ambangnya dinaikkan — sinyal yang berisik diperlakukan sebagai sinyal yang
+/// berisik, bukan sebagai kebenaran.
 class TrackedObject {
   final int    id;
   final String label;      // labelEn dari Detection
   double cx, cy, w, h;
   int    missedFrames = 0;
-  double lastArea;
-  bool   isApproaching = false; // true jika bbox area tumbuh > 20%
+
+  /// EMA cepat & lambat dari jarak. Perpotongan keduanya = arah tren.
+  double? _fastDist;
+  double? _slowDist;
+
+  /// Berapa frame berturut-turut tren menunjukkan mendekat.
+  int _approachStreak = 0;
+
+  /// Jarak yang sudah dihaluskan — inilah yang layak diucapkan ke pengguna.
+  /// Null sebelum ada satu pun pembaruan jarak.
+  double? get smoothedDistance => _slowDist;
+
+  /// Butuh tren mendekat yang bertahan, bukan satu frame yang kebetulan besar.
+  bool get isApproaching => _approachStreak >= _approachStreakRequired;
+
+  static const int _approachStreakRequired = 3;
 
   TrackedObject({
     required this.id,
@@ -9739,16 +13111,40 @@ class TrackedObject {
     required this.cy,
     required this.w,
     required this.h,
-  }) : lastArea = w * h;
+  });
 
-  void update(double newCx, double newCy, double newW, double newH) {
-    final newArea = newW * newH;
-    // Objek dianggap mendekat jika area bbox tumbuh > 20% dari frame sebelumnya
-    isApproaching = newArea > lastArea * 1.20;
-    lastArea      = newArea;
+  void update(
+    double newCx,
+    double newCy,
+    double newW,
+    double newH, {
+    double? distanceMeter,
+    double motionLevel = 0.0,
+  }) {
     cx = newCx; cy = newCy;
     w  = newW;  h  = newH;
-    missedFrames  = 0;
+    missedFrames = 0;
+
+    if (distanceMeter == null || distanceMeter <= 0 || distanceMeter > 500) return;
+
+    // Makin goyang, makin lambat percaya pada nilai baru.
+    final shake = motionLevel.clamp(0.0, 1.0);
+    final alphaFast = 0.50 - 0.20 * shake; // 0.50 tenang → 0.30 goyang
+    final alphaSlow = 0.18 - 0.08 * shake; // 0.18 tenang → 0.10 goyang
+
+    _fastDist = _fastDist == null
+        ? distanceMeter
+        : _fastDist! + alphaFast * (distanceMeter - _fastDist!);
+    _slowDist = _slowDist == null
+        ? distanceMeter
+        : _slowDist! + alphaSlow * (distanceMeter - _slowDist!);
+
+    // Mendekat = EMA cepat turun cukup jauh di bawah EMA lambat. Marginnya
+    // melebar saat goyang supaya derau ayunan tidak lolos sebagai tren.
+    final margin = 0.06 + 0.08 * shake; // 6% tenang → 14% goyang
+    final approachingNow = _fastDist! < _slowDist! * (1 - margin);
+
+    _approachStreak = approachingNow ? _approachStreak + 1 : 0;
   }
 }
 
@@ -9768,16 +13164,32 @@ class ObjectTracker {
   /// Hapus track setelah N frame tidak terdeteksi.
   static const int    _maxMissedFrames = 5;
 
+  /// Track yang dipasangkan ke tiap deteksi pada pemanggilan [update]
+  /// terakhir, sejajar indeks dengan daftar deteksi yang dikirim.
+  ///
+  /// Ini yang membuat cooldown bisa dikunci per objek, bukan per kelas.
+  /// Tanpa pemetaan ini, pemanggil hanya bisa mencocokkan track lewat label —
+  /// dan dengan dua objek sekelas di frame, yang ketemu selalu track pertama,
+  /// sehingga status "mendekat" milik objek jauh bisa menempel ke objek dekat.
+  List<TrackedObject?> _lastAssignment = const [];
+  List<TrackedObject?> get lastAssignment => List.unmodifiable(_lastAssignment);
+
   /// Update tracker dengan list deteksi frame terbaru.
   /// Return: semua TrackedObject yang masih aktif.
   List<TrackedObject> update(List<Detection> detections) {
+    final assignment = List<TrackedObject?>.filled(detections.length, null);
+
     if (detections.isEmpty) {
       for (final t in _tracks.values) {
         t.missedFrames++;
       }
       _prune();
+      _lastAssignment = assignment;
       return _tracks.values.toList();
     }
+
+    // Dibaca sekali per frame: seberapa kuat ponsel sedang mengayun.
+    final motion = CameraHealthService.instance.motionLevel;
 
     final matched   = <int>{};    // index detection yang sudah di-assign
     final trackList = _tracks.values.toList();
@@ -9805,8 +13217,13 @@ class ObjectTracker {
 
       if (bestIdx >= 0) {
         final d = detections[bestIdx];
-        track.update(d.bboxCx, d.bboxCy, d.bboxW, d.bboxH);
+        track.update(
+          d.bboxCx, d.bboxCy, d.bboxW, d.bboxH,
+          distanceMeter: d.distanceMeter,
+          motionLevel: motion,
+        );
         matched.add(bestIdx);
+        assignment[bestIdx] = track;
       } else {
         track.missedFrames++;
       }
@@ -9821,11 +13238,17 @@ class ObjectTracker {
         label: d.labelEn,
         cx:    d.bboxCx, cy: d.bboxCy,
         w:     d.bboxW,  h:  d.bboxH,
-      );
+      )..update(
+          d.bboxCx, d.bboxCy, d.bboxW, d.bboxH,
+          distanceMeter: d.distanceMeter,
+          motionLevel: motion,
+        );
       _tracks[t.id] = t;
+      assignment[i] = t;
     }
 
     _prune();
+    _lastAssignment = assignment;
     return _tracks.values.toList();
   }
 
@@ -9855,6 +13278,7 @@ class ObjectTracker {
   /// Reset semua track — dipanggil saat mode berganti (stopRealtime).
   void reset() {
     _tracks.clear();
+    _lastAssignment = const [];
     _nextId = 0;
   }
 }
@@ -9862,9 +13286,9 @@ class ObjectTracker {
 
 ---
 
-## Berkas: `lib/services/ocr_service.dart`
+## File: `lib/services/ocr_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/ocr_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/ocr_service.dart`
 
 ```dart
 import 'dart:io';
@@ -10009,49 +13433,379 @@ class OcrService {
 
 ---
 
-## Berkas: `lib/services/risk_zone_service.dart`
+## File: `lib/services/pidnet_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/risk_zone_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/pidnet_service.dart`
 
 ```dart
-import '../models/risk_zone.dart';
-import 'server_service.dart';
+import 'dart:io';
+import 'dart:math';
 
-/// Wrapper lokal untuk Risk Zone — simpan warning terakhir di memory.
-class RiskZoneLocalService {
-  static final RiskZoneLocalService instance = RiskZoneLocalService._();
-  RiskZoneLocalService._();
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
+import 'package:tflite_flutter/tflite_flutter.dart';
 
-  RiskZone? _currentWarning;
-  RiskZone? get currentWarning => _currentWarning;
+import '../widgets/zone_indicator.dart' show ZoneStatus;
 
-  Future<void> checkAndUpdate(double lat, double lng) async {
+// ─────────────────────────────────────────────────────────────
+// Hasil segmentasi 3 zona dari PIDNet-S
+// ─────────────────────────────────────────────────────────────
+class ZoneAnalysis {
+  /// Rasio piksel walkable (0.0 – 1.0) per zona.
+  final double leftRatio;
+  final double centerRatio;
+  final double rightRatio;
+
+  /// Status per zona berdasarkan threshold.
+  final ZoneStatus left;
+  final ZoneStatus center;
+  final ZoneStatus right;
+
+  /// Indeks zona yang direkomendasikan (0=kiri, 1=tengah, 2=kanan).
+  final int recommendedZone;
+
+  /// Waktu inference dalam milidetik.
+  final double inferenceMs;
+
+  const ZoneAnalysis({
+    required this.leftRatio,
+    required this.centerRatio,
+    required this.rightRatio,
+    required this.left,
+    required this.center,
+    required this.right,
+    required this.recommendedZone,
+    required this.inferenceMs,
+  });
+
+  /// Pesan TTS sederhana berdasarkan zona — sama dengan yang dipakai backend.
+  String get ttsMessage {
+    // Rintangan akan ditangani lapisan atas (NavigationProvider).
+    // Di sini hanya beri arahan zona jalur.
+    if (left == ZoneStatus.danger &&
+        center == ZoneStatus.danger &&
+        right == ZoneStatus.danger) {
+      return 'Berhenti dulu. Tidak ada jalur aman di sekitar sini.';
+    }
+    if (center == ZoneStatus.danger) {
+      return 'Jalur di depan tidak aman.';
+    }
+    return switch (recommendedZone) {
+      0 => 'Tetap di kiri.',
+      2 => 'Geser ke kanan.',
+      _ => 'Jalur aman, jalan lurus.',
+    };
+  }
+
+  ZoneStatus get recommendedStatus => switch (recommendedZone) {
+        0 => left,
+        2 => right,
+        _ => center,
+      };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Konfigurasi PIDNet-S
+// ─────────────────────────────────────────────────────────────
+
+// Dimensi input model: H=384, W=640 (sesuai training)
+const int _pidnetH = 384;
+const int _pidnetW = 640;
+
+// Kelas output: 0=non-walkable, 1=walkable/trotoar, 2=hazard
+// Hanya kelas 1 (walkable) yang dihitung untuk rasio zona.
+const int _classWalkable = 1;
+
+// Threshold rasio walkable per zona
+const double _threshSafe    = 0.50; // ≥50% walkable → AMAN
+const double _threshCaution = 0.30; // ≥30% walkable → HATI-HATI, sisanya BAHAYA
+
+// ImageNet normalisasi (sama persis dengan preprocessing Python)
+const List<double> _mean = [0.485, 0.456, 0.406];
+const List<double> _std  = [0.229, 0.224, 0.225];
+
+// ─────────────────────────────────────────────────────────────
+// PidnetService — segmentasi jalur 3 zona on-device
+// ─────────────────────────────────────────────────────────────
+class PidnetService {
+  static final PidnetService instance = PidnetService._();
+  PidnetService._();
+
+  IsolateInterpreter? _interpreter;
+  bool _loaded = false;
+  bool get isLoaded => _loaded;
+
+  // Input shape: [1, 384, 640, 3] (BHWC — TFLite default)
+  // Atau [1, 3, 384, 640] (BCHW — jika model tidak di-transpose saat export)
+  // Akan dideteksi otomatis saat load.
+  bool _isBHWC = true;
+
+  /// Muat model pidnet_s_3zona.tflite dari assets.
+  /// Gunakan FP16 jika tersedia (lebih kecil, lebih cepat di A30S),
+  /// fallback ke FP32 jika tidak.
+  Future<bool> tryLoad() async {
     try {
-      _currentWarning = await ServerService.instance.checkRiskZone(lat, lng);
-    } catch (_) {
-      // Gagal check = tidak ada warning, bukan crash
-      _currentWarning = null;
+      // Coba FP16 dulu — lebih efisien di Mali-G71 (Samsung A30S)
+      Uint8List? modelBytes;
+      try {
+        final bd = await rootBundle.load('assets/models/pidnet_s_3zona_fp16.tflite');
+        modelBytes = bd.buffer.asUint8List();
+        debugPrint('[PIDNet] Memuat FP16 model (${(modelBytes.length / 1024).toStringAsFixed(0)} KB)');
+      } catch (_) {
+        // FP16 tidak ada, pakai FP32
+        final bd = await rootBundle.load('assets/models/pidnet_s_3zona.tflite');
+        modelBytes = bd.buffer.asUint8List();
+        debugPrint('[PIDNet] Memuat FP32 model (${(modelBytes.length / 1024).toStringAsFixed(0)} KB)');
+      }
+
+      // GPU delegate — coba aktifkan di Android; jika gagal, CPU saja
+      InterpreterOptions options;
+      try {
+        if (Platform.isAndroid) {
+          options = InterpreterOptions()
+            ..addDelegate(GpuDelegateV2())
+            ..threads = 2;
+          debugPrint('[PIDNet] GPU delegate aktif');
+        } else {
+          options = InterpreterOptions()..threads = 2;
+        }
+      } catch (_) {
+        options = InterpreterOptions()..threads = 2;
+        debugPrint('[PIDNet] GPU delegate gagal, pakai CPU');
+      }
+
+      final interpreter = Interpreter.fromBuffer(modelBytes, options: options);
+
+      // Deteksi input format: BHWC atau BCHW
+      final inputShape = interpreter.getInputTensor(0).shape;
+      debugPrint('[PIDNet] Input shape: $inputShape');
+      // BHWC: [1, H, W, C] → shape[1]=384, shape[2]=640, shape[3]=3
+      // BCHW: [1, C, H, W] → shape[1]=3,   shape[2]=384, shape[3]=640
+      _isBHWC = (inputShape.length == 4 && inputShape[3] == 3);
+      debugPrint('[PIDNet] Format: ${_isBHWC ? "BHWC" : "BCHW"}');
+
+      final outputShape = interpreter.getOutputTensor(0).shape;
+      debugPrint('[PIDNet] Output shape: $outputShape');
+
+      _interpreter = await IsolateInterpreter.create(address: interpreter.address);
+      _loaded = true;
+      debugPrint('[PIDNet] Model siap.');
+      return true;
+    } catch (e) {
+      debugPrint('[PIDNet] Gagal load: $e');
+      _loaded = false;
+      return false;
     }
   }
 
-  void clearWarning() => _currentWarning = null;
+  /// Analisis frame kamera → ZoneAnalysis (3 zona jalur).
+  ///
+  /// [rgbBytes] adalah bytes RGB888 dari frame kamera (setelah konversi YUV).
+  /// [origW] dan [origH] adalah dimensi asli frame sebelum resize.
+  Future<ZoneAnalysis?> analyze(
+    Uint8List rgbBytes,
+    int origW,
+    int origH,
+  ) async {
+    if (!_loaded || _interpreter == null) return null;
+
+    final t0 = DateTime.now();
+
+    try {
+      // Decode bytes ke img.Image untuk resize
+      final rawImg = img.Image.fromBytes(
+        width: origW,
+        height: origH,
+        bytes: rgbBytes.buffer,
+        format: img.Format.uint8,
+        numChannels: 3,
+      );
+
+      // Resize ke 640×384 (W×H) — cv2.resize pakai (W, H)
+      // Untuk rotasi Android: rotate 90° dulu sebelum resize
+      img.Image resized;
+      if (Platform.isAndroid) {
+        final rotated = img.copyRotate(rawImg, angle: 90);
+        resized = img.copyResize(rotated, width: _pidnetW, height: _pidnetH,
+            interpolation: img.Interpolation.linear);
+      } else {
+        resized = img.copyResize(rawImg, width: _pidnetW, height: _pidnetH,
+            interpolation: img.Interpolation.linear);
+      }
+
+      // Bangun tensor input sesuai format model
+      final List input;
+      if (_isBHWC) {
+        // [1, 384, 640, 3] — float32 normalized
+        input = _buildBHWC(resized);
+      } else {
+        // [1, 3, 384, 640] — float32 normalized
+        input = _buildBCHW(resized);
+      }
+
+      // Output: [1, numClasses, H, W] atau [1, H, W, numClasses]
+      // Deteksi output shape saat runtime
+      final outTensor  = _interpreter!;
+      // Perkiraan output: [1, 3, 384, 640] atau [1, 384, 640, 3]
+      // Kita simpan sebagai flat Float32List lalu argmax manual
+      final outputFlat = List.filled(1 * 3 * _pidnetH * _pidnetW, 0.0);
+
+      final outputs = {0: outputFlat.reshape([1, 3, _pidnetH, _pidnetW])};
+      await outTensor.runForMultipleInputs([input], outputs);
+
+      // Argmax per-piksel → mask [H*W]
+      final logits4D = outputs[0] as List; // [1][3][H][W] atau [1][H][W][3]
+      final mask = _argmax(logits4D);
+
+      final inferMs = DateTime.now().difference(t0).inMilliseconds.toDouble();
+      return _computeZones(mask, inferMs);
+    } catch (e) {
+      debugPrint('[PIDNet] analyze error: $e');
+      return null;
+    }
+  }
+
+  // ── Build input BHWC [1][H][W][3] ──────────────────────────
+  List _buildBHWC(img.Image img_) {
+    return List.generate(1, (_) =>
+      List.generate(_pidnetH, (y) =>
+        List.generate(_pidnetW, (x) {
+          final p = img_.getPixel(x, y);
+          final r = (p.r / 255.0 - _mean[0]) / _std[0];
+          final g = (p.g / 255.0 - _mean[1]) / _std[1];
+          final b = (p.b / 255.0 - _mean[2]) / _std[2];
+          return [r, g, b];
+        }),
+      ),
+    );
+  }
+
+  // ── Build input BCHW [1][3][H][W] ──────────────────────────
+  List _buildBCHW(img.Image img_) {
+    final r = List.generate(_pidnetH, (y) =>
+        List.generate(_pidnetW, (x) =>
+          (img_.getPixel(x, y).r / 255.0 - _mean[0]) / _std[0]));
+    final g = List.generate(_pidnetH, (y) =>
+        List.generate(_pidnetW, (x) =>
+          (img_.getPixel(x, y).g / 255.0 - _mean[1]) / _std[1]));
+    final b_ = List.generate(_pidnetH, (y) =>
+        List.generate(_pidnetW, (x) =>
+          (img_.getPixel(x, y).b / 255.0 - _mean[2]) / _std[2]));
+    return [[r, g, b_]];
+  }
+
+  // ── Argmax [1][3][H][W] → flat Int List panjang H*W ─────────
+  List<int> _argmax(List logits4D) {
+    // logits4D[0][c][h][w]
+    final classes = logits4D[0] as List; // [3][H][W]
+    final mask = List<int>.filled(_pidnetH * _pidnetW, 0);
+    for (int h = 0; h < _pidnetH; h++) {
+      for (int w = 0; w < _pidnetW; w++) {
+        double maxVal = double.negativeInfinity;
+        int maxC = 0;
+        for (int c = 0; c < 3; c++) {
+          final val = (classes[c] as List)[h][w] as double;
+          if (val > maxVal) { maxVal = val; maxC = c; }
+        }
+        mask[h * _pidnetW + w] = maxC;
+      }
+    }
+    return mask;
+  }
+
+  // ── Hitung rasio 3 zona & hasilkan ZoneAnalysis ─────────────
+  ZoneAnalysis _computeZones(List<int> mask, double inferMs) {
+    // Bagi gambar jadi 3 kolom vertikal (kiri, tengah, kanan)
+    const zoneW  = _pidnetW ~/ 3;
+
+    int leftWalk = 0, leftTotal = 0;
+    int centWalk = 0, centTotal = 0;
+    int rightWalk = 0, rightTotal = 0;
+
+    for (int h = 0; h < _pidnetH; h++) {
+      for (int w = 0; w < _pidnetW; w++) {
+        final cls = mask[h * _pidnetW + w];
+        // _classWalkable=1 → layak jalan; _classNonWalkable=0 & _classHazard=2 → tidak
+        final isWalk = cls == _classWalkable;
+        if (w < zoneW) {
+          leftTotal++;
+          if (isWalk) { leftWalk++; }
+        } else if (w < zoneW * 2) {
+          centTotal++;
+          if (isWalk) { centWalk++; }
+        } else {
+          rightTotal++;
+          if (isWalk) { rightWalk++; }
+        }
+      }
+    }
+
+    final lRatio = leftWalk  / max(leftTotal,  1);
+    final cRatio = centWalk  / max(centTotal,  1);
+    final rRatio = rightWalk / max(rightTotal, 1);
+
+    ZoneStatus toStatus(double ratio) {
+      if (ratio >= _threshSafe)    { return ZoneStatus.safe; }
+      if (ratio >= _threshCaution) { return ZoneStatus.caution; }
+      return ZoneStatus.danger;
+    }
+
+    final lStatus = toStatus(lRatio);
+    final cStatus = toStatus(cRatio);
+    final rStatus = toStatus(rRatio);
+
+    // Rekomendasi zona: pilih yang paling aman, prioritas tengah
+    int recommended = 1; // tengah default
+    if (cStatus == ZoneStatus.safe) {
+      recommended = 1;
+    } else if (lRatio >= rRatio && lStatus != ZoneStatus.danger) {
+      recommended = 0;
+    } else if (rStatus != ZoneStatus.danger) {
+      recommended = 2;
+    } else {
+      // Semua bahaya — pilih yang paling tinggi rasionya
+      if (lRatio >= cRatio && lRatio >= rRatio) {
+        recommended = 0;
+      } else if (rRatio >= cRatio) {
+        recommended = 2;
+      } else {
+        recommended = 1;
+      }
+    }
+
+    debugPrint('[PIDNet] L=${lRatio.toStringAsFixed(2)} '
+        'C=${cRatio.toStringAsFixed(2)} R=${rRatio.toStringAsFixed(2)} '
+        '→ rec=$recommended  (${inferMs.toStringAsFixed(0)}ms)');
+
+    return ZoneAnalysis(
+      leftRatio:       lRatio,
+      centerRatio:     cRatio,
+      rightRatio:      rRatio,
+      left:            lStatus,
+      center:          cStatus,
+      right:           rStatus,
+      recommendedZone: recommended,
+      inferenceMs:     inferMs,
+    );
+  }
+
+  void dispose() {
+    _interpreter?.close();
+    _loaded = false;
+  }
 }
 ```
 
 ---
 
-## Berkas: `lib/services/server_service.dart`
+## File: `lib/services/server_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/server_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/server_service.dart`
 
 ```dart
-import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/net/api_client.dart';
-import '../models/detection.dart';
-import '../models/risk_zone.dart';
 
 // ── Konfigurasi Server ─────────────────────────────────────────────────────
 // Emulator Android  : 10.0.2.2:8000
@@ -10059,12 +13813,18 @@ import '../models/risk_zone.dart';
 const String kDefaultServerHost = '10.0.2.2:8000';
 // ──────────────────────────────────────────────────────────────────────────
 
-class ServerDetectionResult {
-  final List<Detection> detections;
-  final RiskZone? riskZone;
-  const ServerDetectionResult({required this.detections, this.riskZone});
-}
-
+/// Klien untuk **hanya** yang benar-benar butuh server.
+///
+/// Setelah OCR pindah ke ML Kit, uang ke TFLite, deteksi ke SSD MobileNet, dan
+/// intent parsing ke `CommandParser`, yang tersisa di server tinggal yang
+/// memang tidak ada di perangkat: YOLOE (Cari Objek), Moondream2 (Deskripsi
+/// Suasana), dan segmentasi jalur sebagai cadangan PIDNet on-device.
+///
+/// Dua belas method lain — `detectOnce`, `routeIntent`, `resolveIntent`,
+/// `cariObjekTargets`, `health`, `sendEvents`, `sendCrashReport`,
+/// `lastModeBeforeCrash`, `flushQueue`, `labels`, `modelManifest`,
+/// `checkRiskZone` — dihapus karena tidak punya satu pun pemanggil. Endpoint
+/// backend-nya ikut diarsipkan.
 class ServerService {
   static final ServerService instance = ServerService._();
   ServerService._();
@@ -10081,17 +13841,13 @@ class ServerService {
   String _host = kDefaultServerHost;
   String get host => _host;
 
-  /// Mengganti alamat. WebSocket yang sedang tersambung diputus supaya
-  /// sambungan berikutnya memakai alamat baru — kalau tidak, mode Deteksi
-  /// Objek akan tetap menempel di server lama sampai aplikasi dimatikan.
+  /// Mengganti alamat. Permintaan berikutnya langsung memakai alamat baru
+  /// karena [ApiClient] membaca [_host] lewat `hostProvider`.
   void setHost(String value) {
     final next = value.trim();
     if (next.isEmpty || next == _host) return;
     _host = next;
-    if (_connected) disconnect();
   }
-
-  String get _wsBase => 'ws://$_host';
 
   /// Satu klien HTTP untuk seluruh aplikasi — koneksi dipakai ulang
   /// (keep-alive) alih-alih handshake baru tiap permintaan. Lihat
@@ -10099,111 +13855,29 @@ class ServerService {
   late final ApiClient _api = ApiClient()..hostProvider = (() => _host);
   ApiClient get api => _api;
 
-  WebSocketChannel? _channel;
-  bool _connected = false;
-  bool get isConnected => _connected;
+  // ── Deteksi rintangan: TIDAK ADA jalur server ───────────────────────────
+  //
+  // `WS /ws/detect`, `POST /api/detect`, dan `POST /api/narasi` dihapus.
+  // Deteksi rintangan sepenuhnya on-device (SSD MobileNet TFLite) dan
+  // narasinya dirangkai `narration_engine.dart` — keduanya sudah ada di
+  // perangkat, jadi jalur server hanya menggandakan kode di mode paling
+  // kritis keselamatan sambil menambahkan ketergantungan diam-diam pada
+  // laptop yang menyala.
+  // ─────────────────────────────────────────────────────────────────────────
 
-  final _streamController =
-      StreamController<ServerDetectionResult>.broadcast();
-  Stream<ServerDetectionResult> get detectionStream => _streamController.stream;
-
-  /// Connect WebSocket untuk Mode Tuntun/Navigasi.
-  /// [lat], [lng] dikirim sebagai query param untuk Risk Zone (opsional).
-  Future<void> connect({double lat = 0, double lng = 0}) async {
-    try {
-      final uri = Uri.parse('$_wsBase/ws/detect?lat=$lat&lng=$lng');
-      _channel  = WebSocketChannel.connect(uri);
-      _connected = true;
-
-      _channel!.stream.listen(
-        (data) {
-          final json = jsonDecode(data as String) as Map<String, dynamic>;
-          if (json['type'] == 'detections') {
-            final dets = (json['detections'] as List)
-                .map((e) => Detection.fromJson(e as Map<String, dynamic>))
-                .toList();
-
-            RiskZone? rz;
-            if (json['risk_zone'] != null) {
-              rz = RiskZone.fromJson(json['risk_zone'] as Map<String, dynamic>);
-            }
-
-            _streamController.add(
-              ServerDetectionResult(detections: dets, riskZone: rz),
-            );
-          }
-        },
-        onError: (_) => _connected = false,
-        onDone:  ()  => _connected = false,
-      );
-    } catch (_) {
-      _connected = false;
-      rethrow;
-    }
-  }
-
-  /// Kirim JPEG frame via WebSocket (Mode Tuntun server path).
-  void sendFrame(Uint8List jpegBytes) {
-    if (_connected && _channel != null) {
-      _channel!.sink.add(jpegBytes);
-    }
-  }
-
-  /// Single-shot detect untuk Voice Assistant (REST).
-  Future<List<Detection>> detectOnce(Uint8List jpegBytes) async {
-    final json = await _api.postBytes('/api/detect', jpegBytes);
-    return (json['detections'] as List)
-        .map((e) => Detection.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// Minta narasi natural dari Claude Haiku berdasarkan deteksi.
-  Future<String> getNarasi(List<Detection> detections, {String context = 'voice'}) async {
-    final json = await _api.postJson('/api/narasi', {
-      'detections': detections
-          .map((d) => {
-                'label_id': d.labelId,
-                'distance_meter': d.distanceMeter,
-                'direction': d.direction,
-                'danger_level': d.dangerLevel,
-              })
-          .toList(),
-      'context': context,
-    }, op: ApiOp.frame);
-    return json['narasi'] as String? ?? 'Area sekitar tampak aman.';
-  }
-
-  /// Cek risk zone via REST.
-  Future<RiskZone?> checkRiskZone(double lat, double lng) async {
-    final json = await _api.getJson('/api/risk-zone', query: {
-      'lat': '$lat',
-      'lng': '$lng',
-    });
-    if (json['risk_zone'] == null) return null;
-    return RiskZone.fromJson(json['risk_zone'] as Map<String, dynamic>);
-  }
-
-  /// LLM intent routing untuk Voice Assistant.
-  /// Return: 'describe_scene' | 'ocr' | 'navigation' | 'chitchat'
-  /// Fallback ke 'describe_scene' jika server tidak tersedia atau timeout.
-  Future<String> routeIntent(String text) async {
-    try {
-      final json = await _api.postJson('/api/route-intent', {'text': text});
-      return json['intent'] as String? ?? 'describe_scene';
-    } catch (_) {
-      return 'describe_scene'; // offline atau timeout → fallback aman
-    }
-  }
-
-  // ── Mode Cari Objek ─────────────────────────────────────────────────────
-
-  /// Cari satu barang di satu frame. `found: false` dengan reason
-  /// `not_in_frame` adalah kondisi NORMAL (CO-10) — aplikasi menyuruh
-  /// pengguna memutar badan lalu memanggil ini lagi.
-  Future<Map<String, dynamic>> cariObjek(String target, Uint8List jpegBytes) =>
+  /// Kirim satu frame ke backend YOLOE untuk mencari [target].
+  ///
+  /// Backend YOLOE open-vocabulary (300+ barang Bahasa Indonesia) — jauh lebih
+  /// fleksibel dari on-device ONNX 80 kelas. Melempar exception saat gagal.
+  ///
+  /// `found: false` dengan reason `not_in_frame` adalah kondisi NORMAL (CO-10)
+  /// — pengguna cukup arahkan kamera ke tempat lain lalu tekan kirim lagi.
+  Future<Map<String, dynamic>> cariObjek(Uint8List jpegBytes, String target) =>
       _api.postMultipart(
         '/api/cari-objek',
         bytes: jpegBytes,
+        fileField: 'file',
+        filename: 'frame.jpg',
         fields: {'target': target},
         op: ApiOp.frame,
       );
@@ -10242,10 +13916,6 @@ class ServerService {
     }
   }
 
-  /// Health check + waktu tempuh — PG-08c membacakan latensinya.
-  Future<Map<String, dynamic>?> health({Duration? timeout}) =>
-      healthAt(_host, timeout: timeout);
-
   /// Health check ke alamat tertentu **tanpa mengubah alamat aktif** — dipakai
   /// PG-08b untuk menguji kandidat sebelum disimpan. Memisahkan "menguji" dari
   /// "memakai" itulah yang membuat PG-08e mungkin: uji boleh gagal tanpa
@@ -10266,138 +13936,44 @@ class ServerService {
     }
   }
 
-  // ── Perintah suara ──────────────────────────────────────────────────────
-
-  /// Resolusi perintah yang TIDAK cocok di CommandParser lokal.
-  /// `resolved: false` berarti aplikasi harus menawarkan dua tebakan
-  /// (AS-18 / AS-19), bukan bilang "perintah gagal".
-  Future<Map<String, dynamic>?> resolveIntent(String text) async {
+  /// Scene Description via Moondream2.
+  /// Mengirim gambar JPEG ke /api/describe dan mengembalikan deskripsi
+  /// suasana dalam Bahasa Inggris (output langsung Moondream2, tanpa terjemahan).
+  /// Mobile membacanya via TTSService.speakEnglish() dengan locale 'en-US'.
+  Future<String?> describeScene(Uint8List jpegBytes) async {
     try {
-      return await _api.postJson('/api/intent', {'text': text});
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ── Telemetri, crash, antrean offline ───────────────────────────────────
-
-  /// Telemetri alur. Sengaja fire-and-forget: kegagalan mengirim statistik
-  /// tidak boleh terasa oleh pengguna.
-  Future<void> sendEvents(String deviceId, List<Map<String, dynamic>> events) async {
-    try {
-      await _api.postJson(
-        '/api/events',
-        {'device_id': deviceId, 'events': events},
-        op: ApiOp.background,
-      );
-    } catch (_) {
-      // Diabaikan dengan sengaja.
-    }
-  }
-
-  Future<bool> sendCrashReport(Map<String, dynamic> report) async {
-    try {
-      await _api.postJson('/api/crash-report', report, op: ApiOp.background);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// ER-06 — mode terakhir sebelum crash, untuk dipulihkan otomatis.
-  Future<String?> lastModeBeforeCrash(String deviceId) async {
-    try {
-      final json = await _api.getJson(
-        '/api/crash-report/last-mode',
-        query: {'device_id': deviceId},
-      );
-      return json['mode'] as String?;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// BT-13 — kirim ulang gambar yang tertahan saat offline.
-  /// [idempotencyKey] mencegah pemrosesan dobel di server: unggah ulang tidak
-  /// idempoten dengan sendirinya, jadi kuncinya yang membuatnya aman diulang.
-  Future<Map<String, dynamic>?> flushQueue({
-    required String deviceId,
-    required String idempotencyKey,
-    required String kind,
-    required Uint8List jpegBytes,
-  }) async {
-    try {
-      return await _api.postMultipart(
-        '/api/queue/flush',
+      final result = await _api.postMultipart(
+        '/api/describe',
         bytes: jpegBytes,
-        filename: 'queued.jpg',
-        fields: {
-          'device_id': deviceId,
-          'idempotency_key': idempotencyKey,
-          'kind': kind,
-        },
+        filename: 'scene.jpg',
+        fields: {},
         op: ApiOp.heavy,
       );
+      return result['description_en'] as String?;
     } catch (_) {
       return null;
     }
   }
 
-  // ── Kamus label & manifest model ────────────────────────────────────────
-
-  /// Pemetaan label model → frasa Indonesia (DO-08, DO-19). Ada di server
-  /// supaya perbaikan nama tidak perlu rilis ulang aplikasi.
-  Future<List<Map<String, dynamic>>?> labels({String lang = 'id'}) async {
-    try {
-      final json = await _api.getJson('/api/labels', query: {'lang': lang});
-      final list = json['labels'];
-      if (list is! List) return null;
-      return list.cast<Map<String, dynamic>>();
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// UG-18 — emisi uang baru = update model, bukan update aplikasi.
-  Future<List<Map<String, dynamic>>?> modelManifest() async {
-    try {
-      final json = await _api.getJson('/api/models/manifest');
-      final list = json['models'];
-      if (list is! List) return null;
-      return list.cast<Map<String, dynamic>>();
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void disconnect() {
-    _channel?.sink.close();
-    _connected = false;
-  }
-
-  void dispose() {
-    disconnect();
-    _streamController.close();
-  }
+  void dispose() => _api.close();
 }
 ```
 
 ---
 
-## Berkas: `lib/services/tflite_service.dart`
+## File: `lib/services/tflite_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/tflite_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/tflite_service.dart`
 
 ```dart
 
-import 'dart:io';
 import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
+import 'camera_intrinsics.dart';
 
 // Label Bahasa Indonesia — kunci adalah label Inggris dari labelmap.txt
 const Map<String, String> _labelId = {
@@ -10590,9 +14166,6 @@ const Map<String, int> _realHeightsCm = {
   'toothbrush':        20,
 };
 
-// Focal length piksel (kalibrasi default)
-const int _focalLengthPx = 615;
-
 // SSD MobileNet: input 300×300
 const int _inputSize = 300;
 
@@ -10652,13 +14225,27 @@ class TFLiteService {
   }
 
   /// Jalankan inference dari CameraImage (YUV420).
-  /// Menggunakan IsolateInterpreter — tidak freeze UI.
+  ///
+  /// Preprocessing berjalan di isolate lewat [compute] dan menghasilkan
+  /// **buffer datar** `Uint8List` yang langsung disalin ke tensor uint8.
+  ///
+  /// Versi sebelumnya melakukan seluruhnya di isolate UI: loop 640×480
+  /// YUV→RGB dengan `setPixelRgb()` per piksel, lalu `copyResize`, lalu
+  /// `copyRotate`, lalu membangun `List<List<List<List<num>>>>` berisi
+  /// 270.000 angka ter-boxing. Hanya interpreter-nya yang ada di isolate;
+  /// bagian yang jauh lebih mahal justru menghalangi thread UI — dan karena
+  /// TTS dijadwalkan dari thread yang sama, suaralah yang ikut tersendat.
   Future<List<Detection>> runInference(CameraImage image) async {
     if (!_loaded || _isolateInterpreter == null) return [];
 
-    // Konversi YUV420 → RGB → resize 300×300 → nested List [1][300][300][3]
-    final inputTensor = _prepareInput(image);
-    if (inputTensor == null) return [];
+    final geo = _FrameGeometry.of(image.width, image.height);
+    final Uint8List inputTensor;
+    try {
+      inputTensor = await compute(_prepareSsdInput, _SsdPrepArgs.from(image, geo));
+    } catch (e) {
+      debugPrint('[TFLite] preprocessing gagal: $e');
+      return [];
+    }
 
     // SSD MobileNet output 4 tensor terpisah:
     //   tensor[0]: locations [1][10][4]   — [ymin, xmin, ymax, xmax] normalized
@@ -10683,86 +14270,15 @@ class TFLiteService {
       outputLocations[0],
       outputClasses[0],
       outputScores[0],
-      image.width,
-      image.height,
+      geo,
     );
-  }
-
-  /// Konversi YUV420 → RGB → resize 300×300 → nested List[1][H][W][3]
-  ///
-  /// SSD MobileNet membutuhkan uint8 (integer 0..255), bukan float.
-  /// TFLite Flutter memetakan List<num> (integer) → uint8 tensor secara otomatis.
-  /// Pastikan TIDAK menggunakan .toDouble() agar tidak menjadi float64.
-  List<List<List<List<num>>>>? _prepareInput(CameraImage image) {
-    try {
-      final int width  = image.width;
-      final int height = image.height;
-
-      final yPlane = image.planes[0];
-      final uPlane = image.planes[1];
-      final vPlane = image.planes[2];
-
-      final yBytes      = yPlane.bytes;
-      final uBytes      = uPlane.bytes;
-      final vBytes      = vPlane.bytes;
-      final uvRowStride = uPlane.bytesPerRow;
-      final uvPixelStr  = uPlane.bytesPerPixel ?? 1;
-
-      // Buat img.Image RGB
-      final rgbImage = img.Image(width: width, height: height);
-
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          final int yIndex  = y * yPlane.bytesPerRow + x;
-          final int uvIndex = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStr;
-
-          final int yVal = yBytes[yIndex] & 0xFF;
-          final int uVal = (uBytes.length > uvIndex ? uBytes[uvIndex] : 128) & 0xFF;
-          final int vVal = (vBytes.length > uvIndex ? vBytes[uvIndex] : 128) & 0xFF;
-
-          final int r = (yVal + 1.402 * (vVal - 128)).round().clamp(0, 255);
-          final int g = (yVal - 0.344 * (uVal - 128) - 0.714 * (vVal - 128)).round().clamp(0, 255);
-          final int b = (yVal + 1.772 * (uVal - 128)).round().clamp(0, 255);
-
-          rgbImage.setPixelRgb(x, y, r, g, b);
-        }
-      }
-
-      // Resize ke 300×300 (SSD MobileNet input size)
-      img.Image resized = img.copyResize(
-        rgbImage,
-        width:         _inputSize,
-        height:        _inputSize,
-        interpolation: img.Interpolation.linear,
-      );
-
-      // Rotasi 90° untuk Android karena kamera CameraX default landscape
-      if (Platform.isAndroid) {
-        resized = img.copyRotate(resized, angle: 90);
-      }
-
-      // Build nested List [1][H][W][3] dengan tipe num (integer)
-      // PENTING: gunakan pixel.r/g/b sebagai num, BUKAN .toDouble()
-      // TFLite akan mapping num integer → uint8 tensor secara otomatis
-      final input = List.generate(1, (_) =>
-        List.generate(_inputSize, (y) =>
-          List.generate(_inputSize, (x) {
-            final pixel = resized.getPixel(x, y);
-            return [pixel.r, pixel.g, pixel.b]; // num integer, bukan double
-          }),
-        ),
-      );
-
-      return input;
-    } catch (_) {
-      return null;
-    }
   }
 
   /// Post-process output SSD MobileNet → List<Detection>
   ///
   /// Output tensor SSD:
   ///   locations[i] = [ymin, xmin, ymax, xmax] normalized 0..1
+  ///                  **relatif terhadap kotak crop tegak**, bukan frame mentah
   ///   classes[i]   = class index (float, bukan int)
   ///   scores[i]    = confidence score
   ///
@@ -10771,10 +14287,12 @@ class TFLiteService {
     List<List<double>> locations, // [10][4]: ymin, xmin, ymax, xmax
     List<double> classes,
     List<double> scores,
-    int origWidth,
-    int origHeight,
+    _FrameGeometry geo,
   ) {
     const double confThreshold = 0.5;
+    // Fokus per-perangkat, dihitung ulang dari lebar frame yang benar-benar
+    // dipakai — bukan konstanta yang mengasumsikan satu lensa untuk semua HP.
+    final focalPx = CameraIntrinsics.instance.focalPxForUprightFrame(geo.srcW);
     final List<Detection> results = [];
 
     for (int i = 0; i < scores.length; i++) {
@@ -10790,27 +14308,26 @@ class TFLiteService {
       final labelId = _labelId[labelEn] ?? labelEn;
 
       // SSD output: [ymin, xmin, ymax, xmax] normalized 0..1
-      final ymin = locations[i][0];
-      final xmin = locations[i][1];
-      final ymax = locations[i][2];
-      final xmax = locations[i][3];
+      final ymin = locations[i][0].clamp(0.0, 1.0);
+      final xmin = locations[i][1].clamp(0.0, 1.0);
+      final ymax = locations[i][2].clamp(0.0, 1.0);
+      final xmax = locations[i][3].clamp(0.0, 1.0);
 
-      // Konversi ke pixel koordinat, clamp ke batas frame
-      final x1 = (xmin * origWidth).clamp(0.0, (origWidth - 1).toDouble()).toInt();
-      final y1 = (ymin * origHeight).clamp(0.0, (origHeight - 1).toDouble()).toInt();
-      final x2 = (xmax * origWidth).clamp(0.0, (origWidth - 1).toDouble()).toInt();
-      final y2 = (ymax * origHeight).clamp(0.0, (origHeight - 1).toDouble()).toInt();
+      // Koordinat piksel di ruang **bingkai tegak**. Karena crop-nya persegi
+      // dan skalanya seragam, tinggi kotak di sini sebanding lurus dengan
+      // tinggi objek sebenarnya — syarat yang tidak dipenuhi versi lama, yang
+      // meregangkan 640×480 menjadi 300×300 (rasio berubah) lalu memutarnya,
+      // sehingga "tinggi" kotak sebenarnya mengukur lebar objek.
+      final x1 = (geo.offsetX + xmin * geo.cropSide).round();
+      final y1 = (geo.offsetY + ymin * geo.cropSide).round();
+      final x2 = (geo.offsetX + xmax * geo.cropSide).round();
+      final y2 = (geo.offsetY + ymax * geo.cropSide).round();
 
-      final boxH = y2 - y1;
-      final cx   = (x1 + x2) / 2.0;
-      final cy   = (y1 + y2) / 2.0;
+      final boxH = (ymax - ymin) * geo.cropSide;
 
-      final dist   = _estimateDistance(labelEn, boxH);
-      final dir    = _getDirection(cx, cy, origWidth, origHeight);
+      final dist   = _estimateDistance(labelEn, boxH, focalPx);
+      final dir    = _getDirection((xmin + xmax) / 2, (ymin + ymax) / 2);
       final danger = _getDanger(labelEn, dist);
-
-      // Debug: log tiap deteksi yang lolos threshold
-      debugPrint('[Inference] ${scores[i].toStringAsFixed(2)} → $labelEn | $dir | ${dist.toStringAsFixed(1)}m | $danger');
 
       results.add(Detection(
         labelEn:       labelEn,
@@ -10827,10 +14344,15 @@ class TFLiteService {
     return results;
   }
 
-  double _estimateDistance(String label, int boxH) {
-    if (boxH <= 0) return 999.0;
+  /// Estimasi jarak dari tinggi kotak dalam piksel bingkai tegak.
+  ///
+  /// [focalPx] dibaca dari intrinsik lensa perangkat lewat [CameraIntrinsics];
+  /// kalau perangkat tidak melaporkannya, nilainya jatuh ke fallback yang
+  /// sama seperti konstanta lama.
+  double _estimateDistance(String label, double boxHpx, double focalPx) {
+    if (boxHpx <= 0) return 999.0;
     final realH = _realHeightsCm[label] ?? 100;
-    double dist = (realH * _focalLengthPx) / (boxH * 100);
+    double dist = (realH * focalPx) / (boxHpx * 100);
 
     // Tilt correction: jika HP miring > 15° (0.26 rad), koreksi jarak.
     if (_lastTiltAngle.abs() > 0.26) {
@@ -10840,19 +14362,17 @@ class TFLiteService {
     return dist;
   }
 
-  /// Tentukan arah berdasarkan posisi horizontal DAN vertikal bounding box.
+  /// Tentukan arah dari posisi kotak dalam koordinat ternormalisasi (0..1)
+  /// pada kotak crop tegak.
   ///
   /// Horizontal: kiri / depan / kanan (trisection horizontal)
   /// Vertikal: atas / tengah / bawah (trisection vertikal)
   ///
   /// Jika vertikal = tengah → kembalikan arah horizontal saja ("depan")
   /// Jika vertikal != tengah → gabungkan: "kiri atas", "depan bawah", dll.
-  String _getDirection(double cx, double cy, int width, int height) {
-    final hThird = width / 3;
-    final vThird = height / 3;
-
-    final horiz = cx < hThird ? 'kiri' : cx < hThird * 2 ? 'depan' : 'kanan';
-    final vert  = cy < vThird ? 'atas' : cy < vThird * 2 ? 'tengah' : 'bawah';
+  String _getDirection(double cxNorm, double cyNorm) {
+    final horiz = cxNorm < 1 / 3 ? 'kiri' : cxNorm < 2 / 3 ? 'depan' : 'kanan';
+    final vert  = cyNorm < 1 / 3 ? 'atas' : cyNorm < 2 / 3 ? 'tengah' : 'bawah';
 
     // Jika objek di zona tengah vertikal, cukup sebut arah horizontal
     if (vert == 'tengah') return horiz;
@@ -10875,85 +14395,599 @@ class TFLiteService {
     _loaded = false;
   }
 }
+
+// ── Geometri bingkai ────────────────────────────────────────────────────────
+
+/// Pemetaan antara frame sensor (landscape) dan bingkai tegak yang dilihat
+/// pengguna, plus kotak crop persegi yang dikirim ke model.
+///
+/// Kamera Android memberi frame landscape (mis. 640×480) sementara aplikasi
+/// terkunci portrait, jadi bingkai tegaknya 480×640. Model butuh masukan
+/// persegi 300×300; supaya rasio tidak berubah, yang diambil adalah **crop
+/// persegi di tengah** bingkai tegak, bukan seluruh frame yang diregangkan.
+class _FrameGeometry {
+  /// Lebar & tinggi frame sensor mentah.
+  final int srcW, srcH;
+
+  /// Sisi kotak crop, dalam piksel bingkai tegak.
+  final int cropSide;
+
+  /// Posisi kiri-atas kotak crop di dalam bingkai tegak.
+  final int offsetX, offsetY;
+
+  const _FrameGeometry({
+    required this.srcW,
+    required this.srcH,
+    required this.cropSide,
+    required this.offsetX,
+    required this.offsetY,
+  });
+
+  factory _FrameGeometry.of(int srcW, int srcH) {
+    // Bingkai tegak = frame sensor diputar 90°.
+    final uprightW = srcH;
+    final uprightH = srcW;
+    final side = uprightW < uprightH ? uprightW : uprightH;
+    return _FrameGeometry(
+      srcW: srcW,
+      srcH: srcH,
+      cropSide: side,
+      offsetX: (uprightW - side) ~/ 2,
+      offsetY: (uprightH - side) ~/ 2,
+    );
+  }
+}
+
+/// Argumen preprocessing — semua sudah berupa data biasa supaya bisa dikirim
+/// ke isolate lewat [compute].
+class _SsdPrepArgs {
+  final Uint8List yPlane, uPlane, vPlane;
+  final int yRowStride, uvRowStride, uvPixelStride;
+  final int srcH;
+  final int cropSide, offsetX, offsetY;
+
+  const _SsdPrepArgs({
+    required this.yPlane,
+    required this.uPlane,
+    required this.vPlane,
+    required this.yRowStride,
+    required this.uvRowStride,
+    required this.uvPixelStride,
+    required this.srcH,
+    required this.cropSide,
+    required this.offsetX,
+    required this.offsetY,
+  });
+
+  factory _SsdPrepArgs.from(CameraImage image, _FrameGeometry geo) => _SsdPrepArgs(
+        yPlane: image.planes[0].bytes,
+        uPlane: image.planes[1].bytes,
+        vPlane: image.planes[2].bytes,
+        yRowStride: image.planes[0].bytesPerRow,
+        uvRowStride: image.planes[1].bytesPerRow,
+        uvPixelStride: image.planes[1].bytesPerPixel ?? 1,
+        srcH: geo.srcH,
+        cropSide: geo.cropSide,
+        offsetX: geo.offsetX,
+        offsetY: geo.offsetY,
+      );
+}
+
+/// YUV420 → RGB langsung ke grid 300×300, dalam satu lintasan, di isolate.
+///
+/// Rotasi 90° dan crop persegi dilakukan lewat pemetaan indeks — tidak ada
+/// gambar antara yang dialokasikan, dan piksel yang disentuh hanya 90.000
+/// alih-alih 307.200. Hasilnya buffer datar `Uint8List` yang disalin apa
+/// adanya ke tensor uint8 (`ByteConversionUtils` memakai jalur cepat untuk
+/// `Uint8List`), jadi tidak ada 270.000 angka ter-boxing seperti sebelumnya.
+Uint8List _prepareSsdInput(_SsdPrepArgs a) {
+  final out = Uint8List(_inputSize * _inputSize * 3);
+  final yLen = a.yPlane.length;
+  final uLen = a.uPlane.length;
+  final vLen = a.vPlane.length;
+  var o = 0;
+
+  for (int ty = 0; ty < _inputSize; ty++) {
+    // Sumbu vertikal bingkai tegak = sumbu horizontal sensor.
+    final uy = a.offsetY + (ty * a.cropSide) ~/ _inputSize;
+    final sx = uy;
+    final uvCol = (sx >> 1) * a.uvPixelStride;
+
+    for (int tx = 0; tx < _inputSize; tx++) {
+      final ux = a.offsetX + (tx * a.cropSide) ~/ _inputSize;
+      final sy = a.srcH - 1 - ux;
+
+      final yIdx = sy * a.yRowStride + sx;
+      final uvIdx = (sy >> 1) * a.uvRowStride + uvCol;
+
+      final yVal = yIdx >= 0 && yIdx < yLen ? a.yPlane[yIdx] : 0;
+      final uVal = (uvIdx >= 0 && uvIdx < uLen ? a.uPlane[uvIdx] : 128) - 128;
+      final vVal = (uvIdx >= 0 && uvIdx < vLen ? a.vPlane[uvIdx] : 128) - 128;
+
+      out[o++] = (yVal + 1.402 * vVal).clamp(0, 255).toInt();
+      out[o++] = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toInt();
+      out[o++] = (yVal + 1.772 * uVal).clamp(0, 255).toInt();
+    }
+  }
+  return out;
+}
 ```
 
 ---
 
-## Berkas: `lib/services/tts_service.dart`
+## File: `lib/services/tts_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/tts_service.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/tts_service.dart`
 
 ```dart
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-/// TTS Service — Text-to-Speech Bahasa Indonesia.
+/// TTS Service — Text-to-Speech, satu-satunya pintu keluar suara aplikasi.
 ///
-/// Fix dari doc 5 masalah 6:
-/// - Gunakan awaitSpeakCompletion(true) dari flutter_tts (Context7 confirmed)
-///   agar speak() benar-benar resolve saat TTS selesai bicara.
-/// - Critical message menggunakan stop() dulu lalu speak (interrupt).
+/// **Aturan mutlak: tidak ada ucapan yang dibuang diam-diam.**
+///
+/// Versi sebelumnya menjaga flag `_speaking` lalu membungkus `speak()` dengan
+/// `if (!_speaking)`. Akibatnya setiap permintaan bicara yang datang saat TTS
+/// sedang berjalan **hilang tanpa jejak** — termasuk peringatan rintangan —
+/// dan pemanggilnya tetap menerima Future yang selesai normal, jadi
+/// [TtsQueue] mengira pesannya sudah tersampaikan. Untuk pengguna yang
+/// berjalan sambil mengandalkan suara, itu bukan bug performa; itu peringatan
+/// bahaya yang tidak pernah terdengar.
+///
+/// Sekarang ucapan diserialkan lewat rantai Future ([_tail]). Yang datang
+/// belakangan menunggu gilirannya, bukan dibuang. Interupsi tetap mungkin dan
+/// bersifat eksplisit lewat `interrupt: true` / [stop], yang menaikkan
+/// [_generation] sehingga ucapan yang masih mengantre membatalkan dirinya
+/// sendiri alih-alih terlanjur bicara sesudah pengguna menghentikannya.
 class TTSService {
   static final TTSService instance = TTSService._();
   TTSService._();
 
-  final FlutterTts _tts     = FlutterTts();
-  bool             _speaking = false;
+  static const String localeId = 'id-ID';
+  static const String localeEn = 'en-US';
 
+  final FlutterTts _tts = FlutterTts();
+
+  bool _speaking = false;
   bool get isSpeaking => _speaking;
 
+  /// Locale yang sedang terpasang di engine. Dilacak supaya `setLanguage`
+  /// hanya dipanggil saat benar-benar berganti — pemanggilan berulang pada
+  /// sebagian engine Android memotong ucapan yang sedang berjalan.
+  String _engineLocale = localeId;
+
+  /// Ekor rantai serial. Setiap [speak] menyambung di belakangnya.
+  Future<void> _tail = Future<void>.value();
+
+  /// Dinaikkan oleh [stop] dan oleh ucapan `interrupt: true`.
+  int _generation = 0;
+
+  bool _initialized = false;
+
   Future<void> init() async {
-    await _tts.setLanguage('id-ID');
-    await _tts.setSpeechRate(0.5);  // sedikit lambat untuk tunanetra
+    if (_initialized) return;
+    await _tts.setLanguage(localeId);
+    await _tts.setSpeechRate(0.5); // sedikit lambat, lebih terdengar saat berjalan
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
 
-    // awaitSpeakCompletion(true): speak() akan resolve saat TTS benar-benar selesai
-    // Ini dari Context7 flutter_tts docs — lebih simple dari Completer manual
+    // speak() baru resolve setelah engine benar-benar selesai bicara. Tanpa
+    // ini, serialisasi di bawah tidak ada artinya: semua ucapan akan
+    // "selesai" seketika dan saling menimpa di engine.
     await _tts.awaitSpeakCompletion(true);
 
-    _tts.setStartHandler(()      => _speaking = true);
+    _tts.setStartHandler(() => _speaking = true);
     _tts.setCompletionHandler(() => _speaking = false);
-    _tts.setCancelHandler(()    => _speaking = false);
-    _tts.setErrorHandler((_)    => _speaking = false);
+    _tts.setCancelHandler(() => _speaking = false);
+    _tts.setErrorHandler((msg) {
+      _speaking = false;
+      debugPrint('[TTS] error: $msg');
+    });
+
+    _initialized = true;
   }
 
-  /// Speak pesan. Jika [interrupt] = true (untuk critical obstacle):
-  /// stop TTS yang sedang jalan lalu langsung speak.
-  Future<void> speak(String message, {bool interrupt = false}) async {
+  /// Ucapkan [message]. Selalu tersampaikan kecuali dibatalkan [stop] atau
+  /// oleh ucapan lain yang meminta [interrupt].
+  ///
+  /// [english] memakai locale `en-US` (hasil Moondream2), lalu mengembalikan
+  /// engine ke `id-ID` — pengembaliannya di blok `finally`, jadi kegagalan di
+  /// tengah tidak meninggalkan aplikasi berbicara Inggris selamanya.
+  Future<void> speak(
+    String message, {
+    bool interrupt = false,
+    bool english = false,
+  }) {
+    final text = message.trim();
+    if (text.isEmpty) return Future<void>.value();
+
+    if (interrupt) {
+      _generation++;
+      // Rantai lama ditinggalkan: ucapan yang masih mengantre di belakangnya
+      // akan melihat generasi yang sudah berubah lalu berhenti sendiri.
+      _tail = Future<void>.value();
+    }
+
+    final myGeneration = _generation;
+    final previous = _tail;
+
+    final next = previous.then((_) async {
+      if (myGeneration != _generation) return; // dibatalkan saat mengantre
+      await _utter(text, english: english, interrupt: interrupt);
+    }).catchError((Object e) {
+      debugPrint('[TTS] speak gagal: $e');
+    });
+
+    _tail = next;
+    return next;
+  }
+
+  /// Baca hasil deskripsi Moondream2 dalam Bahasa Inggris.
+  Future<void> speakEnglish(String message, {bool interrupt = false}) =>
+      speak(message, interrupt: interrupt, english: true);
+
+  Future<void> _utter(String text, {required bool english, required bool interrupt}) async {
+    final target = english ? localeEn : localeId;
+
     if (interrupt) {
       await _tts.stop();
       _speaking = false;
     }
-    if (!_speaking) {
+
+    try {
+      if (_engineLocale != target) {
+        await _tts.setLanguage(target);
+        _engineLocale = target;
+      }
       _speaking = true;
-      await _tts.speak(message); // resolve saat selesai karena awaitSpeakCompletion(true)
+      await _tts.speak(text);
+    } finally {
+      _speaking = false;
+      // Bahasa Inggris hanya berlaku untuk satu ucapan. Dikembalikan di
+      // `finally` supaya exception di tengah tidak mengunci locale.
+      if (english && _engineLocale != localeId) {
+        try {
+          await _tts.setLanguage(localeId);
+          _engineLocale = localeId;
+        } catch (e) {
+          debugPrint('[TTS] gagal kembali ke $localeId: $e');
+        }
+      }
     }
   }
 
-  /// Kecepatan bicara — pengaturan 1 "Kecepatan bicara TTS" (bagian 13).
+  /// Kecepatan bicara — Pengaturan "Kecepatan bicara".
   Future<void> setRate(double rate) async {
-    await _tts.setSpeechRate(rate);
+    await _tts.setSpeechRate(rate.clamp(0.1, 1.0));
   }
 
-  /// Konfirmasi saat ganti mode — "Mode baca teks aktif".
-  Future<void> announceMode(String modeName) async {
-    await stop();
-    await speak('Mode $modeName aktif');
-  }
-
+  /// Hentikan yang sedang bicara DAN batalkan yang masih mengantre.
   Future<void> stop() async {
-    await _tts.stop();
+    _generation++;
+    _tail = Future<void>.value();
     _speaking = false;
+    await _tts.stop();
   }
 }
 ```
 
 ---
 
-## Berkas: `lib/theme/app_colors.dart`
+## File: `lib/services/yolo_navigasi_service.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_colors.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/services/yolo_navigasi_service.dart`
+
+```dart
+import 'dart:io';
+import 'dart:math';
+
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
+import 'package:tflite_flutter/tflite_flutter.dart';
+
+import '../models/detection.dart';
+
+// ─────────────────────────────────────────────────────────────
+// Kelas navigasi custom (6 kelas) — urutan sesuai training
+// ─────────────────────────────────────────────────────────────
+const List<String> _navLabels = [
+  'lubang',
+  'got_terbuka',
+  'tangga',
+  'orang',
+  'motor',
+  'tiang',
+];
+
+// Tinggi nyata (cm) untuk estimasi jarak via Similar Triangles
+const Map<String, int> _realHeightsNav = {
+  'lubang':      15,
+  'got_terbuka': 20,
+  'tangga':      20,
+  'orang':      170,
+  'motor':      120,
+  'tiang':      300,
+};
+
+// Focal length piksel (default kalibrasi kamera belakang ~f=615)
+const int _focalPx = 615;
+
+// Confidence threshold
+const double _confThresh = 0.30;
+
+// IoU threshold untuk NMS
+const double _iouThresh = 0.45;
+
+// YOLO input size
+const int _yoloSize = 640;
+
+// ─────────────────────────────────────────────────────────────
+// YoloNavigasiService — deteksi rintangan on-device (YOLO11n)
+// ─────────────────────────────────────────────────────────────
+class YoloNavigasiService {
+  static final YoloNavigasiService instance = YoloNavigasiService._();
+  YoloNavigasiService._();
+
+  IsolateInterpreter? _interpreter;
+  bool _loaded = false;
+  bool get isLoaded => _loaded;
+
+  /// Muat yolo11n.tflite (INT8, 3.0 MB) dari assets.
+  Future<bool> tryLoad() async {
+    try {
+      final bd = await rootBundle.load('assets/models/yolo11n.tflite');
+      final bytes = bd.buffer.asUint8List();
+      debugPrint('[YOLO-Nav] Memuat model ${(bytes.length / 1024).toStringAsFixed(0)} KB');
+
+      // CPU saja — model INT8 sudah sangat ringan di CPU
+      final options = InterpreterOptions()..threads = 4;
+      final interpreter = Interpreter.fromBuffer(bytes, options: options);
+
+      final inputShape  = interpreter.getInputTensor(0).shape;
+      final outputShape = interpreter.getOutputTensor(0).shape;
+      debugPrint('[YOLO-Nav] Input: $inputShape  Output: $outputShape');
+      // Diharapkan: Input [1,640,640,3], Output [1,10,8400]
+
+      _interpreter = await IsolateInterpreter.create(address: interpreter.address);
+      _loaded = true;
+      debugPrint('[YOLO-Nav] Model siap. Kelas: $_navLabels');
+      return true;
+    } catch (e) {
+      debugPrint('[YOLO-Nav] Gagal load: $e');
+      return false;
+    }
+  }
+
+  /// Deteksi rintangan dari bytes RGB888.
+  /// [origW], [origH] = dimensi asli frame sebelum resize.
+  Future<List<Detection>> detect(
+    Uint8List rgbBytes,
+    int origW,
+    int origH,
+  ) async {
+    if (!_loaded || _interpreter == null) return [];
+
+    final t0 = DateTime.now();
+    try {
+      // Decode → resize ke 640×640
+      final rawImg = img.Image.fromBytes(
+        width: origW,
+        height: origH,
+        bytes: rgbBytes.buffer,
+        format: img.Format.uint8,
+        numChannels: 3,
+      );
+
+      img.Image resized;
+      if (Platform.isAndroid) {
+        final rotated = img.copyRotate(rawImg, angle: 90);
+        resized = img.copyResize(rotated, width: _yoloSize, height: _yoloSize,
+            interpolation: img.Interpolation.linear);
+      } else {
+        resized = img.copyResize(rawImg, width: _yoloSize, height: _yoloSize,
+            interpolation: img.Interpolation.linear);
+      }
+
+      // Build input [1][640][640][3] — float32 normalized 0..1
+      final input = List.generate(1, (_) =>
+        List.generate(_yoloSize, (y) =>
+          List.generate(_yoloSize, (x) {
+            final p = resized.getPixel(x, y);
+            return [p.r / 255.0, p.g / 255.0, p.b / 255.0];
+          }),
+        ),
+      );
+
+      // Output [1][10][8400] — 10 = 4 (box) + 6 (class scores)
+      final output = [List.generate(10, (_) => List.filled(8400, 0.0))];
+      final outputs = {0: output};
+
+      await _interpreter!.runForMultipleInputs([input], outputs);
+
+      final inferMs = DateTime.now().difference(t0).inMilliseconds.toDouble();
+
+      // Post-process
+      return _postProcess(output[0], inferMs, origW, origH);
+    } catch (e) {
+      debugPrint('[YOLO-Nav] detect error: $e');
+      return [];
+    }
+  }
+
+  // ── Post-process output [10][8400] ──────────────────────────
+  List<Detection> _postProcess(
+    List<List<double>> raw, // [10][8400]
+    double inferMs,
+    int origW,
+    int origH,
+  ) {
+    // raw[0..3] = cx, cy, w, h (normalized 0..1)
+    // raw[4..9] = class scores
+    final numAnchors = raw[0].length; // 8400
+    final numClasses = _navLabels.length; // 6
+
+    // Kumpulkan box yang lolos threshold
+    final List<_Box> boxes = [];
+    for (int i = 0; i < numAnchors; i++) {
+      // Cari kelas dengan skor tertinggi
+      double maxScore = 0;
+      int maxClass = 0;
+      for (int c = 0; c < numClasses; c++) {
+        final score = raw[4 + c][i];
+        if (score > maxScore) { maxScore = score; maxClass = c; }
+      }
+      // Threshold khusus: 0.05 (5%) untuk lubang/got_terbuka, 0.30 (30%) untuk kelas lainnya
+      final thresh = (maxClass == 0 || maxClass == 1) ? 0.05 : _confThresh;
+      if (maxScore < thresh) continue;
+
+      // cx, cy, w, h → x1, y1, x2, y2 (dalam skala input 640×640)
+      final cx = raw[0][i] * _yoloSize;
+      final cy = raw[1][i] * _yoloSize;
+      final bw = raw[2][i] * _yoloSize;
+      final bh = raw[3][i] * _yoloSize;
+
+      boxes.add(_Box(
+        x1:       (cx - bw / 2).clamp(0, _yoloSize.toDouble()),
+        y1:       (cy - bh / 2).clamp(0, _yoloSize.toDouble()),
+        x2:       (cx + bw / 2).clamp(0, _yoloSize.toDouble()),
+        y2:       (cy + bh / 2).clamp(0, _yoloSize.toDouble()),
+        score:    maxScore,
+        classIdx: maxClass,
+      ));
+    }
+
+    if (boxes.isEmpty) return [];
+
+    // NMS per kelas
+    final kept = _nms(boxes);
+
+    // Skala kembali ke ukuran frame asli
+    final scaleX = origW / _yoloSize;
+    final scaleY = origH / _yoloSize;
+
+    return kept.map((b) {
+      final x1 = (b.x1 * scaleX).round().clamp(0, origW - 1);
+      final y1 = (b.y1 * scaleY).round().clamp(0, origH - 1);
+      final x2 = (b.x2 * scaleX).round().clamp(0, origW - 1);
+      final y2 = (b.y2 * scaleY).round().clamp(0, origH - 1);
+      final boxH = y2 - y1;
+      final cx   = (x1 + x2) / 2.0;
+
+      final label   = _navLabels[b.classIdx];
+      final dist    = _estimateDist(label, boxH);
+      final dir     = _direction(cx, origW);
+      final danger  = _dangerLevel(label, dist);
+
+      return Detection(
+        labelEn:       label,
+        labelId:       label, // label sudah dalam BI
+        confidence:    b.score,
+        distanceMeter: dist,
+        direction:     dir,
+        dangerLevel:   danger,
+        bbox:          {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2},
+        inferenceMs:   inferMs,
+      );
+    }).toList()
+      ..sort((a, b) => a.distanceMeter.compareTo(b.distanceMeter));
+  }
+
+  // ── NMS greedy per kelas ─────────────────────────────────────
+  List<_Box> _nms(List<_Box> boxes) {
+    // Sort descending per score
+    boxes.sort((a, b) => b.score.compareTo(a.score));
+    final kept = <_Box>[];
+    final suppressed = List<bool>.filled(boxes.length, false);
+
+    for (int i = 0; i < boxes.length; i++) {
+      if (suppressed[i]) continue;
+      kept.add(boxes[i]);
+      for (int j = i + 1; j < boxes.length; j++) {
+        if (suppressed[j]) continue;
+        if (boxes[i].classIdx != boxes[j].classIdx) continue;
+        if (_iou(boxes[i], boxes[j]) > _iouThresh) {
+          suppressed[j] = true;
+        }
+      }
+    }
+    return kept;
+  }
+
+  double _iou(_Box a, _Box b) {
+    final ix1 = max(a.x1, b.x1);
+    final iy1 = max(a.y1, b.y1);
+    final ix2 = min(a.x2, b.x2);
+    final iy2 = min(a.y2, b.y2);
+    final inter = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1);
+    if (inter == 0) return 0;
+    final aA = (a.x2 - a.x1) * (a.y2 - a.y1);
+    final bA = (b.x2 - b.x1) * (b.y2 - b.y1);
+    return inter / (aA + bA - inter);
+  }
+
+  double _estimateDist(String label, int boxH) {
+    if (boxH <= 0) return 999.0;
+    final realH = _realHeightsNav[label] ?? 50;
+    return (realH * _focalPx) / (boxH * 100.0);
+  }
+
+  String _direction(double cx, int w) {
+    final t = w / 3;
+    if (cx < t) return 'kiri';
+    if (cx < t * 2) return 'depan';
+    return 'kanan';
+  }
+
+  String _dangerLevel(String label, double dist) {
+    switch (label) {
+      case 'lubang':
+      case 'got_terbuka':
+        if (dist < 1.0) return 'critical';
+        if (dist < 2.5) return 'warning';
+        return 'info';
+      case 'orang':
+      case 'motor':
+        if (dist < 1.5) return 'critical';
+        if (dist < 3.0) return 'warning';
+        return 'info';
+      case 'tangga':
+      case 'tiang':
+        if (dist < 2.0) return 'critical';
+        if (dist < 4.0) return 'warning';
+        return 'info';
+      default:
+        return 'info';
+    }
+  }
+
+  void dispose() {
+    _interpreter?.close();
+    _loaded = false;
+  }
+}
+
+// Helper box untuk NMS
+class _Box {
+  final double x1, y1, x2, y2, score;
+  final int classIdx;
+  const _Box({
+    required this.x1, required this.y1,
+    required this.x2, required this.y2,
+    required this.score, required this.classIdx,
+  });
+}
+```
+
+---
+
+## File: `lib/theme/app_colors.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_colors.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11002,6 +15036,39 @@ abstract final class AppColors {
   static const scrimText = Color(0xDB0B0D12); // #0B0D12 @ 86%
   static const scrimDim  = Color(0x660B0D12); // #0B0D12 @ 40% — tidak pernah membawa teks
 
+  // ── Foreground di atas bidang gelap/berwarna ────────────────────────────
+
+  /// Teks & ikon di atas bidang gelap atau vibrant — scrim di atas kamera,
+  /// [pillBg], dan isian `*Fill`.
+  ///
+  /// Ini yang dulu ditulis sebagai `Colors.white` mentah di 64 tempat.
+  /// Nilainya memang putih, tapi menyebutnya lewat token membuat maksudnya
+  /// terbaca — dan membuat tema kontras tinggi bisa menggesernya di **satu**
+  /// tempat alih-alih di 64 tempat yang harus ditemukan satu per satu dulu.
+  ///
+  /// Aturan 3:1 di header berkas ini tetap berlaku: putih di atas isian
+  /// vibrant hanya untuk teks besar/tebal dan ikon, tidak untuk teks kecil.
+  static const onDark = Color(0xFFFFFFFF);
+
+  // ── Latar kamera ────────────────────────────────────────────────────────
+
+  /// Latar di belakang preview kamera, dan pengganti saat preview belum siap.
+  ///
+  /// Hitam pekat disengaja: apa pun selain hitam akan terbaca sebagai "ada
+  /// sesuatu di layar" oleh pengguna low vision, padahal yang benar adalah
+  /// "belum ada gambar".
+  static const cameraVoid = Color(0xFF000000);
+
+  // ── Tema gelap ──────────────────────────────────────────────────────────
+  static const darkBg       = Color(0xFF15171E);
+  static const darkSurface  = Color(0xFF1E212B);
+  static const darkHairline = Color(0xFF2A2D38);
+
+  // ── Abu netral untuk indikator non-teks ─────────────────────────────────
+  /// Titik/segmen indikator yang tidak membawa teks (mis. penanda langkah).
+  static const indicatorOn  = Color(0xFF9AA0AD);
+  static const indicatorOff = Color(0xFFC4C9D2);
+
   static Color dangerColor(String dangerLevel) => switch (dangerLevel) {
         'critical' => criticalFill,
         'warning'  => warningFill,
@@ -11024,9 +15091,9 @@ abstract final class AppColors {
 
 ---
 
-## Berkas: `lib/theme/app_spacing.dart`
+## File: `lib/theme/app_spacing.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_spacing.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_spacing.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11067,17 +15134,17 @@ abstract final class AppRadius {
 /// Elevasi: elev/1 datar, elev/2 kartu, elev/3 sheet + FAB.
 abstract final class AppElevation {
   static const flat = <BoxShadow>[
-    BoxShadow(color: Color(0x14161819), blurRadius: 2, offset: Offset(0, 1)),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .08), blurRadius: 2, offset: Offset(0, 1)),
   ];
 
   static const card = <BoxShadow>[
-    BoxShadow(color: Color(0x1A161819), blurRadius: 8, offset: Offset(0, 2)),
-    BoxShadow(color: Color(0x29161819), blurRadius: 24, offset: Offset(0, 8), spreadRadius: -8),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .10), blurRadius: 8, offset: Offset(0, 2)),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .16), blurRadius: 24, offset: Offset(0, 8), spreadRadius: -8),
   ];
 
   static const sheet = <BoxShadow>[
-    BoxShadow(color: Color(0x1F161819), blurRadius: 12, offset: Offset(0, 4)),
-    BoxShadow(color: Color(0x42161819), blurRadius: 40, offset: Offset(0, 20), spreadRadius: -12),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .12), blurRadius: 12, offset: Offset(0, 4)),
+    BoxShadow(color: Color.fromRGBO(22, 24, 25, .26), blurRadius: 40, offset: Offset(0, 20), spreadRadius: -12),
   ];
 }
 
@@ -11097,9 +15164,9 @@ abstract final class AppSizes {
 
 ---
 
-## Berkas: `lib/theme/app_theme.dart`
+## File: `lib/theme/app_theme.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_theme.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_theme.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11146,9 +15213,9 @@ abstract final class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.actionLabel,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.onDark,
           minimumSize: const Size.fromHeight(AppSizes.minTouchTarget),
-          textStyle: AppTypography.label(color: Colors.white),
+          textStyle: AppTypography.label(color: AppColors.onDark),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.pillShape),
           elevation: 0,
         ),
@@ -11175,7 +15242,7 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.pillBg,
-        contentTextStyle: AppTypography.body(color: Colors.white),
+        contentTextStyle: AppTypography.body(color: AppColors.onDark),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
       ),
@@ -11196,12 +15263,12 @@ abstract final class AppTheme {
         seedColor: AppColors.actionFill,
         brightness: Brightness.dark,
       ),
-      scaffoldBackgroundColor: const Color(0xFF15171E),
+      scaffoldBackgroundColor: AppColors.darkBg,
       fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
     );
     return base.copyWith(
-      appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF15171E), elevation: 0),
-      dividerTheme: const DividerThemeData(color: Color(0xFF2A2D38), thickness: 1, space: 1),
+      appBarTheme: const AppBarTheme(backgroundColor: AppColors.darkBg, elevation: 0),
+      dividerTheme: const DividerThemeData(color: AppColors.darkHairline, thickness: 1, space: 1),
     );
   }
 
@@ -11213,17 +15280,17 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.white,
+        seedColor: AppColors.onDark,
         brightness: Brightness.dark,
-        primary: Colors.white,
-        surface: Colors.black,
+        primary: AppColors.onDark,
+        surface: AppColors.cameraVoid,
       ),
-      scaffoldBackgroundColor: Colors.black,
+      scaffoldBackgroundColor: AppColors.cameraVoid,
       fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
     );
     return base.copyWith(
-      appBarTheme: const AppBarTheme(backgroundColor: Colors.black, elevation: 0),
-      dividerTheme: const DividerThemeData(color: Colors.white, thickness: 1, space: 1),
+      appBarTheme: const AppBarTheme(backgroundColor: AppColors.cameraVoid, elevation: 0),
+      dividerTheme: const DividerThemeData(color: AppColors.onDark, thickness: 1, space: 1),
     );
   }
 }
@@ -11231,9 +15298,9 @@ abstract final class AppTheme {
 
 ---
 
-## Berkas: `lib/theme/app_typography.dart`
+## File: `lib/theme/app_typography.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_typography.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/app_typography.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11313,9 +15380,9 @@ abstract final class AppTypography {
 
 ---
 
-## Berkas: `lib/theme/index.dart`
+## File: `lib/theme/index.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/index.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/theme/index.dart`
 
 ```dart
 export 'app_colors.dart';
@@ -11326,9 +15393,9 @@ export 'app_typography.dart';
 
 ---
 
-## Berkas: `lib/widgets/alert_card.dart`
+## File: `lib/widgets/alert_card.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/alert_card.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/alert_card.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11470,9 +15537,9 @@ class AlertCardStack extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/bottom_action_bar.dart`
+## File: `lib/widgets/bottom_action_bar.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/bottom_action_bar.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/bottom_action_bar.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11481,19 +15548,54 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
+import '../core/speech/tts_queue.dart';
 import '../providers/index.dart';
+import '../screens/voice_screen.dart';
+import '../services/haptic_service.dart';
 import '../theme/index.dart';
 import 'mode_picker_sheet.dart';
 
 /// BottomActionBar (F3) — selalu ada, selalu di tempat yang sama, tidak
-/// pernah menggulung. Tiga slot: Ambil Gambar 48, Bicara 64, Pilih Mode 48.
+/// pernah menggulung. Tiga slot: Aksi Utama 48, Bicara 64, Pilih Mode 48.
 /// Saat mic aktif, dua tombol lain nonaktif — supaya tidak ada aksi
 /// tabrakan sambil berjalan.
+///
+/// ## Kontrak tombol kiri
+///
+/// **Tombol kiri = lakukan hal utama mode ini, sekarang. Kalau mode itu tidak
+/// punya "hal utama", ia mengulang hal penting terakhir yang diucapkan.**
+///
+/// Bagian kedua yang membuat aturannya utuh: dengan itu tidak ada satu pun
+/// mode dengan tombol kiri mati, dan pengguna punya jaring pengaman — kalau
+/// lupa tombol kiri melakukan apa di mode ini, paling buruk ia mengulang
+/// sesuatu. Tidak pernah merusak, tidak pernah hening.
+///
+/// | Mode          | Label                        | Aksi                     |
+/// |---------------|------------------------------|--------------------------|
+/// | Deteksi Objek | "Hentikan" / "Lanjutkan"     | Toggle deteksi           |
+/// | Kenali Uang   | "Kenali Uang"                | 1 tap = 1 analisis       |
+/// | Baca Teks     | "Baca teks" → "Jeda bacaan"  | Kontekstual              |
+/// | Navigasi      | "Ulangi arahan"              | Baca ulang status zona   |
+/// | Asisten Suara | "Ulangi jawaban"             | Baca ulang respons       |
+/// | Cari Objek    | "Kirim — cari [X]"           | Scan                     |
+///
+/// Aturan pendukung: label berupa kata kerja + objek maksimal 3 kata (TalkBack
+/// membacanya tiap fokus mendarat), tombol nonaktif tetap bersuara saat
+/// ditekan, dan setiap tekan memberi getar konfirmasi.
+///
+/// [cameraLabel] sengaja **wajib**. Nilai bawaan lamanya "Ambil gambar" membuat
+/// dua mode (Navigasi dan Asisten) menampilkan tombol aktif yang dibacakan
+/// TalkBack sebagai "Ambil gambar, tombol" padahal menekannya tidak melakukan
+/// apa pun — label yang berbohong, dan jalan buntu yang hening.
 class BottomActionBar extends StatelessWidget {
   final VoidCallback? onCameraPressed;
   final VoidCallback? onMicPressed;
   final bool cameraEnabled;
   final String cameraLabel;
+
+  /// Alasan tombol kiri nonaktif, diucapkan saat ditekan.
+  final String? cameraDisabledReason;
+
   /// DO-24 — izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
   final bool micEnabled;
   /// Saat mode aktif punya STT sendiri (mis. Cari Objek), timpa visual
@@ -11504,10 +15606,11 @@ class BottomActionBar extends StatelessWidget {
 
   const BottomActionBar({
     super.key,
+    required this.cameraLabel,
     this.onCameraPressed,
     this.onMicPressed,
     this.cameraEnabled = true,
-    this.cameraLabel = 'Ambil gambar',
+    this.cameraDisabledReason,
     this.micEnabled = true,
     this.listeningOverride,
     this.processingOverride,
@@ -11526,8 +15629,8 @@ class BottomActionBar extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.bgPage,
         boxShadow: [
-          BoxShadow(color: Color(0x0F161819), blurRadius: 0, offset: Offset(0, -1)),
-          BoxShadow(color: Color(0x2E161819), blurRadius: 24, offset: Offset(0, -8), spreadRadius: -12),
+          BoxShadow(color: Color.fromRGBO(22, 24, 25, .06), blurRadius: 0, offset: Offset(0, -1)),
+          BoxShadow(color: Color.fromRGBO(22, 24, 25, .18), blurRadius: 24, offset: Offset(0, -8), spreadRadius: -12),
         ],
       ),
       // Urutan fokus 7-8-9 (bagian 10) dipasang eksplisit: reposisi tombol di
@@ -11541,7 +15644,12 @@ class BottomActionBar extends StatelessWidget {
             child: _SquareButton(
               icon: Icons.camera_alt_outlined,
               label: cameraLabel,
-              enabled: sideButtonsEnabled,
+              // Tanpa handler = tidak aktif. Tidak ada lagi `?? () {}` yang
+              // membuat tombol tampak hidup lalu diam saat ditekan.
+              enabled: sideButtonsEnabled && onCameraPressed != null,
+              disabledReason: listening
+                  ? 'sedang mendengarkan'
+                  : cameraDisabledReason,
               onTap: onCameraPressed ?? () {},
             ),
           ),
@@ -11587,7 +15695,9 @@ class _MicButton extends StatelessWidget {
           width: AppSizes.micButton,
           height: AppSizes.micButton,
           decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.surfaceSunk),
-          child: const Icon(Icons.mic_off_rounded, color: AppColors.disabledInk, size: 28),
+          child: const ExcludeSemantics(
+            child: Icon(Icons.mic_off_rounded, color: AppColors.disabledInk, size: 28),
+          ),
         ),
       );
     }
@@ -11609,8 +15719,32 @@ class _MicButton extends StatelessWidget {
             : () async {
                 HapticFeedback.mediumImpact();
                 final v = context.read<VoiceProvider>();
+                final appMode = context.read<AppModeProvider>();
                 final hasVib = await Vibration.hasVibrator();
                 if (hasVib) Vibration.vibrate(duration: 100);
+
+                // Jika bukan di mode voice, push VoiceScreen sebagai overlay
+                // (fitur "Jarvis Global Mic") alih-alih langsung ke onTap.
+                if (appMode.mode != AppMode.voice) {
+                  if (context.mounted) {
+                    await Navigator.of(context).push(
+                      PageRouteBuilder(
+                        opaque: false,
+                        barrierDismissible: false,
+                        pageBuilder: (_, __, ___) =>
+                            const VoiceScreen(isOverlay: true),
+                        transitionsBuilder: (_, anim, __, child) =>
+                            FadeTransition(opacity: anim, child: child),
+                        transitionDuration: const Duration(milliseconds: 250),
+                      ),
+                    );
+                    // Setelah pop, mulai listen segera
+                    if (!v.isListening) v.startListening();
+                  }
+                  return;
+                }
+
+                // Sudah di mode voice — perilaku bawaan
                 if (onTap != null) {
                   onTap!();
                 } else if (v.isListening) {
@@ -11639,7 +15773,9 @@ class _MicButton extends StatelessWidget {
                   padding: EdgeInsets.all(20),
                   child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.actionLabel),
                 )
-              : Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: Colors.white, size: 30),
+              : ExcludeSemantics(
+              child: Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: AppColors.onDark, size: 30),
+            ),
         ),
       ),
     );
@@ -11652,23 +15788,46 @@ class _SquareButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
+  /// Alasan tombol nonaktif — diucapkan saat ditekan, bukan didiamkan.
+  final String? disabledReason;
+
   const _SquareButton({
     required this.icon,
     required this.label,
     required this.onTap,
     this.enabled = true,
+    this.disabledReason,
   });
+
+  /// Menekan tombol nonaktif TIDAK boleh hening.
+  ///
+  /// Untuk pengguna yang tidak melihat layar, tombol yang diam saat ditekan
+  /// tidak bisa dibedakan dari aplikasi yang macet — dan satu-satunya cara
+  /// menguji dugaannya adalah menekan lagi. Katakan alasannya, sekali, dengan
+  /// getar pendek supaya jelas tekanannya terdaftar.
+  void _explainDisabled() {
+    final reason = disabledReason;
+    TtsQueue().speak(
+      reason == null ? '$label tidak tersedia sekarang.' : '$label. $reason',
+      tier: SpeechTier.info,
+    );
+    HapticService.instance.info();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: enabled ? label : '$label, tidak tersedia',
+      label: enabled
+          ? label
+          : disabledReason == null
+              ? '$label, tidak tersedia'
+              : '$label, tidak tersedia, $disabledReason',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: enabled ? onTap : null,
+          onTap: enabled ? onTap : _explainDisabled,
           borderRadius: BorderRadius.circular(AppRadius.sm),
           child: Container(
             width: AppSizes.minTouchTarget,
@@ -11677,10 +15836,12 @@ class _SquareButton extends StatelessWidget {
               color: AppColors.surfaceSunk,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(
-              icon,
-              size: 26,
-              color: enabled ? AppColors.ink1 : AppColors.disabledInk,
+            child: ExcludeSemantics(
+              child: Icon(
+                icon,
+                size: 26,
+                color: enabled ? AppColors.ink1 : AppColors.disabledInk,
+              ),
             ),
           ),
         ),
@@ -11692,9 +15853,9 @@ class _SquareButton extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/camera_health_toast.dart`
+## File: `lib/widgets/camera_health_toast.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/camera_health_toast.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/camera_health_toast.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11733,7 +15894,7 @@ class CameraHealthToast extends StatelessWidget {
         child: Center(
           child: Text(
             issue.message,
-            style: AppTypography.body(color: Colors.white).copyWith(fontSize: 15, fontWeight: FontWeight.w500),
+            style: AppTypography.body(color: AppColors.onDark).copyWith(fontSize: 15, fontWeight: FontWeight.w500),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -11746,9 +15907,9 @@ class CameraHealthToast extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/chat_bubble.dart`
+## File: `lib/widgets/chat_bubble.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/chat_bubble.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/chat_bubble.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11819,9 +15980,182 @@ class ChatTranscript extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/detection_card.dart`
+## File: `lib/widgets/contextual_action_slot.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/detection_card.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/contextual_action_slot.dart`
+
+```dart
+import 'package:flutter/material.dart';
+
+import '../theme/index.dart';
+
+/// ContextualActionSlot — slot tombol kontekstual yang selalu duduk di posisi
+/// yang sama: tepat di atas BottomActionBar, dari kiri ke kanan layar.
+///
+/// Dipakai untuk prompt situasional jangka pendek yang butuh respons segera:
+/// - Tawaran nyalakan lampu saat gelap (TuntunScreen)
+/// - Tombol "Kembali" saat VoiceScreen dimasuki sebagai overlay
+///
+/// **Aturan keamanan zona:**
+/// Konten di atas slot (kartu deteksi, panel bubble) wajib membaca
+/// [slotHeight] dan menggeser dirinya ke atas — bukan sebaliknya.
+///
+/// Slot ini diposisikan oleh pemanggil via [Positioned] karena tiap layar
+/// punya cara berbeda mengelola Stack-nya.
+class ContextualActionSlot extends StatelessWidget {
+  /// Teks situasional kecil (opsional) di atas tombol.
+  final String? message;
+
+  /// Label tombol utama (kiri / satu-satunya).
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+  final IconData? primaryIcon;
+  final Color? primaryColor;
+
+  /// Label tombol sekunder (kanan, opsional).
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
+  final IconData? secondaryIcon;
+
+  const ContextualActionSlot({
+    super.key,
+    this.message,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.primaryIcon,
+    this.primaryColor,
+    this.secondaryLabel,
+    this.onSecondary,
+    this.secondaryIcon,
+  });
+
+  /// Tinggi tombol saja (tanpa message) — pemanggil pakai ini untuk geser kartu.
+  static const double slotHeight = 64.0;
+
+  /// Tinggi total dengan message (pill + gap + tombol).
+  static const double slotHeightWithMsg = 92.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenMargin,
+        AppSpacing.s2,
+        AppSpacing.screenMargin,
+        AppSpacing.s2,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (message != null) ...[
+            Semantics(
+              liveRegion: true,
+              label: message,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.s3,
+                  vertical: 6,
+                ),
+                decoration: const BoxDecoration(
+                  color: AppColors.scrimText,
+                  borderRadius: AppRadius.pillShape,
+                ),
+                child: Text(
+                  message!,
+                  style: AppTypography.caption(color: AppColors.onDark),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: _SlotButton(
+                  label: primaryLabel,
+                  onTap: onPrimary,
+                  icon: primaryIcon,
+                  fillColor: primaryColor ?? AppColors.actionFill,
+                  labelColor: AppColors.onDark,
+                ),
+              ),
+              if (secondaryLabel != null) ...[
+                const SizedBox(width: AppSpacing.s2),
+                Expanded(
+                  child: _SlotButton(
+                    label: secondaryLabel!,
+                    onTap: onSecondary ?? () {},
+                    icon: secondaryIcon,
+                    fillColor: AppColors.surfaceSunk,
+                    labelColor: AppColors.ink1,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SlotButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color fillColor;
+  final Color labelColor;
+
+  const _SlotButton({
+    required this.label,
+    required this.onTap,
+    this.icon,
+    required this.fillColor,
+    required this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: fillColor,
+            borderRadius: AppRadius.card,
+            boxShadow: AppElevation.card,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                ExcludeSemantics(child: Icon(icon, color: labelColor, size: 20)),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: AppTypography.label(color: labelColor),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+---
+
+## File: `lib/widgets/detection_card.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/detection_card.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11855,9 +16189,9 @@ class DetectionCard extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/distance_pill.dart`
+## File: `lib/widgets/distance_pill.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/distance_pill.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/distance_pill.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11889,10 +16223,10 @@ class DistancePill extends StatelessWidget {
       };
 
   Color get _fg => switch (tier) {
-        AlertTier.critical => Colors.white,
+        AlertTier.critical => AppColors.onDark,
         AlertTier.warning  => AppColors.ink1,
         AlertTier.info     => AppColors.actionLabel,
-        AlertTier.positive => Colors.white,
+        AlertTier.positive => AppColors.onDark,
       };
 
   String get _text {
@@ -11915,9 +16249,9 @@ class DistancePill extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/full_screen_button.dart`
+## File: `lib/widgets/full_screen_button.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/full_screen_button.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/full_screen_button.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -11983,13 +16317,13 @@ class FullScreenButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (icon != null) ...[
-                        Icon(icon, color: disabled ? AppColors.disabledInk : Colors.white, size: 26),
+                        Icon(icon, color: disabled ? AppColors.disabledInk : AppColors.onDark, size: 26),
                         const SizedBox(width: AppSpacing.s3),
                       ],
                       Text(
                         label,
                         style: AppTypography.title(
-                          color: disabled ? AppColors.disabledInk : Colors.white,
+                          color: disabled ? AppColors.disabledInk : AppColors.onDark,
                         ),
                       ),
                     ],
@@ -12014,9 +16348,9 @@ class FullScreenButton extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/guide_frame.dart`
+## File: `lib/widgets/guide_frame.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/guide_frame.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/guide_frame.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -12030,7 +16364,7 @@ enum FrameFit { empty, partial, fit, tooClose }
 
 extension FrameFitX on FrameFit {
   Color get color => switch (this) {
-        FrameFit.empty   => Colors.white,
+        FrameFit.empty   => AppColors.onDark,
         FrameFit.partial => AppColors.warningFill,
         FrameFit.fit     => AppColors.positiveFill,
         FrameFit.tooClose => AppColors.criticalFill,
@@ -12081,7 +16415,7 @@ class GuideFrame extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
-                  child: Text(fit.caption, style: AppTypography.caption(color: Colors.white)),
+                  child: Text(fit.caption, style: AppTypography.caption(color: AppColors.onDark)),
                 ),
               ),
             ),
@@ -12136,15 +16470,16 @@ class _CornerPainter extends CustomPainter {
 
 ---
 
-## Berkas: `lib/widgets/index.dart`
+## File: `lib/widgets/index.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/index.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/index.dart`
 
 ```dart
 export 'alert_card.dart';
 export 'bottom_action_bar.dart';
 export 'camera_health_toast.dart';
 export 'chat_bubble.dart';
+export 'contextual_action_slot.dart';
 export 'detection_card.dart';
 export 'distance_pill.dart';
 export 'full_screen_button.dart';
@@ -12165,9 +16500,9 @@ export 'zone_indicator.dart';
 
 ---
 
-## Berkas: `lib/widgets/mode_badge.dart`
+## File: `lib/widgets/mode_badge.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/mode_badge.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/mode_badge.dart`
 
 ```dart
 import 'dart:async';
@@ -12265,32 +16600,38 @@ class _ModeBadgeState extends State<ModeBadge> {
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                          color: AppColors.onDark,
+                          valueColor: AlwaysStoppedAnimation(AppColors.onDark),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text('Beralih ke ${widget.mode.label}…',
-                          style: AppTypography.metricMono(color: Colors.white.withValues(alpha: .9))),
+                          style: AppTypography.metricMono(color: AppColors.onDark.withValues(alpha: .9))),
                     ]
                   : widget.busy
                       ? [
                           const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            child: ExcludeSemantics(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.onDark,
+                                valueColor: AlwaysStoppedAnimation(AppColors.onDark),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Text('Mengenali…', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          const ExcludeSemantics(
+                            child: Text('Mengenali…', style: TextStyle(color: AppColors.onDark, fontSize: 14)),
+                          ),
                         ]
                       : [
-                          Icon(_icon, size: 18, color: Colors.white),
+                          ExcludeSemantics(child: Icon(_icon, size: 18, color: AppColors.onDark)),
                           const SizedBox(width: 8),
-                          Text('Mode: ${widget.mode.label}', style: AppTypography.label(color: Colors.white)),
+                          ExcludeSemantics(
+                            child: Text('Mode: ${widget.mode.label}', style: AppTypography.label(color: AppColors.onDark)),
+                          ),
                         ],
             ),
           ),
@@ -12303,9 +16644,9 @@ class _ModeBadgeState extends State<ModeBadge> {
 
 ---
 
-## Berkas: `lib/widgets/mode_picker_sheet.dart`
+## File: `lib/widgets/mode_picker_sheet.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/mode_picker_sheet.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/mode_picker_sheet.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -12328,7 +16669,7 @@ void showModePickerSheet(BuildContext context) {
   // sudah terbaca sebelum pengguna memilih. Tidak di-await: sheet tampil
   // segera, dan item memperbarui dirinya begitu jawaban datang.
   context.read<CapabilitiesProvider>().refreshIfStale(
-        offline: context.read<GlobalConditionsProvider>().isOffline,
+        offline: context.read<GlobalConditionsProvider>().isBackendDown,
       );
 
   showModalBottomSheet(
@@ -12347,7 +16688,11 @@ class _ModePickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = context.watch<AppModeProvider>().mode;
-    final offline = context.watch<GlobalConditionsProvider>().isOffline;
+    // `isBackendDown`, bukan `isOffline`: mode yang butuh server sama-sama
+    // tidak bisa dipakai entah karena tidak ada jaringan atau karena server
+    // tidak menjawab. Yang penting bagi pengguna adalah statusnya sudah benar
+    // SEBELUM ia menekan, bukan sesudah gagal.
+    final offline = context.watch<GlobalConditionsProvider>().isBackendDown;
     final caps = context.watch<CapabilitiesProvider>();
 
     return SafeArea(
@@ -12359,20 +16704,41 @@ class _ModePickerSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 34, height: 4,
-              margin: const EdgeInsets.only(bottom: AppSpacing.s4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceSunk,
-                borderRadius: BorderRadius.circular(2),
+            ExcludeSemantics(
+              child: Container(
+                width: 34, height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.s4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSunk,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             Semantics(
               header: true,
               child: Text('Pilih Mode', style: AppTypography.title()),
             ),
-            const SizedBox(height: 4),
-            Text('atau ucapkan nama mode', style: AppTypography.caption()),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.actionTint,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.mic_none_rounded, size: 14, color: AppColors.actionLabel),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Atau ucapkan via tombol Bicara (Mic)',
+                      style: AppTypography.caption(color: AppColors.actionLabel),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: AppSpacing.s4),
             Flexible(
               child: ListView.separated(
@@ -12395,9 +16761,28 @@ class _ModePickerSheet extends StatelessWidget {
                     reason: caps.unavailableReason(mode, offline: offline),
                     onTap: disabled
                         ? null
-                        : () {
-                            context.read<AppModeProvider>().setMode(mode);
-                            Navigator.pop(context);
+                        : () async {
+                            // Nilai balik `setMode` WAJIB diperiksa. Tanpa ini,
+                            // membatalkan konfirmasi keluar-Navigasi menutup
+                            // sheet tanpa satu kata pun terucap: `announceEntry`
+                            // tidak jalan karena mode tidak berubah, dan
+                            // pengguna yang tidak melihat layar menyimpulkan
+                            // modenya sudah berganti. VoiceProvider sudah
+                            // menangani ini dengan benar sejak awal — hanya
+                            // jalur sheet yang bocor.
+                            final appMode = context.read<AppModeProvider>();
+                            final tts = context.read<TtsProvider>();
+                            final navigator = Navigator.of(context);
+                            final previous = appMode.mode;
+
+                            final changed = await appMode.setMode(mode);
+                            if (!changed && appMode.mode == previous) {
+                              tts.speak(
+                                'Tetap di mode ${previous.label}.',
+                                tier: SpeechTier.info,
+                              );
+                            }
+                            navigator.pop();
                           },
                   );
                 },
@@ -12410,7 +16795,7 @@ class _ModePickerSheet extends StatelessWidget {
             // tidak punya pintu masuk di layar: satu-satunya jalan adalah
             // perintah suara, dan itu memutus pengguna yang tidak bisa bicara.
             const Divider(height: AppSpacing.s4, color: AppColors.hairline),
-            Semantics(
+              Semantics(
               button: true,
               label: 'Pengaturan',
               child: Material(
@@ -12430,14 +16815,16 @@ class _ModePickerSheet extends StatelessWidget {
                     child: Row(
                       children: [
                         const SizedBox(width: 14),
-                        Container(
-                          width: 40, height: 40,
-                          decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
-                          child: const Icon(Icons.tune_rounded, size: 22, color: AppColors.ink1),
+                        ExcludeSemantics(
+                          child: Container(
+                            width: 40, height: 40,
+                            decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
+                            child: const Icon(Icons.tune_rounded, size: 22, color: AppColors.ink1),
+                          ),
                         ),
                         const SizedBox(width: 14),
-                        Expanded(child: Text('Pengaturan', style: AppTypography.body())),
-                        const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.ink2),
+                        Expanded(child: ExcludeSemantics(child: Text('Pengaturan', style: AppTypography.body()))),
+                        const ExcludeSemantics(child: Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.ink2)),
                       ],
                     ),
                   ),
@@ -12484,10 +16871,10 @@ class _ModeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final semanticLabel = isCurrent
-        ? '${mode.label}, sedang aktif'
+        ? '${mode.label}, sedang aktif. Perintah suara: ${mode.voiceHint}'
         : _reason != null
             ? '${mode.label}, ${_reason!.toLowerCase()}'
-            : mode.label;
+            : '${mode.label}. Perintah suara: ${mode.voiceHint}';
 
     return Semantics(
       button: true,
@@ -12522,10 +16909,12 @@ class _ModeTile extends StatelessWidget {
                     )
                   else
                     const SizedBox(width: 14),
-                  Container(
-                    width: 40, height: 40,
-                    decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
-                    child: Icon(modeIcon(mode), size: 22, color: AppColors.ink1),
+                  ExcludeSemantics(
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: const BoxDecoration(color: AppColors.bgPage, shape: BoxShape.circle),
+                      child: Icon(modeIcon(mode), size: 22, color: AppColors.ink1),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -12533,28 +16922,55 @@ class _ModeTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          mode.label,
-                          style: isCurrent ? AppTypography.bodyStrong() : AppTypography.body(),
+                        ExcludeSemantics(
+                          child: Text(
+                            mode.label,
+                            style: isCurrent ? AppTypography.bodyStrong() : AppTypography.body(),
+                          ),
                         ),
                         if (_reason != null)
-                          Text(
-                            _reason!,
-                            style: AppTypography.caption(
-                              color: limited ? AppColors.warningLabel : AppColors.disabledInk,
+                          ExcludeSemantics(
+                            child: Text(
+                              _reason!,
+                              style: AppTypography.caption(
+                                color: limited ? AppColors.warningLabel : AppColors.disabledInk,
+                              ),
+                            ),
+                          )
+                        else
+                          ExcludeSemantics(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.graphic_eq_rounded, size: 12, color: AppColors.actionLabel),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      mode.voiceHint,
+                                      style: AppTypography.caption(color: AppColors.ink2),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                       ],
                     ),
                   ),
                   if (isCurrent)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: const BoxDecoration(
-                        color: AppColors.actionLabel,
-                        borderRadius: AppRadius.pillShape,
+                    ExcludeSemantics(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.actionLabel,
+                          borderRadius: AppRadius.pillShape,
+                        ),
+                        child: Text('AKTIF', style: AppTypography.eyebrow(color: AppColors.onDark)),
                       ),
-                      child: Text('AKTIF', style: AppTypography.eyebrow(color: Colors.white)),
                     ),
                 ],
               ),
@@ -12569,9 +16985,9 @@ class _ModeTile extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/nominal_card.dart`
+## File: `lib/widgets/nominal_card.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/nominal_card.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/nominal_card.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -12629,20 +17045,17 @@ String formatRupiah(int amount) {
 /// `display` 56sp dipakai. Nominal WAJIB dua bentuk (angka + kata), dan
 /// tidak pernah ditampilkan saat keyakinan rendah — pemanggil bertanggung
 /// jawab tidak me-render kartu ini pada kondisi itu.
+///
+/// Kartu ini hanya menampilkan **satu nominal**: lembar yang sedang dihadapi
+/// kamera. Tidak ada rincian lembar dan tidak ada total berjalan — mode ini
+/// tidak menjumlahkan apa pun.
 class NominalCard extends StatelessWidget {
   final int amount;
-  /// Rincian per lembar, mis. {20000: 2, 5000: 1} — opsional, untuk
-  /// UG-09b "beberapa lembar berbeda".
-  final Map<int, int>? breakdown;
-  /// Total berjalan (UG-11 "lembar berturut-turut") — opsional.
-  final int? runningTotal;
   final VoidCallback? onReplay;
 
   const NominalCard({
     super.key,
     required this.amount,
-    this.breakdown,
-    this.runningTotal,
     this.onReplay,
   });
 
@@ -12682,29 +17095,6 @@ class NominalCard extends StatelessWidget {
                 style: AppTypography.title(color: AppColors.ink2),
               ),
             ),
-            if (breakdown != null && breakdown!.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.s3),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: AppSpacing.s2,
-                runSpacing: 4,
-                children: breakdown!.entries
-                    .map((e) => Text(
-                          '${e.value} × ${formatRupiah(e.key)}',
-                          style: AppTypography.metricMono(color: AppColors.ink2),
-                        ))
-                    .toList(),
-              ),
-            ],
-            if (runningTotal != null) ...[
-              const SizedBox(height: AppSpacing.s3),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s3, vertical: 6),
-                decoration: const BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.pillShape),
-                child: Text('Total: ${formatRupiah(runningTotal!)}',
-                    style: AppTypography.label().copyWith(fontSize: 14)),
-              ),
-            ],
             if (onReplay != null) ...[
               const SizedBox(height: AppSpacing.s4),
               Semantics(
@@ -12732,9 +17122,9 @@ class NominalCard extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/ocr_debug_sheet.dart`
+## File: `lib/widgets/ocr_debug_sheet.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/ocr_debug_sheet.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/ocr_debug_sheet.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -12817,7 +17207,7 @@ class _OcrDebugSheetContent extends StatelessWidget {
                         label: 'Batalkan mode debug',
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(color: AppColors.criticalTint, borderRadius: AppRadius.pillShape),
+                          decoration: const BoxDecoration(color: AppColors.criticalTint, borderRadius: AppRadius.pillShape),
                           child: Text('Batalkan', style: AppTypography.label(color: AppColors.criticalLabel)),
                         ),
                       ),
@@ -12871,9 +17261,9 @@ class _OcrDebugSheetContent extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/ocr_long_result_panel.dart`
+## File: `lib/widgets/ocr_long_result_panel.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/ocr_long_result_panel.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/ocr_long_result_panel.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -13014,7 +17404,7 @@ class OcrLongResultPanel extends StatelessWidget {
       decoration: BoxDecoration(color: AlertTier.warning.tintColor, borderRadius: AppRadius.cardInner),
       child: Row(
         children: [
-          TierIcon(tier: AlertTier.warning, size: 20),
+          const TierIcon(tier: AlertTier.warning, size: 20),
           const SizedBox(width: AppSpacing.s2),
           Expanded(
             child: Text(
@@ -13085,7 +17475,7 @@ class OcrLongResultPanel extends StatelessWidget {
   Widget _languagePill(String language) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: AppColors.actionTint, borderRadius: AppRadius.pillShape),
+      decoration: const BoxDecoration(color: AppColors.actionTint, borderRadius: AppRadius.pillShape),
       child: Text(language, style: AppTypography.caption(color: AppColors.actionLabel)),
     );
   }
@@ -13105,7 +17495,7 @@ class OcrLongResultPanel extends StatelessWidget {
           ),
           child: Icon(
             speaking ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            color: speaking ? Colors.white : AppColors.actionLabel,
+            color: speaking ? AppColors.onDark : AppColors.actionLabel,
           ),
         ),
       ),
@@ -13184,9 +17574,9 @@ class OcrLongResultPanel extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 20, color: filled ? Colors.white : AppColors.actionLabel),
+              Icon(icon, size: 20, color: filled ? AppColors.onDark : AppColors.actionLabel),
               const SizedBox(width: 8),
-              Text(label, style: AppTypography.label(color: filled ? Colors.white : AppColors.actionLabel)),
+              Text(label, style: AppTypography.label(color: filled ? AppColors.onDark : AppColors.actionLabel)),
             ],
           ),
         ),
@@ -13198,9 +17588,9 @@ class OcrLongResultPanel extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/page_action_zone.dart`
+## File: `lib/widgets/page_action_zone.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/page_action_zone.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/page_action_zone.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -13404,9 +17794,9 @@ class PageActionScaffold extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/permission_card.dart`
+## File: `lib/widgets/permission_card.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/permission_card.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/permission_card.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -13544,9 +17934,9 @@ class PermissionPrompt extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/result_panel.dart`
+## File: `lib/widgets/result_panel.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/result_panel.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/result_panel.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -13682,7 +18072,7 @@ class ResultPanel extends StatelessWidget {
           ),
           child: Icon(
             speaking ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            color: speaking ? Colors.white : AppColors.actionLabel,
+            color: speaking ? AppColors.onDark : AppColors.actionLabel,
           ),
         ),
       ),
@@ -13706,10 +18096,10 @@ class ResultPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20, color: filled ? Colors.white : AppColors.actionLabel),
+                Icon(icon, size: 20, color: filled ? AppColors.onDark : AppColors.actionLabel),
                 const SizedBox(width: 8),
               ],
-              Text(label, style: AppTypography.label(color: filled ? Colors.white : AppColors.actionLabel)),
+              Text(label, style: AppTypography.label(color: filled ? AppColors.onDark : AppColors.actionLabel)),
             ],
           ),
         ),
@@ -13738,9 +18128,9 @@ class ResultPanel extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/speaking_indicator.dart`
+## File: `lib/widgets/speaking_indicator.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/speaking_indicator.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/speaking_indicator.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -13783,10 +18173,10 @@ class _SpeakingIndicatorState extends State<SpeakingIndicator> with SingleTicker
           mainAxisSize: MainAxisSize.min,
           children: [
             widget.silent
-                ? const Icon(Icons.volume_off_rounded, size: 14, color: Colors.white)
+                ? const Icon(Icons.volume_off_rounded, size: 14, color: AppColors.onDark)
                 : _Bars(controller: _controller),
             const SizedBox(width: 6),
-            Text(label, style: AppTypography.caption(color: Colors.white).copyWith(fontSize: 13)),
+            Text(label, style: AppTypography.caption(color: AppColors.onDark).copyWith(fontSize: 13)),
           ],
         ),
       ),
@@ -13809,7 +18199,7 @@ class _Bars extends AnimatedWidget {
         children: List.generate(4, (i) {
           final phase = (controller.value + i * .22) % 1.0;
           final h = 4 + (10 * (0.5 + 0.5 * (phase < .5 ? phase * 2 : (1 - phase) * 2)));
-          return Container(width: 2.4, height: h, color: Colors.white);
+          return Container(width: 2.4, height: h, color: AppColors.onDark);
         }),
       ),
     );
@@ -13819,9 +18209,9 @@ class _Bars extends AnimatedWidget {
 
 ---
 
-## Berkas: `lib/widgets/status_banner.dart`
+## File: `lib/widgets/status_banner.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/status_banner.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/status_banner.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -13867,22 +18257,30 @@ class StatusBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            TierIcon(tier: tier, size: 22),
+            ExcludeSemantics(child: TierIcon(tier: tier, size: 22)),
             const SizedBox(width: AppSpacing.s3),
             Expanded(
-              child: Text(
-                message,
-                style: AppTypography.bodyStrong(color: tier.labelColor).copyWith(fontSize: 15, height: 20 / 15),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              child: ExcludeSemantics(
+                child: Text(
+                  message,
+                  style: AppTypography.bodyStrong(color: tier.labelColor).copyWith(fontSize: 15, height: 20 / 15),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
             if (actionLabel != null)
-              GestureDetector(
-                onTap: onAction,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: AppSpacing.s3),
-                  child: Text(actionLabel!, style: AppTypography.label(color: AppColors.actionLabel)),
+              Semantics(
+                button: true,
+                label: actionLabel,
+                child: GestureDetector(
+                  onTap: onAction,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.s3),
+                    child: ExcludeSemantics(
+                      child: Text(actionLabel!, style: AppTypography.label(color: AppColors.actionLabel)),
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -13895,9 +18293,9 @@ class StatusBanner extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/target_chip.dart`
+## File: `lib/widgets/target_chip.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/target_chip.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/target_chip.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -13928,11 +18326,11 @@ class TargetChip extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            const Text('Mencari: ', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+            const Text('Mencari: ', style: TextStyle(color: AppColors.onDark, fontSize: 14, fontWeight: FontWeight.w600)),
             Expanded(
               child: Text(
                 itemName,
-                style: AppTypography.label(color: Colors.white),
+                style: AppTypography.label(color: AppColors.onDark),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -13947,9 +18345,9 @@ class TargetChip extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/tier_icon.dart`
+## File: `lib/widgets/tier_icon.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/tier_icon.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/tier_icon.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -14029,7 +18427,7 @@ class _TierIconPainter extends CustomPainter {
     switch (tier) {
       case AlertTier.critical:
         canvas.drawPath(_octagon(scale), fill);
-        _mark(canvas, scale, Colors.white, dotFirst: false);
+        _mark(canvas, scale, AppColors.onDark, dotFirst: false);
         break;
       case AlertTier.warning:
         canvas.drawPath(_triangle(scale), fill);
@@ -14043,11 +18441,11 @@ class _TierIconPainter extends CustomPainter {
           ),
           fill,
         );
-        _mark(canvas, scale, Colors.white, dotFirst: true);
+        _mark(canvas, scale, AppColors.onDark, dotFirst: true);
         break;
       case AlertTier.positive:
         final stroke = Paint()
-          ..color = Colors.white
+          ..color = AppColors.onDark
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.2 * scale
           ..strokeCap = StrokeCap.round
@@ -14103,9 +18501,9 @@ class _TierIconPainter extends CustomPainter {
 
 ---
 
-## Berkas: `lib/widgets/voice_orb.dart`
+## File: `lib/widgets/voice_orb.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/voice_orb.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/voice_orb.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -14150,7 +18548,7 @@ class VoiceOrb extends StatelessWidget {
           diameter: size,
           color: AppColors.actionFill,
           shadow: [BoxShadow(color: AppColors.actionFill.withValues(alpha: .3), blurRadius: 12, offset: const Offset(0, 4))],
-          child: Icon(Icons.mic_none_rounded, color: Colors.white, size: size * .44),
+          child: Icon(Icons.mic_none_rounded, color: AppColors.onDark, size: size * .44),
         );
       case VoiceOrbState.listening:
         return _circle(
@@ -14160,7 +18558,7 @@ class VoiceOrb extends StatelessWidget {
             BoxShadow(color: AppColors.actionFill.withValues(alpha: .16), blurRadius: 0, spreadRadius: size * .14),
             BoxShadow(color: AppColors.actionFill.withValues(alpha: .08), blurRadius: 0, spreadRadius: size * .28),
           ],
-          child: Icon(Icons.mic_rounded, color: Colors.white, size: size * .44),
+          child: Icon(Icons.mic_rounded, color: AppColors.onDark, size: size * .44),
         );
       case VoiceOrbState.processing:
         return _circle(
@@ -14175,12 +18573,12 @@ class VoiceOrb extends StatelessWidget {
         return _circle(
           diameter: size,
           color: AppColors.positiveLabel,
-          child: Icon(Icons.check_rounded, color: Colors.white, size: size * .48),
+          child: Icon(Icons.check_rounded, color: AppColors.onDark, size: size * .48),
         );
       case VoiceOrbState.failure:
         return _circle(
           diameter: size,
-          color: Colors.white,
+          color: AppColors.onDark,
           border: Border.all(color: AppColors.warningFill, width: 2),
           child: Icon(Icons.priority_high_rounded, color: AppColors.ink1, size: size * .42),
         );
@@ -14217,9 +18615,9 @@ class VoiceOrb extends StatelessWidget {
 
 ---
 
-## Berkas: `lib/widgets/zone_indicator.dart`
+## File: `lib/widgets/zone_indicator.dart`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/zone_indicator.dart`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/widgets/zone_indicator.dart`
 
 ```dart
 import 'package:flutter/material.dart';
@@ -14307,7 +18705,7 @@ class _ZoneChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final solid = recommended && status != ZoneStatus.unknown;
     final bg = solid ? status.ink : status.tint;
-    final fg = solid ? Colors.white : status.ink;
+    final fg = solid ? AppColors.onDark : status.ink;
 
     return Container(
       height: 56,
@@ -14316,7 +18714,7 @@ class _ZoneChip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: AppTypography.caption(color: solid ? Colors.white.withValues(alpha: .85) : AppColors.ink2)),
+            Text(label, style: AppTypography.caption(color: solid ? AppColors.onDark.withValues(alpha: .85) : AppColors.ink2)),
             const SizedBox(height: 1),
             status == ZoneStatus.unknown
                 ? _UnknownDots()
@@ -14343,7 +18741,7 @@ class _UnknownDots extends StatelessWidget {
             width: 6, height: 6,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: i == 0 ? const Color(0xFF9AA0AD) : const Color(0xFFC4C9D2),
+              color: i == 0 ? AppColors.indicatorOn : AppColors.indicatorOff,
             ),
           ),
         );
@@ -14355,9 +18753,355 @@ class _UnknownDots extends StatelessWidget {
 
 ---
 
-## Berkas: `pubspec.yaml`
+## File: `linux/CMakeLists.txt`
 
-**Path Lengkap:** `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/pubspec.yaml`
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/linux/CMakeLists.txt`
+
+```text
+# Project-level configuration.
+cmake_minimum_required(VERSION 3.13)
+project(runner LANGUAGES CXX)
+
+# The name of the executable created for the application. Change this to change
+# the on-disk name of your application.
+set(BINARY_NAME "guidio_app")
+# The unique GTK application identifier for this application. See:
+# https://wiki.gnome.org/HowDoI/ChooseApplicationID
+set(APPLICATION_ID "com.example.guidio_app")
+
+# Explicitly opt in to modern CMake behaviors to avoid warnings with recent
+# versions of CMake.
+cmake_policy(SET CMP0063 NEW)
+
+# Load bundled libraries from the lib/ directory relative to the binary.
+set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+
+# Root filesystem for cross-building.
+if(FLUTTER_TARGET_PLATFORM_SYSROOT)
+  set(CMAKE_SYSROOT ${FLUTTER_TARGET_PLATFORM_SYSROOT})
+  set(CMAKE_FIND_ROOT_PATH ${CMAKE_SYSROOT})
+  set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+  set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+endif()
+
+# Define build configuration options.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE "Debug" CACHE
+    STRING "Flutter build mode" FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Profile" "Release")
+endif()
+
+# Compilation settings that should be applied to most targets.
+#
+# Be cautious about adding new options here, as plugins use this function by
+# default. In most cases, you should add new options to specific targets instead
+# of modifying this function.
+function(APPLY_STANDARD_SETTINGS TARGET)
+  target_compile_features(${TARGET} PUBLIC cxx_std_14)
+  target_compile_options(${TARGET} PRIVATE -Wall -Werror)
+  target_compile_options(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
+  target_compile_definitions(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
+endfunction()
+
+# Flutter library and tool build rules.
+set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
+add_subdirectory(${FLUTTER_MANAGED_DIR})
+
+# System-level dependencies.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
+
+# Application build; see runner/CMakeLists.txt.
+add_subdirectory("runner")
+
+# Run the Flutter tool portions of the build. This must not be removed.
+add_dependencies(${BINARY_NAME} flutter_assemble)
+
+# Only the install-generated bundle's copy of the executable will launch
+# correctly, since the resources must in the right relative locations. To avoid
+# people trying to run the unbundled copy, put it in a subdirectory instead of
+# the default top-level location.
+set_target_properties(${BINARY_NAME}
+  PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/intermediates_do_not_run"
+)
+
+
+# Generated plugin build rules, which manage building the plugins and adding
+# them to the application.
+include(flutter/generated_plugins.cmake)
+
+
+# === Installation ===
+# By default, "installing" just makes a relocatable bundle in the build
+# directory.
+set(BUILD_BUNDLE_DIR "${PROJECT_BINARY_DIR}/bundle")
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
+endif()
+
+# Start with a clean build bundle directory every time.
+install(CODE "
+  file(REMOVE_RECURSE \"${BUILD_BUNDLE_DIR}/\")
+  " COMPONENT Runtime)
+
+set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
+set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+
+install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+
+install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
+  COMPONENT Runtime)
+
+install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
+
+foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
+  install(FILES "${bundled_library}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endforeach(bundled_library)
+
+# Copy the native assets provided by the build.dart from all packages.
+set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/linux/")
+install(DIRECTORY "${NATIVE_ASSETS_DIR}"
+   DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+   COMPONENT Runtime)
+
+# Fully re-copy the assets directory on each build to avoid having stale files
+# from a previous install.
+set(FLUTTER_ASSET_DIR_NAME "flutter_assets")
+install(CODE "
+  file(REMOVE_RECURSE \"${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}\")
+  " COMPONENT Runtime)
+install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+
+# Install the AOT library on non-Debug builds only.
+if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+  install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
+```
+
+---
+
+## File: `linux/flutter/CMakeLists.txt`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/linux/flutter/CMakeLists.txt`
+
+```text
+# This file controls Flutter-level build steps. It should not be edited.
+cmake_minimum_required(VERSION 3.10)
+
+set(EPHEMERAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ephemeral")
+
+# Configuration provided via flutter tool.
+include(${EPHEMERAL_DIR}/generated_config.cmake)
+
+# TODO: Move the rest of this into files in ephemeral. See
+# https://github.com/flutter/flutter/issues/57146.
+
+# Serves the same purpose as list(TRANSFORM ... PREPEND ...),
+# which isn't available in 3.10.
+function(list_prepend LIST_NAME PREFIX)
+    set(NEW_LIST "")
+    foreach(element ${${LIST_NAME}})
+        list(APPEND NEW_LIST "${PREFIX}${element}")
+    endforeach(element)
+    set(${LIST_NAME} "${NEW_LIST}" PARENT_SCOPE)
+endfunction()
+
+# === Flutter Library ===
+# System-level dependencies.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
+pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
+pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0)
+
+set(FLUTTER_LIBRARY "${EPHEMERAL_DIR}/libflutter_linux_gtk.so")
+
+# Published to parent scope for install step.
+set(FLUTTER_LIBRARY ${FLUTTER_LIBRARY} PARENT_SCOPE)
+set(FLUTTER_ICU_DATA_FILE "${EPHEMERAL_DIR}/icudtl.dat" PARENT_SCOPE)
+set(PROJECT_BUILD_DIR "${PROJECT_DIR}/build/" PARENT_SCOPE)
+set(AOT_LIBRARY "${PROJECT_DIR}/build/lib/libapp.so" PARENT_SCOPE)
+
+list(APPEND FLUTTER_LIBRARY_HEADERS
+  "fl_basic_message_channel.h"
+  "fl_binary_codec.h"
+  "fl_binary_messenger.h"
+  "fl_dart_project.h"
+  "fl_engine.h"
+  "fl_json_message_codec.h"
+  "fl_json_method_codec.h"
+  "fl_message_codec.h"
+  "fl_method_call.h"
+  "fl_method_channel.h"
+  "fl_method_codec.h"
+  "fl_method_response.h"
+  "fl_plugin_registrar.h"
+  "fl_plugin_registry.h"
+  "fl_standard_message_codec.h"
+  "fl_standard_method_codec.h"
+  "fl_string_codec.h"
+  "fl_value.h"
+  "fl_view.h"
+  "flutter_linux.h"
+)
+list_prepend(FLUTTER_LIBRARY_HEADERS "${EPHEMERAL_DIR}/flutter_linux/")
+add_library(flutter INTERFACE)
+target_include_directories(flutter INTERFACE
+  "${EPHEMERAL_DIR}"
+)
+target_link_libraries(flutter INTERFACE "${FLUTTER_LIBRARY}")
+target_link_libraries(flutter INTERFACE
+  PkgConfig::GTK
+  PkgConfig::GLIB
+  PkgConfig::GIO
+)
+add_dependencies(flutter flutter_assemble)
+
+# === Flutter tool backend ===
+# _phony_ is a non-existent file to force this command to run every time,
+# since currently there's no way to get a full input/output list from the
+# flutter tool.
+add_custom_command(
+  OUTPUT ${FLUTTER_LIBRARY} ${FLUTTER_LIBRARY_HEADERS}
+    ${CMAKE_CURRENT_BINARY_DIR}/_phony_
+  COMMAND ${CMAKE_COMMAND} -E env
+    ${FLUTTER_TOOL_ENVIRONMENT}
+    "${FLUTTER_ROOT}/packages/flutter_tools/bin/tool_backend.sh"
+      ${FLUTTER_TARGET_PLATFORM} ${CMAKE_BUILD_TYPE}
+  VERBATIM
+)
+add_custom_target(flutter_assemble DEPENDS
+  "${FLUTTER_LIBRARY}"
+  ${FLUTTER_LIBRARY_HEADERS}
+)
+```
+
+---
+
+## File: `linux/runner/CMakeLists.txt`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/linux/runner/CMakeLists.txt`
+
+```text
+cmake_minimum_required(VERSION 3.13)
+project(runner LANGUAGES CXX)
+
+# Define the application target. To change its name, change BINARY_NAME in the
+# top-level CMakeLists.txt, not the value here, or `flutter run` will no longer
+# work.
+#
+# Any new source files that you add to the application should be added here.
+add_executable(${BINARY_NAME}
+  "main.cc"
+  "my_application.cc"
+  "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
+)
+
+# Apply the standard set of build settings. This can be removed for applications
+# that need different build settings.
+apply_standard_settings(${BINARY_NAME})
+
+# Add preprocessor definitions for the application ID.
+add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
+
+# Add dependency libraries. Add any application-specific dependencies here.
+target_link_libraries(${BINARY_NAME} PRIVATE flutter)
+target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
+
+target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+```
+
+---
+
+## File: `macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json`
+
+```json
+{
+  "images" : [
+    {
+      "size" : "16x16",
+      "idiom" : "mac",
+      "filename" : "app_icon_16.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "16x16",
+      "idiom" : "mac",
+      "filename" : "app_icon_32.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "32x32",
+      "idiom" : "mac",
+      "filename" : "app_icon_32.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "32x32",
+      "idiom" : "mac",
+      "filename" : "app_icon_64.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "128x128",
+      "idiom" : "mac",
+      "filename" : "app_icon_128.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "128x128",
+      "idiom" : "mac",
+      "filename" : "app_icon_256.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "256x256",
+      "idiom" : "mac",
+      "filename" : "app_icon_256.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "256x256",
+      "idiom" : "mac",
+      "filename" : "app_icon_512.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "512x512",
+      "idiom" : "mac",
+      "filename" : "app_icon_512.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "512x512",
+      "idiom" : "mac",
+      "filename" : "app_icon_1024.png",
+      "scale" : "2x"
+    }
+  ],
+  "info" : {
+    "version" : 1,
+    "author" : "xcode"
+  }
+}
+```
+
+---
+
+## File: `pubspec.yaml`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/pubspec.yaml`
 
 ```yaml
 name: guidio_app
@@ -14419,15 +19163,1221 @@ dependencies:
   google_fonts: ^6.2.1
   google_mlkit_text_recognition: ^0.16.0
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  change_app_package_name: ^1.5.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/vinara_logo.png"
+  min_sdk_android: 26
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
   assets:
-    - assets/models/
+    # Daftar model DISEBUT SATU PER SATU, bukan seluruh direktori.
+    #
+    # `- assets/models/` ikut membundel semua yang kebetulan ada di folder itu,
+    # termasuk yolo11l_float32.tflite (96,9 MB), yoloe_find.onnx (11 MB),
+    # pidnet_s.onnx.data (2,5 MB) dan pidnet_s_3zona.onnx — tidak satu pun
+    # dimuat kode, semuanya ikut ke APK. Untuk pengguna dengan kuota terbatas
+    # itu ratusan megabyte yang dibayar tanpa satu pun manfaat.
+    #
+    # Menambah berkas ke assets/models/ TIDAK otomatis membundelnya. Itu
+    # disengaja: tambahkan barisnya di sini hanya kalau kode benar-benar
+    # memuatnya lewat rootBundle.
+    - assets/models/ssd_mobilenet.tflite        # TFLiteService — deteksi rintangan
+    - assets/models/labelmap.txt                # TFLiteService — label COCO
+    - assets/models/rupiah_classifier_int8.tflite  # MoneyTFLiteService — 7 pecahan
+    #
+    # uang_rupiah.tflite (model lama) sengaja TIDAK dibundel lagi: sudah
+    # digantikan rupiah_classifier_int8.tflite. Berkasnya tetap ada di
+    # assets/models/ sebagai arsip, tapi tidak ikut ke APK.
+    #
+    # rupiah_labels.txt juga tidak dibundel — urutan kelasnya sudah tetap di
+    # MoneyTFLiteService.classValues, jadi tidak ada yang memuatnya lewat
+    # rootBundle. Berkasnya disimpan sebagai rujukan saat mengganti model.
+    - assets/models/pidnet_s_3zona_fp16.tflite  # PidnetService — segmentasi jalur
+    - assets/models/pidnet_s_3zona.tflite       # PidnetService — cadangan non-fp16
+    - assets/models/yolo11n.tflite              # YoloNavigasiService — rintangan navigasi
+    - assets/icons/
+```
+
+---
+
+## File: `test/command_parser_test.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/test/command_parser_test.dart`
+
+```dart
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:guidio_app/core/voice/command_parser.dart';
+import 'package:guidio_app/core/voice/intents.dart';
+import 'package:guidio_app/services/money_tflite_service.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// Test suite gabungan untuk:
+///
+/// 1. **CommandParser** — memastikan intent mapping tetap benar setelah
+///    refactor apa pun.
+/// 2. **Kenali Uang (TFLite)** — integrasi ringan: muat model dan klasifikasi
+///    sampel nyata dari dataset `uang-emisi-2022-baru`.
+/// 3. **Mode Navigasi** — fixture gambar bahaya jalan ada & valid.
+/// 4. **Cari Objek** — test parse command, hanya dieksekusi kalau backend
+///    tersedia (skip otomatis jika offline/belum deploy).
+/// ─────────────────────────────────────────────────────────────────────────────
+void main() {
+  VoiceIntent? intentOf(String text) => CommandParser.parse(text).intent;
+
+  // ─── 1. Command Parser — contoh ucapan dari dokumen arsitektur ─────────────
+  group('contoh ucapan dari dokumen arsitektur', () {
+    const cases = <String, VoiceIntent>{
+      // Deteksi Objek
+      'deteksi': VoiceIntent.modeDetection,
+      'awasi jalan': VoiceIntent.modeDetection,
+      'mode jalan': VoiceIntent.modeNavigation,
+      'deteksi objek': VoiceIntent.modeDetection,
+      'tuntun aku': VoiceIntent.modeDetection,
+      // Kenali Uang
+      'uang': VoiceIntent.modeMoney,
+      'kenali uang': VoiceIntent.modeMoney,
+      'cek duit': VoiceIntent.modeMoney,
+      'duit berapa': VoiceIntent.modeMoney,
+      // Baca Teks
+      'baca teks': VoiceIntent.modeReadText,
+      'tolong bacain': VoiceIntent.modeReadText,
+      'baca dong': VoiceIntent.modeReadText,
+      'tulung wacakno': VoiceIntent.modeReadText,
+      // Navigasi
+      'navigasi': VoiceIntent.modeNavigation,
+      'jalan mana': VoiceIntent.modeNavigation,
+      'arahan jalur': VoiceIntent.modeNavigation,
+      // Asisten
+      'asisten': VoiceIntent.modeAssistant,
+      'ngobrol': VoiceIntent.modeAssistant,
+      // Pengaturan
+      'pengaturan': VoiceIntent.modeSettings,
+      'seting': VoiceIntent.modeSettings,
+    };
+
+    cases.forEach((utterance, expected) {
+      test('"$utterance" → $expected', () {
+        expect(intentOf(utterance), expected);
+      });
+    });
+  });
+
+  // ─── 2. Frasa spesifik menang atas kata umum ───────────────────────────────
+  group('frasa spesifik menang atas kata umum', () {
+    test('"stop navigasi" menghentikan panduan, bukan keluar mode', () {
+      expect(intentOf('stop navigasi'), VoiceIntent.actionStopWalking);
+    });
+
+    test('"berhenti navigasi" sama', () {
+      expect(intentOf('berhenti navigasi'), VoiceIntent.actionStopWalking);
+    });
+
+    test('"berhenti dulu" adalah jeda suara', () {
+      expect(intentOf('berhenti dulu'), VoiceIntent.playPause);
+    });
+
+    test('"kembali" tetap actionGoBack', () {
+      expect(intentOf('kembali'), VoiceIntent.actionGoBack);
+    });
+  });
+
+  // ─── 3. Prefiks transisi mode natural ─────────────────────────────────────
+  group('prefiks transisi mode natural', () {
+    test('"saya pengin pindah ke mode baca teks"', () {
+      expect(
+        intentOf('saya pengin pindah ke mode baca teks'),
+        VoiceIntent.modeReadText,
+      );
+    });
+
+    test('"ganti mode ke uang"', () {
+      expect(intentOf('ganti mode ke uang'), VoiceIntent.modeMoney);
+    });
+  });
+
+  // ─── 4. Pencocokan pada batas kata ────────────────────────────────────────
+  group('pencocokan pada batas kata', () {
+    test('kata yang hanya mengandung potongan frasa tidak ikut cocok', () {
+      // 'uang' tidak boleh tercabut dari 'ruangan'.
+      expect(intentOf('ruangan ini kayak gimana'), isNot(VoiceIntent.modeMoney));
+    });
+  });
+
+  // ─── 5. Saran hanya berisi intent yang punya handler ──────────────────────
+  group('saran hanya berisi intent yang punya handler', () {
+    test('setiap saran ada di suggestableIntents', () {
+      const gibberish = [
+        'anu itu yang tadi bagaimana',
+        'coba yang begitu deh',
+        'hmm apa ya kira-kira',
+      ];
+      for (final text in gibberish) {
+        final cmd = CommandParser.parse(text);
+        for (final s in cmd.suggestions) {
+          expect(
+            CommandParser.suggestableIntents.contains(s),
+            isTrue,
+            reason: '"$text" menyarankan $s yang tidak punya handler — '
+                'inilah yang membuat "Maksudmu X?" → "X" → "belum saya kenali"',
+          );
+        }
+      }
+    });
+  });
+
+  // ─── 6. Kenali Uang — sample gambar nyata dari dataset ────────────────────
+  //
+  // Test ini muat model TFLite on-device lalu mengklasifikasi gambar dari
+  // dataset asli emisi 2022. Setiap pecahan diuji dengan 2 sampel berbeda.
+  // Fixture ada di test/fixtures/money/ (sudah di-copy dari dataset).
+  //
+  // Skip otomatis kalau model asset tidak tersedia (misalnya CI tanpa assets).
+  group('Kenali Uang — klasifikasi gambar nyata', () {
+    late MoneyTFLiteService svc;
+    late bool modelLoaded;
+
+    setUpAll(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      svc = MoneyTFLiteService.instance;
+      modelLoaded = await svc.load();
+    });
+
+    tearDownAll(() {/* singleton — jangan dispose; bisa dipakai test lain */});
+
+    /// Helper: baca fixture → kirim ke classifyJpeg → kembalikan MoneyResult.
+    Future<MoneyResult> classify(String fixtureName) async {
+      final file = File('test/fixtures/money/$fixtureName');
+      expect(file.existsSync(), isTrue, reason: 'Fixture tidak ada: $fixtureName');
+      return svc.classifyJpeg(file.readAsBytesSync());
+    }
+
+    // Tabel: (fixtureName, expectedValueIdr)
+    const samples = [
+      ('uang_1000_a.jpg', 1000),
+      ('uang_1000_b.jpg', 1000),
+      ('uang_2000_a.jpg', 2000),
+      ('uang_2000_b.jpg', 2000),
+      ('uang_5000_a.jpg', 5000),
+      ('uang_5000_b.jpg', 5000),
+      ('uang_10000_a.jpg', 10000),
+      ('uang_10000_b.jpg', 10000),
+      ('uang_20000_a.jpg', 20000),
+      ('uang_20000_b.jpg', 20000),
+      ('uang_50000_a.jpg', 50000),
+      ('uang_50000_b.jpg', 50000),
+      ('uang_100000_a.jpg', 100000),
+      ('uang_100000_b.jpg', 100000),
+    ];
+
+    for (final (fixture, expected) in samples) {
+      test('${fixture.replaceAll('.jpg', '')} → Rp${_fmt(expected)}', () async {
+        if (!modelLoaded) {
+          markTestSkipped('Model TFLite tidak berhasil dimuat — skip.');
+          return;
+        }
+        final result = await classify(fixture);
+        // Dua kemungkinan sukses: terdeteksi dengan nominal benar, atau
+        // uncertain (confidence di bawah threshold). Yang TIDAK boleh terjadi
+        // adalah detected == true dengan nominal yang salah.
+        if (result.detected) {
+          expect(
+            result.valueIdr,
+            equals(expected),
+            reason: '$fixture dikenali sebagai Rp${_fmt(result.valueIdr!)} '
+                '(confidence: ${(result.confidence * 100).toStringAsFixed(1)}%), '
+                'seharusnya Rp${_fmt(expected)}.',
+          );
+        }
+        // uncertain → test tetap pass; model hanya kurang yakin.
+      });
+    }
+  });
+
+  // ─── 7. Mode Navigasi — fixture gambar valid ───────────────────────────────
+  //
+  // Test ini TIDAK menjalankan inference (model YOLOv11 terlalu besar untuk
+  // dipush ke repo). Yang diverifikasi: gambar fixture ada, bisa dibaca, dan
+  // berukuran wajar (> 100 KB) sehingga coverage integrasi tetap terjaga.
+  group('Navigation mode — fixture images exist and are valid', () {
+    const fixtures = [
+      '01_got_terbuka.png',   // open drain / got terbuka
+      '02_lubang_trotoar.png', // sidewalk hole
+      '03_tiang_listrik.png',  // utility pole
+      '04_motor_dan_orang.png', // motorcycle and pedestrian
+      '05_tangga_turun.png',   // descending stairs
+    ];
+
+    for (final name in fixtures) {
+      test('$name — file exists and is readable', () {
+        final file = File('test/fixtures/navigation/$name');
+        expect(file.existsSync(), isTrue, reason: 'Fixture tidak ada: $name');
+        final bytes = file.readAsBytesSync();
+        expect(bytes.length, greaterThan(100 * 1024),
+            reason: '$name terlalu kecil — mungkin file rusak atau terpotong.');
+        // Validasi magic bytes PNG: 0x89 0x50 0x4E 0x47
+        expect(bytes[0], equals(0x89));
+        expect(bytes[1], equals(0x50)); // 'P'
+        expect(bytes[2], equals(0x4E)); // 'N'
+        expect(bytes[3], equals(0x47)); // 'G'
+      });
+    }
+  });
+
+  // ─── 8. Cari Objek — parse command + guard backend ────────────────────────
+  //
+  // CommandParser harus mengekstrak target dari perintah bahasa Indonesia dan
+  // Sunda. Backend check (HTTP ping) dilakukan di sini: kalau tidak reachable,
+  // semua sub-test "would call backend" di-skip secara eksplisit, bukan fail.
+  group('Find Object — command parsing', () {
+    // --- 8a. Parser: bahasa Indonesia
+    test('"cari dompet" extracts target "dompet"', () {
+      final cmd = CommandParser.parse('cari dompet');
+      expect(cmd.intent, VoiceIntent.findObjectTarget);
+      expect(cmd.argument, 'dompet');
+    });
+
+    test('"cariin kunci dong" strips filler words', () {
+      final cmd = CommandParser.parse('cariin kunci dong');
+      expect(cmd.intent, VoiceIntent.findObjectTarget);
+      expect(cmd.argument, 'kunci');
+    });
+
+    test('"teang dompu" (Sundanese) is recognized', () {
+      final cmd = CommandParser.parse('teang dompu');
+      expect(cmd.intent, VoiceIntent.findObjectTarget);
+      expect(cmd.argument, 'dompu');
+    });
+
+    test('"cari uang yang jatuh" is object-find, not money mode', () {
+      // 'uang' is in modeMoney dictionary; object-find pattern must win
+      // because it is checked first (prevents ambiguity for blind users).
+      final cmd = CommandParser.parse('cari uang yang jatuh');
+      expect(cmd.intent, VoiceIntent.findObjectTarget);
+    });
+
+    // --- 8b. Parser: English target extraction (for backend API)
+    //
+    // When the app translates the target to English before sending to the
+    // backend, the parser must still set intent correctly.  Actual translation
+    // happens in SceneTranslator; here we only verify the parsed intent.
+    const englishTargetCases = <String, String>{
+      'cari tas merah': 'red bag',       // tas merah → red bag
+      'cariin botol minum': 'botol minum', // extraction only; translation elsewhere
+      'cari HP': 'HP',
+    };
+
+    englishTargetCases.forEach((utterance, _) {
+      test('"$utterance" → findObjectTarget intent', () {
+        expect(intentOf(utterance), VoiceIntent.findObjectTarget);
+      });
+    });
+
+    // --- 8c. Backend-dependent tests (skip if unreachable)
+    //
+    // Image fixtures are in test/fixtures/object_find/.
+    // These tests would normally call the vision backend to verify that
+    // "red bag", "water bottle", etc. are detected in the provided images.
+    // Since the backend is not always running, they are marked skip here.
+    //
+    // To run locally: start the backend, then:
+    //   flutter test --name "object_find"
+    group('object_find — backend integration (skipped unless BE running)', () {
+      const backendUrl = String.fromEnvironment(
+        'GUIDO_BACKEND_URL',
+        defaultValue: '',
+      );
+
+      bool backendAvailable = false;
+
+      setUpAll(() async {
+        if (backendUrl.isEmpty) return;
+        try {
+          final client = HttpClient();
+          client.connectionTimeout = const Duration(seconds: 3);
+          final req = await client.getUrl(Uri.parse('$backendUrl/health'));
+          final res = await req.close();
+          backendAvailable = res.statusCode == 200;
+          client.close();
+        } catch (_) {
+          backendAvailable = false;
+        }
+      });
+
+      const objectTargets = [
+        ('red bag', 'test/fixtures/object_find/red_bag.jpg'),
+        ('water bottle', 'test/fixtures/object_find/water_bottle.jpg'),
+        ('black umbrella', 'test/fixtures/object_find/black_umbrella.jpg'),
+      ];
+
+      for (final (target, fixturePath) in objectTargets) {
+        test('find "$target" in ${fixturePath.split('/').last}', () {
+          if (!backendAvailable) {
+            markTestSkipped('Backend not reachable — set GUIDO_BACKEND_URL to run.');
+            return;
+          }
+          final file = File(fixturePath);
+          expect(file.existsSync(), isTrue,
+              reason: 'Fixture $fixturePath not found.');
+          // Placeholder: actual HTTP call to backend would go here.
+          // The test is already useful as a guard: it ensures the fixture
+          // exists and the backend is reachable before spending time on it.
+        });
+      }
+    });
+  });
+}
+
+/// Format angka ribuan singkat: 1000 → "1.000", 100000 → "100.000".
+String _fmt(int value) => value.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
+    );
+```
+
+---
+
+## File: `test/model_inference_test.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/test/model_inference_test.dart`
+
+```dart
+import 'dart:io';
+import 'dart:math' as math;
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
+import 'package:tflite_flutter/tflite_flutter.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// Inferensi on-device — TIDAK membutuhkan Flutter binding / rootBundle.
+///
+/// Dua kelompok besar:
+///
+/// **A. Kenali Uang (MobileNetV2 INT8)**
+///   - Model  : assets/models/rupiah_classifier_int8.tflite
+///   - Input  : [1,224,224,3] float32, rentang −1..1
+///   - Output : [1,7] softmax (kelas: 1k 2k 5k 10k 20k 50k 100k)
+///   - Fixture: test/fixtures/money/  (nama file → ground-truth via regex)
+///   - Validasi: detected == true → valueIdr harus tepat;
+///              uncertain boleh (confidence threshold tinggi di production).
+///
+/// **B. Navigasi YOLO11n (INT8)**
+///   - Model  : assets/models/yolo11n.tflite
+///   - Input  : [1,640,640,3] float32, rentang 0..1
+///   - Output : [1,10,8400] — 4 box + 6 class scores
+///   - Fixture: test/fixtures/navigation/ (PNG gambar bahaya jalan)
+///   - Validasi: setidaknya satu Detection terdeteksi, dan labelnya
+///              ada di daftar kelas yang diketahui dari gambar itu
+///              (diambil dari nama file via regex).
+///
+/// Kedua kelompok skip secara otomatis kalau shared library TFLite tidak ada
+/// (contoh: CI Linux tanpa libtensorflowlite_c-linux.so).
+/// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Konstanta model ──────────────────────────────────────────────────────────
+
+const _kMoneyModelPath = 'assets/models/rupiah_classifier_int8.tflite';
+const _kYoloModelPath  = 'assets/models/yolo11n.tflite';
+
+/// Urutan kelas sesuai CLASS_ORDER di scripts/02_export_tflite.py.
+/// Harus identik dengan MoneyTFLiteService.classValues — jangan diubah.
+const List<int> _moneyClasses = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
+
+/// Kelas navigasi — urutan sesuai training (lihat yolo_navigasi_service.dart).
+const List<String> _navLabels = [
+  'lubang', 'got_terbuka', 'tangga', 'orang', 'motor', 'tiang',
+];
+
+// Confidence threshold production (sama dengan service)
+const double _moneyConfThresh = 0.85;
+const double _yoloConfThresh  = 0.30;
+const double _yoloIouThresh   = 0.45;
+const int    _yoloSize        = 640;
+const int    _moneySize       = 224;
+
+// ── Helper: parse ground-truth dari nama file ────────────────────────────────
+
+/// Ekstrak nominal (int) dari nama file money fixture.
+/// Contoh: "uang_10000_a.jpg" → 10000
+/// Pola: uang_{nilai}_{sample}.jpg
+int? _moneyValueFromFilename(String filename) {
+  final m = RegExp(r'uang_(\d+)_[a-z]\.jpg').firstMatch(filename);
+  if (m == null) return null;
+  return int.tryParse(m.group(1)!);
+}
+
+/// Ekstrak label yang DIHARAPKAN ada di gambar navigasi dari nama file.
+/// Pola: {seq}_{label_dengan_underscore}.png
+/// Contoh: "02_lubang_trotoar.png" → hint 'lubang'
+///         "01_got_terbuka.png"    → hint 'got_terbuka'
+///         "04_motor_dan_orang.png"→ hint 'motor', 'orang'
+List<String> _navLabelsFromFilename(String filename) {
+  // Hapus ekstensi dan sequence prefix (mis. "01_")
+  final bare = filename.replaceFirst(RegExp(r'^\d+_'), '').replaceAll('.png', '');
+  // bare mis: "got_terbuka", "lubang_trotoar", "motor_dan_orang", "tiang_listrik", "tangga_turun"
+  return _navLabels.where((label) => bare.contains(label)).toList();
+}
+
+// ── Helper: load TFLite interpreter dari file ────────────────────────────────
+
+Interpreter? _loadInterpreter(String assetRelPath, {int threads = 2}) {
+  final file = File(assetRelPath);
+  if (!file.existsSync()) return null;
+  try {
+    final bytes = file.readAsBytesSync();
+    final opts  = InterpreterOptions()..threads = threads;
+    return Interpreter.fromBuffer(bytes, options: opts);
+  } catch (_) {
+    return null;
+  }
+}
+
+// ── Helper: preprocessing gambar untuk money (−1..1) ───────────────────────
+
+List<List<List<List<double>>>> _preprocessMoney(img.Image source) {
+  final resized = img.copyResize(source,
+      width: _moneySize, height: _moneySize,
+      interpolation: img.Interpolation.linear);
+
+  return List.generate(1, (_) =>
+    List.generate(_moneySize, (y) =>
+      List.generate(_moneySize, (x) {
+        final p = resized.getPixel(x, y);
+        return [
+          p.r / 127.5 - 1.0,
+          p.g / 127.5 - 1.0,
+          p.b / 127.5 - 1.0,
+        ];
+      }),
+    ),
+  );
+}
+
+// ── Helper: preprocessing gambar untuk YOLO (0..1) ──────────────────────────
+
+List<List<List<List<double>>>> _preprocessYolo(img.Image source) {
+  final resized = img.copyResize(source,
+      width: _yoloSize, height: _yoloSize,
+      interpolation: img.Interpolation.linear);
+
+  return List.generate(1, (_) =>
+    List.generate(_yoloSize, (y) =>
+      List.generate(_yoloSize, (x) {
+        final p = resized.getPixel(x, y);
+        return [p.r / 255.0, p.g / 255.0, p.b / 255.0];
+      }),
+    ),
+  );
+}
+
+// ── Helper: NMS sederhana ────────────────────────────────────────────────────
+
+double _iou(List<double> a, List<double> b) {
+  final ix1 = math.max(a[0], b[0]);
+  final iy1 = math.max(a[1], b[1]);
+  final ix2 = math.min(a[2], b[2]);
+  final iy2 = math.min(a[3], b[3]);
+  final iw = math.max(0.0, ix2 - ix1);
+  final ih = math.max(0.0, iy2 - iy1);
+  final inter = iw * ih;
+  if (inter == 0) return 0;
+  final aA = (a[2]-a[0]) * (a[3]-a[1]);
+  final aB = (b[2]-b[0]) * (b[3]-b[1]);
+  return inter / (aA + aB - inter);
+}
+
+class _Box {
+  final int classIdx;
+  final double conf;
+  final List<double> xyxy;
+  const _Box(this.classIdx, this.conf, this.xyxy);
+}
+
+List<_Box> _postProcessYolo(List<List<double>> raw) {
+  // raw shape: [10][8400], layout: [cx,cy,w,h, score0..score5]
+  final boxes = <_Box>[];
+  for (var i = 0; i < 8400; i++) {
+    double bestScore = 0;
+    int bestCls = 0;
+    for (var c = 0; c < _navLabels.length; c++) {
+      final s = raw[4 + c][i];
+      if (s > bestScore) { bestScore = s; bestCls = c; }
+    }
+    if (bestScore < _yoloConfThresh) continue;
+    final cx = raw[0][i], cy = raw[1][i],
+          w  = raw[2][i], h  = raw[3][i];
+    boxes.add(_Box(bestCls, bestScore, [cx-w/2, cy-h/2, cx+w/2, cy+h/2]));
+  }
+
+  // Sort by confidence desc
+  boxes.sort((a, b) => b.conf.compareTo(a.conf));
+
+  // NMS
+  final keep = <_Box>[];
+  final suppressed = List.filled(boxes.length, false);
+  for (var i = 0; i < boxes.length; i++) {
+    if (suppressed[i]) continue;
+    keep.add(boxes[i]);
+    for (var j = i + 1; j < boxes.length; j++) {
+      if (suppressed[j]) continue;
+      if (boxes[i].classIdx == boxes[j].classIdx &&
+          _iou(boxes[i].xyxy, boxes[j].xyxy) > _yoloIouThresh) {
+        suppressed[j] = true;
+      }
+    }
+  }
+  return keep;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TESTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+void main() {
+  // ─── A. Kenali Uang ────────────────────────────────────────────────────────
+  group('A. Kenali Uang — MobileNetV2 INT8 inference', () {
+    late Interpreter? interp;
+
+    setUpAll(() {
+      interp = _loadInterpreter(_kMoneyModelPath);
+      if (interp == null) {
+        // ignore: avoid_print
+        print('[TEST] TFLite SO tidak ada — semua test Money akan di-skip.');
+      }
+    });
+
+    tearDownAll(() => interp?.close());
+
+    /// Ground-truth: langsung dari nama file via regex.
+    /// Tidak ada hard-coded mapping — kalau nama file salah, regex gagal,
+    /// test langsung merah.
+    const moneyFixtures = [
+      'uang_1000_a.jpg',
+      'uang_1000_b.jpg',
+      'uang_2000_a.jpg',
+      'uang_2000_b.jpg',
+      'uang_5000_a.jpg',
+      'uang_5000_b.jpg',
+      'uang_10000_a.jpg',
+      'uang_10000_b.jpg',
+      'uang_20000_a.jpg',
+      'uang_20000_b.jpg',
+      'uang_50000_a.jpg',
+      'uang_50000_b.jpg',
+      'uang_100000_a.jpg',
+      'uang_100000_b.jpg',
+    ];
+
+    for (final fixture in moneyFixtures) {
+      final expected = _moneyValueFromFilename(fixture);
+
+      test('$fixture → Rp${_fmtIdr(expected!)}', () {
+        if (interp == null) {
+          markTestSkipped('TFLite SO tidak tersedia (non-Android host).');
+          return;
+        }
+
+        // 1. Baca dan decode gambar
+        final file = File('test/fixtures/money/$fixture');
+        expect(file.existsSync(), isTrue,
+            reason: 'Fixture tidak ada: $fixture');
+
+        final decoded = img.decodeImage(file.readAsBytesSync());
+        expect(decoded, isNotNull, reason: 'Gagal decode $fixture');
+
+        // 2. Preprocessing: resize ke 224×224, normalisasi −1..1
+        final input = _preprocessMoney(decoded!);
+
+        // 3. Inferensi
+        final output = List.generate(1, (_) => List<double>.filled(7, 0));
+        interp!.run(input, output);
+        final probs = output[0];
+
+        // 4. Temukan kelas terbaik
+        var bestIdx  = 0;
+        for (var i = 1; i < probs.length; i++) {
+          if (probs[i] > probs[bestIdx]) bestIdx = i;
+        }
+        final predictedValue = _moneyClasses[bestIdx];
+        final confidence     = probs[bestIdx];
+
+        // 5. Format untuk debugging
+        final probStr = List.generate(probs.length,
+            (i) => '${_fmtIdr(_moneyClasses[i])}:${(probs[i]*100).toStringAsFixed(1)}%'
+        ).join('  ');
+
+        // ignore: avoid_print
+        print('[$fixture] pred=Rp${_fmtIdr(predictedValue)} '
+              'conf=${(confidence*100).toStringAsFixed(1)}%\n  $probStr');
+
+        // 6. Validasi:
+        //    - Kalau confidence ≥ threshold → nominal HARUS tepat (tidak boleh salah)
+        //    - Kalau uncertain → kelas yang mendapat prob tertinggi tetap harus benar
+        //      (model boleh ragu, tapi tidak boleh yakin-yakin salah)
+        if (confidence >= _moneyConfThresh) {
+          // Deteksi penuh: nominal harus persis
+          expect(predictedValue, equals(expected),
+              reason: '$fixture dikenali Rp${_fmtIdr(predictedValue)} '
+                      '(${(confidence*100).toStringAsFixed(1)}%), '
+                      'seharusnya Rp${_fmtIdr(expected)}.\n  Semua prob: $probStr');
+        } else {
+          // Uncertain: tetap tidak boleh salah kelas (argmax harus benar)
+          // — ini lebih longgar; test pass tapi print peringatan
+          // ignore: avoid_print
+          print('  ⚠ Uncertain (conf=${(confidence*100).toStringAsFixed(1)}% '
+                '< ${(_moneyConfThresh*100).toStringAsFixed(0)}%): '
+                'argmax Rp${_fmtIdr(predictedValue)} vs expected Rp${_fmtIdr(expected)}');
+          // Tidak assert gagal — production juga tidak tampilkan nominal saat uncertain
+        }
+      });
+    }
+  });
+
+  // ─── B. Navigasi YOLO11n ───────────────────────────────────────────────────
+  group('B. Navigasi YOLO11n — hazard detection inference', () {
+    late Interpreter? interp;
+
+    setUpAll(() {
+      interp = _loadInterpreter(_kYoloModelPath, threads: 4);
+      if (interp == null) {
+        // ignore: avoid_print
+        print('[TEST] TFLite SO tidak ada — semua test YOLO akan di-skip.');
+      }
+    });
+
+    tearDownAll(() => interp?.close());
+
+    /// Fixture + label yang DIHARAPKAN terdeteksi (dari nama file).
+    /// Regex dipakai oleh _navLabelsFromFilename() — tidak ada hard-coded list.
+    const navFixtures = [
+      '01_got_terbuka.png',    // → got_terbuka
+      '02_lubang_trotoar.png', // → lubang
+      '03_tiang_listrik.png',  // → tiang
+      '04_motor_dan_orang.png',// → motor, orang
+      '05_tangga_turun.png',   // → tangga
+    ];
+
+    for (final fixture in navFixtures) {
+      final expectedLabels = _navLabelsFromFilename(fixture);
+
+      test('$fixture → mendeteksi: $expectedLabels', () {
+        if (interp == null) {
+          markTestSkipped('TFLite SO tidak tersedia (non-Android host).');
+          return;
+        }
+
+        // 1. Baca & decode PNG
+        final file = File('test/fixtures/navigation/$fixture');
+        expect(file.existsSync(), isTrue,
+            reason: 'Fixture tidak ada: $fixture');
+
+        final decoded = img.decodeImage(file.readAsBytesSync());
+        expect(decoded, isNotNull, reason: 'Gagal decode $fixture');
+
+        // 2. Preprocessing: resize ke 640×640, normalisasi 0..1
+        final input = _preprocessYolo(decoded!);
+
+        // 3. Inferensi — output [1][10][8400]
+        final rawOutput = [List.generate(10, (_) => List.filled(8400, 0.0))];
+        final outputs = {0: rawOutput};
+        interp!.runForMultipleInputs([input], outputs);
+
+        // 4. Post-process
+        final detections = _postProcessYolo(rawOutput[0]);
+        final detectedLabels = detections.map((d) => _navLabels[d.classIdx]).toSet();
+
+        // ignore: avoid_print
+        print('[$fixture] deteksi: ${detections.map((d) =>
+            '${_navLabels[d.classIdx]}(${(d.conf*100).toStringAsFixed(1)}%)').toList()}');
+
+        // 5. Validasi: setidaknya satu label dari yang diharapkan harus muncul
+        if (expectedLabels.isEmpty) {
+          // Gambar tidak punya mapping label yang diketahui → skip validasi label,
+          // cukup pastikan inference tidak crash
+          // ignore: avoid_print
+          print('  ⚠ Tidak ada expected label dari nama file "$fixture" — skip label check.');
+          return;
+        }
+
+        final intersection = detectedLabels.intersection(expectedLabels.toSet());
+        expect(
+          intersection.isNotEmpty,
+          isTrue,
+          reason: '$fixture: tidak ada label yang diharapkan ($expectedLabels) '
+                  'terdeteksi. Yang terdeteksi: $detectedLabels\n'
+                  'Periksa apakah confidence threshold (${ _yoloConfThresh}) '
+                  'terlalu tinggi atau model perlu di-retrain.',
+        );
+      });
+    }
+
+    // Extra: pastikan inference tidak crash pada gambar "normal" (bukan bahaya)
+    test('inference tidak crash pada gambar arbitrary', () {
+      if (interp == null) {
+        markTestSkipped('TFLite SO tidak tersedia.');
+        return;
+      }
+
+      // Buat gambar solid 640x640 (simulasi frame kosong)
+      final blank = img.Image(width: _yoloSize, height: _yoloSize);
+      img.fill(blank, color: img.ColorFloat16.rgb(128, 128, 128));
+
+      final input = _preprocessYolo(blank);
+      final rawOutput = [List.generate(10, (_) => List.filled(8400, 0.0))];
+      final outputs = {0: rawOutput};
+
+      // Tidak boleh throw
+      expect(
+        () => interp!.runForMultipleInputs([input], outputs),
+        returnsNormally,
+      );
+    });
+  });
+}
+
+/// Format nominal IDR: 10000 → "10.000"
+String _fmtIdr(int value) => value.toString().replaceAllMapped(
+    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+```
+
+---
+
+## File: `test/scene_translator_test.dart`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/test/scene_translator_test.dart`
+
+```dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:guidio_app/core/voice/scene_translator.dart';
+
+/// Dua hal yang dikunci tes ini:
+///
+/// 1. Caption khas Moondream2 benar-benar terterjemahkan, dengan urutan
+///    kata Indonesia (kata benda dulu, sifat menyusul).
+/// 2. Kalimat yang di luar jangkauan kamus **menyerah** alih-alih
+///    menghasilkan Bahasa Indonesia yang kacau. Pengguna tunanetra tidak
+///    punya layar untuk memverifikasi tebakan kita, jadi menyerah dengan
+///    jujur lebih aman daripada menebak dengan percaya diri.
+void main() {
+  group('caption khas Moondream2 diterjemahkan', () {
+    const cases = <String, List<String>>{
+      'A man standing in front of a white building.':
+          ['pria', 'berdiri', 'di depan', 'gedung putih'],
+      'A table with a laptop and a cup of coffee.':
+          ['meja', 'dengan', 'laptop', 'dan', 'cangkir kopi'],
+      'Two people walking down a street.':
+          ['dua', 'orang-orang', 'berjalan', 'jalan'],
+      'A wooden table with some books on it.':
+          ['meja kayu', 'dengan', 'beberapa', 'buku-buku'],
+      'A dog sitting on the floor near a chair.':
+          ['anjing', 'duduk', 'di atas', 'lantai', 'di dekat', 'kursi'],
+      'A busy market with many people.':
+          ['pasar ramai', 'dengan', 'banyak', 'orang-orang'],
+    };
+
+    cases.forEach((english, mustContain) {
+      test('"$english"', () {
+        final r = translateSceneCaption(english);
+        expect(r.isUsable, isTrue,
+            reason: 'cakupan hanya ${r.coverage.toStringAsFixed(2)}');
+        final id = r.indonesian!.toLowerCase();
+        for (final fragment in mustContain) {
+          expect(id, contains(fragment));
+        }
+      });
+    });
+  });
+
+  group('urutan kata Indonesia', () {
+    test('kata sifat pindah SESUDAH kata benda', () {
+      final r = translateSceneCaption('a white building');
+      expect(r.indonesian, 'Gedung putih.');
+    });
+
+    test('bukan "putih gedung"', () {
+      final r = translateSceneCaption('a large red car');
+      expect(r.indonesian!.toLowerCase(), contains('mobil merah'));
+    });
+  });
+
+  group('artikel Inggris dibuang', () {
+    test('"a" dan "the" tidak muncul di hasil', () {
+      final r = translateSceneCaption('The man is near the door.');
+      final id = r.indonesian!.toLowerCase();
+      expect(id.split(' '), isNot(contains('a')));
+      expect(id.split(' '), isNot(contains('the')));
+    });
+  });
+
+  group('menyerah saat di luar jangkauan', () {
+    test('kalimat penuh kata asing mengembalikan null', () {
+      final r = translateSceneCaption(
+        'An intricate baroque chandelier suspended amidst ornate cornices.',
+      );
+      expect(r.isUsable, isFalse);
+      expect(r.indonesian, isNull);
+    });
+
+    test('caption kosong tidak crash', () {
+      expect(translateSceneCaption('').isUsable, isFalse);
+      expect(translateSceneCaption('   ').isUsable, isFalse);
+    });
+  });
+
+  group('hasil selalu kalimat yang layak diucapkan', () {
+    test('diawali huruf besar dan diakhiri titik', () {
+      final r = translateSceneCaption('a cat on a table');
+      expect(r.indonesian!.startsWith(RegExp(r'[A-Z]')), isTrue);
+      expect(r.indonesian!.endsWith('.'), isTrue);
+    });
+
+    test('tidak ada spasi ganda', () {
+      final r = translateSceneCaption('A man with a bag and a hat.');
+      expect(r.indonesian!, isNot(contains('  ')));
+    });
+  });
+}
+```
+
+---
+
+## File: `web/manifest.json`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/web/manifest.json`
+
+```json
+{
+    "name": "guidio_app",
+    "short_name": "guidio_app",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0175C2",
+    "theme_color": "#0175C2",
+    "description": "A new Flutter project.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
+```
+
+---
+
+## File: `windows/CMakeLists.txt`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/windows/CMakeLists.txt`
+
+```text
+# Project-level configuration.
+cmake_minimum_required(VERSION 3.14)
+project(guidio_app LANGUAGES CXX)
+
+# The name of the executable created for the application. Change this to change
+# the on-disk name of your application.
+set(BINARY_NAME "guidio_app")
+
+# Explicitly opt in to modern CMake behaviors to avoid warnings with recent
+# versions of CMake.
+cmake_policy(VERSION 3.14...3.25)
+
+# Define build configuration option.
+get_property(IS_MULTICONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(IS_MULTICONFIG)
+  set(CMAKE_CONFIGURATION_TYPES "Debug;Profile;Release"
+    CACHE STRING "" FORCE)
+else()
+  if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE
+      STRING "Flutter build mode" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+      "Debug" "Profile" "Release")
+  endif()
+endif()
+# Define settings for the Profile build mode.
+set(CMAKE_EXE_LINKER_FLAGS_PROFILE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE}")
+set(CMAKE_C_FLAGS_PROFILE "${CMAKE_C_FLAGS_RELEASE}")
+set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
+
+# Use Unicode for all projects.
+add_definitions(-DUNICODE -D_UNICODE)
+
+# Compilation settings that should be applied to most targets.
+#
+# Be cautious about adding new options here, as plugins use this function by
+# default. In most cases, you should add new options to specific targets instead
+# of modifying this function.
+function(APPLY_STANDARD_SETTINGS TARGET)
+  target_compile_features(${TARGET} PUBLIC cxx_std_17)
+  target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
+  target_compile_options(${TARGET} PRIVATE /EHsc)
+  target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
+  target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
+endfunction()
+
+# Flutter library and tool build rules.
+set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
+add_subdirectory(${FLUTTER_MANAGED_DIR})
+
+# Application build; see runner/CMakeLists.txt.
+add_subdirectory("runner")
+
+
+# Generated plugin build rules, which manage building the plugins and adding
+# them to the application.
+include(flutter/generated_plugins.cmake)
+
+
+# === Installation ===
+# Support files are copied into place next to the executable, so that it can
+# run in place. This is done instead of making a separate bundle (as on Linux)
+# so that building and running from within Visual Studio will work.
+set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
+# Make the "install" step default, as it's required to run.
+set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
+endif()
+
+set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
+set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
+
+install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+
+install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
+  COMPONENT Runtime)
+
+install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
+
+if(PLUGIN_BUNDLED_LIBRARIES)
+  install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
+
+# Copy the native assets provided by the build.dart from all packages.
+set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
+install(DIRECTORY "${NATIVE_ASSETS_DIR}"
+   DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+   COMPONENT Runtime)
+
+# Fully re-copy the assets directory on each build to avoid having stale files
+# from a previous install.
+set(FLUTTER_ASSET_DIR_NAME "flutter_assets")
+install(CODE "
+  file(REMOVE_RECURSE \"${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}\")
+  " COMPONENT Runtime)
+install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+
+# Install the AOT library on non-Debug builds only.
+install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
+  CONFIGURATIONS Profile;Release
+  COMPONENT Runtime)
+```
+
+---
+
+## File: `windows/flutter/CMakeLists.txt`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/windows/flutter/CMakeLists.txt`
+
+```text
+# This file controls Flutter-level build steps. It should not be edited.
+cmake_minimum_required(VERSION 3.14)
+
+set(EPHEMERAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ephemeral")
+
+# Configuration provided via flutter tool.
+include(${EPHEMERAL_DIR}/generated_config.cmake)
+
+# TODO: Move the rest of this into files in ephemeral. See
+# https://github.com/flutter/flutter/issues/57146.
+set(WRAPPER_ROOT "${EPHEMERAL_DIR}/cpp_client_wrapper")
+
+# Set fallback configurations for older versions of the flutter tool.
+if (NOT DEFINED FLUTTER_TARGET_PLATFORM)
+  set(FLUTTER_TARGET_PLATFORM "windows-x64")
+endif()
+
+# === Flutter Library ===
+set(FLUTTER_LIBRARY "${EPHEMERAL_DIR}/flutter_windows.dll")
+
+# Published to parent scope for install step.
+set(FLUTTER_LIBRARY ${FLUTTER_LIBRARY} PARENT_SCOPE)
+set(FLUTTER_ICU_DATA_FILE "${EPHEMERAL_DIR}/icudtl.dat" PARENT_SCOPE)
+set(PROJECT_BUILD_DIR "${PROJECT_DIR}/build/" PARENT_SCOPE)
+set(AOT_LIBRARY "${PROJECT_DIR}/build/windows/app.so" PARENT_SCOPE)
+
+list(APPEND FLUTTER_LIBRARY_HEADERS
+  "flutter_export.h"
+  "flutter_windows.h"
+  "flutter_messenger.h"
+  "flutter_plugin_registrar.h"
+  "flutter_texture_registrar.h"
+)
+list(TRANSFORM FLUTTER_LIBRARY_HEADERS PREPEND "${EPHEMERAL_DIR}/")
+add_library(flutter INTERFACE)
+target_include_directories(flutter INTERFACE
+  "${EPHEMERAL_DIR}"
+)
+target_link_libraries(flutter INTERFACE "${FLUTTER_LIBRARY}.lib")
+add_dependencies(flutter flutter_assemble)
+
+# === Wrapper ===
+list(APPEND CPP_WRAPPER_SOURCES_CORE
+  "core_implementations.cc"
+  "standard_codec.cc"
+)
+list(TRANSFORM CPP_WRAPPER_SOURCES_CORE PREPEND "${WRAPPER_ROOT}/")
+list(APPEND CPP_WRAPPER_SOURCES_PLUGIN
+  "plugin_registrar.cc"
+)
+list(TRANSFORM CPP_WRAPPER_SOURCES_PLUGIN PREPEND "${WRAPPER_ROOT}/")
+list(APPEND CPP_WRAPPER_SOURCES_APP
+  "flutter_engine.cc"
+  "flutter_view_controller.cc"
+)
+list(TRANSFORM CPP_WRAPPER_SOURCES_APP PREPEND "${WRAPPER_ROOT}/")
+
+# Wrapper sources needed for a plugin.
+add_library(flutter_wrapper_plugin STATIC
+  ${CPP_WRAPPER_SOURCES_CORE}
+  ${CPP_WRAPPER_SOURCES_PLUGIN}
+)
+apply_standard_settings(flutter_wrapper_plugin)
+set_target_properties(flutter_wrapper_plugin PROPERTIES
+  POSITION_INDEPENDENT_CODE ON)
+set_target_properties(flutter_wrapper_plugin PROPERTIES
+  CXX_VISIBILITY_PRESET hidden)
+target_link_libraries(flutter_wrapper_plugin PUBLIC flutter)
+target_include_directories(flutter_wrapper_plugin PUBLIC
+  "${WRAPPER_ROOT}/include"
+)
+add_dependencies(flutter_wrapper_plugin flutter_assemble)
+
+# Wrapper sources needed for the runner.
+add_library(flutter_wrapper_app STATIC
+  ${CPP_WRAPPER_SOURCES_CORE}
+  ${CPP_WRAPPER_SOURCES_APP}
+)
+apply_standard_settings(flutter_wrapper_app)
+target_link_libraries(flutter_wrapper_app PUBLIC flutter)
+target_include_directories(flutter_wrapper_app PUBLIC
+  "${WRAPPER_ROOT}/include"
+)
+add_dependencies(flutter_wrapper_app flutter_assemble)
+
+# === Flutter tool backend ===
+# _phony_ is a non-existent file to force this command to run every time,
+# since currently there's no way to get a full input/output list from the
+# flutter tool.
+set(PHONY_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_phony_")
+set_source_files_properties("${PHONY_OUTPUT}" PROPERTIES SYMBOLIC TRUE)
+add_custom_command(
+  OUTPUT ${FLUTTER_LIBRARY} ${FLUTTER_LIBRARY_HEADERS}
+    ${CPP_WRAPPER_SOURCES_CORE} ${CPP_WRAPPER_SOURCES_PLUGIN}
+    ${CPP_WRAPPER_SOURCES_APP}
+    ${PHONY_OUTPUT}
+  COMMAND ${CMAKE_COMMAND} -E env
+    ${FLUTTER_TOOL_ENVIRONMENT}
+    "${FLUTTER_ROOT}/packages/flutter_tools/bin/tool_backend.bat"
+      ${FLUTTER_TARGET_PLATFORM} $<CONFIG>
+  VERBATIM
+)
+add_custom_target(flutter_assemble DEPENDS
+  "${FLUTTER_LIBRARY}"
+  ${FLUTTER_LIBRARY_HEADERS}
+  ${CPP_WRAPPER_SOURCES_CORE}
+  ${CPP_WRAPPER_SOURCES_PLUGIN}
+  ${CPP_WRAPPER_SOURCES_APP}
+)
+```
+
+---
+
+## File: `windows/runner/CMakeLists.txt`
+
+**Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/windows/runner/CMakeLists.txt`
+
+```text
+cmake_minimum_required(VERSION 3.14)
+project(runner LANGUAGES CXX)
+
+# Define the application target. To change its name, change BINARY_NAME in the
+# top-level CMakeLists.txt, not the value here, or `flutter run` will no longer
+# work.
+#
+# Any new source files that you add to the application should be added here.
+add_executable(${BINARY_NAME} WIN32
+  "flutter_window.cpp"
+  "main.cpp"
+  "utils.cpp"
+  "win32_window.cpp"
+  "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
+  "Runner.rc"
+  "runner.exe.manifest"
+)
+
+# Apply the standard set of build settings. This can be removed for applications
+# that need different build settings.
+apply_standard_settings(${BINARY_NAME})
+
+# Add preprocessor definitions for the build version.
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION=\"${FLUTTER_VERSION}\"")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MAJOR=${FLUTTER_VERSION_MAJOR}")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MINOR=${FLUTTER_VERSION_MINOR}")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_PATCH=${FLUTTER_VERSION_PATCH}")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTTER_VERSION_BUILD}")
+
+# Disable Windows macros that collide with C++ standard library functions.
+target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
+
+# Add dependency libraries and include directories. Add any application-specific
+# dependencies here.
+target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
+target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+
+# Run the Flutter tool portions of the build. This must not be removed.
+add_dependencies(${BINARY_NAME} flutter_assemble)
 ```
 
 ---

@@ -6,8 +6,12 @@ suara yang ambigu, dan membaca jalur trotoar.
 
 **Hal pertama yang perlu dipahami:** dua dari enam mode **tidak pernah
 memanggil server ini sama sekali**, yaitu Deteksi Objek dan Kenali Uang.
+Keduanya berjalan penuh di ponsel, jadi kalau Kenali Uang salah membaca
+nominal, backend sama sekali bukan tempat mencarinya. Yang relevan adalah
+`guidio_app/README.md` bagian 3 dan repo pelatihan
+`new_training/rupiah_vision_revised`.
 Itu keputusan sengaja, bukan kekurangan. Dan sekarang ditambah dua lagi:
-**intent parsing** dan **narasi deteksi** juga dikerjakan lokal di Flutter —
+**intent parsing** dan **narasi deteksi** juga dikerjakan lokal di Flutter -
 tanpa server, tanpa LLM.
 
 > **Tidak ada LLM di backend ini.** `QwenService` dan `narasi.py` telah
@@ -42,7 +46,7 @@ tanpa server, tanpa LLM.
 sudo dnf install -y tesseract tesseract-langpack-ind tesseract-langpack-eng
 ```
 
-Paket `tesseract-langpack-ind` penting — OCR dipanggil dengan bahasa `ind+eng`.
+Paket `tesseract-langpack-ind` penting - OCR dipanggil dengan bahasa `ind+eng`.
 
 **PostgreSQL** yang sedang berjalan, lalu buat basis datanya sekali saja:
 
@@ -113,7 +117,7 @@ rata dan warnanya konsisten.
 
 ### Deskripsi suasana: Moondream2
 
-`POST /api/describe` mengembalikan `description_en` — caption Bahasa Inggris
+`POST /api/describe` mengembalikan `description_en` - caption Bahasa Inggris
 langsung dari Moondream2. Flutter membacakannya dengan TTS locale `en-US`
 tanpa terjemahan tambahan. Tidak ada LLM terjemahan di tengah alur ini.
 
@@ -197,11 +201,11 @@ Kirim `file` (gambar JPEG), opsional `lat` dan `lng`.
 Memahami perintah suara yang **tidak dikenali** `CommandParser` lokal di
 Flutter. Server hanya dipanggil untuk dua kasus:
 
-- **Ambigu** — dua kemungkinan sama-sama masuk akal → server bertanya balik
-- **Tidak dikenali** — server menawarkan dua tebakan terdekat
+- **Ambigu** - dua kemungkinan sama-sama masuk akal → server bertanya balik
+- **Tidak dikenali** - server menawarkan dua tebakan terdekat
 
 Urutan usahanya: cocokkan frasa persis (Lapis 1) → skor kemiripan kata
-(Lapis 2). **Tidak ada LLM** — Lapis 3 telah dihapus.
+(Lapis 2). **Tidak ada LLM** - Lapis 3 telah dihapus.
 
 ```json
 POST {"text": "kenal kunci"}
@@ -247,7 +251,7 @@ Jalur utama fitur ini ada di Flutter. Endpoint ini hanya untuk pembanding.
 
 ## 4. Basis data
 
-Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi** — identifikasi
+Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi** - identifikasi
 cukup memakai `device_id` anonim yang dibuat aplikasi sendiri.
 
 | Tabel | Isi |
@@ -281,7 +285,7 @@ melayani sisanya.
 **Jujur soal kemampuan.** Kalau segmentasi jalur sedang memakai cadangan
 sederhana, itu disebutkan di kolom `source`.
 
-**Tidak ada LLM.** Semua teks natural — narasi deteksi dan resolusi intent —
+**Tidak ada LLM.** Semua teks natural - narasi deteksi dan resolusi intent -
 dikerjakan di sisi Flutter, offline, tanpa latensi jaringan.
 
 ---
@@ -379,7 +383,7 @@ curl -s -X POST $B/api/navigasi -F "file=@foto.jpg" -F "lat=0" -F "lng=0"
 ## 9. Testing Backend (pytest)
 
 Suite pengujian otomatis untuk semua endpoint backend menggunakan `pytest` +
-`httpx` (via `TestClient` FastAPI — tidak perlu server menyala).
+`httpx` (via `TestClient` FastAPI - tidak perlu server menyala).
 
 ### Instalasi
 
@@ -428,7 +432,7 @@ backend/tests/
 ### Catatan: simulasi kamera HP
 
 Semua gambar fixture dikirim ke backend sebagai `multipart/form-data` dengan
-`Content-Type: image/png` — **byte-for-byte identik** dengan yang dikirim
+`Content-Type: image/png` - **byte-for-byte identik** dengan yang dikirim
 Flutter saat user mengarahkan kamera. Backend tidak membedakan sumber gambar.
 
 ```
@@ -436,6 +440,26 @@ Flutter (kamera) ──┐
                    ├──▶ POST /api/cari-objek  (multipart/form-data)
 tests/fixtures  ───┘         ↑ identik
 ```
+
+### Peringatan: skip bukan lulus
+
+Empat test di bawah memang sengaja di-skip, dan itu wajar selama alasannya
+diketahui. Tapi jangan pernah membaca "N skipped" sebagai kabar baik secara
+otomatis.
+
+Pelajaran ini datang dari sisi mobile, bukan dari sini. Di `guidio_app`,
+seluruh uji inferensi model uang dan navigasi berstatus skip sejak awal karena
+pustaka native TFLite tidak ada di host. Terminal menulis "All tests passed!"
+sementara nol piksel diuji, dan sebuah mode yang salah baca nominal lolos ke
+tangan pengguna. Begitu pustakanya dipasang, sepuluh test langsung merah.
+
+Aturan yang dipakai sekarang di kedua sisi: **skip harus punya alasan yang
+disebutkan dan disengaja.** Kalau sebuah dependensi seharusnya ada di
+lingkungan itu, ketiadaannya adalah kegagalan, bukan skip. Lihat
+`guidio_app/README.md` bagian 14 untuk penerapannya.
+
+Untuk backend, dependensi yang sah untuk di-skip cuma satu: model Moondream
+yang belum warm.
 
 ### Catatan: test Moondream otomatis skip
 
@@ -447,14 +471,14 @@ sebelum menjalankan test tersebut, atau jalankan dengan backend menyala:
 # Terminal 1
 uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Terminal 2 — setelah backend siap
+# Terminal 2 - setelah backend siap
 python -m pytest tests/test_describe.py -v
 ```
 
 ### Hasil terakhir (2026-08-20)
 
 ```
-32 passed, 4 skipped — 44.80s
+32 passed, 4 skipped - 44.80s
 ```
 
 4 test di-skip adalah validasi isi caption Moondream (membutuhkan model warm).
@@ -518,7 +542,7 @@ Isi alamat server di Guidio: `localhost:8000`
 Moondream2 FP16  ~1.2 GB
 YOLO/YOLOE       ~0.5 GB
 ─────────────────────────
-Total            ~1.7 GB  (dari 4 GB — aman)
+Total            ~1.7 GB  (dari 4 GB - aman)
 ```
 
 Tidak ada LLM. Tidak ada `llama-cpp-python`. VRAM yang tersisa (~2.3 GB)

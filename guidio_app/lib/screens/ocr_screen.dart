@@ -115,7 +115,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       setState(() => _hasCameraPermission = granted);
       if (granted) {
         final cam = context.read<CameraProvider>();
-        if (!cam.isInitialized) await cam.initCamera();
+        await cam.initCamera(preset: CapturePreset.capture);
         cam.startStream();
       }
     }
@@ -127,7 +127,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     if (status.isGranted) {
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
-      if (!cam.isInitialized) await cam.initCamera();
+      await cam.initCamera(preset: CapturePreset.capture);
       cam.startStream();
     } else {
       await context.read<TtsProvider>().speak('Izin kamera belum diberikan.', tier: SpeechTier.warning);
@@ -222,6 +222,24 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             );
       }
       await _speak();
+    } on CaptureRejected catch (rejected) {
+      // Foto ditolak SEBELUM sempat masuk ML Kit: terlalu buram, terlalu
+      // gelap, atau terlalu silau. Instruksi perbaikannya sudah dibacakan
+      // saat penolakan terjadi, jadi di sini cukup mengembalikan layar ke
+      // keadaan siap. Membacakan ulang hanya membuat pengguna mendengar
+      // kalimat yang sama dua kali dan mengira dia salah dengar yang pertama.
+      //
+      // Ini beda dari "tidak ada teks terdeteksi", dan bedanya penting:
+      // di sana yang perlu diubah adalah jarak atau posisi tulisan, di sini
+      // kondisi pengambilan gambarnya.
+      _hardTimeoutTimer?.cancel();
+      _elapsedTicker?.cancel();
+      if (!mounted) return;
+      debugPrint('[OCR] foto ditolak: $rejected');
+      setState(() {
+        _scanning = false;
+        _fail = _FailKind.zeroText;
+      });
     } catch (e) {
       _hardTimeoutTimer?.cancel();
       _elapsedTicker?.cancel();

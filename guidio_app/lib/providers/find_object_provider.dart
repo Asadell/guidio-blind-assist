@@ -78,6 +78,17 @@ class FindObjectProvider extends ChangeNotifier {
   /// BuildContext dan bebas dari paket kamera.
   Future<Uint8List?> Function()? frameSource;
 
+  /// Kenapa [frameSource] mengembalikan null, kalau layar tahu alasannya.
+  ///
+  /// Sebelumnya null selalu diterjemahkan jadi "terlalu gelap", karena itu
+  /// satu-satunya sebab yang terpikir waktu itu. Setelah frame dinilai
+  /// ketajamannya, sebab yang mungkin bertambah: buram karena tangan
+  /// bergerak, atau silau karena menghadap cahaya. Ketiganya butuh tindakan
+  /// yang berbeda dari pengguna, jadi ketiganya harus terdengar berbeda —
+  /// menyuruh menyalakan lampu saat masalahnya tangan bergetar hanya
+  /// membuang tenaga orang yang sedang mencari barangnya.
+  String? Function()? frameRejectReason;
+
   /// Dibaca sebelum mengirim — CO-14 menuntut mode ini benar-benar berhenti
   /// saat offline, bukan mencoba lalu gagal berkali-kali.
   bool Function()? isOffline;
@@ -181,7 +192,10 @@ class FindObjectProvider extends ChangeNotifier {
       if (jpeg == null) {
         _isScanning = false;
         _set(FindObjectState.tooDark);
-        _speak('Terlalu gelap. Nyalakan lampu.', tier: SpeechTier.warning);
+        _speak(
+          frameRejectReason?.call() ?? 'Terlalu gelap. Nyalakan lampu.',
+          tier: SpeechTier.warning,
+        );
         return;
       }
 
@@ -218,9 +232,26 @@ class FindObjectProvider extends ChangeNotifier {
         );
         return;
       }
-      if (reason == 'invalid_frame') {
+      // Masalah kualitas gambar, BUKAN "barangnya tidak ada di sini".
+      //
+      // Bedanya menentukan tindakan pengguna, dan dulu keduanya terdengar
+      // sama. Kalau server menyarankan foto ulang, menyuruh pengguna memutar
+      // badan justru membuang tenaganya: yang perlu diperbaiki adalah kondisi
+      // pengambilan gambar, bukan arah kamera. Karena itu penghitung
+      // `_notFoundCount` juga TIDAK dinaikkan di sini — percobaan yang
+      // gagal karena fotonya tidak terbaca bukan bukti barangnya tidak ada,
+      // dan menghitungnya akan memicu tawaran menyerah CO-11 terlalu cepat.
+      //
+      // `invalid_frame` dipertahankan demi server versi lama yang belum
+      // dimutakhirkan.
+      if (res['retry_suggested'] == true || reason == 'invalid_frame') {
         _set(FindObjectState.tooDark);
-        _speak('Terlalu gelap. Nyalakan lampu.', tier: SpeechTier.warning);
+        _speak(
+          _serverMessage.isNotEmpty
+              ? _serverMessage
+              : 'Terlalu gelap. Nyalakan lampu.',
+          tier: SpeechTier.warning,
+        );
         return;
       }
 

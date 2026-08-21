@@ -12,6 +12,7 @@ import '../core/net/frame_codec.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
 import '../providers/index.dart';
+import '../services/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
@@ -76,6 +77,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       provider.isOffline = () =>
           context.read<GlobalConditionsProvider>().isBackendDown;
       provider.frameSource = _grabFrame;
+      provider.frameRejectReason = () => _rejectedCaptureMessage;
       provider.loadKnownTargets();
 
       // Kontrak tombol kiri: "jepret" lewat suara = menekan tombol kirim.
@@ -109,15 +111,50 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   /// yang langsung terasa sebagai panas di tangan pengguna.
   CameraImage? _latestFrame;
 
+  /// Ambil frame terakhir untuk dikirim, setelah dinilai ketajamannya.
+  ///
+  /// Penilaian dilakukan pada bidang luma (Y) dari `CameraImage` secara
+  /// langsung, di isolate terpisah. Dua alasan teknisnya:
+  ///
+  /// - `YUV420` sudah memberi bidang Y terpisah, dan itu persis grayscale
+  ///   yang dibutuhkan. Mengodekan ke JPEG dulu lalu mendekodenya kembali
+  ///   berarti dua pekerjaan berat untuk hasil yang sama.
+  /// - Perhitungan Laplacian pada frame 1280x720 cukup berat untuk
+  ///   melewatkan beberapa frame UI kalau dikerjakan di thread utama, dan
+  ///   gejalanya adalah preview yang tersendat persis saat pengguna membidik.
+  ///
+  /// Frame yang tidak layak DITOLAK di sini, sebelum jadi unggahan. Ini bukan
+  /// sekadar hemat kuota: YOLOE membalas `found=false` untuk frame gelap
+  /// gulita, dan dari telinga pengguna itu terdengar sama persis dengan
+  /// "barangnya memang tidak ada di sini". Tindakan yang tepat berbeda total
+  /// — yang satu perlu memutar badan, yang lain perlu menyalakan lampu.
   Future<Uint8List?> _grabFrame() async {
     final frame = _latestFrame;
     if (frame == null) return null;
+
+    final sharp =
+        await CameraCaptureService.instance.assessCameraImage(frame);
+    if (sharp != null) {
+      final verdict = CameraCaptureService.instance.verdictFor(sharp);
+      if (!verdict.isUsable) {
+        _rejectedCaptureMessage =
+            CameraCaptureService.instance.messageFor(verdict);
+        return null;
+      }
+    }
+    _rejectedCaptureMessage = null;
+
     return FrameCodec.encodeForUpload(
       frame,
       maxEdge: UploadPreset.findObject.maxEdge,
       quality: UploadPreset.findObject.quality,
     );
   }
+
+  /// Alasan frame terakhir ditolak, kalau ada. Dibaca [FindObjectProvider]
+  /// supaya pesan yang dibacakan menyebut masalah yang sebenarnya alih-alih
+  /// selalu menuduh gelap.
+  String? _rejectedCaptureMessage;
 
   @override
   void dispose() {
@@ -127,6 +164,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     provider.onSpeak = null;
     provider.onDirectionHaptic = null;
     provider.frameSource = null;
+    provider.frameRejectReason = null;
     provider.isOffline = null;
     provider.reset();
     context.read<VoiceProvider>().clearModeHandlers();
@@ -148,7 +186,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       setState(() => _hasCameraPermission = granted);
       if (granted) {
         final cam = context.read<CameraProvider>();
-        if (!cam.isInitialized) await cam.initCamera();
+        await cam.initCamera(preset: CapturePreset.capture);
         cam.startStream();
       }
     }
@@ -160,7 +198,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     if (status.isGranted) {
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
-      if (!cam.isInitialized) await cam.initCamera();
+      await cam.initCamera(preset: CapturePreset.capture);
       cam.startStream();
     }
   }

@@ -137,7 +137,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       setState(() => _hasCameraPermission = granted);
       if (granted) {
         final cam = context.read<CameraProvider>();
-        if (!cam.isInitialized) await cam.initCamera();
+        await cam.initCamera(preset: CapturePreset.realtime);
         cam.onFrameReady = (image) => _latestFrame = image;
         cam.startStream();
       }
@@ -150,7 +150,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (status.isGranted) {
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
-      if (!cam.isInitialized) await cam.initCamera();
+      await cam.initCamera(preset: CapturePreset.realtime);
       cam.onFrameReady = (image) => _latestFrame = image;
       cam.startStream();
     }

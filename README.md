@@ -125,7 +125,7 @@ Ini pembagian yang paling penting dipahami sebelum membaca kode mana pun.
 - **Perintah suara (intent parsing).** `CommandParser` di Flutter mencocokkan
   20 intent baku dari ratusan variasi ucapan secara offline (0 ms).
 - **Narasi deteksi.** `generateNaturalNarration()` menyusun kalimat dari hasil
-  deteksi YOLO secara lokal — tanpa LLM, tanpa jaringan.
+  deteksi YOLO secara lokal - tanpa LLM, tanpa jaringan.
 
 **Butuh server:**
 
@@ -157,7 +157,7 @@ hilang dan meneruskan yang masih hidup.
 └────────────────────────────────┬─────────────────────────────────────┘
                                  │ WiFi / USB (ADB reverse)
 ┌────────────────────────────────▼─────────────────────────────────────┐
-│  SERVER (FastAPI — berjalan di laptop)                               │
+│  SERVER (FastAPI - berjalan di laptop)                               │
 │                                                                      │
 │  /ws/detect       ──▶ YOLO           ──▶ deteksi mentah              │
 │  /api/ocr         ──▶ Tesseract      ──▶ teks + estimasi durasi baca │
@@ -166,7 +166,7 @@ hilang dan meneruskan yang masih hidup.
 │  /api/describe    ──▶ Moondream2     ──▶ caption Bahasa Inggris      │
 │  /api/intent      ──▶ katalog frasa  ──▶ resolusi perintah ambigu    │
 │                                                                      │
-│  TIDAK ADA LLM di backend — semua narasi & intent diselesaikan lokal │
+│  TIDAK ADA LLM di backend - semua narasi & intent diselesaikan lokal │
 │                                                                      │
 │  PostgreSQL: telemetri, crash report, antrean offline, kamus label,  │
 │              manifest model, sesi percakapan, zona rawan             │
@@ -180,14 +180,14 @@ Satu `DetectionFilter` melayani kedua sumber (TFLite dan server). Kalau
 filter dipasang di server, hasil TFLite tidak akan tersaring.
 
 **2. Narasi tanpa LLM.**
-Hasil deteksi YOLO diolah oleh `generateNaturalNarration()` di Flutter —
+Hasil deteksi YOLO diolah oleh `generateNaturalNarration()` di Flutter -
 fungsi lokal berbasis template + kamus 80 objek COCO. Kalimat yang dihasilkan
 terasa natural tanpa bergantung pada model bahasa mana pun.
 
 **3. VLM (Moondream2) untuk deskripsi suasana.**
 Saat pengguna bertanya "apa yang ada di depanku", Moondream2 menganalisis
 gambar kamera dan menghasilkan caption Bahasa Inggris. Flutter membacakannya
-langsung dengan `speakEnglish()` — tidak ada terjemahan tambahan.
+langsung dengan `speakEnglish()` - tidak ada terjemahan tambahan.
 
 **4. Intent parsing berlapis tiga di Flutter.**
 CommandParser mencoba: (0) prefiks transisi mode natural → (1) exact phrase
@@ -283,7 +283,10 @@ project/
 │   │   ├── services/              TFLite deteksi, TFLite uang, server, TTS
 │   │   ├── screens/               6 mode, splash, panduan, izin, pengaturan
 │   │   └── mock/                  Data tiruan untuk menguji state tanpa model
-│   └── assets/models/             ssd_mobilenet.tflite, uang_rupiah.tflite
+│   ├── test/                      Uji Flutter, lihat guidio_app/README.md bagian 14
+│   ├── tool/                      setup_tflite_linux.sh (runtime TFLite untuk host)
+│   ├── blobs/                     Pustaka native TFLite, tidak ikut ke APK
+│   └── assets/models/             ssd_mobilenet.tflite, rupiah_classifier_fp16.tflite
 └── backend/                       Server FastAPI
     ├── README.md                  Panduan backend dan rujukan endpoint
     ├── db/                        Skema PostgreSQL dan data rujukan
@@ -339,7 +342,7 @@ mode lain menyebut keterbatasannya sendiri.
 
 ## 9. Koneksi HP fisik ke backend laptop
 
-### Cara 1 — WiFi (paling mudah)
+### Cara 1 - WiFi (paling mudah)
 
 ```
 Laptop (backend)  ←──WiFi──→  HP (APK Guidio)
@@ -358,10 +361,10 @@ ip addr show   # cari bagian wlan0, contoh: 192.168.1.5
 
 1. Buka Guidio, ucapkan **"pengaturan"**
 2. Di kolom **Alamat Server**, isi: `192.168.1.5:8000`
-3. Tekan **Uji Sambungan** — waktu tempuh akan muncul kalau berhasil
+3. Tekan **Uji Sambungan** - waktu tempuh akan muncul kalau berhasil
 4. Tekan **Simpan**
 
-### Cara 2 — USB tanpa WiFi (ADB reverse)
+### Cara 2 - USB tanpa WiFi (ADB reverse)
 
 ```bash
 adb reverse tcp:8000 tcp:8000
@@ -392,7 +395,7 @@ flutter install
 | Kategori | Komponen / Model | Ukuran | Eksekusi | Keterangan |
 |---|---|---|---|---|
 | **Mobile** | `ssd_mobilenet.tflite` | ~4.18 MB | On-Device CPU | Deteksi rintangan real-time |
-| **Mobile** | `uang_rupiah.tflite` | ~24.92 MB | On-Device CPU | Klasifikasi uang 6 pecahan |
+| **Mobile** | `rupiah_classifier_fp16.tflite` | ~4.6 MB | On-Device CPU | Klasifikasi uang 7 pecahan |
 | **Backend VLM** | `vikhyatk/moondream2` | ~1.85 GB | Laptop GPU | Deskripsi suasana kamera (FP16) |
 | **Backend Deteksi** | `yolo11n.pt` | ~5.5 MB | Laptop GPU | Deteksi server / fallback |
 | **Backend Cari Objek** | `yoloe-11s-seg.pt` | ~30 MB | Laptop GPU | Open-vocabulary text prompt |
@@ -401,7 +404,8 @@ flutter install
 
 ### Ringkasan
 
-- **Model di HP (Flutter Asset):** `~29.1 MB`
+- **Model di HP (Flutter Asset):** `~8.8 MB` (turun dari ~29 MB sejak
+  `uang_rupiah.tflite` 24,92 MB diganti `rupiah_classifier_fp16.tflite` 4,6 MB)
 - **Download Model Backend:** `~1.9 GB` *(Moondream ~1.85 GB + YOLO ~50 MB)*
 - **Storage Virtualenv Python:** `~2.1 GB`
 - **Total yang perlu disiapkan:** `~4.0 GB`
@@ -412,7 +416,7 @@ flutter install
 Moondream2 FP16  ~1.2 GB
 YOLO/YOLOE       ~0.5 GB
 ─────────────────────────
-Total            ~1.7 GB  (dari 4 GB — aman, sisa ~2.3 GB)
+Total            ~1.7 GB  (dari 4 GB - aman, sisa ~2.3 GB)
 ```
 
 Tidak ada LLM yang perlu dimuat di GPU atau CPU. Seluruh narasi dan intent
@@ -427,7 +431,9 @@ dikerjakan di Flutter.
 - Enam mode dengan seluruh state antarmuka.
 - Deteksi rintangan on-device beserta pelacak SORT, penyaring kestabilan,
   getar tiga tingkat, dan antrean suara bertingkat.
-- Pengenalan uang on-device, 6 denominasi emisi 2016.
+- Pengenalan uang on-device, 7 pecahan emisi 2016 dan 2022, dengan pengaman
+  yang terbukti bekerja: di bawah keyakinan 0,85 aplikasi tidak menyebutkan
+  nominal sama sekali.
 - OCR beserta estimasi durasi baca.
 - Pencarian objek dengan prompt teks bebas.
 - Deskripsi suasana via kamera (Moondream2, output English dibacakan TTS).
@@ -438,8 +444,21 @@ dikerjakan di Flutter.
 
 - **Segmentasi jalur** memakai heuristik OpenCV karena model PIDNet-S belum
   ada.
-- **Model uang hanya mengenali 6 pecahan emisi 2016.** Rp1.000 tidak didukung.
+- **Mode Kenali Uang sering tidak memberi jawaban.** Model mengenali 7 pecahan
+  dan skor lab-nya 97,98%, tapi angka itu diukur pada crop rapat hasil bounding
+  box, bukan pada frame kamera. Diukur lewat jalur aplikasi yang sebenarnya
+  (`flutter test test/money_pipeline_test.dart`), dari 5 gambar uji hanya 1
+  yang tembus ambang 0,85. Pada empat sisanya aplikasi bilang "belum yakin".
+  Yang salah adalah cara model dilatih, bukan bobotnya: dataset training tidak
+  pernah memuat uang yang kecil di dalam bidang. Perbaikan sedang berjalan di
+  `new_training/rupiah_vision_revised`. Rinciannya di `guidio_app/README.md`
+  bagian 3.
 - **Navigasi belum memakai GPS.**
+- **Empat dari lima uji deteksi bahaya navigasi gagal.** Model YOLO tidak
+  mendeteksi satu pun label yang diharapkan pada fixture `got_terbuka`,
+  `tiang_listrik`, `motor_dan_orang`, dan `tangga_turun`. Kegagalan ini baru
+  terlihat setelah runtime TFLite dipasang di host; sebelumnya uji-uji itu
+  selalu di-skip dan suite tampak hijau.
 - **Tema gelap dan kontras tinggi** sudah aktif di tingkat aplikasi, tetapi
   belum dirancang ulang per komponen.
 

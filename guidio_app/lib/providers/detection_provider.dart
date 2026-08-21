@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/net/api_client.dart' show FramePacer;
 import '../core/speech/tts_queue.dart';
-import '../core/voice/narration_engine.dart';
+import '../core/voice/narration_scheduler.dart';
 import '../models/detection.dart';
 import '../providers/camera_provider.dart';
 import '../providers/settings_provider.dart' show Verbosity;
@@ -30,6 +30,17 @@ class DetectionProvider extends ChangeNotifier {
 
   final _filter  = DetectionFilter();
   final _tracker = ObjectTracker();
+
+  /// Lapisan di atas [DetectionFilter]: filter memutuskan APA yang layak
+  /// diucapkan, scheduler memutuskan KAPAN dan DALAM BENTUK APA.
+  ///
+  /// Keduanya dibutuhkan. Filter bekerja baik di kondisi mapan, tapi tidak
+  /// menangani momen mode baru menyala — saat itu setiap objek adalah objek
+  /// baru, tidak satu pun punya catatan cooldown, jadi semuanya lolos
+  /// sekaligus. Enam objek berarti enam narasi dalam waktu kurang dari satu
+  /// detik, dan yang terjadi berikutnya bukan cuma tumpang tindih: narasi
+  /// yang kalah rebutan hilang tanpa jejak, tanpa pengguna pernah tahu.
+  final _scheduler = NarrationScheduler();
 
   /// Satu inferensi dalam penerbangan, dan jeda minimum antar frame.
   ///
@@ -70,6 +81,9 @@ class DetectionProvider extends ChangeNotifier {
     _realtimeActive = true;
     _filter.reset();
     _tracker.reset();
+    // Memulai masa tenang. Non-kritis ditahan sampai auto-exposure dan
+    // autofocus stabil; bahaya kritis tetap lewat.
+    _scheduler.beginSession();
     _cameraProvider.onFrameReady = _processFrame;
     notifyListeners();
   }
@@ -79,6 +93,7 @@ class DetectionProvider extends ChangeNotifier {
     _cameraProvider.onFrameReady = null;
     _tracker.reset();
     _filter.reset();
+    _scheduler.reset();
     _detections = [];
     notifyListeners();
   }
@@ -101,6 +116,20 @@ class DetectionProvider extends ChangeNotifier {
         if (_detections.isNotEmpty) {
           _detections = [];
           notifyListeners();
+        }
+        // Scheduler tetap ditengok. Jendela pengelompokan yang sudah berisi
+        // sesuatu harus bisa keluar walau frame ini kosong; kalau tidak,
+        // ringkasan menggantung sampai ada deteksi berikutnya — dan kalau
+        // pengguna sudah berpaling, deteksi berikutnya mungkin tidak pernah
+        // datang, jadi yang sudah terlanjur dikumpulkan hilang begitu saja.
+        final decision = _scheduler.process(const []);
+        if (decision.shouldSpeak) {
+          TtsQueue().speak(
+            decision.message!,
+            tier: decision.tier,
+            dedupKey: decision.dedupKey,
+            interruptible: decision.interruptible,
+          );
         }
         return;
       }
@@ -139,79 +168,55 @@ class DetectionProvider extends ChangeNotifier {
   void _updateAndSpeak(List<Detection> filtered) {
     _detections = filtered;
     notifyListeners();
+
+    // Frame kosong tetap diumpankan ke scheduler: jendela pengelompokan yang
+    // sudah berisi sesuatu harus tetap bisa keluar walau frame terakhir tidak
+    // menemukan apa-apa. Kalau tidak, ringkasan bisa menggantung selamanya
+    // hanya karena objeknya sempat hilang satu frame.
+    final decision = _scheduler.process(filtered);
+
+    if (decision.shouldSpeak) {
+      TtsQueue().speak(
+        decision.message!,
+        tier: decision.tier,
+        dedupKey: decision.dedupKey,
+        interruptible: decision.interruptible,
+      );
+    }
+
     if (filtered.isEmpty) return;
 
-    // Tier = bahaya tertinggi di antara yang lolos. Satu kalimat, satu tier —
-    // bukan satu ucapan terpisah per objek yang saling berebut antrean.
-    final tier = filtered.any((d) => d.isCritical)
-        ? SpeechTier.critical
-        : filtered.any((d) => d.isWarning)
-            ? SpeechTier.warning
-            : SpeechTier.info;
-
-    TtsQueue().speak(_composeNarration(filtered), tier: tier);
-
     // Getar mendampingi suara — di pasar dan jalan raya, getar sering jadi
-    // sinyal utama. Cukup sekali, sesuai tier tertinggi.
+    // sinyal utama.
+    //
+    // Sengaja TIDAK diikat ke `decision.shouldSpeak`. Getar sampai ke
+    // pengguna dalam ratusan milidetik sementara kalimat butuh dua sampai
+    // tiga detik, jadi menahannya sampai scheduler siap bicara justru
+    // membuang keunggulan utamanya. Yang diredam scheduler adalah banjir
+    // KATA, bukan kehadiran bahaya.
     HapticService.instance.fromDangerLevel(
       filtered.first.dangerLevel,
     );
   }
 
-  /// Rangkai satu kalimat dari objek yang lolos filter.
-  ///
-  /// Fix temuan 2A: `narration_engine.dart` akhirnya tersambung. Selama ini
-  /// 265 baris itu tidak pernah dipanggil dari mana pun — yang benar-benar
-  /// terucap adalah `det.ttsMessage`, satu kalimat datar per objek, sehingga
-  /// dua objek berarti dua ucapan yang saling menyusul tanpa konektor.
-  ///
-  /// Untuk tier Critical kalimatnya sengaja tetap pendek dan langsung: saat
-  /// ada bahaya < 1,5 m, kalimat bernuansa natural justru menunda informasi
-  /// yang menentukan.
-  String _composeNarration(List<Detection> filtered) {
-    final critical = filtered.where((d) => d.isCritical).toList();
-    if (critical.isNotEmpty) {
-      return critical.first.ttsMessage;
-    }
-
-    // Gabungkan objek sekelas dengan arah sama supaya narasinya menyebut
-    // "dua orang", bukan "orang" dua kali.
-    final grouped = <String, NarrationDetection>{};
-    for (final d in filtered) {
-      final key = '${d.labelEn}|${d.direction}';
-      final existing = grouped[key];
-      if (existing == null) {
-        grouped[key] = NarrationDetection(
-          objectClass: d.labelEn,
-          dist: d.distanceMeter,
-          dir: _narrationDirection(d.direction),
-        );
-      } else {
-        grouped[key] = NarrationDetection(
-          objectClass: existing.objectClass,
-          dist: existing.dist < d.distanceMeter ? existing.dist : d.distanceMeter,
-          dir: existing.dir,
-          count: existing.count + 1,
-        );
-      }
-    }
-
-    final narration = generateNaturalNarration(grouped.values.toList());
-    // Kelas di luar kamus 80 COCO membuat narasi kosong. Jangan diam —
-    // sampaikan versi datarnya daripada tidak menyebut objeknya sama sekali.
-    if (narration.trim().isEmpty || grouped.isEmpty) {
-      return filtered.map((d) => d.ttsMessage).join('. ');
-    }
-    return narration;
-  }
-
-  /// `_getDirection` bisa menghasilkan "kiri bawah"; narasi hanya mengenal
-  /// sumbu horizontal.
-  String _narrationDirection(String direction) {
-    if (direction.startsWith('kiri')) return 'kiri';
-    if (direction.startsWith('kanan')) return 'kanan';
-    return 'tengah';
-  }
+  // `_composeNarration` dan `_narrationDirection` DIHAPUS di revisi ini.
+  //
+  // Penyusunan kalimat untuk mode deteksi realtime sekarang ada di
+  // [NarrationScheduler._summarize], karena keputusan "kata apa" tidak bisa
+  // dipisahkan dari keputusan "berapa banyak yang muat": scheduler punya
+  // anggaran kata, dan anggaran itu yang menjaga satu ucapan tetap sekitar
+  // empat detik.
+  //
+  // Konsekuensinya `narration_engine.dart` tidak lagi dipanggil dari sini.
+  // Itu disengaja, bukan kelalaian: gaya naratifnya ("Di sekitarmu, ada dua
+  // orang di sebelah kirimu sejauh sekitar tiga meter, serta ...") memang
+  // enak didengar, tapi satu klausanya saja sudah menghabiskan hampir
+  // seluruh anggaran kata. Gaya itu cocok untuk narasi YANG DIMINTA
+  // pengguna, di mana dia sudah siap mendengarkan; bukan untuk aliran
+  // deteksi yang datang tanpa diminta delapan kali per detik.
+  //
+  // Mesin narasi itu sendiri sengaja TIDAK dihapus — lihat catatan di
+  // README soal ke mana sebaiknya dia disambungkan.
 
   @override
   void dispose() {

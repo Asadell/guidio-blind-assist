@@ -131,10 +131,19 @@ class ServerService {
   }
 
   /// Scene Description via Moondream2.
-  /// Mengirim gambar JPEG ke /api/describe dan mengembalikan deskripsi
-  /// suasana dalam Bahasa Inggris (output langsung Moondream2, tanpa terjemahan).
-  /// Mobile membacanya via TTSService.speakEnglish() dengan locale 'en-US'.
-  Future<String?> describeScene(Uint8List jpegBytes) async {
+  ///
+  /// Mengirim gambar JPEG ke /api/describe. Deskripsinya Bahasa Inggris
+  /// (output langsung Moondream2, tanpa terjemahan); mobile membacanya via
+  /// `TTSService.speakEnglish()` dengan locale 'en-US'.
+  ///
+  /// Balasannya dibungkus [SceneDescription] alih-alih dikembalikan sebagai
+  /// String telanjang, supaya `message` dari server ikut terbawa. Server
+  /// sekarang menolak foto yang tidak layak dengan instruksi konkret Bahasa
+  /// Indonesia ("Terlalu gelap. Cari tempat yang lebih terang"), dan
+  /// membuangnya lalu menggantinya dengan "Maaf, tidak bisa mendeskripsikan"
+  /// akan menukar sesuatu yang bisa ditindaklanjuti dengan sesuatu yang
+  /// tidak.
+  Future<SceneDescription> describeScene(Uint8List jpegBytes) async {
     try {
       final result = await _api.postMultipart(
         '/api/describe',
@@ -143,11 +152,43 @@ class ServerService {
         fields: {},
         op: ApiOp.heavy,
       );
-      return result['description_en'] as String?;
+      return SceneDescription(
+        descriptionEn: result['description_en'] as String? ?? '',
+        message: result['message'] as String? ?? '',
+        reason: result['reason'] as String? ?? '',
+      );
     } catch (_) {
-      return null;
+      return const SceneDescription(
+        descriptionEn: '',
+        message: '',
+        reason: 'network_error',
+      );
     }
   }
 
   void dispose() => _api.close();
+}
+
+
+/// Hasil POST /api/describe.
+class SceneDescription {
+  /// Caption Bahasa Inggris dari Moondream2. Kosong berarti tidak ada
+  /// deskripsi yang layak dibacakan.
+  final String descriptionEn;
+
+  /// Pesan Bahasa Indonesia dari server. Diisi saat gagal (instruksi
+  /// perbaikan) maupun saat berhasil dengan kualitas pas-pasan (catatan
+  /// ketidakpastian). Kosong berarti tidak ada yang perlu ditambahkan.
+  final String message;
+
+  /// Kode mesin penyebab kegagalan; kosong saat berhasil.
+  final String reason;
+
+  const SceneDescription({
+    required this.descriptionEn,
+    required this.message,
+    required this.reason,
+  });
+
+  bool get hasDescription => descriptionEn.trim().isNotEmpty;
 }

@@ -456,21 +456,42 @@ class VoiceProvider extends ChangeNotifier {
     }
 
     try {
-      final jpeg = await _camera.captureJpeg();
-      final description = await ServerService.instance.describeScene(jpeg);
+      // Naikkan resolusi dulu. Deskripsi suasana dipanggil dari mode suara,
+      // yang bisa dimasuki dari mode aliran mana pun — dan di sana kameranya
+      // masih 640x480. Mengirim foto sekecil itu ke Moondream2 membuang
+      // detail yang justru menentukan isi deskripsinya.
+      //
+      // Presetnya sengaja TIDAK dikembalikan setelah selesai: tiap mode
+      // aliran sudah meminta presetnya sendiri saat dimasuki, jadi
+      // mengembalikannya di sini cuma membangun ulang controller dua kali
+      // untuk hasil akhir yang sama.
+      await _camera.initCamera(preset: CapturePreset.capture);
 
-      if (description == null || description.isEmpty) {
-        await _handleLocal('Maaf, saya tidak bisa mendeskripsikan suasana saat ini. Coba lagi.');
+      final jpeg = await _camera.captureJpeg();
+      final scene = await ServerService.instance.describeScene(jpeg);
+
+      if (!scene.hasDescription) {
+        // Kalau server menjelaskan APA yang salah, sampaikan itu apa adanya.
+        // "Terlalu gelap, cari tempat yang lebih terang" memberi pengguna
+        // sesuatu untuk dikerjakan; "maaf, tidak bisa mendeskripsikan" cuma
+        // memberi tahu bahwa dia gagal, tanpa jalan keluar.
+        await _handleLocal(
+          scene.message.isNotEmpty
+              ? scene.message
+              : 'Maaf, saya tidak bisa mendeskripsikan suasana saat ini. Coba lagi.',
+        );
         return;
       }
 
       _consecutiveFailures = 0;
 
+      final description = scene.descriptionEn;
       final translated = translateSceneCaption(description);
       if (translated.isUsable) {
         _response = translated.indonesian!;
         _setState(VoiceState.responded);
         await TTSService.instance.speak(_response);
+        await _speakQualityNote(scene);
         return;
       }
 
@@ -480,10 +501,39 @@ class VoiceProvider extends ChangeNotifier {
       _setState(VoiceState.responded);
       await TTSService.instance.speak('Dalam bahasa Inggris.');
       await TTSService.instance.speakEnglish(description);
+      await _speakQualityNote(scene);
+    } on CaptureRejected catch (rejected) {
+      // Foto ditolak sebelum dikirim. Instruksi perbaikannya sudah dibacakan
+      // saat penolakan terjadi, jadi state cukup dikembalikan tanpa pesan
+      // tambahan.
+      //
+      // Menolak di sini bukan sekadar menghemat kuota. Moondream2 tidak
+      // pernah mengatakan "saya tidak bisa melihat" — dari foto gelap gulita
+      // pun dia menghasilkan deskripsi yang terdengar meyakinkan. Untuk
+      // pengguna yang tidak bisa memverifikasi sendiri, deskripsi halusinasi
+      // jauh lebih berbahaya daripada penolakan yang jujur.
+      debugPrint('[VoiceProvider] foto ditolak: $rejected');
+      _response = rejected.message;
+      _setState(VoiceState.responded);
     } catch (e) {
       debugPrint('[VoiceProvider] _handleDescribeScene error: $e');
       await _handleLocal('Gagal mendeskripsikan suasana. Coba lagi.');
     }
+  }
+
+  /// Bacakan catatan kualitas dari server, kalau ada.
+  ///
+  /// Diucapkan SESUDAH deskripsinya dan sebagai utterance terpisah, dengan
+  /// locale Bahasa Indonesia — deskripsinya sendiri mungkin baru dibacakan
+  /// dalam Bahasa Inggris, dan menyambung dua bahasa dalam satu utterance
+  /// membuat TTS mengucapkan salah satunya dengan fonetik yang keliru.
+  ///
+  /// Ini soal kejujuran sistem: kalau modelnya menjawab dari foto yang
+  /// kurang bagus, pengguna berhak tahu supaya bisa memutuskan sendiri
+  /// apakah mau memfoto ulang. Dia tidak punya cara lain memverifikasinya.
+  Future<void> _speakQualityNote(SceneDescription scene) async {
+    if (scene.message.trim().isEmpty) return;
+    await TTSService.instance.speak(scene.message);
   }
 
 

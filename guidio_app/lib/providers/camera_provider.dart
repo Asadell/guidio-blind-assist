@@ -5,6 +5,7 @@ import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vibration/vibration.dart';
 import '../core/speech/tts_queue.dart';
+import '../services/camera_capture_service.dart';
 import '../services/camera_health_service.dart';
 import '../services/tflite_service.dart';
 
@@ -69,7 +70,40 @@ class CameraProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> initCamera() async {
+  /// Resolusi yang sedang aktif. Null berarti kamera belum disiapkan.
+  CapturePreset? _activePreset;
+  CapturePreset? get activePreset => _activePreset;
+
+  /// Siapkan kamera pada [preset] yang diminta.
+  ///
+  /// Aman dipanggil berulang: kalau kamera sudah hidup pada preset yang sama,
+  /// metode ini tidak melakukan apa-apa. Kalau presetnya BERBEDA, controller
+  /// dibuat ulang — itulah yang membuat satu kamera bisa melayani dua
+  /// kebutuhan yang bertentangan.
+  ///
+  /// Kenapa dua preset, bukan satu:
+  ///
+  /// - **Mode aliran** (deteksi, navigasi, kenali uang) menjalankan inferensi
+  ///   pada SETIAP frame, sekitar delapan kali per detik. Di 1280x720 itu
+  ///   tiga kali lebih banyak pixel per frame dibanding 640x480, dan di HP
+  ///   mid-low selisih itu terasa langsung sebagai frame yang terlewat — di
+  ///   mode yang justru menyangkut keselamatan.
+  /// - **Mode foto** (baca teks, deskripsi suasana, cari objek) mengambil
+  ///   satu gambar lalu berhenti. Di sini resolusi menentukan batas atas
+  ///   kualitas hasilnya, dan 640x480 memang tidak menyisakan cukup pixel
+  ///   untuk huruf kecil: berapa pun tajamnya foto itu, teksnya tetap tidak
+  ///   akan terbaca.
+  ///
+  /// Memakai satu preset berarti memilih salah satu untuk dikorbankan.
+  /// Biayanya adalah controller dibuat ulang saat berpindah antar dua
+  /// kelompok mode, dan itu dibayar sekali per perpindahan, bukan per frame.
+  Future<void> initCamera({
+    CapturePreset preset = CapturePreset.realtime,
+  }) async {
+    if (_initialized && _activePreset == preset && _controller != null) {
+      return;
+    }
+
     // Request camera permission sebelum initialize — mencegah CameraAccessDenied
     final status = await Permission.camera.request();
     if (!status.isGranted) {
@@ -87,14 +121,33 @@ class CameraProvider extends ChangeNotifier {
         return;
       }
 
+      // Bongkar controller lama sebelum membangun yang baru. Stream harus
+      // dihentikan lebih dulu: membuang controller yang masih mengalirkan
+      // frame membuat callback menembak ke objek yang sudah tidak ada.
+      final previous = _controller;
+      if (previous != null) {
+        if (_streaming) {
+          try {
+            await previous.stopImageStream();
+          } catch (e) {
+            debugPrint('[CameraProvider] stopImageStream saat ganti preset: $e');
+          }
+          _streaming = false;
+        }
+        _initialized = false;
+        _controller = null;
+        await previous.dispose();
+      }
+
       _controller = CameraController(
         cameras.first,
-        ResolutionPreset.medium, // 640x480 cukup untuk YOLO
+        preset.resolution,
         enableAudio:    false,
         imageFormatGroup: ImageFormatGroup.yuv420,
       );
 
       await _controller!.initialize();
+      _activePreset = preset;
       CameraHealthService.instance.startListening();
       _initialized = true;
       _setError(false);
@@ -105,6 +158,7 @@ class CameraProvider extends ChangeNotifier {
       // normal tapi tidak pernah memperingatkan apa pun.
       debugPrint('[CameraProvider] initCamera error: $e');
       _initialized = false;
+      _activePreset = null;
       _setError(true);
     }
   }
@@ -247,36 +301,53 @@ class CameraProvider extends ChangeNotifier {
   /// Dipakai OCR ML Kit, yang membaca langsung dari berkas. Untuk foto 4 MP,
   /// tidak membaca byte ke memori Dart menghemat satu salinan besar yang
   /// tidak pernah dipakai untuk apa pun.
-  Future<String> captureFile() async {
-    if (_capturing) throw Exception('Sedang capture, coba lagi');
-    if (!_initialized || _controller == null) {
-      throw Exception('Kamera belum siap');
-    }
-
-    _capturing = true;
-    try {
-      final wasStreaming = _streaming;
-      if (wasStreaming) stopStream();
-
-      final xfile = await _controller!.takePicture();
-
-      if (wasStreaming) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        startStream();
-      }
-      return xfile.path;
-    } finally {
-      _capturing = false;
-    }
+  Future<String> captureFile({bool gateQuality = true}) async {
+    final result = await _capture(gateQuality: gateQuality);
+    final path = result.file?.path;
+    if (path == null) throw Exception('Gagal mengambil foto');
+    return path;
   }
 
   /// Capture JPEG untuk OCR / Voice Assistant.
   /// Mutex: jika sedang capture, lempar exception (jangan double-capture).
   ///
   /// Fix dari doc 5 masalah 8.
-  Future<Uint8List> captureJpeg() async {
+  Future<Uint8List> captureJpeg({bool gateQuality = true}) async {
+    final result = await _capture(gateQuality: gateQuality);
+    final bytes = result.bytes;
+    if (bytes == null) throw Exception('Gagal mengambil foto');
+    return bytes;
+  }
+
+  /// Hasil penilaian foto terakhir — dibaca layar untuk menampilkan status
+  /// tanpa harus mengulang perhitungannya.
+  CaptureResult? _lastCapture;
+  CaptureResult? get lastCapture => _lastCapture;
+
+  /// Jalur tunggal pengambilan foto, dipakai [captureFile] dan [captureJpeg].
+  ///
+  /// Menggantikan `takePicture()` telanjang dengan [CameraCaptureService], dan
+  /// itu tiga perubahan sekaligus:
+  ///
+  /// 1. **Fokus dan eksposur dikunci lebih dulu, setelah diberi waktu
+  ///    konvergen.** `takePicture()` tidak menunggu autofocus selesai, jadi
+  ///    di HP mid-low foto sering diambil persis di tengah lensa bergerak.
+  /// 2. **Beberapa frame diambil, yang paling tajam dipilih.**
+  /// 3. **Foto yang tetap tidak layak tidak dikirim.** Pengguna diberi
+  ///    instruksi konkret lewat TTS alih-alih menunggu hasil dari foto yang
+  ///    memang tidak mungkin terbaca.
+  ///
+  /// Lapis ketiga itu yang paling menentukan: buram menghilangkan informasi
+  /// secara permanen, jadi tidak ada penajaman di server yang bisa
+  /// mengembalikannya. Satu-satunya perbaikan nyata adalah foto ulang, dan
+  /// itu cuma bisa diminta dari sini.
+  ///
+  /// [gateQuality] false berarti byte-nya tetap dikembalikan apa pun
+  /// hasilnya — dipakai jalur yang lebih suka mencoba daripada menolak.
+  Future<CaptureResult> _capture({required bool gateQuality}) async {
     if (_capturing) throw Exception('Sedang capture, coba lagi');
-    if (!_initialized || _controller == null) {
+    final controller = _controller;
+    if (!_initialized || controller == null) {
       throw Exception('Kamera belum siap');
     }
 
@@ -285,8 +356,15 @@ class CameraProvider extends ChangeNotifier {
       final wasStreaming = _streaming;
       if (wasStreaming) stopStream();
 
-      final xfile = await _controller!.takePicture();
-      final bytes = await xfile.readAsBytes();
+      final result = await CameraCaptureService.instance.captureSharpest(
+        controller,
+        // Instruksi perbaikan ("tahan ponsel lebih diam") harus terdengar
+        // sebelum pengguna menekan tombol lagi, jadi tier Warning: boleh
+        // memotong narasi Info, tapi tidak menyalip peringatan bahaya.
+        onFeedback: (msg) =>
+            TtsQueue().speak(msg, tier: SpeechTier.warning),
+      );
+      _lastCapture = result;
 
       if (wasStreaming) {
         // Beri kamera sedikit waktu untuk settle sebelum restart stream
@@ -294,7 +372,13 @@ class CameraProvider extends ChangeNotifier {
         startStream();
       }
 
-      return bytes;
+      if (gateQuality && !result.isUsable) {
+        // Pesannya sudah dibacakan lewat onFeedback; melemparnya di sini
+        // menghentikan unggahan tanpa perlu tiap pemanggil memeriksa sendiri.
+        throw CaptureRejected(result);
+      }
+
+      return result;
     } finally {
       _capturing = false;
     }
@@ -364,4 +448,39 @@ class CameraProvider extends ChangeNotifier {
     _controller?.dispose();
     super.dispose();
   }
+}
+
+
+/// Dua kebutuhan resolusi yang bertentangan, dinamai supaya pilihannya
+/// terlihat di tempat pemakaian alih-alih terkubur sebagai konstanta.
+enum CapturePreset {
+  /// Mode yang menjalankan inferensi pada setiap frame. 640x480 sudah cukup
+  /// untuk deteksi objek dan segmentasi jalur, dan menahan beban tetap ringan
+  /// di HP mid-low.
+  realtime(ResolutionPreset.medium),
+
+  /// Mode yang mengambil satu foto lalu berhenti. 1280x720 memberi cukup
+  /// pixel untuk huruf kecil; lebih tinggi dari ini tidak menambah akurasi
+  /// tapi memperlambat setiap langkah sesudahnya — dekode, penilaian
+  /// ketajaman, dan unggahan.
+  capture(ResolutionPreset.high);
+
+  const CapturePreset(this.resolution);
+  final ResolutionPreset resolution;
+}
+
+/// Foto ditolak gerbang kualitas sebelum sempat dikirim.
+///
+/// Pesan untuk pengguna SUDAH dibacakan saat pengecualian ini dilempar, jadi
+/// pemanggil cukup berhenti dengan tenang. Membacakannya sekali lagi di
+/// penangkap error justru membuat pengguna mendengar instruksi yang sama dua
+/// kali dan mengira dia salah dengar yang pertama.
+class CaptureRejected implements Exception {
+  final CaptureResult result;
+  const CaptureRejected(this.result);
+
+  String get message => result.message;
+
+  @override
+  String toString() => 'CaptureRejected(${result.verdict.name}): $message';
 }

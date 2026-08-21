@@ -20,7 +20,11 @@ sys.path.insert(0, str(BACKEND_DIR))
 # Fixtures lokal (sudah dicopy dari guidio_app/test/fixtures/)
 # Fallback ke guidio_app jika belum dicopy (untuk kompatibilitas)
 _LOCAL_FIXTURES = Path(__file__).parent / "fixtures"
-_APP_FIXTURES   = BACKEND_DIR.parent.parent / "guidio_app" / "test" / "fixtures"
+# `guidio_app` bersebelahan dengan `backend` di dalam `project/`, jadi cukup
+# satu tingkat naik. Versi lama naik dua tingkat dan menunjuk ke direktori
+# yang tidak ada, sehingga SELURUH tes berbasis gambar tersembunyi di balik
+# skip — hijau, tapi tidak menguji apa pun.
+_APP_FIXTURES   = BACKEND_DIR.parent / "guidio_app" / "test" / "fixtures"
 FIXTURES_DIR    = _LOCAL_FIXTURES if _LOCAL_FIXTURES.exists() else _APP_FIXTURES
 
 

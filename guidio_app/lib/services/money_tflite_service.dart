@@ -5,40 +5,58 @@ import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
-/// Klasifikasi nominal uang kertas rupiah — SEPENUHNYA ON-DEVICE.
+/// Klasifikasi nominal uang kertas rupiah - SEPENUHNYA ON-DEVICE.
 ///
 /// Tidak pernah memanggil server. Tiga alasan yang tidak bisa ditawar:
 /// transaksi tunai sering terjadi tanpa sinyal (pasar, warung), foto uang
 /// tidak perlu meninggalkan perangkat, dan pengguna butuh umpan balik
 /// seketika saat mengarahkan kamera.
 ///
-/// Model: MobileNetV2 transfer learning (repo `rupiah-vision`), **7 kelas**,
-/// varian INT8-quantized dengan I/O float32 — input 224x224x3, output [1,7]
-/// softmax. Test accuracy 99,52%; varian INT8 ~98% pada sampel evaluasi.
+/// Model: MobileNetV2 transfer learning (repo `rupiah_vision_revised`),
+/// **7 kelas**, varian float16 dengan I/O float32 - input 224x224x3, output
+/// [1,7] softmax. Val accuracy 98,76%, test 97,98%, test_hard 94,40%.
 ///
-/// **Rentang input: -1..1, BUKAN 0..255.** Ini berbeda dari model lama
-/// (`uang_rupiah.tflite`) yang memanggang preprocessing `mobilenet_v2` ke
-/// dalam grafnya sehingga menerima piksel mentah. Model ini tidak: di
-/// `scripts/01_train.py` normalisasi `x/127.5 - 1` dilakukan di pipeline
-/// `tf.data`, di luar model, dan `scripts/02_export_tflite.py` mengekspor
-/// tanpa `inference_input_type` sehingga tensor masuk tetap float32 mentah
-/// tanpa parameter kuantisasi.
+/// ## Tiga hal yang HARUS cocok, dan tidak satu pun akan melempar error
 ///
-/// Salah rentang di sini TIDAK memunculkan error apa pun — interpreter tetap
-/// menerima float32 berapa pun nilainya, hanya prediksinya yang diam-diam
+/// Semua kesalahan di bawah ini menghasilkan angka yang tampak wajar. Tidak
+/// ada exception, tidak ada yang aneh di log - hanya prediksi yang diam-diam
 /// salah. Di mode uang itu berarti nominal keliru dibacakan ke pengguna
-/// tunanetra. Jadi kalau model diganti lagi, periksa dulu apakah
-/// preprocessing ada di dalam graf atau tidak, jangan diasumsikan.
+/// tunanetra, yang tidak punya cara memverifikasinya sendiri.
+///
+/// **1. Rentang input -1..1, BUKAN 0..255.** Preprocessing `mobilenet_v2`
+/// TIDAK dipanggang ke dalam graf: di `scripts/01_train.py` normalisasi
+/// `x/127.5 - 1` dilakukan di pipeline `tf.data`, di luar model.
+///
+/// **2. Letterbox, BUKAN peregangan.** Training memakai
+/// `tf.image.resize_with_pad` (lihat `assets/models/rupiah_class_info.json`),
+/// jadi rasio aspek dipertahankan dan sisanya diberi bantalan bernilai -1,0
+/// setelah normalisasi. Uang kertas aspeknya sekitar 2:1; meregangkannya jadi
+/// persegi memberi model proporsi yang tidak pernah dilihatnya saat training.
+///
+/// **3. Keluaran softmax, BUKAN logit.** Layer terakhir model Keras aslinya
+/// `Dense(activation="linear")`, jadi berkas `.keras` mengeluarkan logit
+/// mentah. Softmax DITAMBAHKAN saat konversi ke TFLite, dan itu wajib:
+/// [confidenceThreshold] membandingkan keluaran dengan 0,85, sementara logit
+/// rutin melewati angka itu bahkan saat tebakannya salah. Tanpa softmax,
+/// pengaman "nominal tidak pernah ditebak" lumpuh total.
+///
+/// Bukti bahwa pengaman itu bekerja, dari berkas uji `test/fixtures/money`:
+/// pada `uang_10000_b.jpg` model salah menebak 2000, tapi keyakinannya
+/// 0,44 - di bawah ambang, jadi aplikasi bilang "ragu" alih-alih menyebut
+/// nominal yang salah. Dengan logit angkanya 1,75 dan nominal keliru itu
+/// akan dibacakan dengan penuh percaya diri.
+///
+/// Jadi kalau model diganti lagi: periksa ketiganya, jangan diasumsikan.
 ///
 /// ATURAN MUTLAK: nominal TIDAK PERNAH ditebak. Di bawah ambang keyakinan,
-/// yang dikembalikan hanya instruksi perbaikan — salah menyebut nominal ke
+/// yang dikembalikan hanya instruksi perbaikan - salah menyebut nominal ke
 /// pengguna tunanetra berarti kerugian uang nyata, jadi false positive di
 /// sini jauh lebih berbahaya daripada false negative.
 class MoneyTFLiteService {
   static final MoneyTFLiteService instance = MoneyTFLiteService._();
   MoneyTFLiteService._();
 
-  static const String _modelAsset = 'assets/models/rupiah_classifier_int8.tflite';
+  static const String _modelAsset = 'assets/models/rupiah_classifier_fp16.tflite';
   static const int _inputSize = 224;
 
   /// Ambang keyakinan sengaja tinggi. Precedent Seeing AI menyetel presisi
@@ -46,13 +64,13 @@ class MoneyTFLiteService {
   /// alat bantu uang.
   static const double confidenceThreshold = 0.85;
 
-  /// Urutan kelas sesuai `CLASS_ORDER` di `scripts/02_export_tflite.py` dan
-  /// isi `assets/models/rupiah_labels.txt` — sudah dicocokkan baris per
-  /// baris, **jangan diubah**.
+  /// Urutan kelas sesuai `idx_to_class` di
+  /// `assets/models/rupiah_class_info.json`, yang ikut diturunkan bersama
+  /// model - sudah dicocokkan indeks per indeks, **jangan diubah**.
   ///
   /// Kalau model diganti, urutan ini WAJIB dicocokkan ulang: model
   /// mengeluarkan indeks, dan indeks yang dipetakan ke nominal yang salah
-  /// menghasilkan jawaban yang percaya diri dan keliru — kegagalan paling
+  /// menghasilkan jawaban yang percaya diri dan keliru - kegagalan paling
   /// mahal yang bisa dilakukan aplikasi ini.
   static const List<int> classValues = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
 
@@ -146,13 +164,18 @@ class MoneyTFLiteService {
     }
     final confidence = probs[bestIndex];
 
-    // UG-06 — ragu: nominal TIDAK ditampilkan, hanya instruksi perbaikan.
+    // UG-06 - ragu: nominal TIDAK ditampilkan, hanya instruksi perbaikan.
     if (confidence < confidenceThreshold) {
-      return MoneyResult.uncertain(confidence);
+      return MoneyResult.uncertain(
+        confidence,
+        topValueIdr: classValues[bestIndex],
+        probabilities: List.unmodifiable(probs),
+      );
     }
     return MoneyResult.detected(
       valueIdr: classValues[bestIndex],
       confidence: confidence,
+      probabilities: List.unmodifiable(probs),
     );
   }
 }
@@ -166,13 +189,36 @@ class MoneyResult {
   final MoneyFailure? failure;
   final String? message;
 
-  const MoneyResult.detected({required int this.valueIdr, required this.confidence})
-      : detected = true,
-        failure = null,
-        message = null;
+  /// Nominal dengan probabilitas TERTINGGI, terisi juga saat `detected == false`.
+  ///
+  /// UI TIDAK BOLEH memakai field ini - itu justru melanggar aturan "nominal
+  /// tidak pernah ditebak" yang dijaga [MoneyTFLiteService.confidenceThreshold].
+  /// Gunanya khusus diagnostik dan pengujian: tanpa ini, test tidak bisa
+  /// membedakan "model ragu tapi tebakan teratasnya benar" dari "model ragu
+  /// DAN tebakan teratasnya salah". Dua kondisi itu butuh perbaikan yang
+  /// sangat berbeda, dan menyamakannya membuat suite uji lolos terus.
+  final int? topValueIdr;
 
-  const MoneyResult.uncertain(this.confidence)
-      : detected = false,
+  /// Distribusi softmax lengkap, urutannya sesuai
+  /// [MoneyTFLiteService.classValues]. Dipakai pengujian untuk menghitung
+  /// margin ke juara dua - top-1 saja tidak bisa membedakan model yang
+  /// bekerja dari model yang sedang menebak di antara 7 kelas.
+  final List<double>? probabilities;
+
+  const MoneyResult.detected({
+    required int this.valueIdr,
+    required this.confidence,
+    this.probabilities,
+  })  : detected = true,
+        failure = null,
+        message = null,
+        topValueIdr = valueIdr;
+
+  const MoneyResult.uncertain(
+    this.confidence, {
+    this.topValueIdr,
+    this.probabilities,
+  })  : detected = false,
         valueIdr = null,
         failure = MoneyFailure.lowConfidence,
         message = 'Belum yakin. Dekatkan sedikit dan tahan diam.';
@@ -181,6 +227,8 @@ class MoneyResult {
       : detected = false,
         valueIdr = null,
         confidence = 0,
+        topValueIdr = null,
+        probabilities = null,
         failure = MoneyFailure.modelUnavailable,
         message = 'Model pengenalan uang belum siap.';
 
@@ -188,6 +236,8 @@ class MoneyResult {
       : detected = false,
         valueIdr = null,
         confidence = 0,
+        topValueIdr = null,
+        probabilities = null,
         failure = MoneyFailure.error;
 }
 
@@ -224,19 +274,81 @@ class _JpegArgs {
 
 const int _size = MoneyTFLiteService._inputSize;
 
-/// Sampling langsung ke grid 224x224 dari area crop — piksel yang diproses
+/// Nilai piksel untuk area padding, SETELAH normalisasi.
+///
+/// Training memakai `tf.image.resize_with_pad`, yang mengisi bantalan dengan
+/// 0 pada rentang mentah [0,255]. Setelah `x/127.5 - 1` itu jadi -1,0. Nilai
+/// inilah yang harus dipakai di sini - mengisi bantalan dengan 0,0 (abu-abu
+/// tengah) memberi model bingkai yang tidak pernah dilihatnya saat training.
+const double _padValue = -1.0;
+
+/// Geometri letterbox: skala dan offset untuk memasukkan [srcW]x[srcH] ke
+/// dalam kotak [_size]x[_size] tanpa mengubah rasio aspek.
+class _Letterbox {
+  final double scale;
+  final int padX;
+  final int padY;
+  final int dstW;
+  final int dstH;
+
+  factory _Letterbox(int srcW, int srcH) {
+    final scale = math.min(_size / srcW, _size / srcH);
+    final dstW = math.max(1, (srcW * scale).round());
+    final dstH = math.max(1, (srcH * scale).round());
+    return _Letterbox._(
+      scale: scale,
+      dstW: dstW,
+      dstH: dstH,
+      padX: (_size - dstW) ~/ 2,
+      padY: (_size - dstH) ~/ 2,
+    );
+  }
+
+  const _Letterbox._({
+    required this.scale,
+    required this.padX,
+    required this.padY,
+    required this.dstW,
+    required this.dstH,
+  });
+
+  bool contains(int tx, int ty) =>
+      tx >= padX && tx < padX + dstW && ty >= padY && ty < padY + dstH;
+
+  int srcX(int tx) => ((tx - padX) / scale).floor();
+  int srcY(int ty) => ((ty - padY) / scale).floor();
+}
+
+/// Sampling langsung ke grid 224x224 dari area crop - piksel yang diproses
 /// turun drastis dibanding mengonversi seluruh frame lalu me-resize.
+///
+/// **Memakai letterbox, bukan peregangan.** Model dilatih dengan
+/// `tf.image.resize_with_pad` (lihat `rupiah_class_info.json`), jadi rasio
+/// aspek dipertahankan dan sisanya diberi bantalan. Versi sebelumnya
+/// meregangkan area crop 4:3 menjadi 1:1 - uang kertas yang aspeknya sekitar
+/// 2:1 masuk ke model dalam proporsi yang tidak pernah dilihatnya saat
+/// training.
+///
+/// Kesalahan seperti ini tidak memunculkan error apa pun. Interpreter tetap
+/// menerima tensornya, hanya prediksinya yang diam-diam memburuk - dan di
+/// mode uang itu berarti nominal keliru dibacakan ke pengguna tunanetra.
 List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
-  final cropW = (a.width * a.cropRatio).round();
-  final cropH = (a.height * a.cropRatio).round();
+  final cropW = math.max(1, (a.width * a.cropRatio).round());
+  final cropH = math.max(1, (a.height * a.cropRatio).round());
   final offsetX = (a.width - cropW) ~/ 2;
   final offsetY = (a.height - cropH) ~/ 2;
 
+  final lb = _Letterbox(cropW, cropH);
+  final pad = List<double>.filled(3, _padValue, growable: false);
+
   return [
     List.generate(_size, (ty) {
-      final sy = offsetY + (ty * cropH ~/ _size);
       return List.generate(_size, (tx) {
-        final sx = offsetX + (tx * cropW ~/ _size);
+        if (!lb.contains(tx, ty)) return pad;
+
+        final sy = offsetY + lb.srcY(ty).clamp(0, cropH - 1);
+        final sx = offsetX + lb.srcX(tx).clamp(0, cropW - 1);
+
         final yIdx = sy * a.yRowStride + sx;
         final uvIdx = (sy ~/ 2) * a.uvRowStride + (sx ~/ 2) * a.uvPixelStride;
 
@@ -248,7 +360,7 @@ List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
         final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toDouble();
         final b = (yVal + 1.772 * uVal).clamp(0, 255).toDouble();
 
-        // Normalisasi ke [-1, 1] — preprocessing mobilenet_v2 TIDAK ada di
+        // Normalisasi ke [-1, 1] - preprocessing mobilenet_v2 TIDAK ada di
         // dalam graf model ini, jadi harus dikerjakan di sini.
         return [r / 127.5 - 1.0, g / 127.5 - 1.0, b / 127.5 - 1.0];
       });
@@ -261,20 +373,45 @@ List<List<List<List<double>>>> _prepareJpeg(_JpegArgs a) {
   if (decoded == null) {
     throw StateError('JPEG tidak bisa dibaca');
   }
-  final side = (math.min(decoded.width, decoded.height) * a.cropRatio).round();
+
+  // Crop MENGIKUTI RASIO SUMBER, sama seperti jalur kamera.
+  //
+  // Versi sebelumnya memotong persegi di tengah (sisi = min(w,h) * cropRatio)
+  // sementara `_prepareInput` memotong `cropRatio` dari lebar DAN tinggi,
+  // yang mempertahankan rasio frame. Untuk foto lanskap 4:3 kedua aturan itu
+  // memilih area yang berbeda: yang persegi membuang sisi kiri dan kanan -
+  // persis tempat angka nominal berada pada uang kertas.
+  //
+  // Akibatnya "paksa deteksi ulang" bisa menjawab lain dari deteksi langsung
+  // pada lembar yang sama. Kegagalan seperti itu mustahil didiagnosis dari
+  // lapangan: pengguna cuma tahu aplikasinya "kadang benar kadang tidak".
+  final cropW = math.max(1, (decoded.width * a.cropRatio).round());
+  final cropH = math.max(1, (decoded.height * a.cropRatio).round());
   final cropped = img.copyCrop(
     decoded,
-    x: (decoded.width - side) ~/ 2,
-    y: (decoded.height - side) ~/ 2,
-    width: side,
-    height: side,
+    x: (decoded.width - cropW) ~/ 2,
+    y: (decoded.height - cropH) ~/ 2,
+    width: cropW,
+    height: cropH,
   );
-  final resized = img.copyResize(cropped, width: _size, height: _size);
+
+  final lb = _Letterbox(cropped.width, cropped.height);
+  final resized = img.copyResize(
+    cropped,
+    width: lb.dstW,
+    height: lb.dstH,
+    interpolation: img.Interpolation.linear,
+  );
+  final pad = List<double>.filled(3, _padValue, growable: false);
 
   return [
     List.generate(_size, (y) {
       return List.generate(_size, (x) {
-        final p = resized.getPixel(x, y);
+        if (!lb.contains(x, y)) return pad;
+        final p = resized.getPixel(
+          (x - lb.padX).clamp(0, lb.dstW - 1),
+          (y - lb.padY).clamp(0, lb.dstH - 1),
+        );
         return [p.r / 127.5 - 1.0, p.g / 127.5 - 1.0, p.b / 127.5 - 1.0];
       });
     }),

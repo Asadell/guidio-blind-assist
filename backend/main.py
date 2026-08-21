@@ -80,7 +80,7 @@ app.add_middleware(
 #
 # Router yang diarsipkan ke `_archive/routers/` beserta alasannya:
 #   websocket, detect  → deteksi rintangan sudah on-device (SSD MobileNet)
-#   ocr                → sudah on-device (ML Kit)
+#   ocr                → sudah on-device (ML Kit), dan tetap begitu
 #   uang               → sudah on-device (MobileNetV2 TFLite)
 #   navigasi           → sudah on-device (PIDNet-S + YOLO11n TFLite)
 #   asisten, voice_router → intent parsing lokal (CommandParser), tanpa LLM

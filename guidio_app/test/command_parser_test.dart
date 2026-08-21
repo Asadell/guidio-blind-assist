@@ -3,23 +3,22 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guidio_app/core/voice/command_parser.dart';
 import 'package:guidio_app/core/voice/intents.dart';
-import 'package:guidio_app/services/money_tflite_service.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// Test suite gabungan untuk:
 ///
-/// 1. **CommandParser** — memastikan intent mapping tetap benar setelah
+/// 1. **CommandParser** - memastikan intent mapping tetap benar setelah
 ///    refactor apa pun.
-/// 2. **Kenali Uang (TFLite)** — integrasi ringan: muat model dan klasifikasi
+/// 2. **Kenali Uang (TFLite)** - integrasi ringan: muat model dan klasifikasi
 ///    sampel nyata dari dataset `uang-emisi-2022-baru`.
-/// 3. **Mode Navigasi** — fixture gambar bahaya jalan ada & valid.
-/// 4. **Cari Objek** — test parse command, hanya dieksekusi kalau backend
+/// 3. **Mode Navigasi** - fixture gambar bahaya jalan ada & valid.
+/// 4. **Cari Objek** - test parse command, hanya dieksekusi kalau backend
 ///    tersedia (skip otomatis jika offline/belum deploy).
 /// ─────────────────────────────────────────────────────────────────────────────
 void main() {
   VoiceIntent? intentOf(String text) => CommandParser.parse(text).intent;
 
-  // ─── 1. Command Parser — contoh ucapan dari dokumen arsitektur ─────────────
+  // ─── 1. Command Parser - contoh ucapan dari dokumen arsitektur ─────────────
   group('contoh ucapan dari dokumen arsitektur', () {
     const cases = <String, VoiceIntent>{
       // Deteksi Objek
@@ -112,7 +111,7 @@ void main() {
           expect(
             CommandParser.suggestableIntents.contains(s),
             isTrue,
-            reason: '"$text" menyarankan $s yang tidak punya handler — '
+            reason: '"$text" menyarankan $s yang tidak punya handler - '
                 'inilah yang membuat "Maksudmu X?" → "X" → "belum saya kenali"',
           );
         }
@@ -120,80 +119,24 @@ void main() {
     });
   });
 
-  // ─── 6. Kenali Uang — sample gambar nyata dari dataset ────────────────────
+  // ─── 6. Kenali Uang - DIPINDAH ke test/money_pipeline_test.dart ──────────
   //
-  // Test ini muat model TFLite on-device lalu mengklasifikasi gambar dari
-  // dataset asli emisi 2022. Setiap pecahan diuji dengan 2 sampel berbeda.
-  // Fixture ada di test/fixtures/money/ (sudah di-copy dari dataset).
+  // Grup ini memang sudah memanggil `svc.classifyJpeg`, tapi assert-nya
+  // dibungkus `if (result.detected) { ... }`. Karena model nyaris tidak pernah
+  // menembus ambang 0,85, cabang itu tidak pernah dieksekusi dan semua kasus
+  // lolos lewat jalur "uncertain → pass". Grup ini tidak pernah bisa merah.
   //
-  // Skip otomatis kalau model asset tidak tersedia (misalnya CI tanpa assets).
-  group('Kenali Uang — klasifikasi gambar nyata', () {
-    late MoneyTFLiteService svc;
-    late bool modelLoaded;
+  // Selain itu tempatnya keliru: berkas ini menguji PARSING PERINTAH, dan
+  // menumpang inferensi model di sini membuat kegagalan model menyamar jadi
+  // kegagalan parser. Uji uang kini terpusat di money_pipeline_test.dart,
+  // lewat jalur kamera yang sebenarnya.
 
-    setUpAll(() async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-      svc = MoneyTFLiteService.instance;
-      modelLoaded = await svc.load();
-    });
-
-    tearDownAll(() {/* singleton — jangan dispose; bisa dipakai test lain */});
-
-    /// Helper: baca fixture → kirim ke classifyJpeg → kembalikan MoneyResult.
-    Future<MoneyResult> classify(String fixtureName) async {
-      final file = File('test/fixtures/money/$fixtureName');
-      expect(file.existsSync(), isTrue, reason: 'Fixture tidak ada: $fixtureName');
-      return svc.classifyJpeg(file.readAsBytesSync());
-    }
-
-    // Tabel: (fixtureName, expectedValueIdr)
-    const samples = [
-      ('uang_1000_a.jpg', 1000),
-      ('uang_1000_b.jpg', 1000),
-      ('uang_2000_a.jpg', 2000),
-      ('uang_2000_b.jpg', 2000),
-      ('uang_5000_a.jpg', 5000),
-      ('uang_5000_b.jpg', 5000),
-      ('uang_10000_a.jpg', 10000),
-      ('uang_10000_b.jpg', 10000),
-      ('uang_20000_a.jpg', 20000),
-      ('uang_20000_b.jpg', 20000),
-      ('uang_50000_a.jpg', 50000),
-      ('uang_50000_b.jpg', 50000),
-      ('uang_100000_a.jpg', 100000),
-      ('uang_100000_b.jpg', 100000),
-    ];
-
-    for (final (fixture, expected) in samples) {
-      test('${fixture.replaceAll('.jpg', '')} → Rp${_fmt(expected)}', () async {
-        if (!modelLoaded) {
-          markTestSkipped('Model TFLite tidak berhasil dimuat — skip.');
-          return;
-        }
-        final result = await classify(fixture);
-        // Dua kemungkinan sukses: terdeteksi dengan nominal benar, atau
-        // uncertain (confidence di bawah threshold). Yang TIDAK boleh terjadi
-        // adalah detected == true dengan nominal yang salah.
-        if (result.detected) {
-          expect(
-            result.valueIdr,
-            equals(expected),
-            reason: '$fixture dikenali sebagai Rp${_fmt(result.valueIdr!)} '
-                '(confidence: ${(result.confidence * 100).toStringAsFixed(1)}%), '
-                'seharusnya Rp${_fmt(expected)}.',
-          );
-        }
-        // uncertain → test tetap pass; model hanya kurang yakin.
-      });
-    }
-  });
-
-  // ─── 7. Mode Navigasi — fixture gambar valid ───────────────────────────────
+  // ─── 7. Mode Navigasi - fixture gambar valid ───────────────────────────────
   //
   // Test ini TIDAK menjalankan inference (model YOLOv11 terlalu besar untuk
   // dipush ke repo). Yang diverifikasi: gambar fixture ada, bisa dibaca, dan
   // berukuran wajar (> 100 KB) sehingga coverage integrasi tetap terjaga.
-  group('Navigation mode — fixture images exist and are valid', () {
+  group('Navigation mode - fixture images exist and are valid', () {
     const fixtures = [
       '01_got_terbuka.png',   // open drain / got terbuka
       '02_lubang_trotoar.png', // sidewalk hole
@@ -203,12 +146,12 @@ void main() {
     ];
 
     for (final name in fixtures) {
-      test('$name — file exists and is readable', () {
+      test('$name - file exists and is readable', () {
         final file = File('test/fixtures/navigation/$name');
         expect(file.existsSync(), isTrue, reason: 'Fixture tidak ada: $name');
         final bytes = file.readAsBytesSync();
         expect(bytes.length, greaterThan(100 * 1024),
-            reason: '$name terlalu kecil — mungkin file rusak atau terpotong.');
+            reason: '$name terlalu kecil - mungkin file rusak atau terpotong.');
         // Validasi magic bytes PNG: 0x89 0x50 0x4E 0x47
         expect(bytes[0], equals(0x89));
         expect(bytes[1], equals(0x50)); // 'P'
@@ -218,12 +161,12 @@ void main() {
     }
   });
 
-  // ─── 8. Cari Objek — parse command + guard backend ────────────────────────
+  // ─── 8. Cari Objek - parse command + guard backend ────────────────────────
   //
   // CommandParser harus mengekstrak target dari perintah bahasa Indonesia dan
   // Sunda. Backend check (HTTP ping) dilakukan di sini: kalau tidak reachable,
   // semua sub-test "would call backend" di-skip secara eksplisit, bukan fail.
-  group('Find Object — command parsing', () {
+  group('Find Object - command parsing', () {
     // --- 8a. Parser: bahasa Indonesia
     test('"cari dompet" extracts target "dompet"', () {
       final cmd = CommandParser.parse('cari dompet');
@@ -276,7 +219,7 @@ void main() {
     //
     // To run locally: start the backend, then:
     //   flutter test --name "object_find"
-    group('object_find — backend integration (skipped unless BE running)', () {
+    group('object_find - backend integration (skipped unless BE running)', () {
       const backendUrl = String.fromEnvironment(
         'GUIDO_BACKEND_URL',
         defaultValue: '',
@@ -307,7 +250,7 @@ void main() {
       for (final (target, fixturePath) in objectTargets) {
         test('find "$target" in ${fixturePath.split('/').last}', () {
           if (!backendAvailable) {
-            markTestSkipped('Backend not reachable — set GUIDO_BACKEND_URL to run.');
+            markTestSkipped('Backend not reachable - set GUIDO_BACKEND_URL to run.');
             return;
           }
           final file = File(fixturePath);
@@ -321,9 +264,3 @@ void main() {
     });
   });
 }
-
-/// Format angka ribuan singkat: 1000 → "1.000", 100000 → "100.000".
-String _fmt(int value) => value.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );

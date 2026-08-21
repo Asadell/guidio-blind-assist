@@ -54,29 +54,115 @@ class YoloNavigasiService {
   bool _loaded = false;
   bool get isLoaded => _loaded;
 
-  /// Muat yolo11n.tflite (INT8, 3.0 MB) dari assets.
+  /// Faktor pengali koordinat kotak, ditentukan saat model dimuat.
+  ///
+  /// 1.0 kalau model mengeluarkan PIXEL (0..640), 640.0 kalau TERNORMALISASI
+  /// (0..1). Lihat [_probeBoxScale] untuk alasan kenapa ini dideteksi alih-alih
+  /// dipatok.
+  double _boxScale = 1.0;
+
+  /// Muat model deteksi rintangan navigasi (6 kelas) dari assets.
   Future<bool> tryLoad() async {
     try {
-      final bd = await rootBundle.load('assets/models/yolo11n.tflite');
+      final bd = await rootBundle.load('assets/models/yolo11n_navigasi.tflite');
       final bytes = bd.buffer.asUint8List();
       debugPrint('[YOLO-Nav] Memuat model ${(bytes.length / 1024).toStringAsFixed(0)} KB');
 
-      // CPU saja — model INT8 sudah sangat ringan di CPU
       final options = InterpreterOptions()..threads = 4;
       final interpreter = Interpreter.fromBuffer(bytes, options: options);
 
       final inputShape  = interpreter.getInputTensor(0).shape;
       final outputShape = interpreter.getOutputTensor(0).shape;
       debugPrint('[YOLO-Nav] Input: $inputShape  Output: $outputShape');
-      // Diharapkan: Input [1,640,640,3], Output [1,10,8400]
+
+      // Bentuk input WAJIB dicek, bukan diasumsikan.
+      //
+      // Model yang dibundel sebelumnya berbentuk NCHW [1,3,640,640] sementara
+      // kode ini menyusun input NHWC [1,640,640,3]. Interpreter menolaknya,
+      // pengecualiannya tertangkap di bawah, dan `detect()` mengembalikan
+      // daftar kosong pada SETIAP frame — mode navigasi berjalan tanpa pernah
+      // melaporkan satu pun rintangan, tanpa satu pun tanda di layar bahwa
+      // ada yang salah.
+      if (inputShape.length != 4 ||
+          inputShape[1] != _yoloSize ||
+          inputShape[2] != _yoloSize ||
+          inputShape[3] != 3) {
+        debugPrint('[YOLO-Nav] TOLAK: input $inputShape bukan NHWC '
+            '[1,$_yoloSize,$_yoloSize,3]. Model ini tidak cocok dengan '
+            'penyusun input di detect().');
+        return false;
+      }
+      final expectedCh = 4 + _navLabels.length;
+      if (outputShape.length != 3 || outputShape[1] != expectedCh) {
+        debugPrint('[YOLO-Nav] TOLAK: output $outputShape, diharapkan '
+            'channel $expectedCh (4 kotak + ${_navLabels.length} kelas).');
+        return false;
+      }
+
+      _boxScale = _probeBoxScale(interpreter, outputShape[2]);
 
       _interpreter = await IsolateInterpreter.create(address: interpreter.address);
       _loaded = true;
-      debugPrint('[YOLO-Nav] Model siap. Kelas: $_navLabels');
+      debugPrint('[YOLO-Nav] Model siap. Kelas: $_navLabels  '
+          'skalaKotak: $_boxScale');
       return true;
     } catch (e) {
       debugPrint('[YOLO-Nav] Gagal load: $e');
       return false;
+    }
+  }
+
+  /// Tentukan apakah model mengeluarkan koordinat pixel atau ternormalisasi,
+  /// dengan menjalankan satu inferensi percobaan saat muat.
+  ///
+  /// ## Kenapa dideteksi, bukan dipatok
+  ///
+  /// Dua jalur ekspor yang sama-sama wajar memberi konvensi yang BERBEDA:
+  ///
+  ///   - `onnx2tf` (dipakai untuk model ini) meneruskan graf apa adanya, jadi
+  ///     koordinatnya PIXEL 0..640, sama seperti ONNX aslinya.
+  ///   - `yolo export format=tflite` milik Ultralytics menambahkan pembagian
+  ///     dengan imgsz, jadi koordinatnya TERNORMALISASI 0..1.
+  ///
+  /// Model yang dibundel sebelumnya memakai konvensi kedua, model ini yang
+  /// pertama. Memakai pengali yang salah menggeser setiap kotak sejauh 640
+  /// kali — semuanya terdorong ke tepi frame lalu ter-clamp, jadi jaraknya
+  /// ngawur dan arahnya selalu sama.
+  ///
+  /// Dan yang membuatnya berbahaya: TIDAK ADA error. Modelnya termuat,
+  /// inferensinya jalan, kotaknya keluar. Hanya isinya yang salah, di mode
+  /// yang tugasnya memperingatkan lubang di depan kaki pengguna tunanetra.
+  ///
+  /// Satu inferensi saat muat jauh lebih murah daripada menaruh asumsi ini
+  /// di komentar dan berharap orang berikutnya membacanya.
+  double _probeBoxScale(Interpreter interpreter, int anchors) {
+    try {
+      // Abu-abu netral: tidak memicu apa pun, tapi tetap menghasilkan
+      // koordinat kotak di seluruh anchor.
+      final probe = List.generate(1, (_) =>
+        List.generate(_yoloSize, (_) =>
+          List.generate(_yoloSize, (_) => [0.5, 0.5, 0.5])));
+      final out = [List.generate(4 + _navLabels.length,
+          (_) => List.filled(anchors, 0.0))];
+      interpreter.run(probe, out);
+
+      var maxCoord = 0.0;
+      for (var c = 0; c < 4; c++) {
+        for (final v in out[0][c]) {
+          if (v > maxCoord) maxCoord = v;
+        }
+      }
+      // Koordinat ternormalisasi tidak pernah jauh melewati 1,0. Ambang 2,0
+      // memberi ruang aman tanpa mendekati rentang pixel yang ratusan.
+      final pixels = maxCoord > 2.0;
+      debugPrint('[YOLO-Nav] koordinat maks percobaan=${maxCoord.toStringAsFixed(3)} '
+          '-> ${pixels ? "PIXEL" : "TERNORMALISASI"}');
+      return pixels ? 1.0 : _yoloSize.toDouble();
+    } catch (e) {
+      // Gagal menyelidiki bukan alasan menolak model. Kembali ke konvensi
+      // model yang sedang dibundel.
+      debugPrint('[YOLO-Nav] percobaan skala kotak gagal ($e), pakai PIXEL');
+      return 1.0;
     }
   }
 
@@ -162,11 +248,14 @@ class YoloNavigasiService {
       final thresh = (maxClass == 0 || maxClass == 1) ? 0.05 : _confThresh;
       if (maxScore < thresh) continue;
 
-      // cx, cy, w, h → x1, y1, x2, y2 (dalam skala input 640×640)
-      final cx = raw[0][i] * _yoloSize;
-      final cy = raw[1][i] * _yoloSize;
-      final bw = raw[2][i] * _yoloSize;
-      final bh = raw[3][i] * _yoloSize;
+      // cx, cy, w, h → x1, y1, x2, y2 (dalam skala input 640×640).
+      //
+      // `_boxScale` ditentukan saat muat lewat [_probeBoxScale]: 1.0 kalau
+      // model sudah mengeluarkan pixel, 640 kalau ternormalisasi.
+      final cx = raw[0][i] * _boxScale;
+      final cy = raw[1][i] * _boxScale;
+      final bw = raw[2][i] * _boxScale;
+      final bh = raw[3][i] * _boxScale;
 
       boxes.add(_Box(
         x1:       (cx - bw / 2).clamp(0, _yoloSize.toDouble()),

@@ -193,7 +193,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     });
     if (camChanged && cam) {
       final camProvider = context.read<CameraProvider>();
-      if (!camProvider.isInitialized) await camProvider.initCamera();
+      await camProvider.initCamera(preset: CapturePreset.realtime);
       if (!mounted) return;
       camProvider.startStream();
       if (_detectionActive) _startDetection();
@@ -216,9 +216,29 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     );
   }
 
-  void _startDetection() {
+  /// Nyalakan deteksi, didahului satu kalimat pembuka.
+  ///
+  /// [announce] dibuat parameter karena masa tenang menahan semua narasi
+  /// non-kritis: kalau pemanggil mengucapkan penandanya sendiri SETELAH
+  /// memanggil metode ini dengan tier Warning, kalimat itu ditelan diam-diam.
+  /// Menyatukannya di sini memastikan pengguna mendengar tepat satu penanda,
+  /// dan penandanya yang benar untuk jalur yang dia tempuh.
+  void _startDetection({String announce = 'Mode deteksi aktif'}) {
     _pausedReminder?.cancel();
     _pausedReminder = null;
+
+    // Satu kalimat pembuka SEBELUM masa tenang dimulai.
+    //
+    // `startRealtime()` membuka masa tenang 1,5 detik yang menahan semua
+    // narasi non-kritis, dan tanpa penanda ini pengguna tunanetra menghadapi
+    // keheningan yang tidak bisa dia bedakan dari "tombolnya tidak menekan".
+    //
+    // Tier Critical dipakai bukan karena ini bahaya, tapi karena hanya tier
+    // itu yang menembus masa tenang. Panjangnya sengaja pendek: cukup untuk
+    // memberi tahu, cukup singkat untuk tidak menghalangi peringatan
+    // sungguhan yang mungkin menyusul sepersekian detik kemudian.
+    TtsQueue().speak(announce, tier: SpeechTier.critical);
+
     context.read<DetectionProvider>().startRealtime();
   }
 
@@ -264,9 +284,12 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       HapticService.instance.warning();
       _armPausedReminder();
     } else {
-      _startDetection();
+      // Penandanya diucapkan DI DALAM _startDetection, bukan sesudahnya:
+      // masa tenang yang baru dibuka menahan tier Warning, jadi kalimat ini
+      // dulu akan hilang tanpa jejak persis di momen pengguna paling perlu
+      // konfirmasi bahwa tombolnya bekerja.
+      _startDetection(announce: 'Deteksi dilanjutkan');
       setState(() => _detectionActive = true);
-      TtsQueue().speak('Deteksi dilanjutkan.', tier: SpeechTier.warning);
       HapticService.instance.info();
     }
   }
@@ -277,7 +300,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     if (status.isGranted) {
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
-      if (!cam.isInitialized) await cam.initCamera();
+      await cam.initCamera(preset: CapturePreset.realtime);
       if (!mounted) return;
       cam.startStream();
       if (_detectionActive) _startDetection();

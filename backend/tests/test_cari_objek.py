@@ -58,19 +58,34 @@ class TestCariObjekInvalidInput:
         assert r.status_code == 200
         body = r.json()
         assert body["found"] is False
-        assert body.get("reason") == "invalid_frame"
+        assert body.get("reason") == "gambar_rusak"
 
     def test_empty_bytes(self, client):
         """Gambar kosong harus balas found=False."""
         r = _post_cari(client, b"", "tas")
         assert r.status_code == 200
-        assert r.json()["found"] is False
+        body = r.json()
+        assert body["found"] is False
+        assert body.get("reason") == "gambar_kosong"
+
+    def test_gagal_gambar_menyarankan_ulang(self, client):
+        """Kegagalan kualitas gambar harus BEDA dari 'tidak ada di frame'.
+
+        Pembedaan ini yang membuat aplikasi tahu kapan menyuruh pengguna
+        memutar badan (CO-10) dan kapan menyuruh memperbaiki kondisi foto.
+        Tanpa itu keduanya terdengar sama dan tindakan penggunanya salah.
+        """
+        body = _post_cari(client, b"bukan_gambar_valid", "tas").json()
+        assert body.get("retry_suggested") is True
+        assert body.get("message"), "Pesan untuk TTS tidak boleh kosong"
 
     def test_target_not_in_frame(self, client, obj_image_botol):
         """Target yang tidak ada di gambar harus balas found=False, bukan error."""
         body = _post_cari(client, obj_image_botol, "pesawat").json()
         assert body["found"] is False
-        assert body.get("reason") in ("not_in_frame", "no_match", None)
+        assert body.get("reason") in (
+            "not_in_frame", "no_match", "agak_buram", "sangat_buram", None
+        )
 
     def test_no_crash_on_random_target(self, client, obj_image_botol):
         """Target acak tidak boleh sebabkan crash (500)."""
@@ -92,7 +107,9 @@ class TestCariObjekDeteksi:
     def test_deteksi_atau_not_in_frame(self, client, target, fixture_attr, request):
         img = request.getfixturevalue(fixture_attr)
         body = _post_cari(client, img, target).json()
-        valid = body["found"] or body.get("reason") in ("not_in_frame", "no_match")
+        valid = body["found"] or body.get("reason") in (
+            "not_in_frame", "no_match", "agak_buram", "sangat_buram",
+        )
         assert valid, f"Respons tidak valid untuk target '{target}': {body}"
 
 

@@ -76,7 +76,7 @@ Suara + getar ke pengguna
 ## 2. Enam mode dan layarnya
 
 Aplikasi terbuka langsung ke Mode Deteksi Objek yang sudah aktif. Tidak ada
-layar beranda — setiap layar perantara berarti penundaan sebelum pengguna
+layar beranda - setiap layar perantara berarti penundaan sebelum pengguna
 mendapat informasi keselamatan.
 
 | Mode | Berkas layar | Butuh internet? |
@@ -106,17 +106,54 @@ tombol Pilih Mode di kanan bawah (dua langkah).
 | Dijalankan di | thread terpisah, supaya layar tidak macet |
 
 > `yolo11l_float32.tflite` dan `yolo11n.tflite` di folder yang sama **tidak
-> dipakai** — hanya sisa percobaan. Yang dimuat adalah `ssd_mobilenet.tflite`.
+> dipakai** - hanya sisa percobaan. Yang dimuat adalah `ssd_mobilenet.tflite`.
 
 ### Model pengenalan uang
 
 | Hal | Nilai |
 |---|---|
-| Berkas | `assets/models/rupiah_classifier_int8.tflite` |
-| Arsitektur | MobileNetV2 transfer learning (repo `rupiah-vision`) |
-| Ukuran masukan | 224 × 224 piksel, float32 **rentang −1..1** |
-| Jumlah kelas | 7 pecahan — emisi 2016 & 2022 |
-| Test accuracy | 98,36% (varian INT8) |
+| Berkas | `assets/models/rupiah_classifier_fp16.tflite` |
+| Arsitektur | MobileNetV2 transfer learning (repo `rupiah_vision_revised`) |
+| Ukuran masukan | 224 x 224 piksel, float32 **rentang -1..1** |
+| Resize | **letterbox** (`resize_with_pad`), bukan peregangan |
+| Praproses aplikasi | center-crop 0,7 dari frame, lalu letterbox |
+| Jumlah kelas | 7 pecahan, emisi 2016 dan 2022 |
+| Test accuracy (lab) | 97,98% pada test set internal |
+
+> `rupiah_classifier_int8.tflite` dan `uang_rupiah.tflite` di folder yang sama
+> **tidak dibundel** ke APK. Keduanya arsip model lama.
+
+#### Angka lab tidak sama dengan angka lapangan
+
+Test accuracy 97,98% diukur pada test set yang isinya **crop rapat** hasil
+bounding box: lembar uang mengisi lebih dari 80 persen bidang, rasionya sekitar
+2:1 mendatar. Frame kamera sungguhan tidak pernah seperti itu.
+
+Angka di bawah ini diukur lewat `flutter test test/money_pipeline_test.dart`,
+memakai `classifyCameraImage` yang sama persis dengan yang dipakai aplikasi:
+
+| Fixture | Nominal asli | Tebakan teratas | Keyakinan | Selisih ke juara dua |
+|---|---|---|---|---|
+| `money_new2/5rb.png` | 5.000 | 5.000 | 90,6% | 87,6 |
+| `money_new2/10rb.png` | 10.000 | 10.000 | 82,0% | 71,0 |
+| `money_new2/20rb.png` | 20.000 | 20.000 | 64,7% | 55,2 |
+| `money_new/5000.png` | 5.000 | **20.000** | 42,6% | 23,1 |
+| `money_new/10000.png` | 10.000 | **50.000** | 35,6% | 2,2 |
+
+Bacanya: tebakan teratas benar 3 dari 5, tapi hanya 1 dari 5 yang tembus ambang
+0,85. Artinya pada empat gambar sisanya aplikasi bilang "belum yakin" dan
+**tidak menyebutkan nominal apa pun**. Pengaman bekerja, tapi modenya sering
+tidak memberi jawaban.
+
+Dua fixture `money_new/` adalah tangkapan layar ponsel 720x1560: lembar uang
+cuma sekitar 13 persen bidang, lebih dari separuh tensor jadi bantalan hitam
+karena rasio portretnya, dan gelembung petunjuk di layar menutupi tengah uang.
+Pada `10000.png` selisih ke juara dua cuma 2,2 poin, yang berarti model memang
+sedang menebak, bukan mengenali.
+
+Penyebabnya pergeseran distribusi skala dan framing, bukan bobot yang rusak.
+Perbaikannya ada di `new_training/rupiah_vision_revised` (simulasi framing
+kamera lewat `--frame-prob` dan `--bg-dir`), bukan di sisi aplikasi.
 
 Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scripts/02_export_tflite.py`):
 
@@ -125,9 +162,9 @@ Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scri
 20.000 = 4  50.000 = 5  100.000 = 6
 ```
 
-> **Perhatian rentang input:** model ini memakai rentang −1..1 (`x/127.5 − 1`),
-> **bukan** 0..255. Nilai yang salah tidak memunculkan error — prediksi hanya
-> diam-diam salah. Periksa ulang jika model diganti.
+> **Perhatian rentang input:** model ini memakai rentang -1..1 (`x/127.5 - 1`),
+> **bukan** 0..255. Nilai yang salah tidak memunculkan error apa pun, prediksinya
+> hanya diam-diam salah. Periksa ulang jika model diganti.
 
 **Aturan yang tidak bisa ditawar:** kalau keyakinan model di bawah 0,85,
 aplikasi **tidak menampilkan angka sama sekali**, hanya instruksi perbaikan.
@@ -162,7 +199,7 @@ Setiap intent memiliki varian ucapan yang mencakup:
 - Typo dan variasi STT yang umum
 
 Server (`POST /api/intent`) hanya dipanggil saat parser lokal benar-benar
-tidak bisa menentukan — biasanya kasus ambigu yang perlu konfirmasi pengguna.
+tidak bisa menentukan - biasanya kasus ambigu yang perlu konfirmasi pengguna.
 
 ---
 
@@ -197,12 +234,12 @@ final narasi = generateNaturalNarration([
 | `mapDirectionPhrase()` | "kiri"/"tengah"/"kanan" → "di sebelah kirimu"/dst |
 | `generateNaturalNarration()` | Merangkai semua menjadi 1 kalimat dengan variasi konektor |
 
-Urutan objek: yang paling dekat disebut lebih dulu — objek paling berbahaya
+Urutan objek: yang paling dekat disebut lebih dulu - objek paling berbahaya
 mendapat prioritas.
 
 ### Deskripsi suasana (Moondream2)
 
-Untuk `POST /api/describe`, backend mengembalikan `description_en` — caption
+Untuk `POST /api/describe`, backend mengembalikan `description_en` - caption
 Bahasa Inggris dari Moondream2. Flutter membacakannya dengan:
 
 ```dart
@@ -222,7 +259,7 @@ langsung.
 ### Aturan warna
 
 Warna terang seperti hijau dan kuning **tidak boleh** menjadi latar teks
-putih — kontrasnya gagal untuk pengguna low vision. Setiap tingkat bahaya
+putih - kontrasnya gagal untuk pengguna low vision. Setiap tingkat bahaya
 punya dua warna: satu untuk ikon/bidang besar, satu yang lebih pekat untuk
 teks.
 
@@ -276,7 +313,7 @@ Ambil gambar di kiri, Bicara di tengah, Pilih mode di kanan.
 | Warning | Memotong Info, boleh dipotong pengguna |
 | Info | Mengantre, dibuang kalau sudah menunggu lebih dari 2 detik |
 
-Info sengaja dibuang saat basi — informasi tentang benda yang sudah terlewat
+Info sengaja dibuang saat basi - informasi tentang benda yang sudah terlewat
 tiga detik lalu bukan cuma tidak berguna, tapi juga menghalangi peringatan
 yang lebih baru.
 
@@ -428,87 +465,146 @@ flutter install
 
 ## 14. Testing
 
-Ada dua cara testing yang bisa dijalankan secara independen:
+### Prinsip: test yang di-skip bukan test yang lulus
 
-| | Flutter unit test | Python visual test |
-|---|---|---|
-| Tujuan | Validasi logika & parsing | Lihat hasil gambar anotasi |
-| Butuh setup? | Tidak | Sekali saja (venv) |
-| Output | Pass/fail di terminal | Folder gambar bertimestamp |
-| Butuh model? | Opsional (di-skip jika tidak ada) | Ya |
+Versi README ini sebelumnya menulis *"Test yang di-skip bukan error, tidak ada
+yang merah = aman"*. Kalimat itu keliru, dan kekeliruannya mahal.
+
+Di host Linux dan macOS, `tflite_flutter` memuat pustaka native lewat FFI dari
+`${Platform.resolvedExecutable}/../blobs/libtensorflowlite_c-<platform>.so`.
+Pustaka itu **tidak ikut** waktu `flutter pub get`. Kalau tidak ada,
+`svc.load()` mengembalikan `false`, setiap uji inferensi meloncat ke
+`markTestSkipped`, dan terminal menulis "All tests passed!" dengan gembira.
+Yang sebenarnya terjadi: nol piksel diuji.
+
+Itu bukan skenario hipotetis. Seluruh uji inferensi uang **dan** navigasi di
+repo ini berstatus skip sejak awal. Begitu pustakanya dipasang, empat uji
+navigasi langsung merah, padahal sebelumnya tidak pernah ada satu pun tanda
+peringatan.
+
+Karena itu `test/money_pipeline_test.dart` punya satu uji prasyarat yang
+**gagal**, bukan skip, ketika runtime TFLite tidak ada. Untuk sengaja
+melewatinya (misalnya CI yang memang hanya memeriksa lint), pakai
+`GUIDIO_ALLOW_SKIP_TFLITE=1`, dengan kesadaran penuh bahwa suite itu tidak
+memvalidasi model sama sekali.
+
+### Menyiapkan runtime TFLite (sekali per instalasi Flutter)
+
+```bash
+# dari folder guidio_app/
+curl -L -o blobs/libtensorflowlite_c-linux.so \
+  https://github.com/am15h/tflite_flutter_plugin/releases/download/v0.5.0/libtensorflowlite_c-linux.so
+tool/setup_tflite_linux.sh
+```
+
+Skrip itu menyalin pustaka ke direktori artifacts engine Flutter. Direktori
+tersebut **ikut terhapus setiap `flutter upgrade` atau ganti versi FVM**, jadi
+jalankan ulang setelahnya. Salinan di `blobs/` sengaja disimpan supaya tidak
+perlu mengunduh lagi.
+
+Verifikasi cepat:
+
+```bash
+flutter test test/money_pipeline_test.dart
+```
+
+Kalau uji `runtime TFLite tersedia` lulus, sisanya benar-benar menjalankan model.
 
 ---
 
-### A. Flutter unit test
+### A. Uji pipeline uang: `test/money_pipeline_test.dart`
 
-**Tidak butuh setup apapun.** Jalankan dari folder `guidio_app/`:
+Ini satu-satunya tempat pengenalan uang diuji, dan ia memanggil
+**`MoneyTFLiteService.classifyCameraImage`**, fungsi yang sama persis dengan
+yang berjalan waktu pengguna mengarahkan kamera.
 
-```bash
-flutter test
-```
+Frame kamera dipalsukan dari fixture PNG: RGB dikonversi balik ke YUV420 dengan
+tata letak Android `YUV_420_888` termasuk `pixelStride == 2` pada bidang kroma.
+Tata letak itu ditiru persis, bukan disederhanakan jadi planar, supaya bug
+indeks kroma yang hanya muncul di perangkat asli tetap tertangkap.
 
-Atau per file jika mau lebih fokus:
+Empat kelompok:
 
-```bash
-# Command parser — cepat, tidak butuh model atau device
-flutter test test/command_parser_test.dart
-
-# Inferensi model langsung — butuh TFLite shared library
-flutter test test/model_inference_test.dart
-```
-
-**Hasil tipikal di laptop Linux** (tanpa perangkat Android):
-
-```
-+40 passed, ~17 skipped
-```
-
-Test yang di-skip **bukan error** — mereka otomatis lewat sendiri kalau dependensinya tidak ada
-(TFLite `.so`, backend server, dll.). Tidak ada yang merah = aman.
-
-#### Apa yang ditest?
-
-**`test/command_parser_test.dart`** — logika parsing perintah suara:
-
-| Kelompok | Yang ditest | Syarat jalan |
+| Kelompok | Yang dijaga | Status sekarang |
 |---|---|---|
-| Pemetaan 21 intent | Contoh ucapan dari dokumen arsitektur | — |
-| Prioritas frasa | Frasa spesifik menang atas kata umum (4 kasus) | — |
-| Prefiks natural | "saya mau ke mode..." dan variasi (2 kasus) | — |
-| Batas kata | Anti false-positive | — |
-| Saran intent | Hanya intent yang ada handler-nya yang keluar | — |
-| **Kenali Uang** | Klasifikasi 14 gambar JPEG nyata (2 per pecahan) | TFLite SO |
-| **Navigasi** | 5 fixture PNG, cek file valid + ada deteksi | — |
-| **Cari Objek** | Parse perintah cari + guard jika backend mati | Backend opsional |
+| **A. KEAMANAN** | Tidak pernah yakin tapi salah. Di bawah ambang, `valueIdr` wajib `null` dan pengguna wajib dapat instruksi | 5/5 hijau |
+| **B. KEMAMPUAN** | Tebakan teratas harus benar, dan keyakinan harus tembus 0,85 | **4/10 merah** |
+| **C. PARITAS** | Jalur kamera dan jalur JPEG harus sepakat | 5/5 hijau |
+| **D. KONTRAK** | Urutan kelas cocok dengan `rupiah_class_info.json`, ground-truth fixture bisa diurai | 2/2 hijau |
 
-**`test/model_inference_test.dart`** — model TFLite langsung, memuat dari path file:
+Kelompok B adalah **ratchet yang sengaja dibiarkan merah**. Merahnya adalah
+informasi: pipeline uang belum layak dipakai pengguna. Jangan dilonggarkan
+supaya hijau. Yang dinaikkan adalah modelnya, lihat bagian 3.
 
-| Model | Input | Cara validasi |
-|---|---|---|
-| `rupiah_classifier_int8.tflite` | 14 JPEG, 224x224, rentang -1..1 | Nama file `uang_10000_a.jpg` → expected = 10000 |
-| `yolo11n.tflite` | 5 PNG, 640x640 NCHW, rentang 0..1 | Nama file `04_motor_dan_orang.png` → {motor, orang} |
+Kelompok C bukan formalitas. Kedua jalur masuk punya praproses terpisah dan
+pernah memakai aturan crop yang berbeda, sehingga lembar yang sama bisa
+menjawab lain tergantung tombol mana yang ditekan. Kegagalan seperti itu
+mustahil didiagnosis dari laporan pengguna.
 
-Validasi uang: confidence >= 85% harus benar persis; < 85% (uncertain) tetap pass
-(sama dengan perilaku production yang tidak menampilkan nominal saat ragu).
-
-Validasi navigasi: setidaknya **satu** label yang diharapkan harus ada di hasil deteksi.
-
-#### Gambar fixture
+Fixture yang dipakai:
 
 ```
 test/fixtures/
-├── money/       <- 14 JPEG, 2 gambar per pecahan (1rb s.d. 100rb)
-└── navigation/  <- 5 PNG dari test/navigation/test/
+├── money_new/    2 tangkapan layar ponsel 720x1560 (uang kecil, tertimpa overlay UI)
+├── money_new2/   3 foto biasa 900x1600 (uang mengisi hampir selebar frame)
+├── money/        14 JPEG lama, kini tidak dipakai suite mana pun
+└── navigation/   5 PNG bahaya jalan
 ```
+
+Ground-truth diambil dari nama berkas lewat regex (`5000.png` dan `5rb.png`
+sama-sama berarti Rp5.000). Tidak ada tabel hard-coded: kalau nama berkas
+menyimpang, regex gagal dan test langsung merah alih-alih diam-diam menguji
+hal yang salah.
+
+### B. Uji lain
+
+```bash
+flutter test                                  # semua
+flutter test test/command_parser_test.dart    # parsing perintah suara, tanpa model
+flutter test test/model_inference_test.dart   # inferensi YOLO navigasi
+```
+
+`test/model_inference_test.dart` sekarang **hanya** menguji navigasi. Kelompok
+uangnya dihapus karena dua cacat yang membuatnya tidak bisa merah:
+
+1. Ia membangun praprosesnya sendiri dengan
+   `img.copyResize(source, width: 224, height: 224)`, yaitu **peregangan** ke
+   persegi tanpa center-crop. Model dilatih dengan letterbox dan aplikasi
+   memakai center-crop 0,7 lalu letterbox. Jadi suite itu mengukur pipeline
+   yang tidak pernah dijalankan siapa pun.
+2. Assert-nya dibungkus `if (confidence >= 0.85) { ... } else { print(...) }`.
+   Karena model jarang menembus 0,85, cabang assert tidak pernah dieksekusi.
+
+Kelompok uang di `test/command_parser_test.dart` juga dihapus. Ia sudah
+memanggil `classifyJpeg`, tapi assert-nya dibungkus `if (result.detected)`
+sehingga tidak pernah bisa merah. Tempatnya juga keliru: berkas itu menguji
+parsing perintah, dan menumpang inferensi model di sana membuat kegagalan
+model menyamar jadi kegagalan parser.
+
+### Hasil terakhir
+
+```
+79 passed, 3 skipped, 10 failed
+```
+
+Sepuluh yang merah, semuanya nyata dan bukan masalah infrastruktur:
+
+| Jumlah | Berkas | Sebab |
+|---|---|---|
+| 6 | `money_pipeline_test.dart` kelompok B | Model belum tangguh pada framing kamera, lihat bagian 3 |
+| 4 | `model_inference_test.dart` kelompok B | Model navigasi YOLO tidak mendeteksi satu pun label yang diharapkan pada 4 dari 5 fixture. Baru terlihat sekarang karena sebelumnya selalu di-skip |
+
+Empat kegagalan navigasi itu **temuan baru**, bukan regresi yang saya sebabkan.
+Ia sudah ada sejak lama dan tersembunyi di balik skip.
 
 ---
 
-### B. Python visual test — lihat gambar hasilnya
+### C. Python visual test - lihat gambar hasilnya
 
 Menghasilkan gambar ter-anotasi seperti di `test/navigation/results_mobile_tflite/`.
 Berguna untuk memeriksa secara visual apakah bounding box dan klasifikasi masuk akal.
 
-#### Setup (sekali saja) — dari root repo (folder `guido/`)
+#### Setup (sekali saja) - dari root repo (folder `guido/`)
 
 ```bash
 python3 -m venv test/.venv
@@ -517,7 +613,7 @@ test/.venv/bin/pip install -r test/requirements-test.txt
 
 Hanya install `ai-edge-litert` + `Pillow` + `numpy` (~50 MB, tidak perlu TensorFlow penuh).
 
-#### Menjalankan — dari root repo (folder `guido/`)
+#### Menjalankan - dari root repo (folder `guido/`)
 
 ```bash
 test/.venv/bin/python test/run_visual_test.py
@@ -541,7 +637,7 @@ test/results/<epoch>/
 
 #### Cara baca nama file tanpa buka gambarnya
 
-**Navigasi** — bagian setelah `__` adalah label yang terdeteksi + confidence:
+**Navigasi** - bagian setelah `__` adalah label yang terdeteksi + confidence:
 
 ```
 nav_02_lubang_trotoar__lubangp50.png
@@ -554,7 +650,7 @@ nav_01_got_terbuka__none.png
                     ^ tidak ada deteksi
 ```
 
-**Uang** — bagian setelah `__` adalah status + confidence:
+**Uang** - bagian setelah `__` adalah status + confidence:
 
 ```
 money_uang_100000_a__PASS_99p6.jpg        -> benar, conf 99.6%

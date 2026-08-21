@@ -178,7 +178,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       setState(() => _hasCameraPermission = granted);
       if (granted) {
         final cam = context.read<CameraProvider>();
-        if (!cam.isInitialized) await cam.initCamera();
+        await cam.initCamera(preset: CapturePreset.realtime);
         if (!mounted) return;
         cam.startStream();
         context.read<MoneyProvider>().start();
@@ -192,7 +192,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     if (status.isGranted) {
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
-      if (!cam.isInitialized) await cam.initCamera();
+      await cam.initCamera(preset: CapturePreset.realtime);
       if (!mounted) return;
       cam.startStream();
       context.read<MoneyProvider>().start();

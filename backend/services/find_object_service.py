@@ -24,7 +24,12 @@ from services.find_object_constants import (
     SEARCH_PREFIXES,
 )
 
+# Panjang fokus dalam pixel, BERLAKU PADA LEBAR FRAME REFERENSI di bawahnya.
+# Nilai ini bukan konstanta bebas resolusi: 615 px pada frame 640 px lebar
+# setara FOV horizontal sekitar 55 derajat. Kalau frame yang masuk lebih lebar
+# atau lebih sempit, panjang fokus efektifnya ikut berskala.
 FOCAL_LENGTH_PX = 615
+REFERENCE_WIDTH_PX = 640
 DEFAULT_HEIGHT_CM = 20
 
 
@@ -194,7 +199,7 @@ class FindObjectService:
             for box in boxes:
                 x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
                 box_h = max(y2 - y1, 1)
-                dist = self._estimate_distance(prompt_en, box_h)
+                dist = self._estimate_distance(prompt_en, box_h, w)
                 matches.append({
                     "confidence": round(float(box.conf[0]), 3),
                     "distance_meter": round(dist, 2),
@@ -252,13 +257,27 @@ class FindObjectService:
 
     # ── Geometri ─────────────────────────────────────────────────────────
 
-    def _estimate_distance(self, prompt_en: str, box_h: int) -> float:
+    def _estimate_distance(self, prompt_en: str, box_h: int,
+                           frame_w: int = REFERENCE_WIDTH_PX) -> float:
+        """Perkirakan jarak dari tinggi kotak deteksi, dinormalisasi resolusi.
+
+        Tinggi kotak dalam pixel berskala dengan resolusi frame, sedangkan
+        `FOCAL_LENGTH_PX` cuma berlaku pada lebar frame referensi. Tanpa
+        penskalaan, foto yang sama pada resolusi berbeda menghasilkan jarak
+        yang berbeda: frame yang dikecilkan setengah membuat semua benda
+        terdengar dua kali lebih jauh.
+
+        Ini penting sejak router mengecilkan frame lewat `enhance_for_vision`,
+        tapi sebenarnya sudah salah sejak dulu — HP dengan resolusi kamera
+        berbeda mengirim frame dengan lebar berbeda ke endpoint yang sama.
+        """
         real_h = EXTRA_HEIGHTS_CM.get(prompt_en, DEFAULT_HEIGHT_CM)
         for key, val in EXTRA_HEIGHTS_CM.items():
             if key in prompt_en:
                 real_h = val
                 break
-        return (real_h * FOCAL_LENGTH_PX) / (box_h * 100)
+        focal = FOCAL_LENGTH_PX * (max(1, frame_w) / REFERENCE_WIDTH_PX)
+        return (real_h * focal) / (max(1, box_h) * 100)
 
     def _direction(self, cx: float, w: int) -> str:
         third = w / 3

@@ -1,0 +1,63 @@
+{
+  "classes": [
+    "1000",
+    "2000",
+    "5000",
+    "10000",
+    "20000",
+    "50000",
+    "100000"
+  ],
+  "spoken": {
+    "1000": "seribu rupiah",
+    "2000": "dua ribu rupiah",
+    "5000": "lima ribu rupiah",
+    "10000": "sepuluh ribu rupiah",
+    "20000": "dua puluh ribu rupiah",
+    "50000": "lima puluh ribu rupiah",
+    "100000": "seratus ribu rupiah"
+  },
+  "idx_to_class": {
+    "0": "1000",
+    "1": "2000",
+    "2": "5000",
+    "3": "10000",
+    "4": "20000",
+    "5": "50000",
+    "6": "100000"
+  },
+  "img_size": 224,
+  "preprocessing": {
+    "resize": "letterbox (resize_with_pad), aspect ratio dipertahankan",
+    "normalization": "x / 127.5 - 1.0  -> rentang [-1, 1]",
+    "channel_order": "RGB",
+    "pad_value_after_norm": -1.0
+  },
+  "training_args": {
+    "data": "data/classification",
+    "output": "models",
+    "img_size": 224,
+    "batch_size": 64,
+    "head_epochs": 10,
+    "finetune_epochs": 40,
+    "head_lr": 0.001,
+    "finetune_lr": 4e-05,
+    "weight_decay": 1e-05,
+    "warmup_frac": 0.08,
+    "aug_strength": "medium",
+    "label_smoothing": 0.05,
+    "mixup_alpha": 0.2,
+    "cutmix_alpha": 1.0,
+    "mix_prob": 0.35,
+    "dropout": 0.35,
+    "width_alpha": 1.0,
+    "weights": "imagenet",
+    "no_freeze_bn": false,
+    "freeze_first_n": 0,
+    "no_balanced": false,
+    "no_ema": false,
+    "patience": 12,
+    "seed": 42
+  },
+  "n_params": 2423239
+}

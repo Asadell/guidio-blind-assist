@@ -77,6 +77,22 @@ class TestDescribeInvalidInput:
         r = _post_describe(client, b"")
         assert r.status_code == 200
 
+    def test_gambar_rusak_ditolak_sebelum_moondream(self, client):
+        """Gerbang kualitas harus menolak SEBELUM VLM dipanggil.
+
+        Ini perbaikan yang paling penting di endpoint ini: Moondream2 tidak
+        pernah bilang "saya tidak bisa melihat", dia menghasilkan deskripsi
+        yang terdengar meyakinkan dari input apa pun. Untuk pengguna yang
+        tidak bisa memverifikasi sendiri, halusinasi lebih berbahaya
+        daripada penolakan yang jujur.
+        """
+        body = _post_describe(client, b"bukan_gambar").json()
+        assert body.get("ok") is False
+        assert body.get("reason") == "gambar_rusak"
+        assert body.get("message"), "Pesan Bahasa Indonesia untuk TTS wajib ada"
+        assert not body.get("description_en"), \
+            "Tidak boleh ada deskripsi dari gambar yang tidak terbaca"
+
 
 class TestDescribeKonten:
     """

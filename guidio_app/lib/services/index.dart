@@ -4,6 +4,7 @@ export 'ocr_service.dart';
 export 'detection_filter.dart';
 export 'tts_service.dart';
 export 'camera_health_service.dart';
+export 'camera_capture_service.dart';
 export 'haptic_service.dart';
 export 'pidnet_service.dart';
 export 'yolo_navigasi_service.dart';
