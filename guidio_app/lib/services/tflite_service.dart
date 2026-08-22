@@ -370,6 +370,11 @@ class TFLiteService {
         dangerLevel:   danger,
         bbox:          {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2},
         inferenceMs:   0, // tidak diukur di sini
+        // Bingkai tegak = bingkai sensor diputar 90 derajat, jadi lebar dan
+        // tingginya bertukar. Ini bingkai yang sama dengan yang muncul di
+        // preview kamera, sehingga kotaknya bisa langsung digambar di atasnya.
+        frameWidth:    geo.srcH,
+        frameHeight:   geo.srcW,
       ));
     }
 

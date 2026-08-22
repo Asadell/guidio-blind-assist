@@ -18,6 +18,20 @@ class Detection {
   /// sampai cooldown label "person" habis.
   final int? trackId;
 
+  /// Ukuran bingkai TEGAK tempat [bbox] diukur, dalam piksel.
+  ///
+  /// "Tegak" berarti bingkai setelah diputar mengikuti orientasi layar, jadi
+  /// inilah bingkai yang sama dengan yang dilihat pengguna di preview kamera.
+  /// Pada Android bingkai sensor datang dalam lanskap lalu diputar 90 derajat,
+  /// sehingga lebar-tegak = tinggi-sensor dan sebaliknya.
+  ///
+  /// Tanpa dua angka ini, [bbox] tidak bisa digambar: koordinat piksel tidak
+  /// punya arti sampai diketahui piksel itu dari bingkai sebesar apa. `null`
+  /// berarti sumbernya tidak melaporkan ukuran bingkai (mis. hasil server),
+  /// dan lapisan gambar akan melewatinya alih-alih menebak.
+  final int? frameWidth;
+  final int? frameHeight;
+
   const Detection({
     required this.labelEn,
     required this.labelId,
@@ -29,6 +43,8 @@ class Detection {
     required this.inferenceMs,
     this.isApproaching = false,
     this.trackId,
+    this.frameWidth,
+    this.frameHeight,
   });
 
   /// Kunci identitas untuk filter. Pakai trackId kalau ada; kalau tidak,
@@ -61,7 +77,40 @@ class Detection {
         inferenceMs:   inferenceMs,
         isApproaching: isApproaching ?? this.isApproaching,
         trackId:       trackId ?? this.trackId,
+        frameWidth:    frameWidth,
+        frameHeight:   frameHeight,
       );
+
+  /// Kotak deteksi dalam pecahan 0..1 terhadap bingkai tegak, siap dipetakan
+  /// ke persegi mana pun di layar.
+  ///
+  /// Sengaja ternormalisasi, bukan piksel: yang menggambar tidak perlu tahu
+  /// resolusi kamera, dan mengganti preset resolusi tidak menggeser satu pun
+  /// kotak. `null` kalau sumbernya tidak melaporkan ukuran bingkai — lebih
+  /// baik tidak menggambar apa-apa daripada menggambar di tempat yang salah.
+  ({double left, double top, double right, double bottom})? get normalizedBox {
+    final fw = frameWidth;
+    final fh = frameHeight;
+    if (fw == null || fh == null || fw <= 0 || fh <= 0) return null;
+
+    final x1 = bbox['x1'];
+    final y1 = bbox['y1'];
+    final x2 = bbox['x2'];
+    final y2 = bbox['y2'];
+    if (x1 == null || y1 == null || x2 == null || y2 == null) return null;
+
+    final l = (x1 < x2 ? x1 : x2) / fw;
+    final r = (x1 < x2 ? x2 : x1) / fw;
+    final t = (y1 < y2 ? y1 : y2) / fh;
+    final b = (y1 < y2 ? y2 : y1) / fh;
+
+    return (
+      left:   l.clamp(0.0, 1.0),
+      top:    t.clamp(0.0, 1.0),
+      right:  r.clamp(0.0, 1.0),
+      bottom: b.clamp(0.0, 1.0),
+    );
+  }
 
   // Computed getters dari bbox pixel (format x1/y1/x2/y2).
   // Dibutuhkan ObjectTracker untuk IoU matching antar frame.
