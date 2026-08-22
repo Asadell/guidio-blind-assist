@@ -201,17 +201,80 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   }
 
   /// "ulangi" di Mode Deteksi — sebutkan lagi apa yang terlihat sekarang.
+  ///
+  /// Cabang "tidak ada rintangan" adalah satu-satunya kalimat di mode ini yang
+  /// berupa JAMINAN, bukan laporan. Karena itu dia harus dijaga paling ketat:
+  /// pengguna tidak punya cara lain memeriksanya, dan "aman" yang keliru
+  /// dipercaya penuh sampai terbukti dengan cara yang menyakitkan.
+  ///
+  /// Daftar deteksi yang kosong bisa berarti dua hal yang sangat berbeda —
+  /// "memang tidak ada apa-apa" atau "sistem tidak sedang melihat apa pun".
+  /// Sebelumnya keduanya menghasilkan kalimat yang sama.
   void _repeatLastDetection() {
     final det = context.read<DetectionProvider>();
     if (!_detectionActive) {
       TtsQueue().speak('Deteksi sedang dijeda.', tier: SpeechTier.info);
       return;
     }
+
+    // Model tidak termuat: tidak pernah ada yang mengawasi sejak awal.
+    if (det.isUnavailable) {
+      TtsQueue().speak(
+        'Deteksi rintangan tidak tersedia di perangkat ini, jadi saya tidak '
+        'bisa memastikan apa pun di depanmu.',
+        tier: SpeechTier.warning,
+      );
+      return;
+    }
+
     final dets = det.detections;
+    if (dets.isNotEmpty) {
+      TtsQueue().speak(
+        dets.map((d) => d.ttsMessage).join('. '),
+        tier: SpeechTier.warning,
+      );
+      return;
+    }
+
+    final cam = context.read<CameraProvider>();
+
+    // Kamera gelap: kosongnya daftar bukan bukti jalannya lapang.
+    if (cam.isDark) {
+      TtsQueue().speak(
+        'Terlalu gelap, saya tidak bisa memastikan apa yang ada di depanmu. '
+        'Nyalakan senter.',
+        tier: SpeechTier.warning,
+      );
+      return;
+    }
+
+    // Kamera salah arah: yang terbaca bukan arah jalanmu.
+    final health = cam.healthMessage;
+    if (health != null) {
+      TtsQueue().speak(
+        '$health. Sampai itu, saya belum bisa memastikan apa yang ada di '
+        'depanmu.',
+        tier: SpeechTier.warning,
+      );
+      return;
+    }
+
+    // Pipeline hidup tapi belum menghasilkan apa pun. Ini beda dari "sudah
+    // memeriksa dan tidak ada apa-apa": kalau inferensi terakhir sudah lama,
+    // yang kosong adalah pengetahuan sistem, bukan jalanan di depan.
+    final last = det.lastInferenceAt;
+    final stale = last == null ||
+        DateTime.now().difference(last) > const Duration(seconds: 3);
+    if (stale) {
+      TtsQueue().speak(
+        'Saya belum sempat membaca sekitarmu. Tunggu sebentar, lalu coba lagi.',
+        tier: SpeechTier.warning,
+      );
+      return;
+    }
+
     TtsQueue().speak(
-      dets.isEmpty
-          ? 'Tidak ada rintangan di depanmu saat ini.'
-          : dets.map((d) => d.ttsMessage).join('. '),
+      'Tidak ada rintangan di depanmu saat ini.',
       tier: SpeechTier.warning,
     );
   }
