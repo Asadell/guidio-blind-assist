@@ -266,23 +266,55 @@ class PidnetService {
   // Akan dideteksi otomatis saat load.
   bool _isBHWC = true;
 
-  /// Muat model pidnet_s_3zona.tflite dari assets.
-  /// Gunakan FP16 jika tersedia (lebih kecil, lebih cepat di A30S),
-  /// fallback ke FP32 jika tidak.
+  /// Buffer keluaran yang dipakai ulang selama service hidup.
+  ///
+  /// Dialokasikan sekali (sekitar 2,9 MB), bukan tiap frame. Inilah yang
+  /// membuat mode navigasi aman dijalankan lama di HP 4 GB.
+  Float32List? _outputBuffer;
+
+  /// View byte di atas [_outputBuffer]. Keduanya menunjuk memori yang sama.
+  Uint8List? _outputBytes;
+
+  /// Muat model segmentasi jalur, dengan pilihan varian yang DIBUKTIKAN jalan.
+  ///
+  /// ## Kenapa tiap kandidat harus dicoba, bukan sekadar dimuat
+  ///
+  /// Versi sebelumnya memilih FP16 lebih dulu dan hanya jatuh ke FP32 kalau
+  /// BERKASNYA gagal dibaca. Padahal `pidnet_s_3zona_fp16.tflite` punya tensor
+  /// masukan bertipe FLOAT16, sementara pipeline mengirim FLOAT32 — dan
+  /// `tflite_flutter` menyalin byte tanpa memeriksa tipe.
+  ///
+  /// Akibatnya berkasnya termuat dengan mulus, `tryLoad()` melaporkan sukses,
+  /// lalu SETIAP panggilan `analyze()` melempar di dalam interpreter. Blok
+  /// `catch` menelannya, `analyze` mengembalikan null, dan mode navigasi
+  /// berjalan tanpa segmentasi jalur sama sekali — tanpa satu pun tanda di
+  /// layar bahwa ada yang salah.
+  ///
+  /// Sekarang tiap kandidat dijalankan sekali dengan tensor percobaan sebelum
+  /// diterima. Satu inferensi saat muat jauh lebih murah daripada mode
+  /// keselamatan yang diam-diam mati.
   Future<bool> tryLoad() async {
+    // Urutannya masih FP16 dulu — kalau memang jalan di perangkat ini, dia
+    // lebih kecil dan lebih cepat. Yang berubah: sekarang harus membuktikannya.
+    const kandidat = [
+      'assets/models/pidnet_s_3zona_fp16.tflite',
+      'assets/models/pidnet_s_3zona.tflite',
+    ];
+
+    for (final aset in kandidat) {
+      if (await _coba(aset)) return true;
+    }
+
+    debugPrint('[PIDNet] Tidak ada varian model yang bisa dijalankan.');
+    _loaded = false;
+    return false;
+  }
+
+  Future<bool> _coba(String aset) async {
+    Interpreter? interpreter;
     try {
-      // Coba FP16 dulu — lebih efisien di Mali-G71 (Samsung A30S)
-      Uint8List? modelBytes;
-      try {
-        final bd = await rootBundle.load('assets/models/pidnet_s_3zona_fp16.tflite');
-        modelBytes = bd.buffer.asUint8List();
-        debugPrint('[PIDNet] Memuat FP16 model (${(modelBytes.length / 1024).toStringAsFixed(0)} KB)');
-      } catch (_) {
-        // FP16 tidak ada, pakai FP32
-        final bd = await rootBundle.load('assets/models/pidnet_s_3zona.tflite');
-        modelBytes = bd.buffer.asUint8List();
-        debugPrint('[PIDNet] Memuat FP32 model (${(modelBytes.length / 1024).toStringAsFixed(0)} KB)');
-      }
+      final bd = await rootBundle.load(aset);
+      final modelBytes = bd.buffer.asUint8List();
 
       // GPU delegate — coba aktifkan di Android; jika gagal, CPU saja
       InterpreterOptions options;
@@ -291,7 +323,6 @@ class PidnetService {
           options = InterpreterOptions()
             ..addDelegate(GpuDelegateV2())
             ..threads = 2;
-          debugPrint('[PIDNet] GPU delegate aktif');
         } else {
           options = InterpreterOptions()..threads = 2;
         }

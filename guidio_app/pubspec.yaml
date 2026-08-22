@@ -104,8 +104,17 @@ flutter:
     # rupiah_labels.txt juga tidak dibundel - urutan kelasnya sudah tetap di
     # MoneyTFLiteService.classValues, jadi tidak ada yang memuatnya lewat
     # rootBundle. Berkasnya disimpan sebagai rujukan saat mengganti model.
-    - assets/models/pidnet_s_3zona_fp16.tflite  # PidnetService - segmentasi jalur
-    - assets/models/pidnet_s_3zona.tflite       # PidnetService - cadangan non-fp16
+    - assets/models/pidnet_s_3zona.tflite       # PidnetService - segmentasi jalur
+    #
+    # pidnet_s_3zona_fp16.tflite TIDAK dibundel. Tensor masukannya bertipe
+    # FLOAT16 sementara seluruh pipeline menghasilkan FLOAT32, jadi dia tidak
+    # akan pernah bisa dipakai - delegate apa pun. Dulu dia dicoba lebih dulu
+    # dan hanya dilewati kalau berkasnya hilang, sehingga segmentasi jalur
+    # gagal di setiap frame tanpa satu pun tanda di layar.
+    #
+    # `PidnetService.tryLoad` sekarang membuktikan tiap varian dengan
+    # inferensi percobaan, jadi menambahkannya kembali pun aman - tapi
+    # 1,3 MB di APK untuk berkas yang pasti ditolak tetap sia-sia.
     - assets/models/yolo11n_navigasi.tflite     # YoloNavigasiService - rintangan navigasi, 6 kelas
     #
     # yolo11n.tflite (model lama) TIDAK dibundel lagi. Selain sudah digantikan,
