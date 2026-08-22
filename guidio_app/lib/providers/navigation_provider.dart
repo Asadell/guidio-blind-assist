@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,7 @@ import '../models/detection.dart';
 import '../services/nav_frame_converter.dart';
 import '../services/pidnet_service.dart';
 import '../services/yolo_navigasi_service.dart';
+import '../widgets/segmentation_overlay.dart' show maskToImage;
 import '../widgets/zone_indicator.dart' show ZoneStatus;
 
 /// NavigationStep — placeholder tanpa GPS/Google Maps (belum diimplementasi,
@@ -78,11 +80,100 @@ class NavigationProvider extends ChangeNotifier {
   List<Detection> _obstacles = const [];
   List<Detection> get obstacles => _obstacles;
 
+  // ── Hamparan segmentasi jalur ─────────────────────────────────────────
+
+  /// Gambar jalur hasil segmentasi PIDNet, siap ditumpuk di atas preview.
+  ///
+  /// `null` berarti belum ada yang bisa digambar. Diperbarui hanya kalau
+  /// [wantsSegmentationOverlay] menyala, supaya jalur yang tidak menampilkan
+  /// apa pun tidak membayar konversi dan salinan mask-nya.
+  ui.Image? _segmentationImage;
+  ui.Image? get segmentationImage => _segmentationImage;
+
+  /// Layar menyalakan ini saat hamparan jalur benar-benar terlihat.
+  ///
+  /// Dipisah dari sekadar "mode navigasi aktif" karena inferensi tetap harus
+  /// berjalan walau layar mati atau tertutup — arahan suaranya yang menjaga
+  /// pengguna, bukan gambarnya.
+  bool _wantsSegmentationOverlay = false;
+  bool get wantsSegmentationOverlay => _wantsSegmentationOverlay;
+
+  set wantsSegmentationOverlay(bool value) {
+    if (_wantsSegmentationOverlay == value) return;
+    _wantsSegmentationOverlay = value;
+    if (!value) _disposeSegmentationImage();
+    notifyListeners();
+  }
+
+  /// Satu konversi mask dalam penerbangan.
+  ///
+  /// Tanpa penjaga ini, inferensi yang lebih cepat daripada konversi akan
+  /// menumpuk `ui.Image` yang tidak pernah sempat ditampilkan — masing-masing
+  /// memegang memori GPU sampai dibuang.
+  bool _convertingMask = false;
+
+  void _disposeSegmentationImage() {
+    _segmentationImage?.dispose();
+    _segmentationImage = null;
+  }
+
+  /// Ubah mask PIDNet jadi gambar, lalu buang gambar sebelumnya.
+  ///
+  /// `ui.Image` memegang memori di luar heap Dart dan TIDAK dibersihkan
+  /// pengumpul sampah. Melewatkan `dispose()` di sini berarti kebocoran
+  /// yang tumbuh delapan kali per detik selama mode navigasi menyala.
+  Future<void> _updateSegmentationImage(ZoneAnalysis zones) async {
+    final mask = zones.mask;
+    if (mask == null || zones.maskWidth == 0 || zones.maskHeight == 0) return;
+    if (_convertingMask) return;
+
+    _convertingMask = true;
+    try {
+      final img = await maskToImage(mask, zones.maskWidth, zones.maskHeight);
+      // Mode bisa saja sudah dimatikan selama konversi berjalan.
+      if (!_wantsSegmentationOverlay) {
+        img.dispose();
+        return;
+      }
+      _segmentationImage?.dispose();
+      _segmentationImage = img;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Nav] konversi mask gagal: $e');
+    } finally {
+      _convertingMask = false;
+    }
+  }
+
   void Function(String text, SpeechTier tier)? onSpeak;
   void Function()? onTakeover; // NV-06 — mengambil alih layar
 
   /// Sumber frame kamera mentah (YUV) untuk PIDNet + YOLO on-device.
   Future<CameraImage?> Function()? cameraSource;
+
+  // ── Kondisi kamera yang ikut menentukan boleh-tidaknya memberi arahan ──
+  //
+  // `CameraProvider` sudah mendeteksi frame gelap dan ponsel yang salah arah,
+  // lalu mengucapkannya sendiri. Yang TIDAK terjadi sebelumnya: kondisi itu
+  // tidak pernah sampai ke lapisan yang menyusun arahan jalur. Akibatnya
+  // pengguna bisa mendengar "Arahkan kamera ke depan" dan "Jalur aman, jalan
+  // lurus" berselang beberapa detik — dua kalimat yang saling membantah, dan
+  // yang terdengar paling bisa ditindaklanjuti justru yang salah.
+
+  bool _cameraTooDark = false;
+  String? _cameraMisaimed;
+
+  /// Dipanggil layar tiap kali kondisi kamera berubah.
+  ///
+  /// [misaimed] berisi kalimat perbaikan dari `CameraHealthService`
+  /// ("Arahkan kamera ke depan", "Pegang HP tegak"), atau null kalau
+  /// orientasinya wajar.
+  void updateCameraCondition({required bool tooDark, String? misaimed}) {
+    if (_cameraTooDark == tooDark && _cameraMisaimed == misaimed) return;
+    _cameraTooDark = tooDark;
+    _cameraMisaimed = misaimed;
+    notifyListeners();
+  }
 
   /// Status loading model on-device.
   bool _modelsLoading = false;
@@ -215,6 +306,13 @@ class NavigationProvider extends ChangeNotifier {
 
       _consecutiveFailures = 0;
       _applyOnDeviceResult(zoneAnalysis, obstacles);
+
+      // Sengaja TIDAK di-await: konversi mask jadi gambar tidak boleh menunda
+      // arahan suara. Kalau frame berikutnya datang lebih dulu, hamparannya
+      // yang tertinggal satu frame — bukan peringatannya.
+      if (_wantsSegmentationOverlay) {
+        unawaited(_updateSegmentationImage(zoneAnalysis));
+      }
     } catch (e) {
       debugPrint('[Nav] on-device tick error: $e');
       _handleFailure();
@@ -224,9 +322,17 @@ class NavigationProvider extends ChangeNotifier {
   void _applyOnDeviceResult(ZoneAnalysis zones, List<Detection> obstacles) {
     final wasDown = _phase == NavPhase.degraded || _phase == NavPhase.loadingModels;
 
-    _left   = zones.left;
-    _center = zones.center;
-    _right  = zones.right;
+    // Saat frame tidak layak jadi dasar arahan, zonanya ditandai TIDAK
+    // DIKETAHUI, bukan dibiarkan menampilkan hasil mentahnya.
+    //
+    // Kalau tidak, suara berkata "jalur belum terbaca" sementara layar
+    // menampilkan tiga pita hijau bertuliskan AMAN. Untuk pengguna
+    // low-vision atau pendamping awas yang melihat layar, kontradiksi itu
+    // menghapus gunanya kedua-duanya: yang mana yang dipercaya?
+    final untrusted = zones.isUntrustworthy || _cameraTooDark;
+    _left   = untrusted ? ZoneStatus.unknown : zones.left;
+    _center = untrusted ? ZoneStatus.unknown : zones.center;
+    _right  = untrusted ? ZoneStatus.unknown : zones.right;
     _phase  = NavPhase.active;
     _obstacles = obstacles;
     _pothole = obstacles.any((d) =>
@@ -264,7 +370,59 @@ class NavigationProvider extends ChangeNotifier {
     if (_center == ZoneStatus.danger) {
       return ('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical, true);
     }
+
+    // ── Frame tidak layak jadi dasar arahan berjalan ──
+    //
+    // Diletakkan SESUDAH cabang bahaya dan rintangan, bukan sebelumnya. Kalau
+    // ada motor mendekat atau lubang di depan, pengguna tetap harus diberi
+    // tahu — terlepas dari apakah jalurnya terbaca dengan yakin. Yang ditahan
+    // di sini HANYA klaim positif "jalur aman, jalan lurus", karena itulah
+    // satu-satunya kalimat yang menyuruh orang melangkah.
+    //
+    // Tanpa cabang ini, kamera yang menghadap langit-langit kamar, tembok
+    // polos, atau bagian dalam saku tetap menghasilkan "Jalur aman, jalan
+    // lurus". PIDNet tidak pernah berkata "saya tidak bisa melihat"; dia
+    // memberi label ke setiap piksel apa pun yang masuk, dan sebagian besar
+    // permukaan polos jatuh ke kelas walkable.
+    final doubtMessage = _doubtMessage(zones);
+    if (doubtMessage != null) {
+      // Warning, bukan Info: pengguna sedang berjalan dan perlu tahu bahwa
+      // panduannya sedang tidak bekerja. Tapi juga bukan Critical — tidak ada
+      // bahaya yang terdeteksi, yang hilang cuma penglihatan sistem.
+      return (doubtMessage, SpeechTier.warning, false);
+    }
+
     return (zones.ttsMessage, SpeechTier.info, false);
+  }
+
+  /// Kalimat untuk kondisi "sistem tidak bisa membaca jalur", atau null kalau
+  /// pembacaannya bisa dipercaya.
+  ///
+  /// Pesannya sengaja INSTRUKTIF, bukan sekadar laporan. "Jalur tidak terbaca"
+  /// memberi tahu pengguna bahwa ada yang salah tanpa memberinya satu pun hal
+  /// untuk dikerjakan. Yang berguna adalah tindakan konkret: arahkan kamera ke
+  /// depan bawah, nyalakan senter, tegakkan ponsel.
+  String? _doubtMessage(ZoneAnalysis zones) {
+    // Urutannya menentukan. Frame gelap otomatis menghasilkan mask yang aneh,
+    // jadi kalau kegelapan dicek belakangan, pengguna akan disuruh membetulkan
+    // arah kamera padahal yang kurang cahayanya — tindakan yang salah, dan
+    // dia akan mengulanginya sampai menyerah.
+    if (_cameraTooDark) {
+      return 'Terlalu gelap untuk membaca jalur. Nyalakan senter.';
+    }
+    if (_cameraMisaimed != null) {
+      return '${_cameraMisaimed!}. Jalur belum terbaca.';
+    }
+
+    return switch (zones.doubt) {
+      SceneDoubt.degenerate =>
+        'Jalur belum terbaca. Arahkan kamera ke depan bawah, sekitar dua '
+            'langkah di depanmu.',
+      SceneDoubt.notGrounded =>
+        'Kamera terlalu ke atas. Turunkan sedikit supaya jalur di depan '
+            'kakimu terlihat.',
+      SceneDoubt.none => null,
+    };
   }
 
   /// Anti-banjir suara. Loop menghasilkan pesan tiap frame; mengucapkan
@@ -482,6 +640,9 @@ class NavigationProvider extends ChangeNotifier {
   @override
   void dispose() {
     _stopLoop();
+    // `ui.Image` memegang memori di luar heap Dart; pengumpul sampah tidak
+    // membersihkannya.
+    _disposeSegmentationImage();
     super.dispose();
   }
 }

@@ -73,6 +73,10 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       nav.onTakeover = () => context.read<TtsProvider>().interruptByUser();
       // Sumber frame on-device: CameraImage langsung ke PIDNet + YOLO.
       nav.cameraSource = _grabCameraImage;
+      // Hamparan jalur baru dihitung saat layar ini benar-benar terlihat.
+      // Inferensinya sendiri tetap berjalan tanpa ini — yang menjaga pengguna
+      // adalah arahan suaranya, bukan gambarnya.
+      nav.wantsSegmentationOverlay = true;
       nav.startCalibration();
 
       // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
@@ -103,7 +107,23 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   CameraImage? _latestFrame;
 
   /// Kembalikan CameraImage mentah langsung ke PIDNet + YOLO.
-  Future<CameraImage?> _grabCameraImage() async => _latestFrame;
+  /// Serahkan frame terakhir ke pipeline navigasi, sekalian mengabarkan
+  /// kondisi kameranya.
+  ///
+  /// Kondisi dikirim DI SINI, bukan dari `build()`, karena mengubah provider
+  /// saat membangun widget memicu notifikasi di tengah fase build. Metode ini
+  /// dipanggil tepat sekali per siklus inferensi, jadi kondisinya selalu
+  /// berasal dari momen yang sama dengan frame yang dianalisis — bukan dari
+  /// beberapa frame sebelumnya.
+  Future<CameraImage?> _grabCameraImage() async {
+    if (!mounted) return _latestFrame;
+    final cam = context.read<CameraProvider>();
+    context.read<NavigationProvider>().updateCameraCondition(
+          tooDark: cam.isDark,
+          misaimed: cam.healthMessage,
+        );
+    return _latestFrame;
+  }
 
   @override
   void dispose() {
@@ -116,6 +136,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     nav.onSpeak = null;
     nav.onTakeover = null;
     nav.cameraSource = null;
+    // Melepas gambar hamparan sekalian: `ui.Image` memegang memori di luar
+    // heap Dart dan tidak ikut dibersihkan pengumpul sampah.
+    nav.wantsSegmentationOverlay = false;
     nav.stopNavigation();
     context.read<VoiceProvider>().clearModeHandlers();
     final cam = context.read<CameraProvider>();
@@ -373,13 +396,26 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Preview dan hamparannya dibungkus CameraStage supaya berbagi
+          // persegi yang sama persis. Tanpa itu, kotak deteksi memetakan
+          // koordinatnya ke seluruh layar sementara gambar kameranya hanya
+          // menempati sebagian — dan setiap kotak meleset dari objeknya.
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
-            Positioned.fill(child: CameraPreview(cam.controller!))
+            CameraStage(
+              controller: cam.controller!,
+              overlays: [
+                if (nav.phase == NavPhase.active || nav.phase == NavPhase.degraded) ...[
+                  // Urutan gambar disengaja: segmentasi jalur paling bawah
+                  // sebagai konteks permukaan, tint zona di atasnya, lalu
+                  // kotak rintangan paling atas supaya tidak pernah tertutup.
+                  SegmentationOverlay(image: nav.segmentationImage),
+                  _ZoneOverlay(left: nav.left, center: nav.center, right: nav.right),
+                  DetectionOverlay(detections: nav.obstacles),
+                ],
+              ],
+            )
           else
             const ColoredBox(color: AppColors.cameraVoid),
-
-          if (nav.phase == NavPhase.active || nav.phase == NavPhase.degraded)
-            Positioned.fill(child: ExcludeSemantics(child: _ZoneOverlay(left: nav.left, center: nav.center, right: nav.right))),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
@@ -436,6 +472,18 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
                 left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
                 bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
                 child: AlertCardStack(cards: obstacles.map((d) => DetectionCard(detection: d)).toList()),
+              ),
+
+            // Legenda warna hamparan. Muncul hanya saat ada yang digambar,
+            // supaya tidak menjanjikan sesuatu yang belum terlihat.
+            if (nav.segmentationImage != null)
+              Positioned(
+                right: AppSpacing.screenMargin,
+                bottom: bottomInset +
+                    AppSizes.bottomActionBarHeight +
+                    AppSpacing.s6 +
+                    (obstacles.isNotEmpty ? 100 : 0),
+                child: const SegmentationLegend(),
               ),
           ],
 

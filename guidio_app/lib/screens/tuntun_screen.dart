@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -438,8 +437,22 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Preview dan kotak deteksi berbagi persegi yang sama lewat
+          // CameraStage. `CameraPreview` menjaga rasio kamera dan tidak
+          // benar-benar mengisi layar, jadi hamparan yang dipasang dengan
+          // `Positioned.fill` akan memetakan koordinatnya ke area yang lebih
+          // besar daripada gambarnya — setiap kotak meleset dari objeknya.
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
-            Positioned.fill(child: CameraPreview(cam.controller!))
+            CameraStage(
+              controller: cam.controller!,
+              overlays: [
+                // Hanya saat deteksi benar-benar berjalan. Menampilkan kotak
+                // dari frame terakhir sebelum dijeda akan menggambarkan dunia
+                // yang sudah lewat sebagai kalau-kalau masih berlaku.
+                if (_detectionActive && !warmingUp)
+                  DetectionOverlay(detections: det.detections),
+              ],
+            )
           else
             const ColoredBox(color: AppColors.cameraVoid),
 
