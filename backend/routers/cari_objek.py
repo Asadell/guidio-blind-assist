@@ -41,6 +41,7 @@ PERUBAHAN DARI VERSI LAMA
 
 from __future__ import annotations
 
+import re
 import time
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
@@ -104,6 +105,74 @@ def invalidate_label_cache() -> None:
 #  Endpoint
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Pembersihan input
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Nama barang terpanjang yang masuk akal. "botol minum warna biru" saja sudah
+# 24 karakter; 64 memberi ruang lega. Yang di atas itu bukan nama barang, dan
+# meneruskannya ke YOLOE cuma membuang waktu sebelum tetap gagal.
+_MAX_TARGET_LEN = 64
+
+# Huruf, angka, spasi, dan tanda hubung. Cukup untuk nama barang Bahasa
+# Indonesia maupun Inggris, termasuk "HP", "kunci motor", "e-KTP".
+_TARGET_ALLOWED = re.compile(r"[^0-9A-Za-zÀ-ÿ \-']")
+
+
+def _clean_target(raw: str) -> str:
+    """
+    Rapikan nama barang dari klien.
+
+    KENAPA INI PERLU, bukan sekadar kebersihan
+
+    Nilai ini berakhir di dua tempat yang berbahaya: dikembalikan mentah di
+    balasan (`result["target"] = target`), dan dipakai `_compose_message()`
+    untuk menyusun kalimat yang DIBACAKAN TTS ke pengguna tunanetra.
+
+    Tanpa pembersihan, klien mana pun bisa membuat aplikasi membacakan teks
+    apa saja — dan pengguna tidak punya cara memeriksa bahwa yang didengarnya
+    bukan berasal dari sistem. Karakter kendali dan teks sepanjang ribuan
+    karakter juga membuat antrean suara tersumbat.
+
+    Yang dibuang bukan cuma karakter aneh, tapi juga baris baru: TTS
+    membacakannya sebagai jeda panjang yang terdengar seperti aplikasi
+    menggantung.
+    """
+    if not raw:
+        return ""
+    # Karakter kendali dan pemisah baris jadi spasi lebih dulu, supaya kata
+    # yang terpisah tidak menempel jadi satu.
+    cleaned = re.sub(r"[\r\n\t\x00-\x1f\x7f]+", " ", raw)
+    cleaned = _TARGET_ALLOWED.sub("", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    return cleaned[:_MAX_TARGET_LEN].strip()
+
+
+def _clean_conf(raw: float | None) -> float | None:
+    """
+    Kurung ambang keyakinan ke rentang yang berarti.
+
+    `conf` diteruskan ke `model.predict(conf=...)`. Nilai negatif membuat
+    YOLOE mengembalikan ribuan kotak sampah — beban yang tidak perlu di
+    endpoint yang dipanggil berulang kali. Nilai di atas 1 tidak pernah
+    menghasilkan apa pun, jadi pengguna cuma mendengar "tidak ketemu" tanpa
+    tahu bahwa yang salah adalah permintaannya.
+
+    Dikurung, BUKAN ditolak: ini parameter opsional untuk penyetelan, dan
+    menolak seluruh permintaan karena satu angka meleset akan menghentikan
+    pencarian yang sebenarnya masih bisa dilayani.
+    """
+    if raw is None:
+        return None
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if v != v:                      # NaN tidak sama dengan dirinya sendiri
+        return None
+    return min(max(v, 0.01), 0.99)
+
+
 @router.get("/cari-objek/targets")
 async def searchable_targets():
     """
@@ -141,6 +210,28 @@ async def cari_objek(
     memutar badan, tapi perbaiki kondisi pengambilan gambar dulu.
     """
     t0 = time.perf_counter()
+
+    # ── 0. Bersihkan input teks ──
+    #
+    # `target` datang dari pengenalan suara, jadi isinya tidak pernah bisa
+    # diandalkan bentuknya. Yang lebih menentukan: nilainya DIKEMBALIKAN di
+    # balasan dan dipakai `svc.find()` untuk menyusun kalimat yang dibacakan
+    # TTS ke pengguna. Teks yang tidak dibersihkan berarti apa pun yang
+    # dikirim klien bisa berakhir sebagai suara di telinga pengguna.
+    target = _clean_target(target)
+    if not target:
+        return {
+            "ok": False,
+            "found": False,
+            "reason": "target_kosong",
+            "message": "Belum ada barang yang dicari. Sebutkan nama barangnya.",
+            "matches": [],
+            "total_match": 0,
+            "retry_suggested": False,
+        }
+
+    conf = _clean_conf(conf)
+
     raw = await file.read()
 
     # ── 1. Gerbang kualitas ──

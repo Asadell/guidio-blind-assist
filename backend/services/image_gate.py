@@ -79,6 +79,7 @@ class GateResult:
                 "sangat_buram", "terlalu_gelap", "terlalu_silau",
                 "kualitas_kurang", "resolusi_kecil",
                 "gambar_rusak", "gambar_kosong",
+                "gambar_terlalu_besar", "resolusi_terlalu_besar",
             ),
         }
         if self.quality is not None:
@@ -122,6 +123,37 @@ PROFILES = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Batas sumber daya
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Dua batas berbeda, dan keduanya perlu. Yang satu menjaga memori saat berkas
+# masuk, yang lain menjaga memori saat berkas DIBUKA — dan berkas kecil bisa
+# membengkak besar setelah dibuka.
+
+# Ukuran berkas terbesar yang diterima.
+#
+# Foto 12 MP dari HP kelas atas sekitar 4-6 MB, dan mobile sudah membatasi
+# resolusi tangkapan ke 1280x720 (~300 KB). 16 MB memberi ruang lega untuk
+# PNG tak terkompresi tanpa membuka pintu bagi unggahan ratusan megabyte.
+MAX_UPLOAD_BYTES = 16 * 1024 * 1024
+
+# Jumlah pixel terbesar setelah gambar didekode.
+#
+# Ini yang menahan "decode bomb": berkas PNG beberapa ratus kilobyte bisa
+# berisi kanvas 30.000 x 30.000 yang, begitu didekode ke BGR 8-bit, menjadi
+# sekitar 2,7 GB di memori. Servernya mati sebelum sempat menilai apa pun,
+# dan yang mati bukan cuma permintaan itu — seluruh proses ikut jatuh,
+# termasuk untuk pengguna lain yang sedang menyeberang jalan.
+#
+# `cv2.imdecode` mengalokasikan buffer lebih dulu, jadi pemeriksaannya harus
+# dilakukan SEBELUM dekode penuh. `cv2.imcount`/header parsing tidak tersedia
+# lintas format, jadi dipakai batas ukuran berkas + batas pixel setelah dekode
+# sebagai dua lapis: yang pertama menahan sebagian besar kasus, yang kedua
+# menangkap sisanya sebelum gambar diproses lebih lanjut.
+MAX_DECODED_PIXELS = 40_000_000   # ~40 MP, jauh di atas kamera HP mana pun
+
+
 def gate(image_bytes: bytes, profile: str = "find_object",
          endpoint: str = "") -> GateResult:
     """
@@ -145,12 +177,37 @@ def gate(image_bytes: bytes, profile: str = "find_object",
             message="Gambar kosong. Coba ambil ulang.",
         )
 
+    if len(image_bytes) > MAX_UPLOAD_BYTES:
+        logger.warning(
+            f"[{tag}] unggahan ditolak: {len(image_bytes) / 1048576:.1f} MB "
+            f"melebihi batas {MAX_UPLOAD_BYTES / 1048576:.0f} MB"
+        )
+        return GateResult(
+            ok=False, frame=None, quality=None,
+            reason="gambar_terlalu_besar",
+            message="Gambarnya terlalu besar. Coba ambil ulang dengan kamera.",
+        )
+
     frame = bytes_to_numpy(image_bytes)
     if frame is None:
         return GateResult(
             ok=False, frame=None, quality=None,
             reason="gambar_rusak",
             message="Gambar tidak terbaca. Coba ambil ulang.",
+        )
+
+    h, w = frame.shape[:2]
+    if h * w > MAX_DECODED_PIXELS:
+        # Berkas kecil, kanvas raksasa. Ditolak SEBELUM sampai ke assess_quality
+        # dan enhancement, yang keduanya menyalin gambar beberapa kali.
+        logger.warning(
+            f"[{tag}] gambar ditolak: {w}x{h} = {h * w / 1e6:.1f} MP "
+            f"melebihi batas {MAX_DECODED_PIXELS / 1e6:.0f} MP"
+        )
+        return GateResult(
+            ok=False, frame=None, quality=None,
+            reason="resolusi_terlalu_besar",
+            message="Gambarnya terlalu besar. Coba ambil ulang dengan kamera.",
         )
 
     cfg = PROFILES.get(profile, PROFILES["find_object"])
