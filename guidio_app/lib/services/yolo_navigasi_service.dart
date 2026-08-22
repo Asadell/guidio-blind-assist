@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'dart:math';
 
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../models/detection.dart';
@@ -139,18 +137,23 @@ class YoloNavigasiService {
     try {
       // Abu-abu netral: tidak memicu apa pun, tapi tetap menghasilkan
       // koordinat kotak di seluruh anchor.
-      final probe = List.generate(1, (_) =>
-        List.generate(_yoloSize, (_) =>
-          List.generate(_yoloSize, (_) => [0.5, 0.5, 0.5])));
-      final out = [List.generate(4 + _navLabels.length,
-          (_) => List.filled(anchors, 0.0))];
-      interpreter.run(probe, out);
+      //
+      // Buffer datar, bukan `List` bersarang. Ini cuma berjalan sekali saat
+      // muat, tapi versi bersarang membangun 409.600 objek List kecil
+      // sekaligus — lonjakan memori yang di HP 4 GB bisa memicu pengumpulan
+      // sampah tepat saat pengguna membuka mode navigasi.
+      final probe = Float32List(_yoloSize * _yoloSize * 3)..fillRange(
+          0, _yoloSize * _yoloSize * 3, 0.5);
+      final out = Float32List((4 + _navLabels.length) * anchors);
+      interpreter.runForMultipleInputs(
+        [probe.buffer.asUint8List()],
+        {0: out.buffer.asUint8List()},
+      );
 
+      // Empat kanal pertama = cx, cy, w, h.
       var maxCoord = 0.0;
-      for (var c = 0; c < 4; c++) {
-        for (final v in out[0][c]) {
-          if (v > maxCoord) maxCoord = v;
-        }
+      for (var i = 0; i < 4 * anchors; i++) {
+        if (out[i] > maxCoord) maxCoord = out[i];
       }
       // Koordinat ternormalisasi tidak pernah jauh melewati 1,0. Ambang 2,0
       // memberi ruang aman tanpa mendekati rentang pixel yang ratusan.
@@ -166,56 +169,52 @@ class YoloNavigasiService {
     }
   }
 
-  /// Deteksi rintangan dari bytes RGB888.
-  /// [origW], [origH] = dimensi asli frame sebelum resize.
+  /// Buffer keluaran yang dipakai ulang selama service hidup.
+  ///
+  /// `[1,10,8400]` = 84.000 float. Versi sebelumnya mengalokasikan ini sebagai
+  /// sepuluh `List<double>` berisi 8.400 double ter-boxing SETIAP frame, lalu
+  /// membacanya kembali lewat pencarian dinamis. Dialokasikan sekali di sini.
+  Float32List? _outputBuffer;
+
+  /// View byte di atas [_outputBuffer]. Keduanya menunjuk memori yang sama.
+  Uint8List? _outputBytes;
+
+  /// Deteksi rintangan dari tensor yang SUDAH disiapkan.
+  ///
+  /// [input] datang dari [NavFrameConverter.prepare]: `[1,640,640,3]` datar,
+  /// rentang 0..1, sudah diputar dan diskalakan di isolate.
+  ///
+  /// [uprightW] dan [uprightH] adalah ukuran bingkai TEGAK — bingkai yang
+  /// dilihat pengguna di preview. Di Android bingkai sensor datang dalam
+  /// lanskap lalu diputar 90 derajat, jadi lebar dan tingginya bertukar.
+  /// Versi sebelumnya menskalakan hasil dengan dimensi yang BELUM ditukar,
+  /// sehingga setiap kotak melar di satu sumbu dan menciut di sumbu lain — dan
+  /// `_direction()` pun membagi tiga memakai lebar yang salah, jadi objek di
+  /// kiri bisa diucapkan "di kanan".
   Future<List<Detection>> detect(
-    Uint8List rgbBytes,
-    int origW,
-    int origH,
+    Float32List input,
+    int uprightW,
+    int uprightH,
   ) async {
     if (!_loaded || _interpreter == null) return [];
 
     final t0 = DateTime.now();
     try {
-      // Decode → resize ke 640×640
-      final rawImg = img.Image.fromBytes(
-        width: origW,
-        height: origH,
-        bytes: rgbBytes.buffer,
-        format: img.Format.uint8,
-        numChannels: 3,
+      final out = _outputBuffer ??= Float32List(10 * 8400);
+      // View byte, bukan Float32List — lihat catatan panjang di
+      // `PidnetService.analyze`. Singkatnya: `tflite_flutter` hanya melewati
+      // konversi untuk `Uint8List`/`ByteBuffer`; `Float32List` datar dibaca
+      // sebagai tensor 1 dimensi dan grafnya gagal disiapkan.
+      final outBytes = _outputBytes ??= out.buffer.asUint8List();
+      final outputs = {0: outBytes};
+
+      await _interpreter!.runForMultipleInputs(
+        [input.buffer.asUint8List()],
+        outputs,
       );
-
-      img.Image resized;
-      if (Platform.isAndroid) {
-        final rotated = img.copyRotate(rawImg, angle: 90);
-        resized = img.copyResize(rotated, width: _yoloSize, height: _yoloSize,
-            interpolation: img.Interpolation.linear);
-      } else {
-        resized = img.copyResize(rawImg, width: _yoloSize, height: _yoloSize,
-            interpolation: img.Interpolation.linear);
-      }
-
-      // Build input [1][640][640][3] — float32 normalized 0..1
-      final input = List.generate(1, (_) =>
-        List.generate(_yoloSize, (y) =>
-          List.generate(_yoloSize, (x) {
-            final p = resized.getPixel(x, y);
-            return [p.r / 255.0, p.g / 255.0, p.b / 255.0];
-          }),
-        ),
-      );
-
-      // Output [1][10][8400] — 10 = 4 (box) + 6 (class scores)
-      final output = [List.generate(10, (_) => List.filled(8400, 0.0))];
-      final outputs = {0: output};
-
-      await _interpreter!.runForMultipleInputs([input], outputs);
 
       final inferMs = DateTime.now().difference(t0).inMilliseconds.toDouble();
-
-      // Post-process
-      return _postProcess(output[0], inferMs, origW, origH);
+      return _postProcess(out, inferMs, uprightW, uprightH);
     } catch (e) {
       debugPrint('[YOLO-Nav] detect error: $e');
       return [];
@@ -224,14 +223,15 @@ class YoloNavigasiService {
 
   // ── Post-process output [10][8400] ──────────────────────────
   List<Detection> _postProcess(
-    List<List<double>> raw, // [10][8400]
+    Float32List raw, // datar, tata letak [10][8400]
     double inferMs,
-    int origW,
-    int origH,
+    int uprightW,
+    int uprightH,
   ) {
-    // raw[0..3] = cx, cy, w, h (normalized 0..1)
-    // raw[4..9] = class scores
-    final numAnchors = raw[0].length; // 8400
+    // Tata letak [kanal][anchor]: kanal 0..3 = cx, cy, w, h; 4..9 = skor kelas.
+    // Datar, jadi indeksnya dihitung sebagai `kanal * numAnchors + anchor` —
+    // tanpa `List` bersarang dan tanpa cast dinamis per pembacaan.
+    const numAnchors = 8400;
     final numClasses = _navLabels.length; // 6
 
     // Kumpulkan box yang lolos threshold
@@ -241,7 +241,7 @@ class YoloNavigasiService {
       double maxScore = 0;
       int maxClass = 0;
       for (int c = 0; c < numClasses; c++) {
-        final score = raw[4 + c][i];
+        final score = raw[(4 + c) * numAnchors + i];
         if (score > maxScore) { maxScore = score; maxClass = c; }
       }
       // Threshold khusus: 0.05 (5%) untuk lubang/got_terbuka, 0.30 (30%) untuk kelas lainnya
@@ -252,10 +252,10 @@ class YoloNavigasiService {
       //
       // `_boxScale` ditentukan saat muat lewat [_probeBoxScale]: 1.0 kalau
       // model sudah mengeluarkan pixel, 640 kalau ternormalisasi.
-      final cx = raw[0][i] * _boxScale;
-      final cy = raw[1][i] * _boxScale;
-      final bw = raw[2][i] * _boxScale;
-      final bh = raw[3][i] * _boxScale;
+      final cx = raw[i] * _boxScale;
+      final cy = raw[numAnchors + i] * _boxScale;
+      final bw = raw[numAnchors * 2 + i] * _boxScale;
+      final bh = raw[numAnchors * 3 + i] * _boxScale;
 
       boxes.add(_Box(
         x1:       (cx - bw / 2).clamp(0, _yoloSize.toDouble()),
@@ -272,21 +272,22 @@ class YoloNavigasiService {
     // NMS per kelas
     final kept = _nms(boxes);
 
-    // Skala kembali ke ukuran frame asli
-    final scaleX = origW / _yoloSize;
-    final scaleY = origH / _yoloSize;
+    // Skala kembali ke ukuran bingkai TEGAK — bingkai yang sama dengan yang
+    // dilihat pengguna di preview, sehingga kotaknya bisa langsung digambar.
+    final scaleX = uprightW / _yoloSize;
+    final scaleY = uprightH / _yoloSize;
 
     return kept.map((b) {
-      final x1 = (b.x1 * scaleX).round().clamp(0, origW - 1);
-      final y1 = (b.y1 * scaleY).round().clamp(0, origH - 1);
-      final x2 = (b.x2 * scaleX).round().clamp(0, origW - 1);
-      final y2 = (b.y2 * scaleY).round().clamp(0, origH - 1);
+      final x1 = (b.x1 * scaleX).round().clamp(0, uprightW - 1);
+      final y1 = (b.y1 * scaleY).round().clamp(0, uprightH - 1);
+      final x2 = (b.x2 * scaleX).round().clamp(0, uprightW - 1);
+      final y2 = (b.y2 * scaleY).round().clamp(0, uprightH - 1);
       final boxH = y2 - y1;
       final cx   = (x1 + x2) / 2.0;
 
       final label   = _navLabels[b.classIdx];
       final dist    = _estimateDist(label, boxH);
-      final dir     = _direction(cx, origW);
+      final dir     = _direction(cx, uprightW);
       final danger  = _dangerLevel(label, dist);
 
       return Detection(
@@ -298,6 +299,8 @@ class YoloNavigasiService {
         dangerLevel:   danger,
         bbox:          {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2},
         inferenceMs:   inferMs,
+        frameWidth:    uprightW,
+        frameHeight:   uprightH,
       );
     }).toList()
       ..sort((a, b) => a.distanceMeter.compareTo(b.distanceMeter));

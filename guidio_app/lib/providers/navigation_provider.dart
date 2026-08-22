@@ -290,13 +290,30 @@ class NavigationProvider extends ChangeNotifier {
     if (frame == null) return;
 
     try {
-      // Konversi YUV→RGB sekali, dipakai keduanya
-      final conv = NavFrameConverter.fromCameraImage(frame);
+      // Satu lintasan di isolate menyiapkan KEDUA tensor sekaligus.
+      //
+      // Sebelumnya bagian ini berjalan di isolate UI: YUV→RGB frame penuh,
+      // lalu masing-masing service memutar dan menskalakan ulang frame yang
+      // SAMA, lalu membangun `List` bersarang. Diukur 136 ms per frame di CPU
+      // desktop — di HP mid-low berkali lipat, dan seluruhnya menahan thread
+      // yang juga menjadwalkan TTS.
+      final tensors = await NavFrameConverter.prepare(
+        frame,
+        pidnetBchw: PidnetService.instance.wantsBchw,
+      );
 
       // Jalankan PIDNet dan YOLO secara paralel
       final results = await Future.wait([
-        PidnetService.instance.analyze(conv.rgb, conv.width, conv.height),
-        YoloNavigasiService.instance.detect(conv.rgb, conv.width, conv.height),
+        PidnetService.instance.analyze(
+          tensors.pidnet,
+          // Mask hanya diminta kalau memang akan digambar.
+          withMask: _wantsSegmentationOverlay,
+        ),
+        YoloNavigasiService.instance.detect(
+          tensors.yolo,
+          tensors.uprightWidth,
+          tensors.uprightHeight,
+        ),
       ]);
 
       final zoneAnalysis = results[0] as ZoneAnalysis?;
