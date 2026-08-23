@@ -1,4 +1,19 @@
-/// Penerjemah kalimat deskripsi suasana Inggris → Indonesia, **tanpa LLM**.
+/// Penerjemah kalimat deskripsi suasana Inggris ke Indonesia, **tanpa LLM**.
+///
+/// > **TIDAK DIPAKAI di jalur produksi.** `VoiceProvider._handleDescribeScene`
+/// > sekarang membacakan caption Moondream2 apa adanya dalam Bahasa Inggris,
+/// > didahului penanda "Dalam bahasa Inggris."
+/// >
+/// > Alasannya bukan kualitas kamusnya, melainkan konsistensinya: penerjemah
+/// > ini menerjemahkan sebagian kalimat lalu menyerah pada sisanya, sehingga
+/// > satu mode yang sama bisa menjawab dalam Bahasa Indonesia, Inggris, atau
+/// > campuran keduanya tergantung foto. Untuk pengguna yang mengandalkan
+/// > telinga, tebakan yang tidak konsisten lebih sulit diikuti daripada satu
+/// > bahasa yang tetap.
+/// >
+/// > Berkasnya dan `test/scene_translator_test.dart` sengaja dipertahankan.
+/// > Kalau nanti kamusnya diperluas sampai cakupannya konsisten, jalurnya
+/// > tinggal disambung lagi di satu tempat.
 ///
 /// Moondream2 mengeluarkan caption Bahasa Inggris ("A man standing in front of
 /// a white building"). Selama ini kalimat itu dibacakan apa adanya dengan TTS
