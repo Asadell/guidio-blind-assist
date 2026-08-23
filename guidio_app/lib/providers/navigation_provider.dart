@@ -241,6 +241,17 @@ class NavigationProvider extends ChangeNotifier {
   /// [_emitGuidance].
   static const _criticalRepeatGap = Duration(seconds: 4);
 
+  /// Jeda LANTAI untuk critical, berlaku walau pesannya berbeda.
+  ///
+  /// Tanpa ini, dua bahaya yang bergantian muncul di frame berurutan saling
+  /// memotong tiap 700 ms dan tidak satu pun pernah selesai diucapkan.
+  /// Peringatan yang tidak pernah utuh bukan peringatan; pengguna cuma
+  /// mendengar potongan suku kata yang berganti-ganti.
+  ///
+  /// 1,5 detik kira-kira sepanjang satu kalimat pendek "Bahaya! Ada lubang
+  /// kurang dari satu meter di depan" pada kecepatan bicara bawaan.
+  static const _criticalFloorGap = Duration(milliseconds: 1500);
+
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
 
   void startCalibration() {
@@ -475,7 +486,8 @@ class NavigationProvider extends ChangeNotifier {
     if (wasDown) _speak('Jalur terbaca lagi.', tier: SpeechTier.info);
 
     final guidance = _composeGuidance(zones, obstacles);
-    _emitGuidance(guidance.$1, guidance.$2, takeover: guidance.$3);
+    _emitGuidance(guidance.$1, guidance.$2,
+        takeover: guidance.$3, identity: guidance.$4);
     notifyListeners();
   }
 
@@ -483,25 +495,42 @@ class NavigationProvider extends ChangeNotifier {
   /// rintangan peringatan, baru arahan zona. Fungsi ini murni - tidak bicara
   /// dan tidak mengubah state - supaya keputusan "apa yang perlu dikatakan"
   /// terpisah dari keputusan "apakah sekarang saatnya mengatakannya".
-  (String, SpeechTier, bool) _composeGuidance(ZoneAnalysis zones, List<Detection> obstacles) {
+  ///
+  /// Nilai keempat adalah **identitas** pesan: kunci stabil yang menentukan
+  /// apakah dua frame berturut-turut sedang membicarakan hal yang SAMA.
+  ///
+  /// Ini bukan sekadar rapi. `Detection.ttsMessage` menyertakan jarak yang
+  /// dibulatkan ("2 meter"), dan jarak itu bergoyang tiap frame karena tinggi
+  /// kotak berubah sedikit. Objek yang sama, diam di tempat, menghasilkan
+  /// kalimat yang BERBEDA dari frame ke frame - dan pemeriksaan pengulangan
+  /// yang membandingkan kalimat penuh menyimpulkan "ini peringatan baru",
+  /// lalu memotong ucapan yang sedang berjalan. Satu lubang yang diam bisa
+  /// memotong dirinya sendiri berkali-kali sampai tidak ada satu kalimat pun
+  /// yang selesai.
+  (String, SpeechTier, bool, String) _composeGuidance(
+      ZoneAnalysis zones, List<Detection> obstacles) {
     final critical = obstacles.where((d) => d.dangerLevel == 'critical').toList();
     if (critical.isNotEmpty) {
-      return (critical.first.ttsMessage, SpeechTier.critical, true);
+      final d = critical.first;
+      return (d.ttsMessage, SpeechTier.critical, true, _obstacleIdentity(d));
     }
 
     final warning = obstacles.where((d) => d.dangerLevel == 'warning').toList();
     if (warning.isNotEmpty) {
-      return (warning.first.ttsMessage, SpeechTier.warning, false);
+      final d = warning.first;
+      return (d.ttsMessage, SpeechTier.warning, false, _obstacleIdentity(d));
     }
 
     final allDanger = _left == ZoneStatus.danger &&
         _center == ZoneStatus.danger &&
         _right == ZoneStatus.danger;
     if (allDanger) {
-      return ('Berhenti dulu. Tidak ada jalur aman.', SpeechTier.critical, false);
+      return ('Berhenti dulu. Tidak ada jalur aman.', SpeechTier.critical, false,
+          'zona:semua-bahaya');
     }
     if (_center == ZoneStatus.danger) {
-      return ('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical, true);
+      return ('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical, true,
+          'zona:tengah-bahaya');
     }
 
     // ── Frame tidak layak jadi dasar arahan berjalan ──
@@ -522,10 +551,10 @@ class NavigationProvider extends ChangeNotifier {
       // Warning, bukan Info: pengguna sedang berjalan dan perlu tahu bahwa
       // panduannya sedang tidak bekerja. Tapi juga bukan Critical - tidak ada
       // bahaya yang terdeteksi, yang hilang cuma penglihatan sistem.
-      return (doubtMessage, SpeechTier.warning, false);
+      return (doubtMessage, SpeechTier.warning, false, 'ragu:$doubtMessage');
     }
 
-    return (zones.ttsMessage, SpeechTier.info, false);
+    return (zones.ttsMessage, SpeechTier.info, false, 'zona:${zones.ttsMessage}');
   }
 
   /// Kalimat untuk kondisi "sistem tidak bisa membaca jalur", atau null kalau
@@ -587,20 +616,37 @@ class NavigationProvider extends ChangeNotifier {
   ///    berikutnya selalu berangkat sebelum yang sekarang habis, lalu
   ///    dibuang antrean karena kedaluwarsa 2 detik. Itulah yang terdengar
   ///    sebagai suara buru-buru dan saling menimpa.
-  void _emitGuidance(String message, SpeechTier tier, {required bool takeover}) {
-    if (message == _candidateMessage) {
+  /// Kunci identitas satu rintangan: apa, di mana, seberapa berbahaya.
+  ///
+  /// Jaraknya sengaja TIDAK ikut. Jarak adalah yang paling bergoyang antar
+  /// frame, dan justru itu yang tidak boleh mengubah identitas: lubang yang
+  /// sama tetap lubang yang sama entah terbaca 1,4 atau 1,6 meter.
+  static String _obstacleIdentity(Detection d) =>
+      '${d.labelEn}|${d.direction}|${d.dangerLevel}';
+
+  void _emitGuidance(String message, SpeechTier tier,
+      {required bool takeover, required String identity}) {
+    // Histeresis dan rem sekarang memakai IDENTITAS, bukan kalimat penuh.
+    // Lihat catatan panjang di `_composeGuidance` soal kenapa.
+    if (identity == _candidateMessage) {
       _candidateStreak++;
     } else {
-      _candidateMessage = message;
+      _candidateMessage = identity;
       _candidateStreak = 1;
     }
     if (tier != SpeechTier.critical && _candidateStreak < 2) return;
 
     final now = DateTime.now();
-    final isRepeat = message == _lastSpokenMessage;
+    final isRepeat = identity == _lastSpokenMessage;
     final elapsed = now.difference(_lastSpokenAt);
 
     if (tier == SpeechTier.critical) {
+      // Jangan pernah memotong peringatan bahaya yang belum selesai. Dua
+      // bahaya yang bergantian tiap frame akan saling memenggal, dan yang
+      // sampai ke telinga pengguna cuma potongan suku kata.
+      if (TtsQueue.instance.speakingTier == SpeechTier.critical) return;
+      // Jeda lantai berlaku walau bahayanya berbeda.
+      if (elapsed < _criticalFloorGap) return;
       if (isRepeat && elapsed < _criticalRepeatGap) return;
     } else {
       if (isRepeat && elapsed < _sameMessageGap) return;
@@ -608,7 +654,7 @@ class NavigationProvider extends ChangeNotifier {
       if (TtsQueue.instance.isSpeaking) return;
     }
 
-    _lastSpokenMessage = message;
+    _lastSpokenMessage = identity;
     _lastSpokenAt = now;
     // Dipanggil hanya kalau pesannya benar-benar jadi diucapkan. Sebelumnya
     // takeover berjalan lebih dulu tanpa syarat, jadi ia tetap memotong

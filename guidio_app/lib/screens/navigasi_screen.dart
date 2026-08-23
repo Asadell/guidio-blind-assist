@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -5,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
 import '../core/layout/zone_contract.dart';
+import '../models/detection.dart';
 import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
@@ -34,11 +37,148 @@ const List<(String, String)> _nvDebugCatalog = [
   ('NV-25', 'Sudut kamera bergeser'),
 ];
 
+/// Berapa lama satu kartu rintangan bertahan di layar setelah objeknya tidak
+/// lagi terdeteksi.
+///
+/// Tanpa penahan ini, kartu terikat langsung pada `nav.obstacles`, yang
+/// diganti utuh tiap siklus inferensi (sekitar 700 ms). Satu frame yang
+/// meleset - dan deteksi memang berkedip, apalagi pada objek kecil di
+/// kejauhan - membuat kartunya lenyap seketika lalu muncul lagi. Yang terlihat
+/// pengguna adalah popup yang berkedip terlalu cepat untuk sempat dibaca.
+///
+/// Masa tahannya ditampilkan sebagai garis yang menyusut di dasar kartu, jadi
+/// hilangnya kartu tidak pernah mengejutkan: pendamping awas bisa melihat
+/// kartu itu akan pergi sebelum ia benar-benar pergi.
+const Duration _kObstacleHold = Duration(milliseconds: 1500);
+
+/// Maksimal kartu rintangan yang boleh tampil sekaligus.
+///
+/// Tiga, dan tidak lebih. Tumpukan yang lebih tinggi menutupi preview kamera,
+/// dan untuk pengguna yang mendengarkan, kartu keempat toh tidak pernah sempat
+/// diucapkan sebelum frame berikutnya datang.
+const int _kMaxObstacleCards = 3;
+
+/// Identitas satu kartu, diambil dari apa yang BENAR-BENAR dibaca pengguna.
+///
+/// `DetectionCard` menulis judulnya sebagai `"<labelId> di <arah>"`, jadi
+/// itulah yang menentukan dua kartu terlihat kembar atau tidak.
+///
+/// Memakai `labelEn` di sini pernah menghasilkan duplikat yang kasatmata.
+/// Sejak lapis SSD COCO ditambahkan, satu orang yang sama bisa datang dari dua
+/// model: YOLO custom melaporkannya sebagai `labelEn: 'orang'`, SSD sebagai
+/// `labelEn: 'person'` dengan `labelId: 'orang'`. Penggabung di
+/// `nav_obstacle_merger.dart` membuang yang kembar lewat tindih kotak, tapi
+/// kalau kedua kotak bentuknya cukup berbeda, keduanya lolos - dan layar
+/// menampilkan dua kartu yang huruf demi hurufnya sama persis.
+String cardIdentity(Detection d) =>
+    '${d.labelId.isEmpty ? d.labelEn : d.labelId}|${d.direction}';
+
+/// Satu kartu yang sedang ditahan di layar.
+class _HeldObstacle {
+  final Detection detection;
+  final DateTime lastSeen;
+  const _HeldObstacle(this.detection, this.lastSeen);
+
+  /// Sisa masa tahan, 1,0 saat baru terlihat menuju 0,0 saat kartu pergi.
+  double get remaining {
+    final gone = DateTime.now().difference(lastSeen).inMilliseconds;
+    final total = _kObstacleHold.inMilliseconds;
+    return (1.0 - gone / total).clamp(0.0, 1.0);
+  }
+}
+
+/// Kartu rintangan dengan hitung mundur yang terlihat di dasarnya.
+///
+/// Garisnya menyusut dari penuh ke kosong selama [_kObstacleHold]. Begitu
+/// objeknya terlihat lagi, `lastSeen` berganti, kunci animasinya ikut berganti,
+/// dan hitungannya mulai dari penuh lagi - jadi kartu yang objeknya masih ada
+/// di depan mata tidak pernah benar-benar habis.
+class _ExpiringDetectionCard extends StatelessWidget {
+  final _HeldObstacle held;
+  const _ExpiringDetectionCard({super.key, required this.held});
+
+  @override
+  Widget build(BuildContext context) {
+    final tier = AlertTierX.fromDangerLevel(held.detection.dangerLevel);
+    final color = switch (tier) {
+      AlertTier.critical => AppColors.criticalFill,
+      AlertTier.warning => AppColors.warningFill,
+      AlertTier.positive => AppColors.positiveFill,
+      AlertTier.info => AppColors.actionLabel,
+    };
+
+    return Stack(
+      children: [
+        DetectionCard(detection: held.detection),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 4,
+          // Dikecualikan dari pembaca layar: ini penanda visual untuk pendamping
+          // awas. Bagi pengguna yang mendengarkan, hitung mundurnya tidak
+          // menambah apa pun selain gangguan.
+          child: ExcludeSemantics(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(AppRadius.sm),
+              ),
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey('${cardIdentity(held.detection)}'
+                    '|${held.lastSeen.millisecondsSinceEpoch}'),
+                tween: Tween(begin: held.remaining, end: 0.0),
+                duration: Duration(
+                  milliseconds:
+                      (_kObstacleHold.inMilliseconds * held.remaining).round(),
+                ),
+                builder: (_, value, __) => Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: value,
+                    child: ColoredBox(color: color),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObserver {
   final TextEditingController _destCtrl = TextEditingController();
   bool _hasCameraPermission = true;
   String? _debugOverride;
   bool _silentMode = false;
+
+  /// Kartu rintangan yang sedang tampil, dikunci per identitas objek.
+  ///
+  /// Identitasnya `label|arah`, bukan jarak: jarak bergoyang tiap frame dan
+  /// akan membuat objek yang sama dianggap objek baru terus-menerus.
+  final Map<String, _HeldObstacle> _heldObstacles = {};
+  Timer? _holdSweeper;
+
+  /// Perbarui daftar tahan dari hasil frame terbaru, lalu kembalikan yang
+  /// masih layak tampil, terdekat lebih dulu.
+  List<_HeldObstacle> _stickyObstacles(List<Detection> fresh) {
+    final now = DateTime.now();
+    // Objek yang masih terlihat selalu memakai detail TERBARU (jarak, arah,
+    // tingkat bahaya), tapi kunci kartunya tetap sama sehingga yang berubah
+    // cuma isinya, bukan kartunya. Itulah bedanya dengan mengganti seluruh
+    // daftar: kartu tidak pernah dibongkar lalu dipasang lagi.
+    for (final d in fresh) {
+      _heldObstacles[cardIdentity(d)] = _HeldObstacle(d, now);
+    }
+    _heldObstacles.removeWhere((_, h) => now.difference(h.lastSeen) > _kObstacleHold);
+
+    final out = _heldObstacles.values.toList()
+      ..sort((a, b) => a.detection.distanceMeter.compareTo(b.detection.distanceMeter));
+    return out.length <= _kMaxObstacleCards
+        ? out
+        : out.sublist(0, _kMaxObstacleCards);
+  }
 
   @override
   void initState() {
@@ -101,6 +241,25 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         cam.startStream();
       }
     });
+
+    // Tanpa sapuan ini, kartu yang masa tahannya sudah lewat baru hilang saat
+    // provider kebetulan memberi tahu lagi. Kalau rintangannya berhenti
+    // terdeteksi sama sekali, notifikasi itu bisa tidak pernah datang dan
+    // kartunya menggantung di layar selamanya.
+    // 250 ms, bukan 500. Dengan masa tahan 1,5 detik, sapuan yang terlalu
+    // jarang membuat kartu masih menggantung sampai setengah detik sesudah
+    // garis hitung mundurnya habis - dan garis yang berbohong soal kapan
+    // kartunya pergi lebih buruk daripada tidak ada garis sama sekali.
+    _holdSweeper = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (!mounted || _heldObstacles.isEmpty) return;
+      final now = DateTime.now();
+      final expired = _heldObstacles.entries
+          .where((e) => now.difference(e.value.lastSeen) > _kObstacleHold)
+          .map((e) => e.key)
+          .toList();
+      if (expired.isEmpty) return;
+      setState(() => _heldObstacles.removeWhere((k, _) => expired.contains(k)));
+    });
   }
 
   /// Frame terakhir dari stream, dikodekan hanya saat benar-benar dikirim.
@@ -127,6 +286,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
+    _holdSweeper?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     final appMode = context.read<AppModeProvider>();
     if (identical(appMode.confirmLeave, _confirmLeaveNavigasi)) {
@@ -386,8 +546,12 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     final banner = _resolveBanner(context, nav, global, cam);
     final hasBanner = banner != null;
     // Rintangan datang dari server bersama zona, dari frame yang sama.
-    final obstacles = nav.obstacles;
-    final hasCriticalObstacle = obstacles.any((d) => d.isCritical);
+    // Kartu memakai daftar yang DITAHAN, bukan hasil frame mentah. Hamparan
+    // kotak di atas preview tetap memakai `nav.obstacles` yang segar: kotak
+    // yang menggantung akan menggambar sesuatu di tempat yang sudah kosong,
+    // sementara kartu teks hanya perlu cukup lama untuk sempat dibaca.
+    final obstacles = _stickyObstacles(nav.obstacles);
+    final hasCriticalObstacle = obstacles.any((h) => h.detection.isCritical);
 
     if (_debugOverride == 'NV-21') {
       // NV-21 - layar mengambil alih penuh, tidak ada BottomActionBar, jadi
@@ -486,7 +650,14 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
               Positioned(
                 left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
                 bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
-                child: AlertCardStack(cards: obstacles.map((d) => DetectionCard(detection: d)).toList()),
+                child: AlertCardStack(
+                  cards: obstacles
+                      .map((h) => _ExpiringDetectionCard(
+                            key: ValueKey(cardIdentity(h.detection)),
+                            held: h,
+                          ))
+                      .toList(),
+                ),
               ),
 
             // Legenda warna hamparan. Muncul hanya saat ada yang digambar,
