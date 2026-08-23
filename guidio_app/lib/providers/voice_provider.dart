@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
-import '../core/voice/scene_translator.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
@@ -149,10 +148,23 @@ class VoiceProvider extends ChangeNotifier {
     await _resolveLocale();
   }
 
-  /// Locale yang benar-benar akan dipakai `listen()`.
+  /// Locale yang dipakai `listen()`.
   ///
-  /// `null` berarti serahkan ke bawaan perangkat.
-  String? _localeId;
+  /// **Tidak pernah null.** Nilai awalnya `id_ID`, dan penelusuran daftar
+  /// perangkat hanya boleh MENGGANTINYA dengan kode lain yang terbukti ada,
+  /// tidak pernah mengosongkannya.
+  ///
+  /// Ini pernah nullable, dan itu regresi yang nyata: kalau `locales()` gagal
+  /// dibaca atau daftarnya belum lengkap saat init, nilainya tinggal null,
+  /// `listen(localeId: null)` menyerahkan pilihan ke bawaan perangkat, dan di
+  /// sebagian besar ponsel bawaannya Inggris. Pengguna bicara Bahasa Indonesia
+  /// ke mesin yang mendengarkan Inggris: hasilnya kata acak yang tidak pernah
+  /// cocok dengan satu pun frasa `CommandParser`.
+  ///
+  /// Menebak `id_ID` lalu gagal jauh lebih baik daripada diam-diam pindah ke
+  /// bahasa lain. Yang pertama masih punya peluang benar; yang kedua tidak
+  /// pernah benar, dan tidak meninggalkan satu pun petunjuk kenapa.
+  String _localeId = kDefaultSttLocale;
 
   /// Pilih locale Bahasa Indonesia yang BENAR-BENAR terpasang.
   ///
@@ -171,33 +183,30 @@ class VoiceProvider extends ChangeNotifier {
   Future<void> _resolveLocale() async {
     try {
       final locales = await _stt.locales();
-      for (final want in const ['id_ID', 'id-ID', 'in_ID', 'in-ID', 'id', 'in']) {
-        final hit = locales.where((l) => l.localeId == want);
-        if (hit.isNotEmpty) {
-          _localeId = hit.first.localeId;
-          debugPrint('[STT] locale dipakai: $_localeId (${hit.first.name})');
-          return;
-        }
-      }
-      // Cocokkan longgar sebagai jaring terakhir sebelum menyerah.
-      final loose = locales.where((l) =>
-          l.localeId.toLowerCase().startsWith('id') ||
-          l.localeId.toLowerCase().startsWith('in_') ||
-          l.name.toLowerCase().contains('indonesia'));
-      if (loose.isNotEmpty) {
-        _localeId = loose.first.localeId;
-        debugPrint('[STT] locale dipakai (cocok longgar): $_localeId');
+      final picked = pickIndonesianLocale(
+        [for (final l in locales) (id: l.localeId, name: l.name)],
+      );
+      if (picked != null) {
+        _localeId = picked;
+        _indonesianConfirmed = true;
+        debugPrint('[STT] locale dipakai: $_localeId');
         return;
       }
-      debugPrint('[STT] Bahasa Indonesia tidak terpasang, pakai bawaan '
-          'perangkat. Tersedia: ${locales.map((l) => l.localeId).take(8).toList()}');
+      debugPrint('[STT] Bahasa Indonesia tidak ada di daftar perangkat. '
+          'Tetap mencoba $_localeId. '
+          'Tersedia: ${locales.map((l) => l.localeId).take(8).toList()}');
     } catch (e) {
-      debugPrint('[STT] gagal membaca daftar locale: $e');
+      debugPrint('[STT] gagal membaca daftar locale, tetap memakai '
+          '$_localeId: $e');
     }
   }
 
-  /// True kalau perangkat memang punya Bahasa Indonesia untuk pengenalan suara.
-  bool get hasIndonesianLocale => _localeId != null;
+  /// True kalau Bahasa Indonesia benar-benar ditemukan di daftar perangkat.
+  ///
+  /// False bukan berarti pengenalan tidak jalan: [_localeId] tetap dicoba.
+  /// Nilai ini hanya menandakan bahwa keberhasilannya tidak dijamin.
+  bool _indonesianConfirmed = false;
+  bool get hasIndonesianLocale => _indonesianConfirmed;
 
   /// AS-23 - riwayat kedaluwarsa setelah 15 menit tanpa aktivitas.
   bool checkAndExpireHistory() {
@@ -244,11 +253,17 @@ class VoiceProvider extends ChangeNotifier {
       },
       listenOptions: SpeechListenOptions(
         localeId: _localeId,
-        // `cancelOnError` dimatikan. Android melempar galat sementara yang
-        // wajar di tengah sesi (mis. `error_speech_timeout` saat pengguna
-        // masih menarik napas), dan membatalkan sesi karenanya berarti
-        // memotong orang yang baru mau bicara.
-        cancelOnError: false,
+        // Dikembalikan ke true.
+        //
+        // Sempat saya matikan dengan alasan "galat sementara tidak boleh
+        // memotong orang yang baru mau bicara". Itu keliru: galat yang
+        // dilempar Android di sini, `error_speech_timeout` dan
+        // `error_no_match`, keduanya PERMANEN dan memang menandakan sesi
+        // selesai. Membiarkan sesi hidup setelahnya berarti mikrofon terus
+        // merekam derau sekitar sampai `listenFor` habis, lalu mengembalikan
+        // apa pun yang terakhir tertangkap - hasilnya justru lebih ngawur
+        // daripada mengakui tidak ada yang terdengar.
+        cancelOnError: true,
         // 15 detik, naik dari 10. Batas ini hanya jaring pengaman; yang
         // sebenarnya menutup rekaman adalah `pauseFor`.
         listenFor: const Duration(seconds: 15),
@@ -598,16 +613,31 @@ class VoiceProvider extends ChangeNotifier {
   /// lisan yang tidak bisa diasumsikan pada tunanetra di pasar dan warung
   /// Indonesia.
   ///
-  /// Sekarang diterjemahkan lokal lewat [translateSceneCaption]: kamus + aturan
-  /// urutan kata, 0 ms, offline, tanpa LLM - prinsip yang sama yang membuat
-  /// `narration_engine` dan `CommandParser` menggantikan Qwen. Menambahkan LLM
-  /// penerjemah akan mengembalikan tepat tiga masalah yang sudah dibuang:
-  /// lambat, bisa berhalusinasi, dan butuh server.
+  /// Captionnya dibacakan **apa adanya dalam Bahasa Inggris**, didahului satu
+  /// penanda singkat Bahasa Indonesia supaya perpindahan bahasanya tidak
+  /// mengejutkan.
   ///
-  /// Kalau cakupan kamus terlalu rendah, penerjemah **menyerah** dan kalimat
-  /// Inggrisnya dibacakan - didahului satu penanda singkat, supaya pengguna
-  /// tahu bahasanya berganti dan tidak menyangka aplikasinya rusak. Bahasa
-  /// Indonesia yang kacau lebih buruk daripada Bahasa Inggris yang benar.
+  /// Penerjemah kamus lokal pernah dipasang di sini lalu dilepas. Ia
+  /// menerjemahkan sebagian kalimat dan menyerah pada sisanya, sehingga satu
+  /// mode yang sama bisa menjawab dalam Bahasa Indonesia, Inggris, atau
+  /// campuran keduanya tergantung foto - dan ketidakkonsistenan itu lebih
+  /// sulit diikuti telinga daripada satu bahasa yang tetap.
+  ///
+  /// Menambahkan LLM penerjemah bukan jalan keluarnya: itu mengembalikan tepat
+  /// tiga masalah yang sudah dibuang dari proyek ini, yaitu lambat, bisa
+  /// berhalusinasi, dan butuh server.
+  /// Ambil foto dan minta deskripsi suasana ke VLM di server.
+  ///
+  /// Pintu masuk publik untuk tombol kiri Mode Deskripsi Suasana. Isinya sama
+  /// persis dengan yang dijalankan perintah suara "deskripsikan", jadi tombol
+  /// dan ucapan tidak pernah bercabang jadi dua perilaku yang berbeda.
+  ///
+  /// Sengaja dipicu MANUAL, tidak otomatis saat masuk mode. Tiap panggilan
+  /// mengunggah satu foto dan membangunkan Moondream2, dan menjalankannya
+  /// tanpa diminta berarti mengirim foto sekitar pengguna ke jaringan setiap
+  /// kali ia tidak sengaja membuka mode ini.
+  Future<void> describeSceneNow() => _handleDescribeScene();
+
   Future<void> _handleDescribeScene() async {
     _setState(VoiceState.processingLlm);
     onSpeak?.call('Saya foto sekitarmu dulu, tunggu sebentar.');
@@ -653,20 +683,27 @@ class VoiceProvider extends ChangeNotifier {
 
       _consecutiveFailures = 0;
 
+      // Caption dibacakan APA ADANYA dari Moondream2, tanpa disentuh.
+      //
+      // Penerjemah kamus lokal sudah dilepas dari jalur ini. Ia menerjemahkan
+      // sebagian kalimat lalu menyerah pada sisanya, dan yang dihasilkan
+      // adalah campuran dua bahasa yang tidak konsisten dari satu foto ke
+      // foto berikutnya: kadang Indonesia, kadang Inggris, kadang setengah.
+      // Untuk pengguna yang mengandalkan telinga, tebakan yang tidak konsisten
+      // lebih sulit diikuti daripada satu bahasa yang tetap.
+      //
+      // Konsekuensinya diterima dengan sadar: mode ini satu-satunya di seluruh
+      // aplikasi yang berbahasa Inggris. Karena itu penandanya dipertahankan.
       final description = scene.descriptionEn;
-      final translated = translateSceneCaption(description);
-      if (translated.isUsable) {
-        _response = translated.indonesian!;
-        _setState(VoiceState.responded);
-        await TTSService.instance.speak(_response);
-        await _speakQualityNote(scene);
-        return;
-      }
-
-      debugPrint('[Describe] cakupan kamus ${translated.coverage.toStringAsFixed(2)} '
-          '- dibacakan dalam Bahasa Inggris');
       _response = description;
       _setState(VoiceState.responded);
+
+      // Penanda ini BUKAN mengubah caption, dan bukan basa-basi.
+      //
+      // TTS berpindah locale ke en-US tepat sesudah kalimat ini. Tanpa
+      // aba-aba, pengguna tunanetra mendengar suaranya tiba-tiba berganti
+      // bahasa di tengah aplikasi yang seluruhnya Bahasa Indonesia, dan
+      // kesimpulan pertama yang wajar adalah aplikasinya rusak.
       await TTSService.instance.speak('Dalam bahasa Inggris.');
       await TTSService.instance.speakEnglish(description);
       await _speakQualityNote(scene);
@@ -799,4 +836,47 @@ class VoiceProvider extends ChangeNotifier {
     _stt.cancel();
     super.dispose();
   }
+}
+
+/// Kode locale Bahasa Indonesia bawaan, dipakai kalau daftar perangkat tidak
+/// bisa dibaca atau tidak memuat satu pun varian Indonesia.
+const String kDefaultSttLocale = 'id_ID';
+
+/// Pilih varian Bahasa Indonesia dari daftar locale perangkat.
+///
+/// Mengembalikan null kalau tidak ada yang cocok. Pemanggil WAJIB tetap
+/// memakai [kDefaultSttLocale] dalam kasus itu, bukan menyerahkan pilihan ke
+/// bawaan perangkat.
+///
+/// Urutan kandidatnya disengaja. Android masih memakai kode lama `in` untuk
+/// Bahasa Indonesia, warisan ISO 639 sebelum 1989 yang tidak pernah diperbarui
+/// karena Java sudah terlanjur memakainya, jadi satu perangkat bisa menuliskan
+/// `id_ID` sementara perangkat lain hanya menerima `in_ID`. Varian berkode
+/// negara didahulukan karena model bahasanya lebih spesifik.
+String? pickIndonesianLocale(List<({String id, String name})> locales) {
+  const exact = ['id_ID', 'id-ID', 'in_ID', 'in-ID', 'id', 'in'];
+  for (final want in exact) {
+    for (final l in locales) {
+      if (l.id == want) return l.id;
+    }
+  }
+
+  // Jaring terakhir: cocokkan awalan kode ATAU nama yang menyebut Indonesia.
+  //
+  // Awalannya diperiksa dengan pemisah, bukan `startsWith('id')` telanjang.
+  // Tanpa itu `ida` atau `in-GB` hipotetis ikut tertangkap, dan memilih
+  // bahasa yang salah jauh lebih buruk daripada gagal memilih.
+  for (final l in locales) {
+    final id = l.id.toLowerCase();
+    final isIdPrefix = id == 'id' ||
+        id == 'in' ||
+        id.startsWith('id_') ||
+        id.startsWith('id-') ||
+        id.startsWith('in_') ||
+        id.startsWith('in-');
+    if (isIdPrefix || l.name.toLowerCase().contains('indonesia')) {
+      return l.id;
+    }
+  }
+  return null;
 }
