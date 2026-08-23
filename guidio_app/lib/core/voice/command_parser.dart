@@ -76,6 +76,7 @@ class CommandParser {
       'jalan mana', 'mode jalan', 'arahan jalur', 'jalur mana',
     ],
     VoiceIntent.modeAssistant: [
+      'deskripsi suasana', 'deskripsikan suasana', 'mode deskripsi suasana',
       'asisten', 'tanya', 'mode suara',
       'halo guidio', 'hei guidio', 'oy guidio', 'guidio', 'jarvis', 'hei jarvis', 'halo jarvis',
       'tolong asisten', 'eh guidio', 'guidio tolong', 'woy guidio', 'eh jarvis tolong',
@@ -787,7 +788,7 @@ extension VoiceIntentSpokenLabel on VoiceIntent {
         VoiceIntent.modeReadText => 'baca teks',
         VoiceIntent.modeDetection => 'deteksi objek',
         VoiceIntent.modeNavigation => 'navigasi',
-        VoiceIntent.modeAssistant => 'asisten suara',
+        VoiceIntent.modeAssistant => 'deskripsi suasana',
         VoiceIntent.modeFindObject => 'cari objek',
         VoiceIntent.modeSettings => 'pengaturan',
         VoiceIntent.actionCapture => 'ambil gambar',

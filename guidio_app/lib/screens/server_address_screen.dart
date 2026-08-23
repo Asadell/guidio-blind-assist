@@ -178,7 +178,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                 const SizedBox(height: AppSpacing.s1),
                 // PG-08a - penjelasan server bawaan.
                 Text(
-                  'Vinara memakai server bawaan untuk Baca Teks, Asisten Suara, Cari Objek, dan segmentasi jalur. '
+                  'Vinara memakai server bawaan untuk Baca Teks, Deskripsi Suasana, Cari Objek, dan segmentasi jalur. '
                   'Ganti alamat ini hanya kalau kamu menjalankan server sendiri.',
                   style: AppTypography.body(color: AppColors.ink2),
                 ),

@@ -13,7 +13,7 @@ extension AppModeLabel on AppMode {
         AppMode.money      => 'Kenali Uang',
         AppMode.ocr        => 'Baca Teks',
         AppMode.navigasi   => 'Navigasi',
-        AppMode.voice      => 'Asisten Suara',
+        AppMode.voice      => 'Deskripsi Suasana',
         AppMode.findObject => 'Cari Objek',
       };
 
@@ -75,7 +75,7 @@ extension AppModeLabel on AppMode {
         AppMode.money      => 'Katakan: "Kenali uang" atau "Cek uang"',
         AppMode.ocr        => 'Katakan: "Baca teks" atau "Bacakan"',
         AppMode.navigasi   => 'Katakan: "Navigasi" atau "Jalan mana"',
-        AppMode.voice      => 'Katakan: "Asisten suara" atau "Tanya"',
+        AppMode.voice      => 'Katakan: "Deskripsi suasana" atau "Tanya"',
         AppMode.findObject => 'Katakan: "Cari objek" atau "Cari kunci"',
       };
 }
