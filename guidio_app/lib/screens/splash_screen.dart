@@ -18,9 +18,28 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     TTSService.instance.speak('Vinara. Menyiapkan…');
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (mounted) widget.onDone();
-    });
+
+    // Kalau suara Bahasa Indonesia tidak terpasang, katakan SEKARANG.
+    //
+    // Ini satu-satunya momen yang tepat: sesudahnya seluruh aplikasi adalah
+    // suara, dan kalau suaranya sendiri yang bermasalah, pengguna tunanetra
+    // tidak punya cara lain mengetahuinya. Peringatannya diucapkan dengan
+    // mesin yang bermasalah itu juga, dan memang begitu adanya - fonetiknya
+    // mungkin aneh, tapi setidaknya ada yang terdengar dan bisa ditindaklanjuti
+    // oleh pendamping awas di dekatnya.
+    final warning = TTSService.instance.healthWarning;
+    if (warning != null) {
+      TTSService.instance.speak(warning);
+    }
+
+    // Splash tidak boleh menutup di tengah peringatan. 900 ms cukup untuk
+    // "Vinara. Menyiapkan"; kalimat peringatannya jauh lebih panjang.
+    Future.delayed(
+      Duration(milliseconds: warning == null ? 900 : 7000),
+      () {
+        if (mounted) widget.onDone();
+      },
+    );
   }
 
   @override

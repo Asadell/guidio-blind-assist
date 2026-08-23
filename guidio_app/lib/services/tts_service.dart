@@ -45,9 +45,29 @@ class TTSService {
 
   bool _initialized = false;
 
+  /// Apakah suara Bahasa Indonesia benar-benar ada di perangkat ini.
+  ///
+  /// `false` berarti seluruh aplikasi akan terdengar dengan fonetik bahasa
+  /// lain, dan itu keadaan yang harus diberitahukan, bukan dibiarkan.
+  bool _indonesianAvailable = false;
+  bool get indonesianAvailable => _indonesianAvailable;
+
+  /// Kode bahasa Indonesia yang BENAR-BENAR diterima mesin di perangkat ini.
+  String _resolvedLocaleId = localeId;
+
   Future<void> init() async {
     if (_initialized) return;
-    await _tts.setLanguage(localeId);
+
+    // Bahasa diperiksa SEBELUM dipasang, bukan dipasang lalu diharapkan.
+    //
+    // `setLanguage` pada bahasa yang tidak terpasang tidak melempar apa pun.
+    // Mesin diam-diam jatuh ke bahasa bawaan perangkat, TTS tetap bersuara,
+    // dan kalimat Bahasa Indonesia dibacakan dengan fonetik Inggris. Untuk
+    // pengguna tunanetra yang seluruh antarmukanya adalah suara, itu bukan
+    // penurunan kualitas - itu aplikasi yang berhenti bisa dipahami, tanpa
+    // satu pun tanda kenapa.
+    await _resolveIndonesianVoice();
+
     await _tts.setSpeechRate(0.5); // sedikit lambat, lebih terdengar saat berjalan
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
@@ -55,6 +75,8 @@ class TTSService {
     // speak() baru resolve setelah engine benar-benar selesai bicara. Tanpa
     // ini, serialisasi di bawah tidak ada artinya: semua ucapan akan
     // "selesai" seketika dan saling menimpa di engine.
+    await _resolveRateRange();
+
     await _tts.awaitSpeakCompletion(true);
 
     _tts.setStartHandler(() => _speaking = true);
@@ -67,6 +89,70 @@ class TTSService {
 
     _initialized = true;
   }
+
+  /// Cari kode bahasa Indonesia yang diterima mesin, lalu pasang.
+  ///
+  /// Sama seperti di sisi pengenalan suara, kodenya tidak boleh dipatok.
+  /// Android memakai kode lama `in` untuk Bahasa Indonesia, warisan ISO 639
+  /// sebelum 1989 yang masih dipakai Java sampai hari ini, jadi mesin di satu
+  /// perangkat bisa menerima `id-ID` sementara di perangkat lain hanya `in-ID`.
+  ///
+  /// Kalau tidak satu pun diterima, bahasa dibiarkan pada bawaan perangkat dan
+  /// [indonesianAvailable] tetap false. Lapisan di atas yang memutuskan apa
+  /// yang dikatakan kepada pengguna; yang penting di sini adalah keadaannya
+  /// diketahui, bukan disembunyikan.
+  Future<void> _resolveIndonesianVoice() async {
+    const candidates = ['id-ID', 'id_ID', 'in-ID', 'in_ID', 'id', 'in'];
+
+    for (final code in candidates) {
+      try {
+        final available = await _tts.isLanguageAvailable(code);
+        if (available != true) continue;
+
+        await _tts.setLanguage(code);
+        _resolvedLocaleId = code;
+        _engineLocale = code;
+        _indonesianAvailable = true;
+
+        // `isLanguageAvailable` true belum tentu berarti datanya sudah
+        // terunduh. Android membedakan keduanya, dan bahasa yang "tersedia"
+        // tapi belum terpasang tetap dibacakan dengan suara bawaan.
+        try {
+          final installed = await _tts.isLanguageInstalled(code);
+          if (installed != true) {
+            debugPrint('[TTS] $code tersedia tapi datanya belum terunduh. '
+                'Suaranya bisa jatuh ke bahasa bawaan.');
+          }
+        } catch (_) {
+          // Hanya ada di Android. Bukan alasan menggagalkan apa pun.
+        }
+
+        debugPrint('[TTS] bahasa dipakai: $code');
+        return;
+      } catch (e) {
+        debugPrint('[TTS] gagal memeriksa $code: $e');
+      }
+    }
+
+    _indonesianAvailable = false;
+    debugPrint('[TTS] Bahasa Indonesia TIDAK tersedia di perangkat ini. '
+        'Seluruh ucapan akan memakai fonetik bahasa bawaan.');
+    try {
+      debugPrint('[TTS] bahasa yang ada: ${await _tts.getLanguages}');
+    } catch (_) {
+      // Daftar bahasa cuma untuk diagnosis.
+    }
+  }
+
+  /// Kalimat yang menjelaskan keadaan suara, atau null kalau semuanya normal.
+  ///
+  /// Sengaja dikembalikan sebagai teks, bukan diucapkan sendiri: yang tahu
+  /// kapan waktunya bicara adalah lapisan mode, bukan mesin suaranya.
+  String? get healthWarning => _indonesianAvailable
+      ? null
+      : 'Suara Bahasa Indonesia belum terpasang di ponsel ini, jadi ucapan '
+          'saya mungkin sulit dipahami. Pasang paket suara Bahasa Indonesia '
+          'lewat Pengaturan ponsel, bagian Text-to-speech.';
 
   /// Ucapkan [message]. Selalu tersampaikan kecuali dibatalkan [stop] atau
   /// oleh ucapan lain yang meminta [interrupt].
@@ -108,7 +194,10 @@ class TTSService {
       speak(message, interrupt: interrupt, english: true);
 
   Future<void> _utter(String text, {required bool english, required bool interrupt}) async {
-    final target = english ? localeEn : localeId;
+    // Kembali ke kode yang terbukti diterima mesin, bukan ke konstanta.
+    // Perangkat yang hanya menerima `in-ID` akan gagal diam-diam kalau di sini
+    // dipaksa `id-ID`, dan sisa sesi terdengar dalam bahasa Inggris.
+    final target = english ? localeEn : _resolvedLocaleId;
 
     if (interrupt) {
       await _tts.stop();
@@ -126,20 +215,41 @@ class TTSService {
       _speaking = false;
       // Bahasa Inggris hanya berlaku untuk satu ucapan. Dikembalikan di
       // `finally` supaya exception di tengah tidak mengunci locale.
-      if (english && _engineLocale != localeId) {
+      if (english && _engineLocale != _resolvedLocaleId) {
         try {
-          await _tts.setLanguage(localeId);
-          _engineLocale = localeId;
+          await _tts.setLanguage(_resolvedLocaleId);
+          _engineLocale = _resolvedLocaleId;
         } catch (e) {
-          debugPrint('[TTS] gagal kembali ke $localeId: $e');
+          debugPrint('[TTS] gagal kembali ke $_resolvedLocaleId: $e');
         }
       }
     }
   }
 
+  /// Rentang kecepatan bicara yang benar-benar diterima mesin di perangkat ini.
+  ///
+  /// Ditanyakan, bukan dipatok. Rentangnya berbeda antar platform dan antar
+  /// mesin TTS: nilai di luar rentang diam-diam dijepit atau diabaikan, jadi
+  /// slider di Pengaturan bisa bergerak penuh sementara suaranya tidak berubah
+  /// sama sekali - dan pengguna menyimpulkan pengaturannya rusak.
+  double _rateMin = 0.1;
+  double _rateMax = 1.0;
+
+  Future<void> _resolveRateRange() async {
+    try {
+      final range = await _tts.getSpeechRateValidRange;
+      _rateMin = range.min;
+      _rateMax = range.max;
+      debugPrint('[TTS] rentang kecepatan: $_rateMin..$_rateMax '
+          '(normal ${range.normal})');
+    } catch (e) {
+      debugPrint('[TTS] rentang kecepatan tidak terbaca, pakai 0,1..1,0: $e');
+    }
+  }
+
   /// Kecepatan bicara - Pengaturan "Kecepatan bicara".
   Future<void> setRate(double rate) async {
-    await _tts.setSpeechRate(rate.clamp(0.1, 1.0));
+    await _tts.setSpeechRate(rate.clamp(_rateMin, _rateMax));
   }
 
   /// Hentikan yang sedang bicara DAN batalkan yang masih mengantre.
