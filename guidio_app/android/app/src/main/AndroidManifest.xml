@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Permissions wajib Guidio -->
     <uses-permission android:name="android.permission.CAMERA"/>
@@ -6,9 +7,54 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
 
+    <!-- Dipakai connectivity_plus untuk membedakan "server mati" dari
+         "tidak ada jaringan". Bedanya menentukan kalimat yang didengar
+         pengguna, jadi izin ini memang terpakai. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- Headset Bluetooth. Pengguna tunanetra lazim memakai earphone supaya
+         panduan suara terdengar di jalan ramai tanpa menutup telinga dari
+         lalu lintas. Tanpa izin ini, sebagian perangkat menolak merutekan
+         mikrofon ke headset dan pengenalan suara memakai mic ponsel yang
+         justru tertutup tangan. Disyaratkan README speech_to_text.
+         BLUETOOTH lama hanya berlaku sampai API 30. -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+
+    <!-- ── Izin yang DIBUANG, dan alasannya ────────────────────────────────
+         Ketiganya tidak pernah diminta aplikasi ini. Semuanya masuk sendiri
+         lewat penggabung manifest, terbaca di
+         `build/app/outputs/logs/manifest-merger-debug-report.txt`:
+
+           READ_PHONE_STATE     IMPLIED, "org.tensorflow.lite.gpu.api has a
+                                targetSdkVersion < 4". AAR delegate GPU TFLite
+                                tidak menyatakan targetSdkVersion, jadi Android
+                                menganggapnya aplikasi jaman API 3 dan
+                                menambahkan izin lawas secara otomatis.
+           READ_EXTERNAL_STORAGE  IMPLIED, menyusul WRITE dari camerax.
+           WRITE_EXTERNAL_STORAGE ADDED oleh camera_android_camerax.
+
+         Vinara tidak pernah membaca nomor telepon, tidak pernah menulis ke
+         penyimpanan bersama, dan foto OCR-nya hidup di `systemTemp` lalu
+         dihapus. Membiarkan ketiganya bukan cuma tidak rapi: READ_PHONE_STATE
+         termasuk izin sensitif yang menuntut deklarasi terpisah di Play
+         Console, dan meminta izin yang tidak dipakai adalah cara tercepat
+         ditolak saat rilis. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"
+        tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:node="remove"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:node="remove"/>
+
     <!-- Camera feature -->
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+    <!-- Mikrofon: perintah suara adalah jalur utama aplikasi ini, tapi enam
+         mode tetap bisa dipakai lewat tombol Pilih mode. Jadi `required`
+         false: perangkat tanpa mikrofon masih layak memasangnya. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
     <application
         android:label="Vinara"
         android:name="${applicationName}"
@@ -51,6 +97,33 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- WAJIB sejak Android 11 (API 30), dan perangkat uji utama proyek ini
+             justru Android 11. Tanpa entri ini, aturan package visibility
+             membuat aplikasi TIDAK BISA MELIHAT layanan pengenal suara di
+             perangkat: SpeechRecognizer.isRecognitionAvailable() mengembalikan
+             false, initialize() gagal, dan listen() berikutnya diam tanpa
+             status, tanpa hasil, tanpa galat.
+
+             Gejalanya di tangan pengguna persis seperti mikrofon yang rusak,
+             padahal mesinnya ada dan berfungsi. Disyaratkan README
+             speech_to_text dan dipakai di manifest aplikasi contohnya. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
+        </intent>
+        <!-- Pasangan dari entri di atas, untuk arah sebaliknya. Aturan package
+             visibility Android 11 berlaku sama untuk mesin text-to-speech:
+             tanpa deklarasi ini aplikasi tidak bisa melihat mesin TTS yang
+             terpasang, `getLanguages` mengembalikan daftar kosong, dan
+             `setLanguage("id-ID")` gagal diam-diam.
+
+             Akibatnya paling menyesatkan: TTS tetap bersuara, hanya saja
+             dengan fonetik bahasa bawaan. Kalimat Bahasa Indonesia dibacakan
+             seolah kata Inggris, dan pengguna tunanetra yang mengandalkan
+             suara mendengar bunyi yang tidak bisa dia pahami sama sekali.
+             Disyaratkan README flutter_tts. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
         </intent>
     </queries>
 </manifest>
