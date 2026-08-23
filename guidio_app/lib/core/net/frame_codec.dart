@@ -54,7 +54,7 @@ class _EncodeRequest {
 /// Preset ukuran unggah per jenis pemakaian.
 ///
 /// **Memperkecil gambar sebelum dikirim adalah keputusan yang paling
-/// menentukan waktu unggah** — jauh lebih berpengaruh daripada pilihan
+/// menentukan waktu unggah** - jauh lebih berpengaruh daripada pilihan
 /// protokol, keep-alive, atau kompresi tambahan. Frame 640×480 pada kualitas
 /// 70 sekitar 40–60 KB; frame 1920×1080 kualitas 90 bisa 400 KB. Di jaringan
 /// seluler menengah itu selisih beberapa detik, tiap frame.
@@ -63,13 +63,13 @@ class _EncodeRequest {
 /// mengirim piksel lebih banyak daripada yang dikonsumsi model adalah biaya
 /// murni tanpa perbaikan akurasi.
 abstract final class UploadPreset {
-  /// Segmentasi jalur & deteksi objek — model server memakai 640 px.
+  /// Segmentasi jalur & deteksi objek - model server memakai 640 px.
   static const navigation = (maxEdge: 640, quality: 70);
 
-  /// Cari objek — butuh sedikit lebih tajam untuk barang kecil.
+  /// Cari objek - butuh sedikit lebih tajam untuk barang kecil.
   static const findObject = (maxEdge: 800, quality: 75);
 
-  /// OCR — teks butuh resolusi jauh lebih tinggi. Huruf kecil hancur di 640 px.
+  /// OCR - teks butuh resolusi jauh lebih tinggi. Huruf kecil hancur di 640 px.
   static const ocr = (maxEdge: 1600, quality: 85);
 }
 
@@ -79,7 +79,7 @@ abstract final class FrameCodec {
   ///
   /// Versi lama mengerjakan ini di UI thread: 640×480 berarti 307.200 iterasi
   /// Dart per frame. Pada laju streaming apa pun itu membuat antarmuka
-  /// tersendat — dan di aplikasi yang dipakai sambil berjalan, tersendat
+  /// tersendat - dan di aplikasi yang dipakai sambil berjalan, tersendat
   /// berarti peringatan terlambat. `compute` memindahkannya ke isolate lain
   /// sehingga UI thread bebas menggambar dan TTS tetap lancar.
   static Future<Uint8List> encodeForUpload(
@@ -91,7 +91,7 @@ abstract final class FrameCodec {
     return compute(_encodeIsolate, _EncodeRequest(frame, maxEdge, quality));
   }
 
-  /// Versi untuk JPEG yang sudah jadi (hasil `takePicture`) — hanya
+  /// Versi untuk JPEG yang sudah jadi (hasil `takePicture`) - hanya
   /// memperkecil dan mengompres ulang. Dipakai sebelum mengunggah foto OCR:
   /// kamera sering menghasilkan 4000 px yang tidak menambah akurasi apa pun.
   static Future<Uint8List> recompressJpeg(

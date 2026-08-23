@@ -6,20 +6,20 @@
 /// diasumsikan pada target pengguna: tunanetra di pasar dan warung Indonesia.
 ///
 /// Menambahkan LLM penerjemah akan melanggar prinsip yang sudah dipegang
-/// proyek ini — lambat (1–3 detik), bisa berhalusinasi, dan butuh server.
+/// proyek ini - lambat (1–3 detik), bisa berhalusinasi, dan butuh server.
 /// Jadi pendekatannya sama persis dengan [generateNaturalNarration]: kamus
 /// lokal + aturan urutan kata. 0 ms, offline, dan tidak pernah mengarang.
 ///
 /// **Kalau tidak yakin, ia menyerah.** Caption yang cakupan kamusnya di bawah
 /// [_minCoverage] mengembalikan null, dan pemanggil membacakan versi
 /// Inggrisnya. Bahasa Indonesia yang kacau lebih buruk daripada Bahasa Inggris
-/// yang benar — pengguna tidak punya layar untuk memverifikasi tebakan kita.
+/// yang benar - pengguna tidak punya layar untuk memverifikasi tebakan kita.
 library;
 
 /// Ambang cakupan kamus. Di bawah ini, hasilnya tidak layak diucapkan.
 const double _minCoverage = 0.72;
 
-/// Frasa banyak kata — dicocokkan lebih dulu, terpanjang menang.
+/// Frasa banyak kata - dicocokkan lebih dulu, terpanjang menang.
 const Map<String, String> _phrases = {
   'in front of': 'di depan',
   'next to': 'di sebelah',
@@ -61,7 +61,7 @@ const Set<String> _dropped = {
   'a', 'an', 'the', 'is', 'are', 'that', 'which', 'it', 'its', 'be', 'being',
 };
 
-/// Kata sifat — di Bahasa Indonesia posisinya SESUDAH kata benda.
+/// Kata sifat - di Bahasa Indonesia posisinya SESUDAH kata benda.
 const Map<String, String> _adjectives = {
   'white': 'putih', 'black': 'hitam', 'red': 'merah', 'blue': 'biru',
   'green': 'hijau', 'yellow': 'kuning', 'brown': 'cokelat', 'gray': 'abu-abu',
@@ -167,7 +167,7 @@ SceneTranslation translateSceneCaption(String englishCaption) {
   text = text.replaceAll(RegExp(r'[^a-z0-9\s\-]'), ' ');
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-  // Frasa multi-kata lebih dulu — ditandai dengan token khusus supaya tidak
+  // Frasa multi-kata lebih dulu - ditandai dengan token khusus supaya tidak
   // ikut dipecah tahap berikutnya.
   final placeholders = <String, String>{};
   final sortedPhrases = _phrases.keys.toList()
@@ -230,7 +230,7 @@ SceneTranslation translateSceneCaption(String englishCaption) {
       continue;
     }
 
-    // Tidak dikenal — pertahankan apa adanya, tapi hitung sebagai tidak
+    // Tidak dikenal - pertahankan apa adanya, tapi hitung sebagai tidak
     // tercakup supaya ambang cakupan bisa menolak kalimat yang terlalu asing.
     out.add(token);
   }

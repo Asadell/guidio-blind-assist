@@ -10,7 +10,7 @@ import '../theme/app_colors.dart';
 /// Sebelumnya preview dipasang sebagai `Positioned.fill(child: CameraPreview(…))`
 /// di dalam `Stack`. Yang tidak kentara: `CameraPreview` membungkus dirinya
 /// dalam `AspectRatio`, jadi di dalam `Positioned.fill` dia TIDAK mengisi
-/// seluruh persegi — dia mengecil sampai muat sambil menjaga rasio, dan
+/// seluruh persegi - dia mengecil sampai muat sambil menjaga rasio, dan
 /// menyisakan pita kosong di atas-bawah atau kiri-kanan.
 ///
 /// Selama tidak ada yang digambar di atasnya, itu tidak jadi soal. Begitu ada
@@ -21,7 +21,7 @@ import '../theme/app_colors.dart';
 /// dengan rasio kamera.
 ///
 /// Yang membuatnya sulit dilacak: di satu HP bisa kelihatan hampir pas, di HP
-/// lain meleset jauh — dan tidak ada error di mana pun.
+/// lain meleset jauh - dan tidak ada error di mana pun.
 ///
 /// Widget ini menaruh preview dan hamparan di dalam `AspectRatio` yang SAMA,
 /// jadi keduanya selalu berbagi persegi yang identik. Penyelarasannya jadi
@@ -84,7 +84,7 @@ class CameraStage extends StatelessWidget {
   ///
   /// Dipisah jadi fungsi murni supaya bisa diuji tanpa perangkat: inilah satu
   /// angka yang menentukan apakah kotak deteksi jatuh di tempat yang benar,
-  /// dan salah di sini tidak memunculkan error apa pun — kotaknya tetap
+  /// dan salah di sini tidak memunculkan error apa pun - kotaknya tetap
   /// tergambar, cuma meleset.
   ///
   /// `CameraController.value.aspectRatio` dilaporkan dalam orientasi SENSOR,

@@ -9,8 +9,8 @@ from loguru import logger
 
 from db.database import init_db, is_available
 from routers import (
-    cari_objek,   # /api/cari-objek — YOLOE open-vocabulary
-    describe,     # /api/describe   — Moondream2
+    cari_objek,   # /api/cari-objek - YOLOE open-vocabulary
+    describe,     # /api/describe   - Moondream2
     support,      # /api/capabilities
 )
 from services.find_object_service import FindObjectService
@@ -32,18 +32,18 @@ async def lifespan(app: FastAPI):
     """
     logger.info("=== Menyalakan Vinara/Guidio Backend ===")
 
-    # PostgreSQL — risk zone + capability overrides. Tabel telemetri, crash,
+    # PostgreSQL - risk zone + capability overrides. Tabel telemetri, crash,
     # antrean, label, dan manifest tidak lagi punya endpoint aktif; lihat
     # `_archive/routers/support_full.py`.
     init_db()
 
-    # Cari Objek — YOLOE open-vocabulary, trigger-based (bukan real-time).
+    # Cari Objek - YOLOE open-vocabulary, trigger-based (bukan real-time).
     # Satu dari dua fitur yang benar-benar butuh server: modelnya tidak ada
     # di ponsel.
     app.state.find_object_service = FindObjectService()
     logger.info("[FindObject] Service terdaftar (lazy-load model YOLOE).")
 
-    # Scene Description — Moondream2 dimuat malas saat request pertama.
+    # Scene Description - Moondream2 dimuat malas saat request pertama.
     # Model ~2GB, tidak pantas menahan startup. RTX 3050 4GB VRAM cukup
     # untuk FP16 (~1.2GB efektif setelah kuantisasi runtime).
     app.state.moondream_service = MoonDreamService(
@@ -60,7 +60,7 @@ app = FastAPI(
     title="Vinara / Guidio Vision API",
     version="2.0.0",
     description=(
-        "Backend untuk Vinara — asisten visual suara untuk pengguna tunanetra. "
+        "Backend untuk Vinara - asisten visual suara untuk pengguna tunanetra. "
         "Empat dari enam mode (Deteksi Objek, Kenali Uang, Baca Teks, "
         "Navigasi) berjalan sepenuhnya on-device dan tidak memanggil API ini "
         "sama sekali. Yang tersisa di sini hanya yang modelnya tidak muat di "

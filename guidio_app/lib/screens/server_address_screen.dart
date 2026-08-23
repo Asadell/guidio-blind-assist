@@ -8,11 +8,11 @@ import '../services/tts_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// PG-08a..PG-08e — Alamat server, halaman sendiri (PG-02: "halaman kontrol
+/// PG-08a..PG-08e - Alamat server, halaman sendiri (PG-02: "halaman kontrol
 /// sendiri, bukan sheet").
 ///
 /// Dulu kontrol ini adalah satu baris di dalam daftar Pengaturan, dengan
-/// tombol "Uji" menempel di samping kolom isian — di sepertiga atas layar,
+/// tombol "Uji" menempel di samping kolom isian - di sepertiga atas layar,
 /// zona merah thumb zone. Sekarang aksinya memakai `zone/page-action`.
 ///
 /// **Tombolnya tidak pernah berpindah saat pesan hasil berganti.** Target yang
@@ -58,7 +58,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
   Future<void> _test() async {
     final host = _ctrl.text.trim();
 
-    // PG-08d — sebutkan apa yang salah, bukan "tidak valid" saja.
+    // PG-08d - sebutkan apa yang salah, bukan "tidak valid" saja.
     if (!_hostPattern.hasMatch(host)) {
       setState(() {
         _state = ServerFieldState.invalid;
@@ -91,7 +91,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
         'Terhubung. Waktu tempuh $ms milidetik. Tekan Simpan alamat untuk memakainya.',
       );
     } else {
-      // PG-08e — kegagalan uji tidak boleh diam-diam mencabut server yang
+      // PG-08e - kegagalan uji tidak boleh diam-diam mencabut server yang
       // sebenarnya masih bekerja.
       setState(() {
         _state = ServerFieldState.failed;
@@ -107,14 +107,14 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
     final host = _ctrl.text.trim();
     await context.read<SettingsProvider>().setServerHost(host);
     if (!mounted) return;
-    // Konfirmasi diucapkan SESUDAH tersimpan — bagian 4.1 berlaku untuk semua
+    // Konfirmasi diucapkan SESUDAH tersimpan - bagian 4.1 berlaku untuk semua
     // konfirmasi, bukan hanya ganti mode.
     await TTSService.instance.speak('Alamat server tersimpan.');
     if (mounted) Navigator.of(context).pop();
   }
 
   /// Label tombol utama berubah, posisinya tidak. PG-08c satu-satunya state
-  /// yang aksinya "Simpan alamat" — alamat baru hanya dipakai sesudah terbukti
+  /// yang aksinya "Simpan alamat" - alamat baru hanya dipakai sesudah terbukti
   /// bisa dihubungi.
   String get _primaryLabel => switch (_state) {
         ServerFieldState.testing => 'Menguji koneksi…',
@@ -130,7 +130,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
             icon: Icons.check_circle_outline_rounded,
           ),
         ServerFieldState.invalid => (
-            text: 'Format salah — alamat butuh titik dua dan nomor port. Contoh benar: 10.0.2.2:8000',
+            text: 'Format salah - alamat butuh titik dua dan nomor port. Contoh benar: 10.0.2.2:8000',
             color: AppColors.criticalLabel,
             icon: Icons.error_outline_rounded,
           ),
@@ -176,7 +176,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                   child: Text('Alamat server', style: AppTypography.bodyStrong()),
                 ),
                 const SizedBox(height: AppSpacing.s1),
-                // PG-08a — penjelasan server bawaan.
+                // PG-08a - penjelasan server bawaan.
                 Text(
                   'Vinara memakai server bawaan untuk Baca Teks, Asisten Suara, Cari Objek, dan segmentasi jalur. '
                   'Ganti alamat ini hanya kalau kamu menjalankan server sendiri.',

@@ -59,7 +59,7 @@ class SettingsProvider extends ChangeNotifier {
     // Tanpa baris ini, pilihan "Getar: Mati" tersimpan ke disk tapi tidak
     // mematikan apa pun.
     HapticService.instance.setMode(_vibrationMode);
-    // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama —
+    // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama -
     // tanpa ini, alamat kustom baru berlaku setelah pengguna membukanya lagi.
     ServerService.instance.setHost(_serverHost);
     notifyListeners();

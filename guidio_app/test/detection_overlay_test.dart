@@ -12,7 +12,7 @@ import 'package:guidio_app/widgets/segmentation_overlay.dart';
 ///
 /// Yang diuji di sini bukan "apakah kotaknya cantik", tapi apakah kotaknya
 /// jatuh DI TEMPAT YANG BENAR. Kesalahan pemetaan koordinat tidak pernah
-/// melempar error: kotaknya tetap muncul, tetap berwarna, tetap berlabel —
+/// melempar error: kotaknya tetap muncul, tetap berwarna, tetap berlabel -
 /// hanya menempel pada bagian layar yang salah. Satu-satunya cara menangkap
 /// itu tanpa perangkat sungguhan adalah menghitungnya di sini.
 
@@ -102,7 +102,7 @@ void main() {
     test('copyWith mempertahankan ukuran bingkai', () {
       // DetectionProvider memanggil copyWith untuk menempelkan trackId dan
       // jarak yang dihaluskan. Kalau ukuran bingkai hilang di situ, seluruh
-      // kotak berhenti tergambar tepat setelah tracker menyentuhnya —
+      // kotak berhenti tergambar tepat setelah tracker menyentuhnya -
       // gejalanya "kotaknya hilang sendiri" tanpa satu pun error.
       final d = _det(
         x1: 10, y1: 20, x2: 30, y2: 40,
@@ -206,7 +206,7 @@ void main() {
   group('CameraStage.uprightAspectOf', () {
     // Satu angka ini yang menentukan apakah kotak jatuh di tempat yang benar.
     // Kalau salah, hamparan memetakan koordinatnya ke persegi yang berbeda
-    // dari gambar kameranya — dan setiap kotak meleset tanpa satu pun error.
+    // dari gambar kameranya - dan setiap kotak meleset tanpa satu pun error.
     test('membalik rasio sensor lanskap jadi potret', () {
       expect(CameraStage.uprightAspectOf(4 / 3), closeTo(3 / 4, 1e-9));
       expect(CameraStage.uprightAspectOf(16 / 9), closeTo(9 / 16, 1e-9));

@@ -17,7 +17,7 @@ extension AppModeLabel on AppMode {
         AppMode.findObject => 'Cari Objek',
       };
 
-  /// Satu kalimat "apa yang bisa dilakukan" — diumumkan saat masuk mode.
+  /// Satu kalimat "apa yang bisa dilakukan" - diumumkan saat masuk mode.
   String get shortIntro => switch (this) {
         AppMode.tuntun     => 'Arahkan ponsel ke depan, saya akan menyebut rintangan di jalurmu.',
         AppMode.money      => 'Letakkan uang di dalam bingkai, saya akan menyebut nominalnya.',
@@ -47,7 +47,7 @@ extension AppModeLabel on AppMode {
   bool get needsServer => switch (this) {
         AppMode.tuntun     => false, // SSD MobileNet TFLite, sepenuhnya on-device
         AppMode.money      => false, // MobileNetV2 TFLite, sepenuhnya on-device
-        AppMode.ocr        => false, // ML Kit on-device — jalan penuh offline
+        AppMode.ocr        => false, // ML Kit on-device - jalan penuh offline
         AppMode.navigasi   => true,  // PIDNet on-device jadi jalur utama; server hanya cadangan
         AppMode.voice      => true,  // butuh server untuk describe; intent parsing lokal, tanpa LLM
         AppMode.findObject => true,  // YOLOE open-vocab hanya ada di server
@@ -74,7 +74,7 @@ class AppModeProvider extends ChangeNotifier {
   AppMode _mode = AppMode.tuntun;
   AppMode get mode => _mode;
 
-  /// Mode sebelum perpindahan terakhir — dipakai oleh fitur "kembali"
+  /// Mode sebelum perpindahan terakhir - dipakai oleh fitur "kembali"
   /// (perintah suara atau tombol ✕ di VoiceScreen overlay).
   AppMode? _previousMode;
   AppMode? get previousMode => _previousMode;
@@ -84,25 +84,25 @@ class AppModeProvider extends ChangeNotifier {
   int visitCountFor(AppMode m) => _visitCount[m] ?? 0;
 
   /// Kata pembuka yang dititipkan [setMode] untuk diucapkan oleh
-  /// [announceEntry] milik layar tujuan — mis. "Baik." dari perintah suara
+  /// [announceEntry] milik layar tujuan - mis. "Baik." dari perintah suara
   /// (AS-17). Dititipkan, bukan diucapkan di sini, supaya konfirmasi tidak
   /// pernah mendahului perpindahan state (bagian 4.1 ALUR-DAN-TOMBOL.md).
   String? _pendingPrefix;
 
-  /// PG-05 — tingkat kecerewetan pengguna. Bekerja **bersama** verbositas
+  /// PG-05 - tingkat kecerewetan pengguna. Bekerja **bersama** verbositas
   /// menurun bawaan (tiga pemakaian pertama lebih panjang), bukan
   /// menggantikannya: "ringkas" memotong panduan sejak awal, "detail"
   /// mempertahankannya selamanya.
   Verbosity _verbosity = Verbosity.sedang;
   void applyVerbosity(Verbosity v) => _verbosity = v;
 
-  /// Umumkan masuk mode. Dipanggil dari `initState` layar mode — artinya
+  /// Umumkan masuk mode. Dipanggil dari `initState` layar mode - artinya
   /// pengumuman selalu menyusul mode yang BENAR-BENAR terpasang, tidak pernah
   /// mendahuluinya. Mode default (Deteksi Objek) yang aktif sejak boot tanpa
   /// lewat [setMode] ikut lewat sini juga, supaya DO-29 "verbositas lengkap 3
   /// pemakaian pertama" tetap berlaku untuknya.
   Future<void> announceEntry(AppMode mode) async {
-    if (mode != _mode) return; // layar basi (dispose berpapasan) — jangan bicara
+    if (mode != _mode) return; // layar basi (dispose berpapasan) - jangan bicara
     final prefix = _pendingPrefix;
     _pendingPrefix = null;
 
@@ -129,7 +129,7 @@ class AppModeProvider extends ChangeNotifier {
     await TtsQueue().speak(announcement, tier: SpeechTier.warning);
   }
 
-  /// NV-18 — satu-satunya konfirmasi wajib di seluruh app: keluar dari Mode
+  /// NV-18 - satu-satunya konfirmasi wajib di seluruh app: keluar dari Mode
   /// Navigasi saat pengguna terdeteksi sedang berjalan. `navigasi_screen.dart`
   /// memasang hook ini selama aktif; kalau terpasang dan mengembalikan
   /// false, perpindahan mode dibatalkan. Ini titik tunggal yang dilewati
@@ -137,7 +137,7 @@ class AppModeProvider extends ChangeNotifier {
   Future<bool> Function(AppMode from, AppMode to)? confirmLeave;
 
   /// Berpindah mode. Mengembalikan **true hanya kalau mode benar-benar
-  /// berubah** — pemanggil wajib memeriksa nilai ini sebelum mengucapkan
+  /// berubah** - pemanggil wajib memeriksa nilai ini sebelum mengucapkan
   /// konfirmasi apa pun. [spokenPrefix] dititipkan ke pengumuman kedatangan
   /// layar tujuan, bukan diucapkan di sini.
   Future<bool> setMode(AppMode mode, {String? spokenPrefix}) async {
@@ -150,7 +150,7 @@ class AppModeProvider extends ChangeNotifier {
     _pendingPrefix = spokenPrefix;
     _mode = mode;
     notifyListeners();
-    // Pengumuman kedatangan diucapkan `announceEntry` dari layar tujuan —
+    // Pengumuman kedatangan diucapkan `announceEntry` dari layar tujuan -
     // sesudah layarnya benar-benar terpasang.
     return true;
   }

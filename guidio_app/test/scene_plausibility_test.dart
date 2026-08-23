@@ -7,7 +7,7 @@ import 'package:guidio_app/widgets/zone_indicator.dart' show ZoneStatus;
 /// ## Kenapa gerbang ini ada
 ///
 /// PIDNet selalu menjawab. Diarahkan ke langit-langit kamar, tembok polos,
-/// atau bagian dalam saku, dia tetap memberi label ke setiap piksel — dan
+/// atau bagian dalam saku, dia tetap memberi label ke setiap piksel - dan
 /// permukaan polos yang luas gampang jatuh ke kelas "walkable". Dari sana
 /// rasio zona terbaca "tengah 100% layak jalan", dan aplikasi mengucapkan
 /// **"Jalur aman, jalan lurus"** untuk foto langit-langit.
@@ -33,13 +33,13 @@ List<int> _mask(int Function(int x, int y) f) => [
 List<int> _sidewalk() => _mask((x, y) => y > _h * 0.45 ? 1 : 0);
 
 void main() {
-  group('assessScene — pemandangan wajar diterima', () {
+  group('assessScene - pemandangan wajar diterima', () {
     test('trotoar biasa lolos', () {
       expect(assessScene(_sidewalk(), _w, _h), SceneDoubt.none);
     });
 
     test('trotoar dengan lubang tetap lolos', () {
-      // Hazard TIDAK boleh membuat frame dianggap meragukan — justru inilah
+      // Hazard TIDAK boleh membuat frame dianggap meragukan - justru inilah
       // frame yang paling penting untuk diproses sampai tuntas.
       final m = _mask((x, y) {
         if (y > _h * 0.7 && x > _w * 0.4 && x < _w * 0.6) return 2;
@@ -58,7 +58,7 @@ void main() {
     test('tidak ada jalur sama sekali BUKAN keraguan', () {
       // Berdiri menghadap tembok pagar: jawaban "tidak ada jalur aman" itu
       // sah dan berguna. Menandainya sebagai "tidak terbaca" akan menukar
-      // peringatan yang benar dengan permintaan membetulkan kamera — dan
+      // peringatan yang benar dengan permintaan membetulkan kamera - dan
       // pengguna akan sibuk mengatur ponsel alih-alih memutar badan.
       final m = _mask((x, y) => (y > _h * 0.8 && x > _w * 0.45 && x < _w * 0.55) ? 1 : 0);
       expect(assessScene(m, _w, _h), isNot(SceneDoubt.degenerate));
@@ -67,14 +67,14 @@ void main() {
     test('frame seluruhnya non-walkable atau hazard tidak dijaga di sini', () {
       // Keduanya sudah gagal ke arah yang AMAN: status zonanya jadi `danger`
       // dan pengguna mendengar "Berhenti dulu, tidak ada jalur aman". Gerbang
-      // ini sengaja asimetris — yang dijaga cuma bentuk yang menghasilkan
+      // ini sengaja asimetris - yang dijaga cuma bentuk yang menghasilkan
       // lampu hijau palsu.
       expect(assessScene(_mask((x, y) => 0), _w, _h), SceneDoubt.none);
       expect(assessScene(_mask((x, y) => 2), _w, _h), SceneDoubt.none);
     });
   });
 
-  group('assessScene — frame tanpa struktur ditolak', () {
+  group('assessScene - frame tanpa struktur ditolak', () {
     test('seluruhnya walkable: lantai polos, tembok, atau lensa tertutup', () {
       // Inilah kasus yang paling berbahaya. Tanpa gerbang ini, frame seperti
       // ini menghasilkan "tengah 100% layak jalan" → "Jalur aman, jalan lurus".
@@ -88,7 +88,7 @@ void main() {
     });
   });
 
-  group('assessScene — jalur yang tidak menyentuh tanah', () {
+  group('assessScene - jalur yang tidak menyentuh tanah', () {
     test('kamera menghadap ke atas: jalur hanya di bagian atas frame', () {
       // Jalur terlihat jauh di depan, tapi tepat di depan kaki tidak ada
       // apa-apa yang terbaca. Menyuruh maju berdasarkan ini berarti menyuruh
@@ -103,7 +103,7 @@ void main() {
     });
   });
 
-  group('assessScene — masukan rusak tidak menjatuhkan', () {
+  group('assessScene - masukan rusak tidak menjatuhkan', () {
     test('mask kosong', () {
       expect(assessScene(const [], _w, _h), SceneDoubt.degenerate);
     });

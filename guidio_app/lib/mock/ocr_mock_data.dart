@@ -1,8 +1,8 @@
-/// Data & katalog mock khusus Mode Baca Teks (OCR) — dipakai HANYA oleh
+/// Data & katalog mock khusus Mode Baca Teks (OCR) - dipakai HANYA oleh
 /// `ocr_screen.dart` dan `ocr_debug_sheet.dart` untuk mendemonstrasikan
 /// 22 state BT-01..BT-22 (bagian 8 dokumen spesifikasi).
 ///
-/// ServerService.readText saat ini hanya mengembalikan `{'text': ...}` —
+/// ServerService.readText saat ini hanya mengembalikan `{'text': ...}` -
 /// tidak ada info bahasa, blok, atau status per-bagian. State yang butuh
 /// info itu (dua bahasa, sebagian gagal, sangat panjang) TIDAK BISA dipicu
 /// dari server sungguhan, jadi datanya dipalsukan di sini secara eksplisit.
@@ -25,7 +25,7 @@ class OcrBlock {
   });
 }
 
-/// Satu entri katalog debug — dipakai OcrDebugSheet untuk daftar 22 state.
+/// Satu entri katalog debug - dipakai OcrDebugSheet untuk daftar 22 state.
 class OcrDebugEntry {
   final String id;
   final String title;
@@ -64,22 +64,22 @@ String mockShortText() => 'Buka Senin–Sabtu, 08.00–17.00.';
 
 List<OcrBlock> mockLongBlocks() => const [
       OcrBlock(
-        heading: 'Bagian 1 — Judul menu',
+        heading: 'Bagian 1 - Judul menu',
         text: 'Daftar Menu Warung Bu Sari. Semua harga sudah termasuk nasi putih '
             'dan segelas air teh tawar.',
       ),
       OcrBlock(
-        heading: 'Bagian 2 — Menu utama',
+        heading: 'Bagian 2 - Menu utama',
         text: 'Ayam goreng lima belas ribu rupiah. Ikan bakar dua puluh ribu rupiah. '
             'Tahu tempe penyet delapan ribu rupiah. Sayur asem lima ribu rupiah.',
       ),
       OcrBlock(
-        heading: 'Bagian 3 — Minuman',
+        heading: 'Bagian 3 - Minuman',
         text: 'Es teh manis lima ribu rupiah. Es jeruk tujuh ribu rupiah. '
             'Kopi hitam enam ribu rupiah.',
       ),
       OcrBlock(
-        heading: 'Bagian 4 — Catatan',
+        heading: 'Bagian 4 - Catatan',
         text: 'Buka Senin sampai Sabtu, jam delapan pagi sampai lima sore. '
             'Tutup setiap hari Minggu dan hari besar.',
       ),

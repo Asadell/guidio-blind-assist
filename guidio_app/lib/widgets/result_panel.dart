@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// ResultPanel (F9) — kontrol audio selalu di baris atas kanan supaya
+/// ResultPanel (F9) - kontrol audio selalu di baris atas kanan supaya
 /// posisinya tidak bergeser saat isi berubah panjang.
 class ResultPanel extends StatelessWidget {
   final String title;

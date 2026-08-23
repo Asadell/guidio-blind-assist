@@ -11,7 +11,7 @@ import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Kenali Uang — bagian 9 IMPLEMENTASI.md, 18 state (UG-01..UG-18).
+/// Mode Kenali Uang - bagian 9 IMPLEMENTASI.md, 18 state (UG-01..UG-18).
 /// Sepenuhnya on-device, nol sentuhan: [MoneyProvider] menjalankan siklus
 /// deteksi mock sendiri lewat Timer, layar ini murni merender.
 class MoneyScreen extends StatefulWidget {
@@ -21,7 +21,7 @@ class MoneyScreen extends StatefulWidget {
   State<MoneyScreen> createState() => _MoneyScreenState();
 }
 
-/// Satu entri per baris tabel bagian 9 — termasuk pemecahan UG-09a/UG-09b
+/// Satu entri per baris tabel bagian 9 - termasuk pemecahan UG-09a/UG-09b
 /// dan UG-12a/UG-12b apa adanya, supaya panel debug bisa menunjukkan kedua
 /// varian secara terpisah (mis. UG-09b: campuran Rp20.000×2 + Rp5.000×1).
 enum MoneyDebugState {
@@ -64,7 +64,7 @@ extension _DebugMeta on MoneyDebugState {
 
 enum _CardPlacement { center, bottomSlot }
 
-/// Deskripsi render untuk satu momen layar — dihasilkan baik dari
+/// Deskripsi render untuk satu momen layar - dihasilkan baik dari
 /// [MoneyProvider] (otomatis) maupun dari [MoneyDebugState] (paksa manual).
 class _RenderSpec {
   final FrameFit? frame; // null = bingkai disembunyikan (UG-05/09/11)
@@ -106,7 +106,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // Prinsip 6 "umumkan saat tiba" — sesudah layar terpasang.
+      // Prinsip 6 "umumkan saat tiba" - sesudah layar terpasang.
       context.read<AppModeProvider>().announceEntry(AppMode.money);
       final money = context.read<MoneyProvider>();
       money.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
@@ -281,7 +281,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // z0 — kamera adalah lantai, full bleed.
+          // z0 - kamera adalah lantai, full bleed.
           if (cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
@@ -301,7 +301,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
               ),
             ),
 
-          // z25 — ModeBadge, turun otomatis kalau banner hadir.
+          // z25 - ModeBadge, turun otomatis kalau banner hadir.
           Positioned(
             top: badgeTop,
             left: AppSpacing.screenMargin,
@@ -323,7 +323,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             ),
 
           if (showPermissionCard)
-            // UG-14 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // UG-14 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera diperlukan',
@@ -404,7 +404,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
               ),
           ],
 
-          // z60 — BottomActionBar, selalu ada, selalu di tempat yang sama.
+          // z60 - BottomActionBar, selalu ada, selalu di tempat yang sama.
           // Tombol kiri = "Kenali Uang": snap frame saat ini, umumkan hasilnya.
           Positioned(
             left: 0,
@@ -549,7 +549,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           ),
         );
       case MoneyDebugState.ug13:
-        // Banner-nya sendiri dirender terpisah (showOfflineBanner) — konten
+        // Banner-nya sendiri dirender terpisah (showOfflineBanner) - konten
         // di baliknya tetap jalan normal (deteksi on-device tak terpengaruh).
         return _RenderSpec(card: NominalCard(amount: 20000, onReplay: () => _replay(20000)));
       case MoneyDebugState.ug14:
@@ -597,7 +597,7 @@ class _DebugStateSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Panel debug — Kenali Uang', style: AppTypography.title()),
+              child: Text('Panel debug - Kenali Uang', style: AppTypography.title()),
             ),
           ),
           const SizedBox(height: AppSpacing.s2),
@@ -618,7 +618,7 @@ class _DebugStateSheet extends StatelessWidget {
                     dense: true,
                     selected: current == d,
                     selectedTileColor: AppColors.actionTint,
-                    title: Text('${d.id} — ${d.title}', style: AppTypography.body()),
+                    title: Text('${d.id} - ${d.title}', style: AppTypography.body()),
                     onTap: () => onSelect(d),
                   ),
               ],

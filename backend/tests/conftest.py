@@ -1,5 +1,5 @@
 """
-conftest.py — Shared fixtures untuk semua test backend Guidio.
+conftest.py - Shared fixtures untuk semua test backend Guidio.
 
 Menyediakan:
   - `client`   : TestClient FastAPI (tanpa server nyata)
@@ -23,7 +23,7 @@ _LOCAL_FIXTURES = Path(__file__).parent / "fixtures"
 # `guidio_app` bersebelahan dengan `backend` di dalam `project/`, jadi cukup
 # satu tingkat naik. Versi lama naik dua tingkat dan menunjuk ke direktori
 # yang tidak ada, sehingga SELURUH tes berbasis gambar tersembunyi di balik
-# skip — hijau, tapi tidak menguji apa pun.
+# skip - hijau, tapi tidak menguji apa pun.
 _APP_FIXTURES   = BACKEND_DIR.parent / "guidio_app" / "test" / "fixtures"
 FIXTURES_DIR    = _LOCAL_FIXTURES if _LOCAL_FIXTURES.exists() else _APP_FIXTURES
 
@@ -31,7 +31,7 @@ FIXTURES_DIR    = _LOCAL_FIXTURES if _LOCAL_FIXTURES.exists() else _APP_FIXTURES
 
 @pytest.fixture(scope="session")
 def client():
-    """TestClient FastAPI — tanpa server nyata, langsung hit ASGI app."""
+    """TestClient FastAPI - tanpa server nyata, langsung hit ASGI app."""
     from main import app
 
     with TestClient(app, raise_server_exceptions=True) as c:
@@ -67,7 +67,7 @@ def obj_image_tas() -> bytes:
 
 @pytest.fixture
 def obj_image_botol() -> bytes:
-    """Gambar botol minum di dapur (cari objek fixture 03 — model biasanya detect ini)."""
+    """Gambar botol minum di dapur (cari objek fixture 03 - model biasanya detect ini)."""
     path = FIXTURES_DIR / "object_find" / "test_03_botol_minum_dapur.png"
     if not path.exists():
         pytest.skip(f"Fixture tidak ada: {path}")

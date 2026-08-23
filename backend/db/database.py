@@ -34,7 +34,7 @@ def _build_url() -> str:
 def init_db() -> bool:
     """Buat engine, jalankan skema (idempoten), seed data rujukan.
 
-    Mengembalikan False kalau database tidak terjangkau — server TETAP jalan,
+    Mengembalikan False kalau database tidak terjangkau - server TETAP jalan,
     hanya endpoint yang butuh DB yang menyerah dengan pesan jelas. Prinsip
     "tidak ada jalan buntu" berlaku juga untuk backend.
     """

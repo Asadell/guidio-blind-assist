@@ -11,16 +11,16 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 ///
 /// Preprocessing adalah bagian yang paling gampang salah TANPA memunculkan
 /// error. Rotasi terbalik, sumbu tertukar, normalisasi keliru, tata letak
-/// tensor salah — semuanya menghasilkan tensor berukuran benar yang tetap
+/// tensor salah - semuanya menghasilkan tensor berukuran benar yang tetap
 /// diterima interpreter. Modelnya jalan, angkanya keluar, dan yang memburuk
 /// cuma akurasinya. Dari lapangan, itu terlihat seperti "modelnya kurang
 /// bagus" padahal yang salah pengiriman gambarnya.
 ///
 /// Dua hal yang dijaga di sini:
 ///
-/// 1. **Geometri** — piksel jatuh di tempat yang benar setelah rotasi dan
+/// 1. **Geometri** - piksel jatuh di tempat yang benar setelah rotasi dan
 ///    penskalaan, diverifikasi dengan pola yang posisinya diketahui.
-/// 2. **Kontrak tensor** — buffer DATAR benar-benar diterima interpreter
+/// 2. **Kontrak tensor** - buffer DATAR benar-benar diterima interpreter
 ///    TFLite sungguhan, baik sebagai masukan maupun keluaran. Ini yang
 ///    memungkinkan pipeline berhenti mengalokasikan ratusan ribu objek kecil
 ///    per frame.
@@ -154,7 +154,7 @@ void main() {
 
   group('Interpolasi', () {
     test('bilinear menghaluskan tepi, bukan menyalinnya mentah', () {
-      // PIDNet mengecilkan 640 baris jadi 384 — pengecilan 1,7x. Dengan
+      // PIDNet mengecilkan 640 baris jadi 384 - pengecilan 1,7x. Dengan
       // nearest, dua dari tiga baris dibuang dan tepi trotoar yang tipis bisa
       // hilang atau berkedip antar frame.
       final t = run(planes((sx, sy) => sx < srcW ~/ 2));
@@ -197,7 +197,7 @@ void main() {
   //
   // Inti perubahannya: berhenti memakai `List` bersarang dan memakai buffer
   // datar yang dipakai ulang. Kalau tflite_flutter ternyata menolak buffer
-  // datar, seluruh pipeline mati — jadi itu harus dibuktikan, bukan
+  // datar, seluruh pipeline mati - jadi itu harus dibuktikan, bukan
   // diasumsikan.
   group('Interpreter TFLite menerima buffer datar', () {
     late Interpreter pidnet;
@@ -208,7 +208,7 @@ void main() {
       try {
         // Sengaja fp32: varian fp16 punya tensor masukan FLOAT16 dan tidak
         // bisa menerima float32. `PidnetService.tryLoad` sekarang membuktikan
-        // tiap varian dengan inferensi percobaan lalu memilih yang jalan —
+        // tiap varian dengan inferensi percobaan lalu memilih yang jalan -
         // dan di semua perangkat CPU, yang jalan adalah yang ini.
         pidnet = Interpreter.fromFile(
             File('assets/models/pidnet_s_3zona.tflite'));

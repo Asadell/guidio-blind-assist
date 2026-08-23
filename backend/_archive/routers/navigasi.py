@@ -1,8 +1,8 @@
-"""Mode Navigasi — POST /api/navigasi (segmentasi jalur 3 zona + rintangan).
+"""Mode Navigasi - POST /api/navigasi (segmentasi jalur 3 zona + rintangan).
 
 Sejak deteksi rintangan dipindah dari perangkat ke server, endpoint ini
 mengembalikan **keduanya dari satu frame**: status tiga zona jalur DAN daftar
-rintangan di depan. Menggabungkannya di sini disengaja — aplikasi kalau tidak
+rintangan di depan. Menggabungkannya di sini disengaja - aplikasi kalau tidak
 harus mengunggah frame yang sama dua kali ke dua endpoint, dan itu menggandakan
 pemakaian kuota serta latensi pada mode yang dipakai sambil berjalan.
 
@@ -36,7 +36,7 @@ async def navigasi(
     """Bagi frame jadi tiga zona jalur dan sebut mana yang layak dilewati.
 
     Kalau `lat`/`lng` diisi, sekalian cek zona rawan dari laporan pengguna
-    lain (Risk Zone) — itu informasi yang tidak terlihat kamera.
+    lain (Risk Zone) - itu informasi yang tidak terlihat kamera.
     """
     raw = await file.read()
     frame = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
@@ -53,7 +53,7 @@ async def navigasi(
     result = svc.zones(frame)
 
     # Rintangan dari frame yang SAMA. Prioritas suara di aplikasi menaruh
-    # rintangan di atas zona — jaraknya lebih dekat dan lebih mendesak — jadi
+    # rintangan di atas zona - jaraknya lebih dekat dan lebih mendesak - jadi
     # keduanya harus datang bersamaan, bukan dari dua permintaan yang bisa
     # tiba dengan selisih waktu.
     yolo = getattr(request.app.state, "yolo_service", None)
@@ -103,7 +103,7 @@ async def navigasi_status(request: Request):
         "note": (
             "Model PIDNet-S aktif."
             if svc.loaded
-            else "Model belum ada — memakai fallback heuristik OpenCV. "
+            else "Model belum ada - memakai fallback heuristik OpenCV. "
                  "Arahan jalur tetap keluar, tapi akurasinya di bawah model terlatih."
         ),
     }

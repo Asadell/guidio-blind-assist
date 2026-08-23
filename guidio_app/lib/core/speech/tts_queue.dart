@@ -38,7 +38,7 @@ class _QueuedSpeech {
   bool isStale(DateTime now) => now.difference(queuedAt) > maxAge;
 }
 
-/// TtsQueue — antrean bertingkat "satu pintu suara".
+/// TtsQueue - antrean bertingkat "satu pintu suara".
 ///
 /// ## Yang berubah dari versi sebelumnya, dan kenapa
 ///

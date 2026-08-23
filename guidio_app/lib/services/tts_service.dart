@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-/// TTS Service — Text-to-Speech, satu-satunya pintu keluar suara aplikasi.
+/// TTS Service - Text-to-Speech, satu-satunya pintu keluar suara aplikasi.
 ///
 /// **Aturan mutlak: tidak ada ucapan yang dibuang diam-diam.**
 ///
 /// Versi sebelumnya menjaga flag `_speaking` lalu membungkus `speak()` dengan
 /// `if (!_speaking)`. Akibatnya setiap permintaan bicara yang datang saat TTS
-/// sedang berjalan **hilang tanpa jejak** — termasuk peringatan rintangan —
+/// sedang berjalan **hilang tanpa jejak** - termasuk peringatan rintangan -
 /// dan pemanggilnya tetap menerima Future yang selesai normal, jadi
 /// [TtsQueue] mengira pesannya sudah tersampaikan. Untuk pengguna yang
 /// berjalan sambil mengandalkan suara, itu bukan bug performa; itu peringatan
@@ -33,7 +33,7 @@ class TTSService {
   bool get isSpeaking => _speaking;
 
   /// Locale yang sedang terpasang di engine. Dilacak supaya `setLanguage`
-  /// hanya dipanggil saat benar-benar berganti — pemanggilan berulang pada
+  /// hanya dipanggil saat benar-benar berganti - pemanggilan berulang pada
   /// sebagian engine Android memotong ucapan yang sedang berjalan.
   String _engineLocale = localeId;
 
@@ -72,7 +72,7 @@ class TTSService {
   /// oleh ucapan lain yang meminta [interrupt].
   ///
   /// [english] memakai locale `en-US` (hasil Moondream2), lalu mengembalikan
-  /// engine ke `id-ID` — pengembaliannya di blok `finally`, jadi kegagalan di
+  /// engine ke `id-ID` - pengembaliannya di blok `finally`, jadi kegagalan di
   /// tengah tidak meninggalkan aplikasi berbicara Inggris selamanya.
   Future<void> speak(
     String message, {
@@ -137,7 +137,7 @@ class TTSService {
     }
   }
 
-  /// Kecepatan bicara — Pengaturan "Kecepatan bicara".
+  /// Kecepatan bicara - Pengaturan "Kecepatan bicara".
   Future<void> setRate(double rate) async {
     await _tts.setSpeechRate(rate.clamp(0.1, 1.0));
   }

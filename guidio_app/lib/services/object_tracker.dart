@@ -2,7 +2,7 @@ import 'dart:math';
 import '../models/detection.dart';
 import 'camera_health_service.dart';
 
-/// TrackedObject — state satu objek yang sedang di-track.
+/// TrackedObject - state satu objek yang sedang di-track.
 ///
 /// ## Kompensasi ayunan tangan
 ///
@@ -12,15 +12,15 @@ import 'camera_health_service.dart';
 ///
 /// 1. Jarak yang diucapkan melompat-lompat ("dua meter… satu meter… dua
 ///    meter") padahal tidak ada yang bergerak.
-/// 2. Aturan lama — `area > lastArea * 1.20` dari **satu** frame ke frame
-///    berikutnya — menyalakan `isApproaching` pada ayunan biasa, dan itu
+/// 2. Aturan lama - `area > lastArea * 1.20` dari **satu** frame ke frame
+///    berikutnya - menyalakan `isApproaching` pada ayunan biasa, dan itu
 ///    memotong cooldown jadi separuh. Peringatan jadi lebih sering justru
 ///    karena tangan bergoyang, bukan karena ada bahaya mendekat.
 ///
 /// Perbaikannya tidak butuh matematika gyroscope: dua EMA jarak dengan
 /// kecepatan berbeda, plus syarat tren yang harus bertahan beberapa frame.
 /// Saat [CameraHealthService.motionLevel] tinggi, penghalusan diperlambat dan
-/// ambangnya dinaikkan — sinyal yang berisik diperlakukan sebagai sinyal yang
+/// ambangnya dinaikkan - sinyal yang berisik diperlakukan sebagai sinyal yang
 /// berisik, bukan sebagai kebenaran.
 class TrackedObject {
   final int    id;
@@ -35,7 +35,7 @@ class TrackedObject {
   /// Berapa frame berturut-turut tren menunjukkan mendekat.
   int _approachStreak = 0;
 
-  /// Jarak yang sudah dihaluskan — inilah yang layak diucapkan ke pengguna.
+  /// Jarak yang sudah dihaluskan - inilah yang layak diucapkan ke pengguna.
   /// Null sebelum ada satu pun pembaruan jarak.
   double? get smoothedDistance => _slowDist;
 
@@ -88,7 +88,7 @@ class TrackedObject {
   }
 }
 
-/// ObjectTracker — SORT (Simple Online Realtime Tracking) pure Dart.
+/// ObjectTracker - SORT (Simple Online Realtime Tracking) pure Dart.
 ///
 /// Tidak ada library eksternal. Cocok untuk 5–15 objek per frame.
 /// Manfaat utama untuk Guidio:
@@ -108,7 +108,7 @@ class ObjectTracker {
   /// terakhir, sejajar indeks dengan daftar deteksi yang dikirim.
   ///
   /// Ini yang membuat cooldown bisa dikunci per objek, bukan per kelas.
-  /// Tanpa pemetaan ini, pemanggil hanya bisa mencocokkan track lewat label —
+  /// Tanpa pemetaan ini, pemanggil hanya bisa mencocokkan track lewat label -
   /// dan dengan dua objek sekelas di frame, yang ketemu selalu track pertama,
   /// sehingga status "mendekat" milik objek jauh bisa menempel ke objek dekat.
   List<TrackedObject?> _lastAssignment = const [];
@@ -140,7 +140,7 @@ class ObjectTracker {
 
       for (int i = 0; i < detections.length; i++) {
         if (matched.contains(i)) continue;
-        // Hanya match dengan label yang sama — tidak cross-class matching
+        // Hanya match dengan label yang sama - tidak cross-class matching
         if (detections[i].labelEn != track.label) continue;
 
         final iou = _iou(
@@ -196,7 +196,7 @@ class ObjectTracker {
       _tracks.removeWhere((_, t) => t.missedFrames > _maxMissedFrames);
 
   /// Intersection over Union dalam pixel coords.
-  /// Formula identik dengan normalized coords — unit tidak mempengaruhi rasio.
+  /// Formula identik dengan normalized coords - unit tidak mempengaruhi rasio.
   double _iou(
     double ax, double ay, double aw, double ah,
     double bx, double by, double bw, double bh,
@@ -215,7 +215,7 @@ class ObjectTracker {
     return inter / (aw * ah + bw * bh - inter);
   }
 
-  /// Reset semua track — dipanggil saat mode berganti (stopRealtime).
+  /// Reset semua track - dipanggil saat mode berganti (stopRealtime).
   void reset() {
     _tracks.clear();
     _lastAssignment = const [];

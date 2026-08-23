@@ -4,7 +4,7 @@ import '../core/speech/tts_queue.dart';
 
 export '../core/speech/tts_queue.dart' show SpeechTier;
 
-/// TtsProvider — pembungkus [TtsQueue] tier-based (bagian 15). Dipakai
+/// TtsProvider - pembungkus [TtsQueue] tier-based (bagian 15). Dipakai
 /// screen/mode baru lewat `context.read<TtsProvider>().speak(msg, tier: ...)`
 /// alih-alih memanggil TTSService langsung, supaya aturan interupsi
 /// Critical/Warning/Info dan anti-banjir Info konsisten di seluruh app.

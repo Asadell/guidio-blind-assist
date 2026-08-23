@@ -29,11 +29,11 @@ const _steps = [
   ),
 ];
 
-/// OB-01..OB-07 — panduan awal 3 langkah. Bisa dilewati (OB-05, menyebut
+/// OB-01..OB-07 - panduan awal 3 langkah. Bisa dilewati (OB-05, menyebut
 /// apa yang dilewatkan) dan diulang dari Pengaturan (OB-06).
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onDone;
-  /// True saat dipanggil ulang dari Pengaturan (OB-06) — menampilkan tombol
+  /// True saat dipanggil ulang dari Pengaturan (OB-06) - menampilkan tombol
   /// kembali alih-alih alur pertama-kali.
   final bool fromSettings;
 
@@ -84,7 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final step = _steps[_index];
     final isLast = _index == _steps.length - 1;
 
-    // OB-01..OB-07 — layar penunjang, memakai `zone/page-action`. "Lewati
+    // OB-01..OB-07 - layar penunjang, memakai `zone/page-action`. "Lewati
     // panduan" (dan "Kembali ke Pengaturan" pada OB-06) adalah tombol sekunder
     // 56 dp tepat di atas primer, **tidak pernah di pojok kanan atas**: pojok
     // atas adalah zona merah thumb zone, butuh ganti pegangan.
@@ -116,7 +116,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const SizedBox(height: AppSpacing.s6),
                     Semantics(
                       header: true,
-                      // Eyebrow langkah dibaca sebagai bagian judul — bagian 10
+                      // Eyebrow langkah dibaca sebagai bagian judul - bagian 10
                       // nomor 5, bukan simpul fokus tersendiri.
                       label: 'Langkah ${_index + 1} dari ${_steps.length}. ${step.title}',
                       child: ExcludeSemantics(
@@ -129,7 +129,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               const Spacer(),
-              // Titik langkah: ExcludeSemantics wajib (bagian 16) — maknanya
+              // Titik langkah: ExcludeSemantics wajib (bagian 16) - maknanya
               // sudah dibawa label judul di atas.
               ExcludeSemantics(
                 child: Row(

@@ -28,7 +28,7 @@ LABEL_ID: dict[str, str] = {
     "suitcase":      "koper",
 }
 
-# Tinggi nyata objek dalam cm — model COCO
+# Tinggi nyata objek dalam cm: model COCO
 REAL_HEIGHTS_CM: dict[str, int] = {
     "person":     170,
     "motorcycle": 120,
@@ -118,7 +118,7 @@ class YOLOService:
                     logger.success(f"YOLO navigasi custom loaded. "
                                    f"Classes: {list(self.navigasi_model.names.values())}")
                 except Exception as e:
-                    logger.warning(f"Model navigasi custom gagal load: {e} — fallback ke COCO.")
+                    logger.warning(f"Model navigasi custom gagal load: {e} - fallback ke COCO.")
                     self.navigasi_model = None
 
             return True
@@ -202,7 +202,7 @@ class YOLOService:
         return (real_h * FOCAL_LENGTH_PX) / (box_h * 100)
 
     def _estimate_distance_nav(self, label: str, box_h: int) -> float:
-        """Estimasi jarak model navigasi custom — pakai real heights skema nav."""
+        """Estimasi jarak model navigasi custom - pakai real heights skema nav."""
         if box_h <= 0:
             return 999.0
         real_h = REAL_HEIGHTS_NAVIGASI.get(label, REAL_HEIGHTS_NAVIGASI["default"])
@@ -235,7 +235,7 @@ class YOLOService:
         """Tentukan level bahaya dari kombinasi class navigasi custom + jarak.
 
         Lubang & got_terbuka lebih kritis dari orang/motor pada jarak dekat
-        karena pengguna bisa langsung jatuh — tidak ada waktu menghindar.
+        karena pengguna bisa langsung jatuh - tidak ada waktu menghindar.
         """
         if label in ("lubang", "got_terbuka"):
             if dist < 1.0:

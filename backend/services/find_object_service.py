@@ -1,4 +1,4 @@
-"""Mode Cari Objek — YOLOE open-vocabulary (prompt teks).
+"""Mode Cari Objek - YOLOE open-vocabulary (prompt teks).
 
 Kenapa YOLOE dan bukan YOLO closed-set biasa: target pencarian datang dari
 ucapan pengguna ("cari dompet", "cari tas merah"), jadi kelasnya tidak bisa
@@ -236,7 +236,7 @@ class FindObjectService:
     # ── Penyusun naskah suara ────────────────────────────────────────────
 
     def _compose_message(self, target_id: str, nearest: dict, total: int) -> str:
-        """Naskah CO-06 / CO-07 / CO-08 — instruksi fisik dan konkret."""
+        """Naskah CO-06 / CO-07 / CO-08 - instruksi fisik dan konkret."""
         dist = nearest["distance_meter"]
         arah = nearest["direction"]
 
@@ -268,7 +268,7 @@ class FindObjectService:
         terdengar dua kali lebih jauh.
 
         Ini penting sejak router mengecilkan frame lewat `enhance_for_vision`,
-        tapi sebenarnya sudah salah sejak dulu — HP dengan resolusi kamera
+        tapi sebenarnya sudah salah sejak dulu - HP dengan resolusi kamera
         berbeda mengirim frame dengan lebar berbeda ke endpoint yang sama.
         """
         real_h = EXTRA_HEIGHTS_CM.get(prompt_en, DEFAULT_HEIGHT_CM)

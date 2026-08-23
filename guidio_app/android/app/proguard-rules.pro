@@ -14,7 +14,7 @@
 # kelas yang tidak ada lalu menggagalkan seluruh build release.
 #
 # Vinara hanya memakai aksara Latin (`TextRecognitionScript.latin`), jadi
-# yang benar adalah membisukan peringatannya — bukan menarik empat artefak
+# yang benar adalah membisukan peringatannya: bukan menarik empat artefak
 # aksara tambahan yang masing-masing menambah beberapa megabyte ke APK untuk
 # bahasa yang tidak pernah dibaca aplikasi ini.
 -dontwarn com.google.mlkit.vision.text.chinese.**

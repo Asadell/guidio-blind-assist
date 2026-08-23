@@ -1,7 +1,7 @@
 """Risk Zone: lokasi yang sering dilaporkan ada hambatan.
 
 Dikumpulkan anonim dari semua pengguna (tanpa auth, cukup koordinat).
-Sejak versi ini datanya PERSISTEN di PostgreSQL — sebelumnya dict in-memory
+Sejak versi ini datanya PERSISTEN di PostgreSQL - sebelumnya dict in-memory
 yang hilang tiap server restart, jadi zona bahaya tidak pernah benar-benar
 terbentuk.
 
@@ -25,7 +25,7 @@ class RiskZoneService:
         logger.info(
             "RiskZoneService init (PostgreSQL)"
             if is_available()
-            else "RiskZoneService init — DB mati, fitur zona rawan nonaktif"
+            else "RiskZoneService init - DB mati, fitur zona rawan nonaktif"
         )
 
     def report(self, lat: float, lng: float, label: str) -> None:

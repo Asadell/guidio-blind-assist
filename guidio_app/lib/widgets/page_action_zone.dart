@@ -5,11 +5,11 @@ import '../core/layout/zone_contract.dart';
 import '../theme/index.dart';
 import 'full_screen_button.dart';
 
-/// `zone/page-action` — bagian 6 ALUR-DAN-TOMBOL.md.
+/// `zone/page-action` - bagian 6 ALUR-DAN-TOMBOL.md.
 ///
 /// Kontrak zona di IMPLEMENTASI.md dirancang untuk enam mode, yang semuanya
-/// diakhiri `BottomActionBar` 112 dp. Layar penunjang — Pengaturan,
-/// Onboarding, Izin — tidak punya bar itu, jadi tidak ada zona yang menampung
+/// diakhiri `BottomActionBar` 112 dp. Layar penunjang - Pengaturan,
+/// Onboarding, Izin - tidak punya bar itu, jadi tidak ada zona yang menampung
 /// tombol aksi halaman; itu sebabnya tombol seperti "Uji koneksi" dulu
 /// berakhir menempel di kolom isian, di sepertiga atas layar.
 ///
@@ -22,7 +22,7 @@ import 'full_screen_button.dart';
 /// [bottomCardSlotOffset] sebagai gantinya.
 ///
 /// Sekunder digambar **di atas** primer, dan karena itu juga dibaca TalkBack
-/// lebih dulu — urutan fokus bagian 10 nomor 10 lalu 11. Urutan itu dipasang
+/// lebih dulu - urutan fokus bagian 10 nomor 10 lalu 11. Urutan itu dipasang
 /// eksplisit lewat [SemanticsSortKey]; di Flutter urutan fokus tidak otomatis
 /// mengikuti posisi visual.
 class PageActionZone extends StatelessWidget {
@@ -30,7 +30,7 @@ class PageActionZone extends StatelessWidget {
   final VoidCallback? onPrimary;
   final bool primaryDisabled;
 
-  /// Wajib diisi saat [primaryDisabled] — bagian 5.4: tombol nonaktif selalu
+  /// Wajib diisi saat [primaryDisabled] - bagian 5.4: tombol nonaktif selalu
   /// menyebut alasannya, dan alasan itu ikut dibacakan sebagai bagian nilai.
   final String? primaryDisabledReason;
   final IconData? primaryIcon;
@@ -96,7 +96,7 @@ class PageActionZone extends StatelessWidget {
   }
 }
 
-/// Tombol sekunder 56 dp untuk `zone/page-action` — "Lewati panduan",
+/// Tombol sekunder 56 dp untuk `zone/page-action` - "Lewati panduan",
 /// "Ulangi langkah ini", "Keluar dari aplikasi". Lebar penuh supaya target
 /// sentuhnya sama besarnya dengan primer; yang membedakan hanya bobot visual,
 /// bukan kemudahan dijangkau.
@@ -141,7 +141,7 @@ class VinaraSecondaryButton extends StatelessWidget {
 
 /// Scaffold layar penunjang: isi halaman + [PageActionZone] menempel di dasar.
 /// Zona dipasang lewat `bottomNavigationBar` supaya ia sticky saat [body]
-/// digulung — aksi utama halaman wajib terjangkau **tanpa** pengguna
+/// digulung - aksi utama halaman wajib terjangkau **tanpa** pengguna
 /// menggulung (bagian 5 "Aturan penempatan").
 class PageActionScaffold extends StatelessWidget {
   final Widget body;

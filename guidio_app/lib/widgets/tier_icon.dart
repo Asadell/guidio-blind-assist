@@ -108,7 +108,7 @@ class _TierIconPainter extends CustomPainter {
     }
   }
 
-  /// Tanda seru (garis + titik) — tier Critical/Warning garis-lalu-titik,
+  /// Tanda seru (garis + titik) - tier Critical/Warning garis-lalu-titik,
   /// tier Info titik-lalu-garis (menyerupai huruf "i").
   void _mark(Canvas canvas, double scale, Color color, {required bool dotFirst}) {
     final stroke = Paint()

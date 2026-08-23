@@ -298,7 +298,7 @@ def get_turns(session_id: str, limit: int = 20) -> list[dict]:
 
 
 def expire_stale_sessions() -> int:
-    """AS-23 — riwayat lebih dari 15 menit dihapus, dan itu diumumkan app."""
+    """AS-23 - riwayat lebih dari 15 menit dihapus, dan itu diumumkan app."""
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=HISTORY_TTL_MINUTES)
     row = execute_returning(
         """

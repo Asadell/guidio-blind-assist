@@ -16,7 +16,7 @@ async def ws_detect(ws: WebSocket):
     Filter pipeline ada di Flutter, BUKAN di sini.
 
     Query params:
-      lat, lng — koordinat GPS user (opsional, untuk Risk Zone)
+      lat, lng - koordinat GPS user (opsional, untuk Risk Zone)
     """
     await ws.accept()
 
@@ -68,7 +68,7 @@ async def ws_detect(ws: WebSocket):
             await ws.send_json({
                 "type":       "detections",
                 "frame_id":   frame_count,
-                "detections": detections,   # raw, tanpa filter — filter di Flutter
+                "detections": detections,   # raw, tanpa filter - filter di Flutter
                 "risk_zone":  risk_warning, # None atau dict warning
             })
 

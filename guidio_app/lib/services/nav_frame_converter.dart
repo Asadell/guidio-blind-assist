@@ -1,8 +1,10 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
-/// Menyiapkan satu frame kamera menjadi DUA tensor sekaligus — PIDNet dan
-/// YOLO navigasi — dalam satu lintasan, di isolate terpisah.
+import 'luma_contrast.dart';
+
+/// Menyiapkan satu frame kamera menjadi DUA tensor sekaligus - PIDNet dan
+/// YOLO navigasi - dalam satu lintasan, di isolate terpisah.
 ///
 /// ## Kenapa ditulis ulang total
 ///
@@ -27,10 +29,10 @@ import 'package:flutter/foundation.dart';
 ///
 /// 1. **Preview tersendat.** Isolate UI terkunci ratusan milidetik setiap
 ///    siklus. Karena TTS juga dijadwalkan dari thread yang sama, suaranya ikut
-///    tersendat — di mode yang tugasnya memperingatkan bahaya.
+///    tersendat - di mode yang tugasnya memperingatkan bahaya.
 /// 2. **Model menerima frame yang sudah basi.** Frame yang datang saat isolate
 ///    UI sibuk dibuang. Modelnya bagus, tapi yang sampai ke dia gambar dari
-///    beberapa ratus milidetik yang lalu — dan pengguna sudah melangkah.
+///    beberapa ratus milidetik yang lalu - dan pengguna sudah melangkah.
 ///
 /// Versi ini menggabungkan rotasi, crop, penskalaan, konversi warna, dan
 /// normalisasi menjadi **pemetaan indeks**. Tidak ada gambar antara yang
@@ -40,7 +42,7 @@ import 'package:flutter/foundation.dart';
 /// Diukur di mesin yang sama: **23 ms**, sekitar **6x lebih cepat**, dan
 /// seluruhnya di luar isolate UI. Angkanya bukan 13x seperti pada purwarupa
 /// awal karena purwarupa itu memakai nearest-neighbour; bilinear membaca
-/// empat piksel alih-alih satu. Selisih itu dibayar dengan sengaja — lihat
+/// empat piksel alih-alih satu. Selisih itu dibayar dengan sengaja - lihat
 /// catatan di [_YuvSampler].
 ///
 /// Ukur ulang kapan saja: `flutter test test/nav_pipeline_bench_test.dart`.
@@ -57,8 +59,8 @@ import 'package:flutter/foundation.dart';
 /// sementara isolate pekerja yang hidup terus memakan 5,2 ms untuk pekerjaan
 /// yang sama. Dart modern berbagi heap dan kode antar isolate dalam satu grup,
 /// jadi spawn-nya murah. Isolate pekerja menambah siklus hidup, penanganan
-/// galat, dan tekanan balik yang harus dijaga sendiri — semuanya di mode yang
-/// menyangkut keselamatan — tanpa satu pun keuntungan terukur.
+/// galat, dan tekanan balik yang harus dijaga sendiri - semuanya di mode yang
+/// menyangkut keselamatan - tanpa satu pun keuntungan terukur.
 class NavFrameConverter {
   NavFrameConverter._();
 
@@ -75,7 +77,7 @@ class NavFrameConverter {
 
   /// Jalur yang sama, tapi dari bidang YUV mentah dan tanpa isolate.
   ///
-  /// `CameraImage` tidak bisa dibuat di test — konstruktornya milik plugin dan
+  /// `CameraImage` tidak bisa dibuat di test - konstruktornya milik plugin dan
   /// butuh perangkat. Tanpa pintu ini, satu-satunya bagian yang menentukan
   /// apakah model menerima piksel yang benar justru tidak bisa diuji sama
   /// sekali, dan kesalahan pemetaan indeks di sini tidak memunculkan error:
@@ -114,7 +116,7 @@ class NavTensors {
   /// `[1,640,640,3]`, rentang 0..1.
   final Float32List yolo;
 
-  /// Ukuran bingkai TEGAK — bingkai yang dilihat pengguna di preview, dan
+  /// Ukuran bingkai TEGAK - bingkai yang dilihat pengguna di preview, dan
   /// acuan koordinat kotak deteksi.
   final int uprightWidth;
   final int uprightHeight;
@@ -173,7 +175,7 @@ const List<double> _std = [0.229, 0.224, 0.225];
 /// Satu lintasan: YUV -> rotasi -> skala -> RGB -> normalisasi.
 ///
 /// Berjalan di isolate. Tidak mengalokasikan apa pun selain dua buffer
-/// keluaran — penting untuk HP 4 GB, di mana 655 ribu objek kecil per frame
+/// keluaran - penting untuk HP 4 GB, di mana 655 ribu objek kecil per frame
 /// memicu pengumpulan sampah yang terasa sebagai sentakan berkala.
 NavTensors _prepareNavTensors(_NavPrepArgs a) {
   // Bingkai tegak = bingkai sensor diputar 90 derajat.
@@ -183,7 +185,11 @@ NavTensors _prepareNavTensors(_NavPrepArgs a) {
   final pid = Float32List(_pidW * _pidH * 3);
   final yolo = Float32List(_yoloS * _yoloS * 3);
 
-  final sampler = _YuvSampler(a);
+  // Diukur SEKALI per frame, lalu dipakai kedua tensor. Kalau PIDNet dan YOLO
+  // memakai peregangan yang berbeda, keduanya menggambarkan gambar yang
+  // berbeda - dan seluruh alasan menyiapkan kedua tensor dalam satu lintasan
+  // hilang.
+  final sampler = _YuvSampler(a, measureLumaStretch(a.yPlane));
 
   // ── PIDNet ──
   const pidPlane = _pidW * _pidH; // hanya dipakai untuk tata letak BCHW
@@ -238,11 +244,11 @@ NavTensors _prepareNavTensors(_NavPrepArgs a) {
 /// Luma diambil BILINEAR, kroma nearest.
 ///
 /// Bilinear-nya bukan kemewahan. PIDNet mengecilkan sisi 640 piksel menjadi
-/// 384 — pengecilan 1,7x. Dengan nearest, dua dari tiga baris piksel dibuang
+/// 384 - pengecilan 1,7x. Dengan nearest, dua dari tiga baris piksel dibuang
 /// begitu saja, dan tepi trotoar yang tipis bisa hilang atau berkedip antar
 /// frame. Versi lama memakai `Interpolation.linear`; menggantinya dengan
 /// nearest akan menurunkan akurasi diam-diam sambil laporan kecepatannya
-/// terlihat bagus — persis jenis kesalahan yang membuat orang menyalahkan
+/// terlihat bagus - persis jenis kesalahan yang membuat orang menyalahkan
 /// modelnya.
 ///
 /// Kroma tetap nearest karena U dan V memang sudah disubsampel 2x2 di sumber;
@@ -253,7 +259,10 @@ class _YuvSampler {
   final int yRow, uvRow, uvPix;
   final int yLen, uLen, vLen;
 
-  _YuvSampler(_NavPrepArgs a)
+  /// Peregangan kontras untuk frame ini, atau null kalau tidak diperlukan.
+  final ({double lo, double gain})? stretch;
+
+  _YuvSampler(_NavPrepArgs a, this.stretch)
       : y = a.yPlane,
         u = a.uPlane,
         v = a.vPlane,
@@ -302,10 +311,27 @@ class _YuvSampler {
     final uVal = (uvIdx >= 0 && uvIdx < uLen ? u[uvIdx] : 128) - 128;
     final vVal = (uvIdx >= 0 && uvIdx < vLen ? v[uvIdx] : 128) - 128;
 
+    final r = yVal + 1.402 * vVal;
+    final g = yVal - 0.344136 * uVal - 0.714136 * vVal;
+    final b = yVal + 1.772 * uVal;
+
+    final st = stretch;
+    if (st == null) {
+      return (
+        r: r.clamp(0.0, 255.0),
+        g: g.clamp(0.0, 255.0),
+        b: b.clamp(0.0, 255.0),
+      );
+    }
+
+    // Diterapkan SESUDAH konversi ke RGB, seragam ke ketiga kanal, memakai
+    // titik potong dari luma. Menghitung titik potong per kanal akan menggeser
+    // keseimbangan warna, dan warna yang bergeser adalah hal terakhir yang
+    // dibutuhkan detektor yang dilatih pada foto natural.
     return (
-      r: (yVal + 1.402 * vVal).clamp(0.0, 255.0),
-      g: (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0.0, 255.0),
-      b: (yVal + 1.772 * uVal).clamp(0.0, 255.0),
+      r: ((r - st.lo) * st.gain).clamp(0.0, 255.0),
+      g: ((g - st.lo) * st.gain).clamp(0.0, 255.0),
+      b: ((b - st.lo) * st.gain).clamp(0.0, 255.0),
     );
   }
 }

@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api", tags=["detect"])
 @router.post("/detect")
 async def detect_once(request: Request):
     """
-    Single-shot inference untuk Voice Assistant — 'Ada apa di sekitar saya?'
+    Single-shot inference untuk Voice Assistant - 'Ada apa di sekitar saya?'
     Flutter kirim raw JPEG bytes di body.
     Return: raw detections saja (narasi ada di /api/narasi).
     """

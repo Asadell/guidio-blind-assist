@@ -130,7 +130,7 @@ def _clean_target(raw: str) -> str:
     untuk menyusun kalimat yang DIBACAKAN TTS ke pengguna tunanetra.
 
     Tanpa pembersihan, klien mana pun bisa membuat aplikasi membacakan teks
-    apa saja — dan pengguna tidak punya cara memeriksa bahwa yang didengarnya
+    apa saja - dan pengguna tidak punya cara memeriksa bahwa yang didengarnya
     bukan berasal dari sistem. Karakter kendali dan teks sepanjang ribuan
     karakter juga membuat antrean suara tersumbat.
 
@@ -153,7 +153,7 @@ def _clean_conf(raw: float | None) -> float | None:
     Kurung ambang keyakinan ke rentang yang berarti.
 
     `conf` diteruskan ke `model.predict(conf=...)`. Nilai negatif membuat
-    YOLOE mengembalikan ribuan kotak sampah — beban yang tidak perlu di
+    YOLOE mengembalikan ribuan kotak sampah - beban yang tidak perlu di
     endpoint yang dipanggil berulang kali. Nilai di atas 1 tidak pernah
     menghasilkan apa pun, jadi pengguna cuma mendengar "tidak ketemu" tanpa
     tahu bahwa yang salah adalah permintaannya.

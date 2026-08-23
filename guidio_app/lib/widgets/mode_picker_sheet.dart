@@ -6,15 +6,15 @@ import '../screens/settings_screen.dart';
 import '../theme/index.dart';
 import 'mode_badge.dart';
 
-/// ModePickerSheet (5.5) — enam mode, cadangan untuk situasi tidak bisa
+/// ModePickerSheet (5.5) - enam mode, cadangan untuk situasi tidak bisa
 /// bicara. Fokus terkunci di dalam sheet; setelah ditutup, fokus kembali ke
 /// tombol Pilih Mode (ditangani otomatis oleh showModalBottomSheet).
 ///
-/// Keputusan audit: Navigasi TIDAK PERNAH dinonaktifkan offline — deteksi
+/// Keputusan audit: Navigasi TIDAK PERNAH dinonaktifkan offline - deteksi
 /// rintangan on-device tetap hidup, jadi statenya `limited` dengan alasan
 /// "Tanpa internet: rintangan saja". Cari Objek yang benar-benar disabled.
 void showModePickerSheet(BuildContext context) {
-  // Ditanyakan saat sheet dibuka, bukan saat item ditekan — status harus
+  // Ditanyakan saat sheet dibuka, bukan saat item ditekan - status harus
   // sudah terbaca sebelum pengguna memilih. Tidak di-await: sheet tampil
   // segera, dan item memperbarui dirinya begitu jawaban datang.
   context.read<CapabilitiesProvider>().refreshIfStale(
@@ -97,7 +97,7 @@ class _ModePickerSheet extends StatelessWidget {
                 itemBuilder: (_, i) {
                   final mode = AppMode.values[i];
                   // Status ditentukan jaringan DAN jawaban server, ditanyakan
-                  // sebelum sheet dibuka — bukan ditebak dari koneksi saja.
+                  // sebelum sheet dibuka - bukan ditebak dari koneksi saja.
                   final state = caps.stateOf(mode, offline: offline);
                   final disabled = state == CapState.down;
                   final limited = state == CapState.limited && mode != current;
@@ -117,7 +117,7 @@ class _ModePickerSheet extends StatelessWidget {
                             // tidak jalan karena mode tidak berubah, dan
                             // pengguna yang tidak melihat layar menyimpulkan
                             // modenya sudah berganti. VoiceProvider sudah
-                            // menangani ini dengan benar sejak awal — hanya
+                            // menangani ini dengan benar sejak awal - hanya
                             // jalur sheet yang bocor.
                             final appMode = context.read<AppModeProvider>();
                             final tts = context.read<TtsProvider>();
@@ -139,7 +139,7 @@ class _ModePickerSheet extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s3),
             // Layar penunjang bukan saudara mode, jadi ia TIDAK muncul sebagai
-            // item mode. Tempatnya di paling bawah sheet, dipisah garis —
+            // item mode. Tempatnya di paling bawah sheet, dipisah garis -
             // bagian 2 ALUR-DAN-TOMBOL.md. Tanpa ini Pengaturan sama sekali
             // tidak punya pintu masuk di layar: satu-satunya jalan adalah
             // perintah suara, dan itu memutus pengguna yang tidak bisa bicara.

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// ContextualActionSlot — slot tombol kontekstual yang selalu duduk di posisi
+/// ContextualActionSlot - slot tombol kontekstual yang selalu duduk di posisi
 /// yang sama: tepat di atas BottomActionBar, dari kiri ke kanan layar.
 ///
 /// Dipakai untuk prompt situasional jangka pendek yang butuh respons segera:
@@ -11,7 +11,7 @@ import '../theme/index.dart';
 ///
 /// **Aturan keamanan zona:**
 /// Konten di atas slot (kartu deteksi, panel bubble) wajib membaca
-/// [slotHeight] dan menggeser dirinya ke atas — bukan sebaliknya.
+/// [slotHeight] dan menggeser dirinya ke atas - bukan sebaliknya.
 ///
 /// Slot ini diposisikan oleh pemanggil via [Positioned] karena tiap layar
 /// punya cara berbeda mengelola Stack-nya.
@@ -42,7 +42,7 @@ class ContextualActionSlot extends StatelessWidget {
     this.secondaryIcon,
   });
 
-  /// Tinggi tombol saja (tanpa message) — pemanggil pakai ini untuk geser kartu.
+  /// Tinggi tombol saja (tanpa message) - pemanggil pakai ini untuk geser kartu.
   static const double slotHeight = 64.0;
 
   /// Tinggi total dengan message (pill + gap + tombol).

@@ -10,7 +10,7 @@ import 'theme/index.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Portrait-only — sesuai PRD
+  // Portrait-only - sesuai PRD
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Init TTS di awal
@@ -27,7 +27,7 @@ class GuidioApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // SettingsProvider didaftarkan paling awal: ia sumber kebenaran untuk
-        // alamat server, kecerewetan, dan ambang jarak — dan provider lain
+        // alamat server, kecerewetan, dan ambang jarak - dan provider lain
         // membacanya lewat proxy di bawah.
         ChangeNotifierProvider(create: (_) => SettingsProvider()..init()),
 
@@ -49,7 +49,7 @@ class GuidioApp extends StatelessWidget {
               (prev ?? AppModeProvider())..applyVerbosity(settings.verbosity),
         ),
 
-        // DetectionProvider — hanya butuh CameraProvider (jalur deteksi
+        // DetectionProvider - hanya butuh CameraProvider (jalur deteksi
         // sepenuhnya on-device), dan ikut mendengarkan SettingsProvider supaya
         // PG-05 (kecerewetan) dan PG-06 (ambang jarak) benar-benar mengubah
         // perilaku deteksi. Tanpa sambungan ini keduanya hanya tersimpan ke disk.
@@ -65,7 +65,7 @@ class GuidioApp extends StatelessWidget {
           },
         ),
 
-        // VoiceProvider — butuh CameraProvider + DetectionProvider +
+        // VoiceProvider - butuh CameraProvider + DetectionProvider +
         // AppModeProvider + FindObjectProvider. AppModeProvider ikut disuntik
         // supaya perintah suara "buka mode X" memindah state SENDIRI, tanpa
         // bergantung layar yang sedang aktif memasang callback (bagian 4.1:

@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 /// ```
 /// jarak_m = tinggi_asli_cm × fokus_px / (tinggi_kotak_px × 100)
 /// ```
-/// `fokus_px` bukan properti universal — ia tergantung lensa **dan** resolusi
+/// `fokus_px` bukan properti universal - ia tergantung lensa **dan** resolusi
 /// keluaran. Konstanta 615 yang dipakai sebelumnya adalah rata-rata yang
 /// kebetulan tidak benar untuk perangkat mana pun secara khusus: lensa
 /// ultrawide dan telefoto bisa meleset jauh lebih dari 2×, dan seluruh
@@ -59,7 +59,7 @@ class CameraIntrinsics {
     try {
       final info = await _channel.invokeMapMethod<String, dynamic>('lensInfo');
       if (info == null) {
-        debugPrint('[Intrinsics] perangkat tidak melaporkan intrinsik lensa — pakai fallback');
+        debugPrint('[Intrinsics] perangkat tidak melaporkan intrinsik lensa - pakai fallback');
         return;
       }
       final h = (info['horizontalFovRad'] as num?)?.toDouble();
@@ -68,7 +68,7 @@ class CameraIntrinsics {
       // lebih mungkin salah baca daripada lensa aneh, dan lebih baik memakai
       // fallback yang diketahui daripada angka yang diketahui ngawur.
       if (h == null || v == null || h <= 0.5 || h >= 2.3 || v <= 0.3 || v >= 2.3) {
-        debugPrint('[Intrinsics] FOV di luar rentang wajar ($h, $v) — pakai fallback');
+        debugPrint('[Intrinsics] FOV di luar rentang wajar ($h, $v) - pakai fallback');
         return;
       }
       _horizontalFovRad = h;
@@ -78,7 +78,7 @@ class CameraIntrinsics {
           'V=${(v * 180 / math.pi).toStringAsFixed(1)}° '
           '(fokus ${info['focalLengthMm']}mm, sensor ${info['sensorWidthMm']}×${info['sensorHeightMm']}mm)');
     } catch (e) {
-      debugPrint('[Intrinsics] gagal membaca intrinsik: $e — pakai fallback');
+      debugPrint('[Intrinsics] gagal membaca intrinsik: $e - pakai fallback');
     }
   }
 
@@ -86,7 +86,7 @@ class CameraIntrinsics {
   ///
   /// Ponsel terkunci portrait sementara sensor memberi frame landscape, jadi
   /// sumbu vertikal yang dilihat pengguna adalah sumbu **horizontal** sensor.
-  /// [srcWidth] adalah lebar frame sensor (mis. 640) — itulah yang menjadi
+  /// [srcWidth] adalah lebar frame sensor (mis. 640) - itulah yang menjadi
   /// tinggi bingkai tegak, dan itulah sumbu tempat tinggi kotak diukur.
   double focalPxForUprightFrame(int srcWidth) {
     final fov = _horizontalFovRad;

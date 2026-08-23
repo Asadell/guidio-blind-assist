@@ -3,7 +3,7 @@ import 'package:flutter/semantics.dart';
 
 import '../theme/index.dart';
 
-/// TargetChip (5.14) — khusus Mode Cari Objek. Baris sendiri di bawah
+/// TargetChip (5.14) - khusus Mode Cari Objek. Baris sendiri di bawah
 /// ModeBadge, TIDAK PERNAH berbagi baris dengannya. Elipsis hanya pada nama
 /// barang; kata "Mencari:" selalu utuh.
 class TargetChip extends StatelessWidget {
@@ -14,7 +14,7 @@ class TargetChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      // Urutan fokus 4 — bagian 10, baris sendiri di bawah ModeBadge.
+      // Urutan fokus 4 - bagian 10, baris sendiri di bawah ModeBadge.
       sortKey: const OrdinalSortKey(4),
       liveRegion: true,
       label: 'Mencari: $itemName',

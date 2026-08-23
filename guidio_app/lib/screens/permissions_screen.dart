@@ -5,7 +5,7 @@ import '../services/tts_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// IZ-01..IZ-07 — dua kartu alasan terpisah (kamera dulu, lalu mikrofon).
+/// IZ-01..IZ-07 - dua kartu alasan terpisah (kamera dulu, lalu mikrofon).
 /// IZ-04: ditolak permanen dibacakan empat langkah bernomor, bertahap.
 class PermissionsScreen extends StatefulWidget {
   final VoidCallback onDone;
@@ -37,7 +37,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // IZ-06 — kembali dari Pengaturan sistem, cek ulang status izin.
+    // IZ-06 - kembali dari Pengaturan sistem, cek ulang status izin.
     if (state == AppLifecycleState.resumed && _permanentlyDenied) {
       _checkAfterSettingsReturn();
     }
@@ -71,7 +71,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
       _advance();
     } else if (status.isPermanentlyDenied) {
       setState(() => _permanentlyDenied = true);
-      // IZ-04 — empat langkah bernomor, dibacakan satu per satu, bertahap.
+      // IZ-04 - empat langkah bernomor, dibacakan satu per satu, bertahap.
       await TTSService.instance.speak(
         'Izin ditolak permanen. Empat langkah untuk menyalakannya kembali. '
         'Langkah satu: buka Pengaturan ponsel.',
@@ -93,7 +93,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     }
   }
 
-  /// IZ-04 — dibacakan bertahap. Membacakan empat langkah sekaligus tidak
+  /// IZ-04 - dibacakan bertahap. Membacakan empat langkah sekaligus tidak
   /// mungkin diikuti.
   Future<void> _openSystemSettings(bool isCamera) async {
     await TTSService.instance.speak(
@@ -108,7 +108,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   Widget build(BuildContext context) {
     final isCamera = _step == _Step.camera;
 
-    // IZ-01..IZ-04 — layar penunjang tanpa BottomActionBar, jadi seluruh
+    // IZ-01..IZ-04 - layar penunjang tanpa BottomActionBar, jadi seluruh
     // aksinya memakai `zone/page-action`: primer di dasar layar, sekunder 56 dp
     // tepat di atasnya. Kartu tetap di zona konten; perannya memberi tahu.
     if (_permanentlyDenied) {
@@ -152,7 +152,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   }
 }
 
-/// IZ-04 — kartu penjelasan saja. Kedua tombolnya ("Buka Pengaturan ponsel",
+/// IZ-04 - kartu penjelasan saja. Kedua tombolnya ("Buka Pengaturan ponsel",
 /// "Ulangi langkah ini") dipasang pemanggil di `zone/page-action`.
 class _PermanentlyDeniedCard extends StatelessWidget {
   final String label;

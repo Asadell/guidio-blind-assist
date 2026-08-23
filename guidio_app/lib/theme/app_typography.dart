@@ -5,7 +5,7 @@ import 'app_colors.dart';
 
 /// Skala tipografi design system Vinara.
 /// IBM Plex Sans untuk semua teks, IBM Plex Mono untuk angka teknis
-/// (jarak, persentase, waktu) — dipakai bersama `tabularFigures` supaya
+/// (jarak, persentase, waktu) - dipakai bersama `tabularFigures` supaya
 /// nominal tidak bergeser saat berubah. Fallback otomatis lewat GoogleFonts
 /// (Noto Sans / Roboto), tidak pernah font geometris.
 abstract final class AppTypography {

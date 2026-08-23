@@ -1,4 +1,4 @@
-"""Mode Asisten Suara — resolusi perintah + riwayat percakapan.
+"""Mode Asisten Suara - resolusi perintah + riwayat percakapan.
 
   POST /api/intent            resolusi perintah suara (AS-17/18/19)
   GET  /api/intent/catalog    20 intent baku + varian ucapannya
@@ -26,7 +26,7 @@ class IntentRequest(BaseModel):
 
 @router.get("/intent/catalog")
 async def intent_catalog():
-    """20 intent baku beserta varian ucapan — aplikasi bisa menyinkronkan
+    """20 intent baku beserta varian ucapan - aplikasi bisa menyinkronkan
     CommandParser lokalnya tanpa rilis ulang."""
     if not is_available():
         return {"ok": False, "reason": "database_unavailable", "intents": []}
@@ -40,7 +40,7 @@ async def resolve_intent(request: Request, body: IntentRequest):
 
     Urutan usaha: frasa persis → skor kemiripan → LLM. Kalau tidak ada yang
     yakin, balasannya TETAP menawarkan dua tebakan terdekat, bukan
-    "perintah gagal" — prinsip tidak ada jalan buntu.
+    "perintah gagal" - prinsip tidak ada jalan buntu.
     """
     svc = request.app.state.intent_service
     text = body.text.strip()
@@ -60,12 +60,12 @@ async def resolve_intent(request: Request, body: IntentRequest):
             "suggestions": [],
         }
 
-    # Lapis 1 — frasa persis.
+    # Lapis 1 - frasa persis.
     exact = svc.match_exact(text)
     if exact:
         return _intent_payload(svc, exact, text, resolved=True)
 
-    # Lapis 2 — kumpulkan kandidat: kemiripan frasa + nama barang yang bisa
+    # Lapis 2 - kumpulkan kandidat: kemiripan frasa + nama barang yang bisa
     # dicari. Ucapan seperti "kenal kunci" menghasilkan DUA kandidat
     # ("cari kunci" dan "kenali uang"), dan itu memang harus ditanyakan
     # balik, bukan ditebak.
@@ -78,7 +78,7 @@ async def resolve_intent(request: Request, body: IntentRequest):
     if len(strong) == 1 and len(candidates) == 1:
         return _intent_payload(svc, {**strong[0], "source": "similarity"}, text, resolved=True)
 
-    # AS-19 — dua kandidat yang sama-sama masuk akal: tanya balik.
+    # AS-19 - dua kandidat yang sama-sama masuk akal: tanya balik.
     # Menebak salah lebih mahal daripada satu pertanyaan.
     if len(candidates) >= 2:
         return {
@@ -89,8 +89,8 @@ async def resolve_intent(request: Request, body: IntentRequest):
             "suggestions": candidates,
         }
 
-    # AS-18 — tidak dikenali: sebut yang didengar, tawarkan tebakan terdekat.
-    # (Lapis 3 LLM dihapus — tidak ada LLM di backend)
+    # AS-18 - tidak dikenali: sebut yang didengar, tawarkan tebakan terdekat.
+    # (Lapis 3 LLM dihapus - tidak ada LLM di backend)
     return {
         "resolved": False,
         "reason": "unrecognized",
@@ -140,7 +140,7 @@ async def add_turn(body: TurnIn):
 
 @router.get("/asisten/history")
 async def history(session_id: str, limit: int = 20):
-    """AS-12 / AS-13 — riwayat percakapan. Aplikasi yang memutuskan hanya
+    """AS-12 / AS-13 - riwayat percakapan. Aplikasi yang memutuskan hanya
     giliran terbaru yang dibacakan; yang lama cukup tampil."""
     if not is_available():
         return {"ok": False, "reason": "database_unavailable", "turns": []}
@@ -156,7 +156,7 @@ async def history(session_id: str, limit: int = 20):
 
 @router.post("/asisten/expire")
 async def expire_sessions():
-    """AS-23 — sesi menganggur lebih dari 15 menit dibersihkan."""
+    """AS-23 - sesi menganggur lebih dari 15 menit dibersihkan."""
     if not is_available():
         return {"ok": False, "reason": "database_unavailable"}
     return {"ok": True, "expired_sessions": repo.expire_stale_sessions()}

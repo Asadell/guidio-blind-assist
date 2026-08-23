@@ -71,7 +71,7 @@ async def capabilities(request: Request):
         "money": {"state": "up", "on_device": True,
                   "note": "Klasifikasi nominal on-device (TFLite), tidak pernah memanggil server."},
 
-        # Baca Teks pindah ke ML Kit on-device — server tidak dipanggil lagi,
+        # Baca Teks pindah ke ML Kit on-device - server tidak dipanggil lagi,
         # jadi ia tidak pernah 'down' dan tetap jalan penuh tanpa internet.
         "read_text": {
             "state": "up",
@@ -219,7 +219,7 @@ class EventBatch(BaseModel):
 
 @router.post("/events")
 async def post_events(batch: EventBatch):
-    """Telemetri alur — mengukur target desain, bukan analitik pemasaran.
+    """Telemetri alur - mengukur target desain, bukan analitik pemasaran.
 
     Yang dilacak: jumlah gestur per alur (target bayar < 4), waktu buka
     sampai deteksi aktif, berapa kali perintah suara tidak dikenali.
@@ -261,7 +261,7 @@ class CrashIn(BaseModel):
 
 @router.post("/crash-report")
 async def post_crash(body: CrashIn):
-    """ER-06 — tombol "Kirim laporan" setelah aplikasi dibuka pasca-crash."""
+    """ER-06 - tombol "Kirim laporan" setelah aplikasi dibuka pasca-crash."""
     guard = _db_guard()
     if guard:
         return guard
@@ -276,7 +276,7 @@ async def post_crash(body: CrashIn):
 
 @router.get("/crash-report/last-mode")
 async def last_mode(device_id: str):
-    """ER-06 — mode terakhir sebelum crash, untuk dipulihkan otomatis."""
+    """ER-06 - mode terakhir sebelum crash, untuk dipulihkan otomatis."""
     guard = _db_guard()
     if guard:
         return guard
@@ -295,7 +295,7 @@ async def queue_flush(
     queued_at: datetime | None = Form(None),
     file: UploadFile = File(...),
 ):
-    """BT-13 — gambar yang gagal terkirim saat offline, dikirim ulang saat
+    """BT-13 - gambar yang gagal terkirim saat offline, dikirim ulang saat
     internet kembali.
 
     `idempotency_key` mencegah pemrosesan dobel: pengiriman ulang dengan

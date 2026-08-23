@@ -1,8 +1,8 @@
 """
-test_cari_objek.py — Tes endpoint POST /api/cari-objek.
+test_cari_objek.py - Tes endpoint POST /api/cari-objek.
 
 Mensimulasikan Flutter mengirim frame kamera saat user berkata "cari dompet".
-Semua gambar diambil dari guidio_app/test/fixtures/object_find/ —
+Semua gambar diambil dari guidio_app/test/fixtures/object_find/ -
 byte-for-byte identik dengan yang dikirim kamera HP via multipart/form-data.
 """
 
@@ -19,7 +19,7 @@ def _post_cari(client, image_bytes: bytes, target: str, filename: str = "frame.p
 
 
 class TestCariObjekStruktur:
-    """Validasi struktur respons — tidak bergantung apakah objek ditemukan."""
+    """Validasi struktur respons - tidak bergantung apakah objek ditemukan."""
 
     def test_response_200(self, client, obj_image_botol):
         r = _post_cari(client, obj_image_botol, "botol")
@@ -96,7 +96,7 @@ class TestCariObjekInvalidInput:
 class TestCariObjekDeteksi:
     """
     Uji deteksi aktual dengan fixture gambar yang sudah diketahui isinya.
-    Lulus jika found=True ATAU reason in (not_in_frame, no_match) —
+    Lulus jika found=True ATAU reason in (not_in_frame, no_match) -
     objek mungkin tidak terdeteksi oleh YOLOE untuk sudut/pencahayaan tertentu.
     """
 

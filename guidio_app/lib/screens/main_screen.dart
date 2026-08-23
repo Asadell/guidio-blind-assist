@@ -8,7 +8,7 @@ import '../theme/index.dart';
 
 enum _BootStage { splash, onboarding, permissions, initializing, ready }
 
-/// MainScreen — mengelola alur boot (bagian 6 & 13): Splash → Onboarding
+/// MainScreen - mengelola alur boot (bagian 6 & 13): Splash → Onboarding
 /// (hanya pertama kali) → Izin → mode default (Deteksi Objek). Tidak ada
 /// layar beranda: setelah boot, aplikasi langsung berada di salah satu dari
 /// enam mode sejajar.
@@ -74,7 +74,7 @@ class _MainScreenState extends State<MainScreen> {
     if (!mounted) return;
     setState(() => _stage = _BootStage.ready);
     // Status kamera & backend offline ditangani oleh StatusBanner
-    // dan GlobalConditionsProvider di tiap mode screen — tidak perlu
+    // dan GlobalConditionsProvider di tiap mode screen - tidak perlu
     // SnackBar di sini yang menutupi BottomActionBar.
   }
 

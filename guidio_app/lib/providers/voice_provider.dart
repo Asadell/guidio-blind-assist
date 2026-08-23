@@ -10,7 +10,7 @@ import '../providers/find_object_provider.dart';
 import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
-/// VoiceState — bagian 11 IMPLEMENTASI.md (AS-01..AS-25). Granular dari 4
+/// VoiceState - bagian 11 IMPLEMENTASI.md (AS-01..AS-25). Granular dari 4
 /// fase asli (idle/listening/processing/responding) supaya tiap sub-state
 /// yang dipisah dokumen (mendengarkan vs tanpa suara vs berisik, proses
 /// lokal vs LLM, dst.) punya representasi sendiri.
@@ -37,7 +37,7 @@ class ChatTurn {
   ChatTurn({required this.isUser, required this.text}) : at = DateTime.now();
 }
 
-/// VoiceProvider — STT → intent routing → API call → TTS.
+/// VoiceProvider - STT → intent routing → API call → TTS.
 ///
 /// Intent routing 2-lapis dipertahankan dari implementasi awal:
 /// - Layer 1: keyword lokal (0ms latency, aman offline) via [CommandParser].
@@ -69,23 +69,23 @@ class VoiceProvider extends ChangeNotifier {
   String get lastText => _lastText;
   String get response => _response;
 
-  /// AS-18 — dua tebakan terdekat saat perintah tidak dikenali.
+  /// AS-18 - dua tebakan terdekat saat perintah tidak dikenali.
   List<VoiceIntent> _suggestions = [];
   List<VoiceIntent> get suggestions => _suggestions;
   String _heardRaw = '';
   String get heardRaw => _heardRaw;
 
-  /// Dipasang layar untuk menyalurkan suara lewat antrean tier — menjaga
+  /// Dipasang layar untuk menyalurkan suara lewat antrean tier - menjaga
   /// provider ini tidak bergantung BuildContext, pola sama dengan mode lain.
   void Function(String text)? onSpeak;
   void Function()? onAllFeaturesFailed;
 
   /// Dipasang oleh VoiceScreen saat masuk sebagai overlay (push Navigator).
-  /// Dipanggil setelah `actionGoBack` berhasil — agar layar bisa pop dirinya
+  /// Dipanggil setelah `actionGoBack` berhasil - agar layar bisa pop dirinya
   /// sendiri tanpa VoiceProvider bergantung pada BuildContext/Navigator.
   void Function()? onNavigateBack;
 
-  /// Pengaturan adalah layar penunjang, bukan mode — pembukaannya butuh
+  /// Pengaturan adalah layar penunjang, bukan mode - pembukaannya butuh
   /// Navigator. Layar yang aktif memasang ini dan mengembalikan **true hanya
   /// kalau halaman benar-benar terbuka**; kalau null atau false, Vinara
   /// mengatakan yang sejujurnya alih-alih mengonfirmasi.
@@ -97,9 +97,9 @@ class VoiceProvider extends ChangeNotifier {
   // sekali; semuanya jatuh ke `default:` dan dijawab "Perintah itu belum saya
   // kenali di mode ini". Callback di bawah menyambungkannya ke mode yang
   // sedang aktif, sehingga perintah suara dan tombol kiri menjalankan hal
-  // yang persis sama — satu model mental, dua cara memicunya.
+  // yang persis sama - satu model mental, dua cara memicunya.
 
-  /// Aksi utama mode aktif — setara menekan tombol kiri.
+  /// Aksi utama mode aktif - setara menekan tombol kiri.
   /// Dipasang tiap layar mode; `null` berarti mode ini memang tidak punya.
   void Function()? onPrimaryAction;
 
@@ -117,7 +117,7 @@ class VoiceProvider extends ChangeNotifier {
   /// Berhenti berjalan (Mode Navigasi).
   bool Function()? onStopWalking;
 
-  /// Pengaturan kecepatan bicara — dipasang layar dari SettingsProvider.
+  /// Pengaturan kecepatan bicara - dipasang layar dari SettingsProvider.
   Future<double> Function(double delta)? onAdjustSpeechRate;
 
   Future<void> init() async {
@@ -127,7 +127,7 @@ class VoiceProvider extends ChangeNotifier {
     );
   }
 
-  /// AS-23 — riwayat kedaluwarsa setelah 15 menit tanpa aktivitas.
+  /// AS-23 - riwayat kedaluwarsa setelah 15 menit tanpa aktivitas.
   bool checkAndExpireHistory() {
     if (_history.isEmpty || _lastActivity == null) return false;
     if (DateTime.now().difference(_lastActivity!) > const Duration(minutes: 15)) {
@@ -159,7 +159,7 @@ class VoiceProvider extends ChangeNotifier {
       listenOptions: SpeechListenOptions(
         // 5 detik memotong kalimat yang wajar-wajar saja ("tolong bacakan
         // tulisan yang ada di depan saya"), dan potongannya lalu gagal
-        // dikenali — pengguna menyimpulkan parsernya bodoh, padahal ia tidak
+        // dikenali - pengguna menyimpulkan parsernya bodoh, padahal ia tidak
         // pernah mendengar kalimat utuhnya. `pauseFor` yang menutup rekaman:
         // 2 detik hening berarti pengguna sudah selesai bicara.
         listenFor: const Duration(seconds: 10),
@@ -189,7 +189,7 @@ class VoiceProvider extends ChangeNotifier {
     _lastActivity = DateTime.now();
     _heardRaw = text;
     _history.add(ChatTurn(isUser: true, text: text));
-    // AS-06 — jeda pendek "mentranskrip", tanpa kata "memproses".
+    // AS-06 - jeda pendek "mentranskrip", tanpa kata "memproses".
     _setState(VoiceState.transcribing);
     await Future.delayed(const Duration(milliseconds: 250));
 
@@ -197,7 +197,7 @@ class VoiceProvider extends ChangeNotifier {
 
     if (!command.recognized) {
       if (command.suggestions.length >= 2) {
-        // AS-19 — ambigu, pertanyaan pilihan dua.
+        // AS-19 - ambigu, pertanyaan pilihan dua.
         _suggestions = command.suggestions;
         _setState(VoiceState.ambiguous);
         _respond(
@@ -207,19 +207,19 @@ class VoiceProvider extends ChangeNotifier {
         return;
       }
       if (command.suggestions.isNotEmpty) {
-        // AS-18 — tidak dikenali, satu tebakan tersedia.
+        // AS-18 - tidak dikenali, satu tebakan tersedia.
         _suggestions = command.suggestions;
         _setState(VoiceState.unrecognized);
         _respond('Saya dengar "$text". Maksudmu ${command.suggestions[0].spokenLabel}?', save: false);
         return;
       }
-      // Tidak dikenali sama sekali — tidak ada saran.
+      // Tidak dikenali sama sekali - tidak ada saran.
       await _handleLocal('Maaf, saya tidak mengerti. Coba katakan lagi dengan cara berbeda.');
       return;
     }
 
     if (command.intent!.isModeChange) {
-      // AS-17 — perintah ganti mode.
+      // AS-17 - perintah ganti mode.
       await _applyModeChange(command.intent!);
       return;
     }
@@ -230,19 +230,19 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
-    // Perintah cari objek dengan target dinamis — pindah ke FindObject.
+    // Perintah cari objek dengan target dinamis - pindah ke FindObject.
     if (command.intent == VoiceIntent.findObjectTarget && command.argument != null) {
       await _handleFindObjectTarget(command.argument!);
       return;
     }
 
-    // Perintah nyalakan/matikan lampu — toggle torch.
+    // Perintah nyalakan/matikan lampu - toggle torch.
     if (command.intent == VoiceIntent.actionTorch) {
       await _handleTorch();
       return;
     }
 
-    // Perintah deskripsi suasana — Moondream2 via server.
+    // Perintah deskripsi suasana - Moondream2 via server.
     if (command.intent == VoiceIntent.describeScene) {
       await _handleDescribeScene();
       return;
@@ -254,7 +254,7 @@ class VoiceProvider extends ChangeNotifier {
 
       case VoiceIntent.helpWhereAmI:
         // Sebutkan mode yang SEDANG aktif. Jawaban lama selalu "Kamu di mode
-        // Asisten Suara" — benar hanya kalau Asisten sedang jadi mode, dan
+        // Asisten Suara" - benar hanya kalau Asisten sedang jadi mode, dan
         // menyesatkan setiap kali mic dibuka sebagai overlay dari mode lain.
         await _handleLocal('Kamu di mode ${_appMode.mode.label}.');
 
@@ -285,7 +285,7 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// `actionCapture` — "jepret", "ambil gambar". Menjalankan aksi utama mode
+  /// `actionCapture` - "jepret", "ambil gambar". Menjalankan aksi utama mode
   /// aktif, yaitu hal yang sama dengan tombol kiri.
   Future<void> _handlePrimaryAction() async {
     final action = onPrimaryAction;
@@ -321,7 +321,7 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
     // Tidak ada pembacaan panjang yang berjalan. Perlakukan "jeda" sebagai
-    // permintaan menghentikan suara — itu maksud yang paling mungkin.
+    // permintaan menghentikan suara - itu maksud yang paling mungkin.
     if (pause) {
       await TTSService.instance.stop();
       _setState(VoiceState.responded);
@@ -356,13 +356,13 @@ class VoiceProvider extends ChangeNotifier {
     await _respond('Panduan jalan dihentikan.', save: false);
   }
 
-  /// AS-17 — ganti mode lewat suara. **Aturan mutlak bagian 4.1: suara Vinara
+  /// AS-17 - ganti mode lewat suara. **Aturan mutlak bagian 4.1: suara Vinara
   /// tidak boleh pernah mengonfirmasi sesuatu yang tidak terjadi.** State
   /// dipindah dulu lewat [AppModeProvider.setMode]; konfirmasi "Baik."
   /// dititipkan sebagai prefiks pengumuman kedatangan, jadi ia baru terdengar
   /// setelah layar mode tujuan benar-benar terpasang. Kalau perpindahan
   /// dibatalkan (NV-18 saat pengguna masih berjalan), yang diucapkan adalah
-  /// keadaan yang sebenarnya — bukan konfirmasi.
+  /// keadaan yang sebenarnya - bukan konfirmasi.
   Future<void> _applyModeChange(VoiceIntent intent) async {
     if (intent == VoiceIntent.modeSettings) {
       final opened = await onOpenSettings?.call() ?? false;
@@ -403,7 +403,7 @@ class VoiceProvider extends ChangeNotifier {
 
     final changed = await _appMode.setMode(target, spokenPrefix: 'Baik.');
     if (!changed || _appMode.mode != target) {
-      // Dibatalkan konfirmasi NV-18 — pengguna tetap di tempatnya.
+      // Dibatalkan konfirmasi NV-18 - pengguna tetap di tempatnya.
       await _respond('Tetap di mode ${_appMode.mode.label}.', save: false);
       return;
     }
@@ -414,12 +414,12 @@ class VoiceProvider extends ChangeNotifier {
   }
 
   Future<void> _handleLocal(String answer) async {
-    // AS-08 — proses lokal, "Baik." lalu langsung hasilnya.
+    // AS-08 - proses lokal, "Baik." lalu langsung hasilnya.
     _setState(VoiceState.processingLocal);
     await _respond('Baik. $answer');
   }
 
-  /// Toggle flashlight — nyala jadi mati, mati jadi nyala.\n  /// Konfirmasi TTS menyebutkan status baru, bukan perintah.
+  /// Toggle flashlight - nyala jadi mati, mati jadi nyala.\n  /// Konfirmasi TTS menyebutkan status baru, bukan perintah.
   Future<void> _handleTorch() async {
     _setState(VoiceState.processingLocal);
     await _camera.toggleTorch();
@@ -432,18 +432,18 @@ class VoiceProvider extends ChangeNotifier {
   /// Deskripsikan suasana di depan via Moondream2 (on-server).
   ///
   /// Moondream2 menjawab dalam Bahasa Inggris. Sebelum ini kalimatnya
-  /// dibacakan apa adanya dengan TTS `en-US` — menuntut kemampuan Inggris
+  /// dibacakan apa adanya dengan TTS `en-US` - menuntut kemampuan Inggris
   /// lisan yang tidak bisa diasumsikan pada tunanetra di pasar dan warung
   /// Indonesia.
   ///
   /// Sekarang diterjemahkan lokal lewat [translateSceneCaption]: kamus + aturan
-  /// urutan kata, 0 ms, offline, tanpa LLM — prinsip yang sama yang membuat
+  /// urutan kata, 0 ms, offline, tanpa LLM - prinsip yang sama yang membuat
   /// `narration_engine` dan `CommandParser` menggantikan Qwen. Menambahkan LLM
   /// penerjemah akan mengembalikan tepat tiga masalah yang sudah dibuang:
   /// lambat, bisa berhalusinasi, dan butuh server.
   ///
   /// Kalau cakupan kamus terlalu rendah, penerjemah **menyerah** dan kalimat
-  /// Inggrisnya dibacakan — didahului satu penanda singkat, supaya pengguna
+  /// Inggrisnya dibacakan - didahului satu penanda singkat, supaya pengguna
   /// tahu bahasanya berganti dan tidak menyangka aplikasinya rusak. Bahasa
   /// Indonesia yang kacau lebih buruk daripada Bahasa Inggris yang benar.
   Future<void> _handleDescribeScene() async {
@@ -455,16 +455,22 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
+    // Naikkan resolusi dulu. Deskripsi suasana dipanggil dari mode suara, yang
+    // bisa dimasuki dari mode aliran mana pun - dan di sana kameranya masih
+    // 640x480. Mengirim foto sekecil itu ke Moondream2 membuang detail yang
+    // justru menentukan isi deskripsinya.
+    //
+    // Presetnya WAJIB dikembalikan setelah selesai. Alasan lama ("tiap mode
+    // aliran sudah meminta presetnya sendiri saat dimasuki") hanya benar kalau
+    // modenya dimasuki lagi - dan justru itu yang tidak terjadi di jalur yang
+    // paling sering dipakai: mic dibuka sebagai OVERLAY di atas mode yang
+    // sedang berjalan, lalu ditutup. Layar di bawahnya tidak pernah
+    // di-`initState` ulang, jadi tidak ada satu pun yang mengembalikan preset,
+    // dan Mode Deteksi melanjutkan hidupnya pada resolusi tiga kali lebih
+    // berat di HP yang justru paling tidak sanggup.
+    final previousPreset = _camera.activePreset;
+
     try {
-      // Naikkan resolusi dulu. Deskripsi suasana dipanggil dari mode suara,
-      // yang bisa dimasuki dari mode aliran mana pun — dan di sana kameranya
-      // masih 640x480. Mengirim foto sekecil itu ke Moondream2 membuang
-      // detail yang justru menentukan isi deskripsinya.
-      //
-      // Presetnya sengaja TIDAK dikembalikan setelah selesai: tiap mode
-      // aliran sudah meminta presetnya sendiri saat dimasuki, jadi
-      // mengembalikannya di sini cuma membangun ulang controller dua kali
-      // untuk hasil akhir yang sama.
       await _camera.initCamera(preset: CapturePreset.capture);
 
       final jpeg = await _camera.captureJpeg();
@@ -496,7 +502,7 @@ class VoiceProvider extends ChangeNotifier {
       }
 
       debugPrint('[Describe] cakupan kamus ${translated.coverage.toStringAsFixed(2)} '
-          '— dibacakan dalam Bahasa Inggris');
+          '- dibacakan dalam Bahasa Inggris');
       _response = description;
       _setState(VoiceState.responded);
       await TTSService.instance.speak('Dalam bahasa Inggris.');
@@ -508,7 +514,7 @@ class VoiceProvider extends ChangeNotifier {
       // tambahan.
       //
       // Menolak di sini bukan sekadar menghemat kuota. Moondream2 tidak
-      // pernah mengatakan "saya tidak bisa melihat" — dari foto gelap gulita
+      // pernah mengatakan "saya tidak bisa melihat" - dari foto gelap gulita
       // pun dia menghasilkan deskripsi yang terdengar meyakinkan. Untuk
       // pengguna yang tidak bisa memverifikasi sendiri, deskripsi halusinasi
       // jauh lebih berbahaya daripada penolakan yang jujur.
@@ -518,13 +524,21 @@ class VoiceProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[VoiceProvider] _handleDescribeScene error: $e');
       await _handleLocal('Gagal mendeskripsikan suasana. Coba lagi.');
+    } finally {
+      // Di `finally`, bukan di akhir jalur sukses: foto yang ditolak gerbang
+      // kualitas adalah hasil yang PALING sering terjadi di tempat gelap, dan
+      // meninggalkan kamera pada preset foto persis setelah itu berarti mode
+      // aliran di bawahnya melanjutkan dengan beban tiga kali lipat.
+      if (previousPreset != null && previousPreset != CapturePreset.capture) {
+        await _camera.initCamera(preset: previousPreset);
+      }
     }
   }
 
   /// Bacakan catatan kualitas dari server, kalau ada.
   ///
   /// Diucapkan SESUDAH deskripsinya dan sebagai utterance terpisah, dengan
-  /// locale Bahasa Indonesia — deskripsinya sendiri mungkin baru dibacakan
+  /// locale Bahasa Indonesia - deskripsinya sendiri mungkin baru dibacakan
   /// dalam Bahasa Inggris, dan menyambung dua bahasa dalam satu utterance
   /// membuat TTS mengucapkan salah satunya dengan fonetik yang keliru.
   ///
@@ -587,7 +601,7 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// AS-20 — pengguna menekan tombol Bicara lagi saat Vinara masih bicara:
+  /// AS-20 - pengguna menekan tombol Bicara lagi saat Vinara masih bicara:
   /// memotong tanpa nada khusus, langsung mulai dengar lagi.
   Future<void> interruptAndListenAgain() async {
     await TTSService.instance.stop();

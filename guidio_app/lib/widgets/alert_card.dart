@@ -4,7 +4,7 @@ import '../theme/index.dart';
 import 'distance_pill.dart';
 import 'tier_icon.dart';
 
-/// AlertCard — kartu melayang di sepertiga bawah layar (F2).
+/// AlertCard - kartu melayang di sepertiga bawah layar (F2).
 /// Kartu putih opaque + Pita Prioritas 3 dp di tepi kiri dalam, warna
 /// mengikuti tier. Tier terbaca dari bentuk ikon, bukan cuma warna.
 class AlertCard extends StatelessWidget {
@@ -112,7 +112,7 @@ class AlertCard extends StatelessWidget {
   }
 }
 
-/// Tumpukan AlertCard — maksimum 2, gap 8, tier tertinggi di slot bawah
+/// Tumpukan AlertCard - maksimum 2, gap 8, tier tertinggi di slot bawah
 /// (paling dekat ibu jari / BottomActionBar).
 class AlertCardStack extends StatelessWidget {
   final List<Widget> cards;

@@ -5,7 +5,7 @@ import 'app_colors.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
-/// ThemeData Vinara — dirakit dari token di app_colors / app_typography /
+/// ThemeData Vinara - dirakit dari token di app_colors / app_typography /
 /// app_spacing. Dipasang sekali di MaterialApp.theme.
 abstract final class AppTheme {
   static ThemeData get light {
@@ -78,10 +78,10 @@ abstract final class AppTheme {
     );
   }
 
-  /// Tema gelap — chrome Material (AppBar, tombol, snackbar, scaffold).
+  /// Tema gelap - chrome Material (AppBar, tombol, snackbar, scaffold).
   /// Catatan: komponen desain sistem (AlertCard, ModeBadge, dst.) memakai
   /// token AppColors langsung sehingga tetap tampil dengan palet terang di
-  /// atas kamera — itu memang benar untuk pill/kartu yang melayang di atas
+  /// atas kamera - itu memang benar untuk pill/kartu yang melayang di atas
   /// video, tapi permukaan non-kamera (Settings, Onboarding) mengikuti tema
   /// gelap lewat ThemeData ini.
   static ThemeData get dark {
@@ -101,7 +101,7 @@ abstract final class AppTheme {
     );
   }
 
-  /// Tema kontras tinggi — seluruh bayangan diganti garis 2 dp putih (bagian
+  /// Tema kontras tinggi - seluruh bayangan diganti garis 2 dp putih (bagian
   /// 3.4): kedalaman lewat bayangan tidak terbaca oleh sensitivitas kontras
   /// rendah.
   static ThemeData get highContrast {

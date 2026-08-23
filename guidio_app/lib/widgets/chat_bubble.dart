@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// ChatBubble (5.12) — Mode Asisten Suara. Giliran dipisah garis, bukan
+/// ChatBubble (5.12) - Mode Asisten Suara. Giliran dipisah garis, bukan
 /// gelembung berwarna. Live region polite, MergeSemantics per giliran.
 enum ChatSpeaker { user, vinara }
 
 class ChatBubble extends StatelessWidget {
   final ChatSpeaker speaker;
   final String text;
-  /// Giliran terbaru mendapat live region — bagian 12 "AS-12: hanya giliran
+  /// Giliran terbaru mendapat live region - bagian 12 "AS-12: hanya giliran
   /// terbaru dibacakan".
   final bool isLatest;
 
@@ -43,7 +43,7 @@ class ChatBubble extends StatelessWidget {
   }
 }
 
-/// Daftar giliran percakapan — membungkus scroll + aturan ringkas riwayat
+/// Daftar giliran percakapan - membungkus scroll + aturan ringkas riwayat
 /// (AS-13: 8 giliran diringkas).
 class ChatTranscript extends StatelessWidget {
   final List<ChatBubble> turns;

@@ -8,12 +8,15 @@ import '../core/net/api_client.dart';
 import '../core/speech/tts_queue.dart' show SpeechTier, TtsQueue;
 import '../models/detection.dart';
 import '../services/nav_frame_converter.dart';
+import '../services/device_pace_watch.dart';
+import '../services/nav_obstacle_merger.dart';
 import '../services/pidnet_service.dart';
+import '../services/tflite_service.dart';
 import '../services/yolo_navigasi_service.dart';
 import '../widgets/segmentation_overlay.dart' show maskToImage;
 import '../widgets/zone_indicator.dart' show ZoneStatus;
 
-/// NavigationStep — placeholder tanpa GPS/Google Maps (belum diimplementasi,
+/// NavigationStep - placeholder tanpa GPS/Google Maps (belum diimplementasi,
 /// menyusul sprint lain).
 class NavigationStep {
   final String instruction;
@@ -21,14 +24,14 @@ class NavigationStep {
   const NavigationStep({required this.instruction, required this.distanceM});
 }
 
-/// Fase segmentasi jalur — bagian 10 IMPLEMENTASI.md (NV-01..NV-13).
+/// Fase segmentasi jalur - bagian 10 IMPLEMENTASI.md (NV-01..NV-13).
 ///
 /// **Sepenuhnya on-device.** PIDNet-S (segmentasi 3 zona) dan YOLO11n
 /// (rintangan) berjalan di ponsel; keduanya sudah dibundel di APK.
 ///
 /// > Jalur server dihapus. `navigasi.router` memang sudah dinonaktifkan di
 /// > `backend/main.py` sejak navigasi dipindah on-device, sehingga fallback
-/// > `POST /api/navigasi` di sini hanya menghasilkan 404 — lalu diterjemahkan
+/// > `POST /api/navigasi` di sini hanya menghasilkan 404 - lalu diterjemahkan
 /// > menjadi "Saya tidak bisa membaca jalur tanpa sambungan ke server".
 /// > Kalimat itu menyalahkan jaringan untuk endpoint yang memang sengaja
 /// > tidak disediakan, dan mendorong pengguna mencari sinyal yang tidak akan
@@ -36,10 +39,10 @@ class NavigationStep {
 /// > dan mengatakannya apa adanya.
 enum NavPhase {
   calibrating, // NV-01
-  loadingModels, // NV-02 — memuat PIDNet + YOLO on-device
+  loadingModels, // NV-02 - memuat PIDNet + YOLO on-device
   active, // NV-03..NV-09
-  unavailable, // NV-11 — model on-device tidak bisa dipakai
-  degraded, // NV-13 — model jalan tapi frame sering gagal dibaca
+  unavailable, // NV-11 - model on-device tidak bisa dipakai
+  degraded, // NV-13 - model jalan tapi frame sering gagal dibaca
   paused, // NV-15
 }
 
@@ -71,7 +74,7 @@ class NavigationProvider extends ChangeNotifier {
   final double _potholeSteps = 3;
   double get potholeSteps => _potholeSteps;
 
-  /// Zona rawan dari laporan komunitas — informasi yang tidak terlihat kamera.
+  /// Zona rawan dari laporan komunitas - informasi yang tidak terlihat kamera.
   String? _riskZoneWarning;
   String? get riskZoneWarning => _riskZoneWarning;
 
@@ -93,7 +96,7 @@ class NavigationProvider extends ChangeNotifier {
   /// Layar menyalakan ini saat hamparan jalur benar-benar terlihat.
   ///
   /// Dipisah dari sekadar "mode navigasi aktif" karena inferensi tetap harus
-  /// berjalan walau layar mati atau tertutup — arahan suaranya yang menjaga
+  /// berjalan walau layar mati atau tertutup - arahan suaranya yang menjaga
   /// pengguna, bukan gambarnya.
   bool _wantsSegmentationOverlay = false;
   bool get wantsSegmentationOverlay => _wantsSegmentationOverlay;
@@ -108,7 +111,7 @@ class NavigationProvider extends ChangeNotifier {
   /// Satu konversi mask dalam penerbangan.
   ///
   /// Tanpa penjaga ini, inferensi yang lebih cepat daripada konversi akan
-  /// menumpuk `ui.Image` yang tidak pernah sempat ditampilkan — masing-masing
+  /// menumpuk `ui.Image` yang tidak pernah sempat ditampilkan - masing-masing
   /// memegang memori GPU sampai dibuang.
   bool _convertingMask = false;
 
@@ -146,7 +149,7 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   void Function(String text, SpeechTier tier)? onSpeak;
-  void Function()? onTakeover; // NV-06 — mengambil alih layar
+  void Function()? onTakeover; // NV-06 - mengambil alih layar
 
   /// Sumber frame kamera mentah (YUV) untuk PIDNet + YOLO on-device.
   Future<CameraImage?> Function()? cameraSource;
@@ -157,7 +160,7 @@ class NavigationProvider extends ChangeNotifier {
   // lalu mengucapkannya sendiri. Yang TIDAK terjadi sebelumnya: kondisi itu
   // tidak pernah sampai ke lapisan yang menyusun arahan jalur. Akibatnya
   // pengguna bisa mendengar "Arahkan kamera ke depan" dan "Jalur aman, jalan
-  // lurus" berselang beberapa detik — dua kalimat yang saling membantah, dan
+  // lurus" berselang beberapa detik - dua kalimat yang saling membantah, dan
   // yang terdengar paling bisa ditindaklanjuti justru yang salah.
 
   bool _cameraTooDark = false;
@@ -190,9 +193,41 @@ class NavigationProvider extends ChangeNotifier {
 
   /// Pesan yang sedang menunggu konfirmasi frame berikutnya, dan sudah berapa
   /// frame berturut-turut ia bertahan. Dipakai [_emitGuidance] sebagai
-  /// histeresis — lihat alasannya di sana.
+  /// histeresis - lihat alasannya di sana.
   String _candidateMessage = '';
   int _candidateStreak = 0;
+
+  // ── Pengawas kecepatan perangkat ────────────────────────────────────────
+  //
+  // Logikanya ada di [DevicePaceWatch], kelas murni tanpa Timer maupun TTS,
+  // supaya keputusan "kapan pengguna diberi tahu bahwa panduannya tertinggal"
+  // bisa diuji tanpa perangkat. Lihat `test/device_pace_watch_test.dart`.
+  final _pace = DevicePaceWatch();
+
+  /// Lapis COCO dimatikan otomatis karena perangkat tidak mengejar.
+  bool get cocoDisabledForSpeed => _pace.cocoDropped;
+
+  /// Rata-rata durasi satu siklus inferensi, milidetik. Dibaca panel debug.
+  double get tickMsEma => _pace.emaMs;
+
+  /// Catat durasi satu siklus, lalu turunkan beban atau beri tahu pengguna.
+  void _recordTickDuration(int ms) {
+    switch (_pace.record(ms)) {
+      case PaceAction.dropCocoLayer:
+        debugPrint('[Nav] Perangkat lambat (${_pace.emaMs.toStringAsFixed(0)} ms), '
+            'lapis COCO dimatikan otomatis.');
+        notifyListeners();
+      case PaceAction.warnUser:
+        _speak(
+          'Ponsel ini memproses jalur lebih lambat dari biasanya. '
+          'Jalan lebih pelan, arahan bisa datang terlambat.',
+          tier: SpeechTier.warning,
+        );
+        notifyListeners();
+      case PaceAction.none:
+        break;
+    }
+  }
 
   /// Jeda minimum antar ucapan berbeda (non-critical).
   static const _minGap = Duration(milliseconds: 1800);
@@ -201,7 +236,7 @@ class NavigationProvider extends ChangeNotifier {
   static const _sameMessageGap = Duration(seconds: 6);
 
   /// Jeda sebelum peringatan critical yang SAMA boleh diulang. Lebih pendek
-  /// dari [_sameMessageGap] karena bahayanya nyata, tapi tidak nol — lihat
+  /// dari [_sameMessageGap] karena bahayanya nyata, tapi tidak nol - lihat
   /// [_emitGuidance].
   static const _criticalRepeatGap = Duration(seconds: 4);
 
@@ -225,7 +260,14 @@ class NavigationProvider extends ChangeNotifier {
     }
   }
 
-  /// Muat PIDNet + YOLO secara paralel di background.
+  /// True kalau lapis ketiga (SSD MobileNet COCO) ikut hidup di mode ini.
+  ///
+  /// Dibaca layar untuk menampilkan apa adanya, dan dipakai [_tickOnDevice]
+  /// untuk melewati inferensi ketiga saat modelnya tidak tersedia.
+  bool _cocoReady = false;
+  bool get cocoReady => _cocoReady;
+
+  /// Muat PIDNet + YOLO + SSD MobileNet COCO secara paralel di background.
   Future<void> _loadOnDeviceModels() async {
     _modelsLoading = true;
     debugPrint('[Nav] Memuat model on-device...');
@@ -233,13 +275,28 @@ class NavigationProvider extends ChangeNotifier {
     final results = await Future.wait([
       PidnetService.instance.tryLoad(),
       YoloNavigasiService.instance.tryLoad(),
+      // Lapis ketiga. `TFLiteService` adalah singleton yang juga dipakai Mode
+      // Deteksi Objek, jadi kalau modelnya sudah termuat dari sana, jangan
+      // membangun interpreter kedua: di HP 4 GB dua interpreter menganggur
+      // sudah terasa, dan keduanya memegang memori native yang sama.
+      TFLiteService.instance.isLoaded
+          ? Future.value(true)
+          : TFLiteService.instance.tryLoad(),
     ]);
 
     _modelsLoading = false;
+
+    // Lapis ketiga sengaja TIDAK ikut menentukan `_modelsReady`.
+    //
+    // Ia menambah cakupan, bukan menopang mode ini. Kalau SSD gagal dimuat,
+    // panduan jalur dan enam kelas bahaya custom tetap berjalan penuh, dan
+    // menjatuhkan seluruh mode karena lapisan tambahan gagal akan menukar
+    // fungsi yang masih sehat dengan layar mati.
+    _cocoReady = results[2];
     _modelsReady = results[0] && results[1];
 
     if (!_modelsReady) {
-      // Tidak ada cadangan server lagi. Katakan apa adanya — dan sebut mode
+      // Tidak ada cadangan server lagi. Katakan apa adanya - dan sebut mode
       // apa yang MASIH bisa dipakai, supaya ini bukan jalan buntu.
       debugPrint('[Nav] Model on-device gagal dimuat.');
       _phase = NavPhase.unavailable;
@@ -252,7 +309,8 @@ class NavigationProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint('[Nav] Model on-device siap. PIDNet + YOLO aktif.');
+    debugPrint('[Nav] Model on-device siap. PIDNet + YOLO'
+        '${_cocoReady ? " + SSD COCO" : " (SSD COCO tidak tersedia)"} aktif.');
     _speak('Panduan jalur aktif.', tier: SpeechTier.info);
     notifyListeners();
     _startLoop();
@@ -263,8 +321,12 @@ class NavigationProvider extends ChangeNotifier {
     _pacer.reset();
     _candidateMessage = '';
     _candidateStreak = 0;
+    // Pengawas kecepatan mulai dari nol tiap sesi: ponsel yang tadi lambat
+    // karena aplikasi lain sedang berat belum tentu lambat sekarang, dan
+    // menghukumnya selamanya berarti membuang lapis COCO tanpa alasan.
+    _pace.reset();
     // ~2 frame per detik. Kecepatan jalan kaki sekitar 1,4 m/s, jadi tiap
-    // frame mewakili kurang dari satu meter perjalanan — cukup rapat untuk
+    // frame mewakili kurang dari satu meter perjalanan - cukup rapat untuk
     // memperingatkan sebelum terlambat, cukup jarang untuk tidak menguras
     // baterai dan kuota di sepanjang perjalanan.
     _loopTimer = Timer.periodic(const Duration(milliseconds: 500), (_) => _tick());
@@ -282,12 +344,18 @@ class NavigationProvider extends ChangeNotifier {
     await _pacer.run(_tickOnDevice);
   }
 
-  // ── On-Device: PIDNet + YOLO di HP ──────────────────────────
+  // ── On-Device: PIDNet + YOLO + SSD COCO di HP ───────────────
   Future<void> _tickOnDevice() async {
     final camGrab = cameraSource;
     if (camGrab == null) return;
     final frame = await camGrab();
     if (frame == null) return;
+
+    // Diukur dari SEBELUM penyiapan tensor sampai sesudah hasilnya dipakai,
+    // bukan hanya inferensinya. Di ponsel lama, konversi YUV dan tekanan
+    // pengumpul sampah sering lebih mahal daripada modelnya sendiri, dan
+    // mengukur inferensi saja akan menyembunyikan justru bagian yang berat.
+    final t0 = DateTime.now();
 
     try {
       // Satu lintasan di isolate menyiapkan KEDUA tensor sekaligus.
@@ -295,14 +363,26 @@ class NavigationProvider extends ChangeNotifier {
       // Sebelumnya bagian ini berjalan di isolate UI: YUV→RGB frame penuh,
       // lalu masing-masing service memutar dan menskalakan ulang frame yang
       // SAMA, lalu membangun `List` bersarang. Diukur 136 ms per frame di CPU
-      // desktop — di HP mid-low berkali lipat, dan seluruhnya menahan thread
+      // desktop - di HP mid-low berkali lipat, dan seluruhnya menahan thread
       // yang juga menjadwalkan TTS.
       final tensors = await NavFrameConverter.prepare(
         frame,
         pidnetBchw: PidnetService.instance.wantsBchw,
       );
 
-      // Jalankan PIDNet dan YOLO secara paralel
+      // Tiga model berjalan paralel dari SATU frame yang sama.
+      //
+      // Frame yang sama itu syarat, bukan penghematan: zona jalur, rintangan
+      // custom, dan rintangan COCO harus menggambarkan momen yang identik.
+      // Kalau salah satunya terlambat satu frame, pengguna bisa mendengar
+      // "jalur tengah aman" bersamaan dengan "ada motor di depan" dari
+      // pemandangan yang sudah lewat.
+      //
+      // SSD MobileNet menyiapkan tensornya sendiri dari `CameraImage` (crop
+      // persegi di tengah + rotasi, lihat `tflite_service.dart`), jadi ia
+      // tidak ikut `NavFrameConverter`. Keluarannya tetap dalam koordinat
+      // bingkai TEGAK yang sama dengan YOLO custom, sehingga kotaknya bisa
+      // langsung dibandingkan dan digambar tanpa konversi tambahan.
       final results = await Future.wait([
         PidnetService.instance.analyze(
           tensors.pidnet,
@@ -314,19 +394,30 @@ class NavigationProvider extends ChangeNotifier {
           tensors.uprightWidth,
           tensors.uprightHeight,
         ),
+        if (_cocoReady && !_pace.cocoDropped)
+          TFLiteService.instance.runInference(frame)
+        else
+          Future.value(const <Detection>[]),
       ]);
 
       final zoneAnalysis = results[0] as ZoneAnalysis?;
-      final obstacles    = results[1] as List<Detection>;
+      final custom       = results[1] as List<Detection>;
+      final coco         = results[2] as List<Detection>;
 
       if (zoneAnalysis == null) return;
 
+      // Digabung SEBELUM masuk ke penyusun arahan, supaya aturan prioritas
+      // yang sudah ada (critical dulu, lalu warning, baru arahan zona) berlaku
+      // untuk kedua sumber tanpa perlu diduplikasi.
+      final obstacles = mergeNavObstacles(custom, coco);
+
       _consecutiveFailures = 0;
       _applyOnDeviceResult(zoneAnalysis, obstacles);
+      _recordTickDuration(DateTime.now().difference(t0).inMilliseconds);
 
       // Sengaja TIDAK di-await: konversi mask jadi gambar tidak boleh menunda
       // arahan suara. Kalau frame berikutnya datang lebih dulu, hamparannya
-      // yang tertinggal satu frame — bukan peringatannya.
+      // yang tertinggal satu frame - bukan peringatannya.
       if (_wantsSegmentationOverlay) {
         unawaited(_updateSegmentationImage(zoneAnalysis));
       }
@@ -364,8 +455,8 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   /// Susun satu pesan untuk frame ini: rintangan kritis didahulukan, lalu
-  /// rintangan peringatan, baru arahan zona. Fungsi ini murni — tidak bicara
-  /// dan tidak mengubah state — supaya keputusan "apa yang perlu dikatakan"
+  /// rintangan peringatan, baru arahan zona. Fungsi ini murni - tidak bicara
+  /// dan tidak mengubah state - supaya keputusan "apa yang perlu dikatakan"
   /// terpisah dari keputusan "apakah sekarang saatnya mengatakannya".
   (String, SpeechTier, bool) _composeGuidance(ZoneAnalysis zones, List<Detection> obstacles) {
     final critical = obstacles.where((d) => d.dangerLevel == 'critical').toList();
@@ -392,7 +483,7 @@ class NavigationProvider extends ChangeNotifier {
     //
     // Diletakkan SESUDAH cabang bahaya dan rintangan, bukan sebelumnya. Kalau
     // ada motor mendekat atau lubang di depan, pengguna tetap harus diberi
-    // tahu — terlepas dari apakah jalurnya terbaca dengan yakin. Yang ditahan
+    // tahu - terlepas dari apakah jalurnya terbaca dengan yakin. Yang ditahan
     // di sini HANYA klaim positif "jalur aman, jalan lurus", karena itulah
     // satu-satunya kalimat yang menyuruh orang melangkah.
     //
@@ -404,7 +495,7 @@ class NavigationProvider extends ChangeNotifier {
     final doubtMessage = _doubtMessage(zones);
     if (doubtMessage != null) {
       // Warning, bukan Info: pengguna sedang berjalan dan perlu tahu bahwa
-      // panduannya sedang tidak bekerja. Tapi juga bukan Critical — tidak ada
+      // panduannya sedang tidak bekerja. Tapi juga bukan Critical - tidak ada
       // bahaya yang terdeteksi, yang hilang cuma penglihatan sistem.
       return (doubtMessage, SpeechTier.warning, false);
     }
@@ -422,7 +513,7 @@ class NavigationProvider extends ChangeNotifier {
   String? _doubtMessage(ZoneAnalysis zones) {
     // Urutannya menentukan. Frame gelap otomatis menghasilkan mask yang aneh,
     // jadi kalau kegelapan dicek belakangan, pengguna akan disuruh membetulkan
-    // arah kamera padahal yang kurang cahayanya — tindakan yang salah, dan
+    // arah kamera padahal yang kurang cahayanya - tindakan yang salah, dan
     // dia akan mengulanginya sampai menyerah.
     if (_cameraTooDark) {
       return 'Terlalu gelap untuk membaca jalur. Nyalakan senter.';
@@ -443,7 +534,7 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   /// Anti-banjir suara. Loop menghasilkan pesan tiap frame; mengucapkan
-  /// semuanya akan menutupi suara lalu lintas — hal terakhir yang boleh
+  /// semuanya akan menutupi suara lalu lintas - hal terakhir yang boleh
   /// terjadi pada orang yang sedang menyeberang.
   ///
   /// Tiga rem, masing-masing menutup lubang yang berbeda:
@@ -451,7 +542,7 @@ class NavigationProvider extends ChangeNotifier {
   /// 1. **Histeresis.** PIDNet dan YOLO berkedip antar-frame; tanpa ini satu
   ///    kedipan model langsung jadi satu kedipan suara. Info dan Warning
   ///    butuh dua frame berturut-turut dengan pesan yang sama. Critical lewat
-  ///    pada kemunculan pertama — menunda peringatan bahaya ~700 ms demi
+  ///    pada kemunculan pertama - menunda peringatan bahaya ~700 ms demi
   ///    kerapian suara adalah pertukaran yang salah di mode ini.
   ///
   /// 2. **Critical tidak memotong dirinya sendiri.** Sebelumnya kedua rem
@@ -466,7 +557,7 @@ class NavigationProvider extends ChangeNotifier {
   /// 3. **Jangan menumpuk di atas ucapan yang belum habis.** [_lastSpokenAt]
   ///    dicatat saat pesan DIKIRIM, bukan saat selesai dibacakan. Satu
   ///    kalimat arahan zona ("Kiri aman, tengah hati-hati, kanan bahaya.
-  ///    Geser ke kiri.") butuh ~4 detik pada `speechRate` 0,5 — jauh lebih
+  ///    Geser ke kiri.") butuh ~4 detik pada `speechRate` 0,5 - jauh lebih
   ///    lama dari rem 1,8 detik. Tanpa cek [TtsQueue.isSpeaking], pesan
   ///    berikutnya selalu berangkat sebelum yang sekarang habis, lalu
   ///    dibuang antrean karena kedaluwarsa 2 detik. Itulah yang terdengar
@@ -503,14 +594,14 @@ class NavigationProvider extends ChangeNotifier {
 
   /// Frame gagal dianalisis berturut-turut.
   ///
-  /// Penyebabnya sekarang lokal — lensa tertutup, terlalu gelap, model
-  /// kehabisan memori — bukan jaringan. Naskahnya ikut berubah: menyalahkan
+  /// Penyebabnya sekarang lokal - lensa tertutup, terlalu gelap, model
+  /// kehabisan memori - bukan jaringan. Naskahnya ikut berubah: menyalahkan
   /// "sambungan server" untuk masalah yang ada di tangan pengguna hanya
   /// mengirimnya mencari sinyal yang tidak akan menolong.
   void _handleFailure() {
     _consecutiveFailures++;
 
-    // Satu kegagalan bisa jadi hanya satu frame buruk — jangan langsung
+    // Satu kegagalan bisa jadi hanya satu frame buruk - jangan langsung
     // menakuti pengguna. Beberapa berturut-turut berarti mode ini memang
     // sedang tidak melihat apa-apa, dan itu harus dikatakan segera: diam
     // berarti membiarkan orang berjalan menyangka dirinya dituntun.
@@ -533,7 +624,7 @@ class NavigationProvider extends ChangeNotifier {
     }
   }
 
-  /// NV-14a/b — telepon masuk (disimulasikan manual dari panel debug).
+  /// NV-14a/b - telepon masuk (disimulasikan manual dari panel debug).
   void simulateIncomingCall() {
     _phase = NavPhase.paused;
     _stopLoop();
@@ -542,7 +633,7 @@ class NavigationProvider extends ChangeNotifier {
 
   void endSimulatedCall() {
     _phase = NavPhase.active;
-    // NV-14b — status jalur SEKARANG, bukan yang tadi. Karena itu loop-nya
+    // NV-14b - status jalur SEKARANG, bukan yang tadi. Karena itu loop-nya
     // dijalankan lagi lebih dulu dan ringkasannya menyusul dari frame baru.
     _speak('Navigasi lanjut. ${_summaryPhrase()}', tier: SpeechTier.info);
     notifyListeners();
@@ -556,7 +647,7 @@ class NavigationProvider extends ChangeNotifier {
 
   /// Ringkasan tiga zona dalam kata, bukan warna.
   ///
-  /// `ZoneIndicator` menampilkan tiga blok berwarna — tidak ada gunanya bagi
+  /// `ZoneIndicator` menampilkan tiga blok berwarna - tidak ada gunanya bagi
   /// pengguna yang tidak melihat layar. Ini padanan verbalnya, dan inilah yang
   /// dibacakan tombol kiri "Ulangi arahan".
   String zoneSummary() {
@@ -578,7 +669,7 @@ class NavigationProvider extends ChangeNotifier {
 
     final parts = 'Kiri ${word(_left)}, tengah ${word(_center)}, kanan ${word(_right)}.';
 
-    // Sebutkan rekomendasinya, bukan hanya keadaannya — pengguna butuh tahu
+    // Sebutkan rekomendasinya, bukan hanya keadaannya - pengguna butuh tahu
     // harus berbuat apa, bukan sekadar daftar status.
     final saran = _center == ZoneStatus.safe
         ? 'Tetap di tengah.'
@@ -599,7 +690,7 @@ class NavigationProvider extends ChangeNotifier {
     _speak(zoneSummary(), tier: SpeechTier.warning);
   }
 
-  /// `actionStopWalking` — hentikan panduan tanpa keluar mode.
+  /// `actionStopWalking` - hentikan panduan tanpa keluar mode.
   /// Mengembalikan false kalau memang tidak ada yang berjalan.
   bool pauseGuidance() {
     if (_phase == NavPhase.paused) return false;
@@ -607,7 +698,7 @@ class NavigationProvider extends ChangeNotifier {
     return true;
   }
 
-  /// NV-15 — jeda otomatis (berhenti berjalan / ponsel diturunkan).
+  /// NV-15 - jeda otomatis (berhenti berjalan / ponsel diturunkan).
   /// Menghentikan loop juga menghentikan unggahan frame: berhenti berjalan
   /// berarti berhenti membakar kuota dan baterai.
   void autoPause() {
@@ -645,6 +736,10 @@ class NavigationProvider extends ChangeNotifier {
     _lastSpokenMessage = '';
     _modelsReady   = false;
     _modelsLoading = false;
+    // Hanya benderanya yang direset. `TFLiteService` sengaja TIDAK di-dispose:
+    // ia singleton yang dipakai bersama Mode Deteksi Objek, dan menutupnya di
+    // sini akan mematikan deteksi rintangan di mode itu tanpa satu pun tanda.
+    _cocoReady     = false;
     _stopLoop();
     notifyListeners();
   }

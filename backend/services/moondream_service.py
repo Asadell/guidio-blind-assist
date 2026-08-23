@@ -20,7 +20,7 @@ class MoonDreamService:
     """Lazy-loaded Moondream2 service.
     
     Dibuat singleton lewat app.state.moondream_service di lifespan.
-    Model TIDAK dimuat saat startup (bobotnya ~2GB) — dimuat saat
+    Model TIDAK dimuat saat startup (bobotnya ~2GB) - dimuat saat
     permintaan pertama datang (warm-up ~5-10 detik, sekali saja).
 
     Menggunakan official `moondream` pip package (bukan transformers
@@ -50,9 +50,9 @@ class MoonDreamService:
         return self._device
 
     def _load_sync(self) -> bool:
-        """Muat model secara sinkron — dipanggil di thread pool dari _ensure_loaded.
+        """Muat model secara sinkron - dipanggil di thread pool dari _ensure_loaded.
 
-        Membutuhkan transformers>=4.40,<5.0 — moondream2 (vikhyatk/moondream2)
+        Membutuhkan transformers>=4.40,<5.0 - moondream2 (vikhyatk/moondream2)
         belum kompatibel dengan transformers 5.x (all_tied_weights_keys API change).
         """
         try:
@@ -117,7 +117,7 @@ class MoonDreamService:
             return None
 
     def _describe_sync(self, image_bytes: bytes, length: str) -> Optional[str]:
-        """Inferensi sinkron — dijalankan di thread pool."""
+        """Inferensi sinkron - dijalankan di thread pool."""
         try:
             pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 

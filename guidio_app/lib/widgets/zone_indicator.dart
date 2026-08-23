@@ -28,7 +28,7 @@ extension ZoneStatusX on ZoneStatus {
       };
 }
 
-/// ZoneIndicator (F8) — tiga chip 111 × 56, gap 8. Chip yang sedang
+/// ZoneIndicator (F8) - tiga chip 111 × 56, gap 8. Chip yang sedang
 /// direkomendasikan memakai isian pekat (bukan hijau vibrant) supaya
 /// teks putih di atasnya lolos 7.35:1.
 class ZoneIndicator extends StatelessWidget {

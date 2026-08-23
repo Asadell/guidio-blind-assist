@@ -3,13 +3,13 @@ import '../services/camera_intrinsics.dart';
 import '../services/tflite_service.dart';
 import '../services/server_service.dart';
 
-/// InferenceProvider — kesiapan model on-device dan server saat boot.
+/// InferenceProvider - kesiapan model on-device dan server saat boot.
 ///
 /// Sejak jalur deteksi via WebSocket dihapus, tidak ada lagi "engine yang
 /// dipilih": Mode Deteksi Objek selalu on-device. Server hanya dibutuhkan
 /// untuk yang memang tidak ada di perangkat (Cari Objek, Deskripsi Suasana,
 /// dan segmentasi jalur sebagai cadangan), jadi kesiapannya diperiksa lewat
-/// `/health` — bukan dengan membuka soket deteksi yang tidak akan dipakai.
+/// `/health` - bukan dengan membuka soket deteksi yang tidak akan dipakai.
 class InferenceProvider extends ChangeNotifier {
   bool _tfliteReady = false;
   bool _serverReady = false;
@@ -19,7 +19,7 @@ class InferenceProvider extends ChangeNotifier {
   bool get serverReady => _serverReady;
 
   /// Deteksi rintangan siap. Ini satu-satunya yang menentukan mode utama
-  /// bisa berjalan — server tidak lagi jadi cadangannya.
+  /// bisa berjalan - server tidak lagi jadi cadangannya.
   bool get isReady => _tfliteReady;
 
   Future<void> initialize() async {
@@ -27,7 +27,7 @@ class InferenceProvider extends ChangeNotifier {
 
     // Intrinsik lensa dibaca sekali di sini: estimasi jarak butuh panjang
     // fokus perangkat ini, bukan rata-rata semua ponsel. Kegagalannya tidak
-    // memblokir apa pun — nilainya jatuh ke fallback.
+    // memblokir apa pun - nilainya jatuh ke fallback.
     final results = await Future.wait([
       TFLiteService.instance.tryLoad(),
       _probeServer(),

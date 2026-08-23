@@ -1,8 +1,8 @@
 """
-test_health.py — Tes endpoint /health dan /api/capabilities.
+test_health.py - Tes endpoint /health dan /api/capabilities.
 
 Grup A dari VERIFIKASI_FITUR.md, versi pytest otomatis.
-Tidak membutuhkan database atau model hidup — semua dicek strukturnya saja.
+Tidak membutuhkan database atau model hidup - semua dicek strukturnya saja.
 """
 
 
@@ -57,7 +57,7 @@ class TestCapabilities:
             assert mode in caps, f"Mode '{mode}' tidak ada di capabilities"
 
     def test_on_device_modes_always_up(self, client):
-        """4 mode on-device harus selalu 'up' — tidak bergantung server."""
+        """4 mode on-device harus selalu 'up' - tidak bergantung server."""
         caps = client.get("/api/capabilities").json()["capabilities"]
         for mode in ("detection", "money", "read_text", "navigation"):
             assert caps[mode]["state"] == "up", \

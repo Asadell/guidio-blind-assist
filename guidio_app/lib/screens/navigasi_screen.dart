@@ -9,11 +9,11 @@ import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Navigasi — bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
+/// Mode Navigasi - bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
 ///
 /// **Sepenuhnya on-device**: segmentasi jalur via PIDNet-S TFLite dan deteksi
 /// rintangan via YOLO11n TFLite berjalan langsung di HP. Tidak ada upload
-/// frame, tidak ada cadangan server — kalau model gagal dimuat, mode ini
+/// frame, tidak ada cadangan server - kalau model gagal dimuat, mode ini
 /// mengatakannya apa adanya lewat NavPhase.unavailable.
 class NavigasiScreen extends StatefulWidget {
   const NavigasiScreen({super.key});
@@ -52,12 +52,12 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
 
       final nav = context.read<NavigationProvider>();
       nav.onSpeak = (text, tier) {
-        // NV-22 — senyap/TTS mati: arah lewat getar, 1 ketuk kiri, 2 ketuk kanan.
+        // NV-22 - senyap/TTS mati: arah lewat getar, 1 ketuk kiri, 2 ketuk kanan.
         if (_silentMode) {
           // Critical selalu bergetar, apa pun rekomendasinya. Sebelum ini
           // hanya rekomendasi kiri/kanan yang menghasilkan getar, sehingga
-          // "Berhenti! Jalur di depan tidak aman" — yang rekomendasinya
-          // tengah atau tidak ada sama sekali — lewat tanpa suara DAN tanpa
+          // "Berhenti! Jalur di depan tidak aman" - yang rekomendasinya
+          // tengah atau tidak ada sama sekali - lewat tanpa suara DAN tanpa
           // getar. Dibisukan tidak boleh berarti peringatan bahaya hilang.
           if (tier == SpeechTier.critical) {
             _fireCriticalHaptic();
@@ -74,16 +74,16 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       // Sumber frame on-device: CameraImage langsung ke PIDNet + YOLO.
       nav.cameraSource = _grabCameraImage;
       // Hamparan jalur baru dihitung saat layar ini benar-benar terlihat.
-      // Inferensinya sendiri tetap berjalan tanpa ini — yang menjaga pengguna
+      // Inferensinya sendiri tetap berjalan tanpa ini - yang menjaga pengguna
       // adalah arahan suaranya, bukan gambarnya.
       nav.wantsSegmentationOverlay = true;
       nav.startCalibration();
 
-      // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
+      // NV-18 - satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
 
       // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
-      // sama persis dengan menekan tombol kiri — di mode ini, membisukan dan
+      // sama persis dengan menekan tombol kiri - di mode ini, membisukan dan
       // menyalakan kembali suara panduan.
       //
       // "Ulangi arahan" tidak hilang, hanya pindah: tetap tersedia lewat
@@ -113,7 +113,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   /// Kondisi dikirim DI SINI, bukan dari `build()`, karena mengubah provider
   /// saat membangun widget memicu notifikasi di tengah fase build. Metode ini
   /// dipanggil tepat sekali per siklus inferensi, jadi kondisinya selalu
-  /// berasal dari momen yang sama dengan frame yang dianalisis — bukan dari
+  /// berasal dari momen yang sama dengan frame yang dianalisis - bukan dari
   /// beberapa frame sebelumnya.
   Future<CameraImage?> _grabCameraImage() async {
     if (!mounted) return _latestFrame;
@@ -179,17 +179,32 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     }
   }
 
-  /// NV-18 — satu-satunya konfirmasi wajib di seluruh app.
+  /// NV-18 - satu-satunya konfirmasi wajib di seluruh app.
   ///
   /// **Lembar bawah, bukan dialog tengah layar.** Pengguna sedang berjalan;
   /// menjangkau tombol di tengah layar berarti berhenti dan menyesuaikan
-  /// pegangan — dengan satu tangan yang lain memegang tongkat. Tombolnya
+  /// pegangan - dengan satu tangan yang lain memegang tongkat. Tombolnya
   /// karena itu menempel di dasar, mengikuti `zone/page-action`.
   ///
   /// Fokus terkunci di dalam lembar (bawaan `showModalBottomSheet`); setelah
   /// ditutup, fokus kembali ke tombol pemanggilnya, bukan ke atas layar.
   Future<bool> _confirmLeaveNavigasi(AppMode from, AppMode to) async {
-    final stillWalking = context.read<NavigationProvider>().phase != NavPhase.paused;
+    // Hanya fase yang benar-benar SEDANG memandu yang boleh menghadang.
+    //
+    // Syarat lamanya `phase != paused`, dan itu menjaring tiga fase yang sama
+    // sekali bukan "sedang berjalan dituntun": `calibrating` (kartu "Pegang
+    // ponsel tegak" masih terbuka, panduan belum pernah mulai),
+    // `loadingModels`, dan `unavailable` (model gagal dimuat - justru saat
+    // pengguna paling perlu cepat pindah ke Mode Deteksi Objek, dan itu
+    // persis mode yang disarankan sendiri oleh pesan kegagalannya).
+    //
+    // Di ketiga fase itu, siapa pun yang masuk Navigasi karena salah dengar
+    // lalu mencoba keluar akan ditahan lembar konfirmasi yang mengklaim dia
+    // "masih terdeteksi berjalan" - klaim yang tidak pernah diukur dari apa
+    // pun, dan yang tidak bisa dia bantah karena tidak melihat layar.
+    final phase = context.read<NavigationProvider>().phase;
+    final stillWalking =
+        phase == NavPhase.active || phase == NavPhase.degraded;
     if (!stillWalking) return true;
 
     await context.read<TtsProvider>().speak(
@@ -252,12 +267,12 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     await context.read<NavigationProvider>().startNavigation(dest);
   }
 
-  /// Tombol kiri BottomActionBar — membisukan / menyalakan suara panduan.
+  /// Tombol kiri BottomActionBar - membisukan / menyalakan suara panduan.
   ///
   /// **Hanya suaranya.** PIDNet dan YOLO tetap berjalan dan indikator zona di
   /// layar tetap hidup, jadi pendamping yang melihat layar tetap terbantu,
   /// dan panduan arah tetap sampai lewat getar (NV-22). Membisukan di sini
-  /// bukan mematikan panduan — itu sebabnya loop-nya sengaja tidak disentuh.
+  /// bukan mematikan panduan - itu sebabnya loop-nya sengaja tidak disentuh.
   void _toggleGuidanceVoice() {
     final tts = context.read<TtsProvider>();
     if (_silentMode) {
@@ -309,7 +324,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             children: [
               Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                   decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-              Text('Debug — Mode Navigasi', style: AppTypography.title()),
+              Text('Debug - Mode Navigasi', style: AppTypography.title()),
               const SizedBox(height: 4),
               Text('NV-01..13,15,17,22..24 tercapai lewat kalibrasi/simulasi/kondisi nyata',
                   textAlign: TextAlign.center, style: AppTypography.caption()),
@@ -375,7 +390,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     final hasCriticalObstacle = obstacles.any((d) => d.isCritical);
 
     if (_debugOverride == 'NV-21') {
-      // NV-21 — layar mengambil alih penuh, tidak ada BottomActionBar, jadi
+      // NV-21 - layar mengambil alih penuh, tidak ada BottomActionBar, jadi
       // aksinya memakai `zone/page-action`. Ini layar yang paling mungkin
       // muncul saat pengguna sedang memegang tongkat: tombol wajib di dasar.
       return const PageActionScaffold(
@@ -399,7 +414,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
           // Preview dan hamparannya dibungkus CameraStage supaya berbagi
           // persegi yang sama persis. Tanpa itu, kotak deteksi memetakan
           // koordinatnya ke seluruh layar sementara gambar kameranya hanya
-          // menempati sebagian — dan setiap kotak meleset dari objeknya.
+          // menempati sebagian - dan setiap kotak meleset dari objeknya.
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             CameraStage(
               controller: cam.controller!,
@@ -490,7 +505,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
           Positioned(
             left: 0, right: 0, bottom: 0,
             child: BottomActionBar(
-              // Dulu `const BottomActionBar()` — labelnya jatuh ke bawaan
+              // Dulu `const BottomActionBar()` - labelnya jatuh ke bawaan
               // "Ambil gambar", tombolnya tampak aktif, dan menekannya tidak
               // melakukan apa pun. Lalu sempat "Ulangi arahan". Sekarang:
               // saklar bisu untuk suara panduan, sesuai kontrak tombol kiri
@@ -540,7 +555,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (nav.phase == NavPhase.paused && _debugOverride == 'NV-14a') {
       return const StatusBanner(tier: AlertTier.info, message: 'Panggilan masuk, peringatan pindah ke getar');
     }
-    // NV-11 — mode ini sepenuhnya on-device. Kalau modelnya tidak bisa
+    // NV-11 - mode ini sepenuhnya on-device. Kalau modelnya tidak bisa
     // dipakai atau frame tidak terbaca, tidak ada cadangan apa pun: bannernya
     // Critical dan menyuruh berhenti, bukan Warning yang menjanjikan sisa
     // fungsi yang sebenarnya tidak ada.

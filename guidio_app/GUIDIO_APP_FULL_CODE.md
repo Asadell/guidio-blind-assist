@@ -459,7 +459,7 @@ Suara + getar ke pengguna
 ## 2. Enam mode dan layarnya
 
 Aplikasi terbuka langsung ke Mode Deteksi Objek yang sudah aktif. Tidak ada
-layar beranda — setiap layar perantara berarti penundaan sebelum pengguna
+layar beranda - setiap layar perantara berarti penundaan sebelum pengguna
 mendapat informasi keselamatan.
 
 | Mode | Berkas layar | Butuh internet? |
@@ -489,7 +489,7 @@ tombol Pilih Mode di kanan bawah (dua langkah).
 | Dijalankan di | thread terpisah, supaya layar tidak macet |
 
 > `yolo11l_float32.tflite` dan `yolo11n.tflite` di folder yang sama **tidak
-> dipakai** — hanya sisa percobaan. Yang dimuat adalah `ssd_mobilenet.tflite`.
+> dipakai** - hanya sisa percobaan. Yang dimuat adalah `ssd_mobilenet.tflite`.
 
 ### Model pengenalan uang
 
@@ -498,7 +498,7 @@ tombol Pilih Mode di kanan bawah (dua langkah).
 | Berkas | `assets/models/rupiah_classifier_int8.tflite` |
 | Arsitektur | MobileNetV2 transfer learning (repo `rupiah-vision`) |
 | Ukuran masukan | 224 × 224 piksel, float32 **rentang −1..1** |
-| Jumlah kelas | 7 pecahan — emisi 2016 & 2022 |
+| Jumlah kelas | 7 pecahan - emisi 2016 & 2022 |
 | Test accuracy | 98,36% (varian INT8) |
 
 Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scripts/02_export_tflite.py`):
@@ -509,7 +509,7 @@ Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scri
 ```
 
 > **Perhatian rentang input:** model ini memakai rentang −1..1 (`x/127.5 − 1`),
-> **bukan** 0..255. Nilai yang salah tidak memunculkan error — prediksi hanya
+> **bukan** 0..255. Nilai yang salah tidak memunculkan error - prediksi hanya
 > diam-diam salah. Periksa ulang jika model diganti.
 
 **Aturan yang tidak bisa ditawar:** kalau keyakinan model di bawah 0,85,
@@ -545,7 +545,7 @@ Setiap intent memiliki varian ucapan yang mencakup:
 - Typo dan variasi STT yang umum
 
 Server (`POST /api/intent`) hanya dipanggil saat parser lokal benar-benar
-tidak bisa menentukan — biasanya kasus ambigu yang perlu konfirmasi pengguna.
+tidak bisa menentukan - biasanya kasus ambigu yang perlu konfirmasi pengguna.
 
 ---
 
@@ -580,12 +580,12 @@ final narasi = generateNaturalNarration([
 | `mapDirectionPhrase()` | "kiri"/"tengah"/"kanan" → "di sebelah kirimu"/dst |
 | `generateNaturalNarration()` | Merangkai semua menjadi 1 kalimat dengan variasi konektor |
 
-Urutan objek: yang paling dekat disebut lebih dulu — objek paling berbahaya
+Urutan objek: yang paling dekat disebut lebih dulu - objek paling berbahaya
 mendapat prioritas.
 
 ### Deskripsi suasana (Moondream2)
 
-Untuk `POST /api/describe`, backend mengembalikan `description_en` — caption
+Untuk `POST /api/describe`, backend mengembalikan `description_en` - caption
 Bahasa Inggris dari Moondream2. Flutter membacakannya dengan:
 
 ```dart
@@ -605,7 +605,7 @@ langsung.
 ### Aturan warna
 
 Warna terang seperti hijau dan kuning **tidak boleh** menjadi latar teks
-putih — kontrasnya gagal untuk pengguna low vision. Setiap tingkat bahaya
+putih - kontrasnya gagal untuk pengguna low vision. Setiap tingkat bahaya
 punya dua warna: satu untuk ikon/bidang besar, satu yang lebih pekat untuk
 teks.
 
@@ -659,7 +659,7 @@ Ambil gambar di kiri, Bicara di tengah, Pilih mode di kanan.
 | Warning | Memotong Info, boleh dipotong pengguna |
 | Info | Mengantre, dibuang kalau sudah menunggu lebih dari 2 detik |
 
-Info sengaja dibuang saat basi — informasi tentang benda yang sudah terlewat
+Info sengaja dibuang saat basi - informasi tentang benda yang sudah terlewat
 tiga detik lalu bukan cuma tidak berguna, tapi juga menghalangi peringatan
 yang lebih baru.
 
@@ -833,10 +833,10 @@ flutter test
 Atau per file jika mau lebih fokus:
 
 ```bash
-# Command parser — cepat, tidak butuh model atau device
+# Command parser: cepat, tidak butuh model atau device
 flutter test test/command_parser_test.dart
 
-# Inferensi model langsung — butuh TFLite shared library
+# Inferensi model langsung: butuh TFLite shared library
 flutter test test/model_inference_test.dart
 ```
 
@@ -846,25 +846,25 @@ flutter test test/model_inference_test.dart
 +40 passed, ~17 skipped
 ```
 
-Test yang di-skip **bukan error** — mereka otomatis lewat sendiri kalau dependensinya tidak ada
+Test yang di-skip **bukan error** - mereka otomatis lewat sendiri kalau dependensinya tidak ada
 (TFLite `.so`, backend server, dll.). Tidak ada yang merah = aman.
 
 #### Apa yang ditest?
 
-**`test/command_parser_test.dart`** — logika parsing perintah suara:
+**`test/command_parser_test.dart`** - logika parsing perintah suara:
 
 | Kelompok | Yang ditest | Syarat jalan |
 |---|---|---|
-| Pemetaan 21 intent | Contoh ucapan dari dokumen arsitektur | — |
-| Prioritas frasa | Frasa spesifik menang atas kata umum (4 kasus) | — |
-| Prefiks natural | "saya mau ke mode..." dan variasi (2 kasus) | — |
-| Batas kata | Anti false-positive | — |
-| Saran intent | Hanya intent yang ada handler-nya yang keluar | — |
+| Pemetaan 21 intent | Contoh ucapan dari dokumen arsitektur | - |
+| Prioritas frasa | Frasa spesifik menang atas kata umum (4 kasus) | - |
+| Prefiks natural | "saya mau ke mode..." dan variasi (2 kasus) | - |
+| Batas kata | Anti false-positive | - |
+| Saran intent | Hanya intent yang ada handler-nya yang keluar | - |
 | **Kenali Uang** | Klasifikasi 14 gambar JPEG nyata (2 per pecahan) | TFLite SO |
-| **Navigasi** | 5 fixture PNG, cek file valid + ada deteksi | — |
+| **Navigasi** | 5 fixture PNG, cek file valid + ada deteksi | - |
 | **Cari Objek** | Parse perintah cari + guard jika backend mati | Backend opsional |
 
-**`test/model_inference_test.dart`** — model TFLite langsung, memuat dari path file:
+**`test/model_inference_test.dart`** - model TFLite langsung, memuat dari path file:
 
 | Model | Input | Cara validasi |
 |---|---|---|
@@ -886,12 +886,12 @@ test/fixtures/
 
 ---
 
-### B. Python visual test — lihat gambar hasilnya
+### B. Python visual test: lihat gambar hasilnya
 
 Menghasilkan gambar ter-anotasi seperti di `test/navigation/results_mobile_tflite/`.
 Berguna untuk memeriksa secara visual apakah bounding box dan klasifikasi masuk akal.
 
-#### Setup (sekali saja) — dari root repo (folder `guido/`)
+#### Setup (sekali saja): dari root repo (folder `guido/`)
 
 ```bash
 python3 -m venv test/.venv
@@ -900,7 +900,7 @@ test/.venv/bin/pip install -r test/requirements-test.txt
 
 Hanya install `ai-edge-litert` + `Pillow` + `numpy` (~50 MB, tidak perlu TensorFlow penuh).
 
-#### Menjalankan — dari root repo (folder `guido/`)
+#### Menjalankan: dari root repo (folder `guido/`)
 
 ```bash
 test/.venv/bin/python test/run_visual_test.py
@@ -924,7 +924,7 @@ test/results/<epoch>/
 
 #### Cara baca nama file tanpa buka gambarnya
 
-**Navigasi** — bagian setelah `__` adalah label yang terdeteksi + confidence:
+**Navigasi** - bagian setelah `__` adalah label yang terdeteksi + confidence:
 
 ```
 nav_02_lubang_trotoar__lubangp50.png
@@ -937,7 +937,7 @@ nav_01_got_terbuka__none.png
                     ^ tidak ada deteksi
 ```
 
-**Uang** — bagian setelah `__` adalah status + confidence:
+**Uang** - bagian setelah `__` adalah status + confidence:
 
 ```
 money_uang_100000_a__PASS_99p6.jpg        -> benar, conf 99.6%
@@ -1017,7 +1017,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
 
             // `proguard-rules.pro` HARUS didaftarkan eksplisit. Tanpa baris ini
-            // berkasnya ada tapi tidak pernah dibaca R8 — dan build release
+            // berkasnya ada tapi tidak pernah dibaca R8 - dan build release
             // gagal total karena ML Kit merujuk pengenal aksara Cina, Jepang,
             // Korea, dan Devanagari yang tidak ikut sebagai dependensi.
             isMinifyEnabled = true
@@ -1597,7 +1597,7 @@ You can also do it by opening your Flutter project's Xcode project with `open io
 ```dart
 import '../../theme/app_spacing.dart';
 
-/// Kontrak layout dan zona — bagian 4 IMPLEMENTASI.md.
+/// Kontrak layout dan zona - bagian 4 IMPLEMENTASI.md.
 /// Tidak ada elemen yang boleh menimpa elemen lain. Kalau dua elemen minta
 /// ruang sama, yang prioritasnya lebih rendah digeser atau diperingkas.
 abstract final class ZoneHeights {
@@ -1610,10 +1610,10 @@ abstract final class ZoneHeights {
   static const safeBottom = 24.0;
   static const alertCardMax = 2;
 
-  /// `zone/page-action` — 96 dp tombol + 24 dp safe area. Zona untuk aksi
+  /// `zone/page-action` - 96 dp tombol + 24 dp safe area. Zona untuk aksi
   /// utama layar penunjang (Onboarding, Izin, Pengaturan) yang tidak punya
   /// BottomActionBar. **Tidak pernah hadir bersamaan dengan
-  /// [bottomActionBar]** — sebuah layar punya salah satu, tidak pernah
+  /// [bottomActionBar]** - sebuah layar punya salah satu, tidak pernah
   /// keduanya. Itu yang menjaga aturan "geser, bukan tumpuk".
   static const pageAction = 120.0;
   static const pageActionPrimary = 96.0;
@@ -1623,7 +1623,7 @@ abstract final class ZoneHeights {
   static const pageActionGap = 8.0;
 }
 
-/// Posisi baku (bagian 4, "Posisi baku") — offset relatif terhadap top-left
+/// Posisi baku (bagian 4, "Posisi baku") - offset relatif terhadap top-left
 /// frame, sebelum ditambah safe-area inset perangkat nyata.
 abstract final class ZonePositions {
   static const modeBadgeY = 40.0;
@@ -1634,7 +1634,7 @@ abstract final class ZonePositions {
   static const fullScreenButtonBottom = 132.0;
 }
 
-/// Turunkan top-offset ModeBadge / chip sekunder saat StatusBanner hadir —
+/// Turunkan top-offset ModeBadge / chip sekunder saat StatusBanner hadir -
 /// aturan tabrakan "Chip target + ModeBadge" & posisi baku di atas.
 double modeBadgeTopOffset({required bool hasBanner}) =>
     hasBanner ? ZonePositions.modeBadgeYWithBanner : ZonePositions.modeBadgeY;
@@ -1668,16 +1668,16 @@ import 'package:http/http.dart' as http;
 /// selalu salah di salah satu sisi: terlalu pendek untuk OCR, terlalu panjang
 /// untuk health check yang seharusnya gagal cepat.
 enum ApiOp {
-  /// Health, capabilities, intent — pengguna menunggu jawabannya sekarang.
+  /// Health, capabilities, intent - pengguna menunggu jawabannya sekarang.
   interactive(Duration(seconds: 4)),
 
-  /// Satu frame ke server dan kembali — segmentasi jalur, cari objek.
+  /// Satu frame ke server dan kembali - segmentasi jalur, cari objek.
   frame(Duration(seconds: 8)),
 
-  /// OCR, unggah antrean — berat, pengguna sudah diberi tahu akan lama.
+  /// OCR, unggah antrean - berat, pengguna sudah diberi tahu akan lama.
   heavy(Duration(seconds: 20)),
 
-  /// Telemetri — tidak ada yang menunggu.
+  /// Telemetri - tidak ada yang menunggu.
   background(Duration(seconds: 5));
 
   final Duration timeout;
@@ -1686,7 +1686,7 @@ enum ApiOp {
 
 /// Dilempar saat server menjawab dengan status non-200. Dipisah dari kegagalan
 /// jaringan supaya pemanggil bisa membedakan "server hidup tapi menolak" dari
-/// "server tidak terjangkau" — dua kondisi itu punya naskah suara berbeda
+/// "server tidak terjangkau" - dua kondisi itu punya naskah suara berbeda
 /// (BT-14 "bukan karena gambarmu" vs ER-03 "server tidak bisa dihubungi").
 class ApiStatusException implements Exception {
   final int statusCode;
@@ -1712,7 +1712,7 @@ class ApiUnreachableException implements Exception {
 ///
 /// **Kenapa satu klien, bukan `http.post()` lepasan.** Fungsi tingkat atas
 /// `http.post()` membuat `Client` baru tiap panggilan lalu menutupnya. Artinya
-/// tiap permintaan membayar handshake TCP baru — di jaringan seluler itu
+/// tiap permintaan membayar handshake TCP baru - di jaringan seluler itu
 /// ratusan milidetik yang terbuang, tiap frame, tiap kali. Satu `Client` yang
 /// hidup selama aplikasi berjalan memakai ulang koneksi (keep-alive), dan itu
 /// penghematan latensi terbesar yang bisa didapat tanpa mengubah apa pun di
@@ -1750,7 +1750,7 @@ class ApiClient {
       () => _inner.get(_uri(path, query)),
       path: path,
       op: op,
-      // GET selalu idempoten — aman diulang.
+      // GET selalu idempoten - aman diulang.
       retries: retries,
     );
     return _decode(res, path);
@@ -1783,7 +1783,7 @@ class ApiClient {
   /// murah daripada multipart: tanpa boundary, tanpa header per bagian.
   ///
   /// **Gambarnya harus sudah diperkecil sebelum sampai di sini.** Lihat
-  /// `FrameCodec.encodeForUpload` — memperkecil di sisi klien adalah satu
+  /// `FrameCodec.encodeForUpload` - memperkecil di sisi klien adalah satu
   /// keputusan yang paling menentukan waktu unggah, jauh di atas pilihan
   /// protokol apa pun.
   Future<Map<String, dynamic>> postBytes(
@@ -1801,14 +1801,14 @@ class ApiClient {
       ),
       path: path,
       op: op,
-      // Unggah gambar tidak idempoten kecuali diberi kunci — jangan diulang
+      // Unggah gambar tidak idempoten kecuali diberi kunci - jangan diulang
       // diam-diam. Pengulangan yang benar lewat antrean (BT-13).
       retries: 0,
     );
     return _decode(res, path);
   }
 
-  /// Unggah multipart — gambar + field. Dipakai saat server butuh metadata
+  /// Unggah multipart - gambar + field. Dipakai saat server butuh metadata
   /// menyertai gambar (target pencarian, koordinat, kunci idempotensi).
   Future<Map<String, dynamic>> postMultipart(
     String path, {
@@ -1862,7 +1862,7 @@ class ApiClient {
       try {
         final res = await run().timeout(op.timeout);
 
-        // 5xx layak diulang (server sedang pulih); 4xx tidak — permintaannya
+        // 5xx layak diulang (server sedang pulih); 4xx tidak - permintaannya
         // sendiri yang salah, mengulang hanya membuang waktu pengguna.
         if (res.statusCode >= 500 && attempt < retries) {
           lastError = ApiStatusException(res.statusCode, path);
@@ -1897,7 +1897,7 @@ class ApiClient {
 /// (Navigasi, Cari Objek).
 ///
 /// **Aturan: frame terbaru menang, frame lama dibuang.** Kalau server lambat,
-/// mengantrekan frame justru berbahaya — pengguna akan mendengar arahan untuk
+/// mengantrekan frame justru berbahaya - pengguna akan mendengar arahan untuk
 /// pemandangan yang sudah lewat beberapa detik lalu, sementara ia sudah
 /// berjalan maju. Untuk aplikasi yang menuntun orang berjalan, arahan basi
 /// lebih buruk daripada tidak ada arahan.
@@ -1915,7 +1915,7 @@ class FramePacer {
 
   int _dropped = 0;
 
-  /// Berapa frame dibuang sejak terakhir dibaca — berguna untuk menurunkan
+  /// Berapa frame dibuang sejak terakhir dibaca - berguna untuk menurunkan
   /// laju kamera saat server konsisten tidak mengejar (NV-13, NV-24).
   int takeDroppedCount() {
     final n = _dropped;
@@ -2025,7 +2025,7 @@ class _EncodeRequest {
 /// Preset ukuran unggah per jenis pemakaian.
 ///
 /// **Memperkecil gambar sebelum dikirim adalah keputusan yang paling
-/// menentukan waktu unggah** — jauh lebih berpengaruh daripada pilihan
+/// menentukan waktu unggah** - jauh lebih berpengaruh daripada pilihan
 /// protokol, keep-alive, atau kompresi tambahan. Frame 640×480 pada kualitas
 /// 70 sekitar 40–60 KB; frame 1920×1080 kualitas 90 bisa 400 KB. Di jaringan
 /// seluler menengah itu selisih beberapa detik, tiap frame.
@@ -2034,13 +2034,13 @@ class _EncodeRequest {
 /// mengirim piksel lebih banyak daripada yang dikonsumsi model adalah biaya
 /// murni tanpa perbaikan akurasi.
 abstract final class UploadPreset {
-  /// Segmentasi jalur & deteksi objek — model server memakai 640 px.
+  /// Segmentasi jalur & deteksi objek - model server memakai 640 px.
   static const navigation = (maxEdge: 640, quality: 70);
 
-  /// Cari objek — butuh sedikit lebih tajam untuk barang kecil.
+  /// Cari objek - butuh sedikit lebih tajam untuk barang kecil.
   static const findObject = (maxEdge: 800, quality: 75);
 
-  /// OCR — teks butuh resolusi jauh lebih tinggi. Huruf kecil hancur di 640 px.
+  /// OCR - teks butuh resolusi jauh lebih tinggi. Huruf kecil hancur di 640 px.
   static const ocr = (maxEdge: 1600, quality: 85);
 }
 
@@ -2050,7 +2050,7 @@ abstract final class FrameCodec {
   ///
   /// Versi lama mengerjakan ini di UI thread: 640×480 berarti 307.200 iterasi
   /// Dart per frame. Pada laju streaming apa pun itu membuat antarmuka
-  /// tersendat — dan di aplikasi yang dipakai sambil berjalan, tersendat
+  /// tersendat - dan di aplikasi yang dipakai sambil berjalan, tersendat
   /// berarti peringatan terlambat. `compute` memindahkannya ke isolate lain
   /// sehingga UI thread bebas menggambar dan TTS tetap lancar.
   static Future<Uint8List> encodeForUpload(
@@ -2062,7 +2062,7 @@ abstract final class FrameCodec {
     return compute(_encodeIsolate, _EncodeRequest(frame, maxEdge, quality));
   }
 
-  /// Versi untuk JPEG yang sudah jadi (hasil `takePicture`) — hanya
+  /// Versi untuk JPEG yang sudah jadi (hasil `takePicture`) - hanya
   /// memperkecil dan mengompres ulang. Dipakai sebelum mengunggah foto OCR:
   /// kamera sering menghasilkan 4000 px yang tidak menambah akurasi apa pun.
   static Future<Uint8List> recompressJpeg(
@@ -2130,7 +2130,7 @@ import 'dart:async';
 
 import '../../services/tts_service.dart';
 
-/// Prioritas tier suara — bagian 15 "Model interupsi dan antrean audio".
+/// Prioritas tier suara - bagian 15 "Model interupsi dan antrean audio".
 ///
 /// ```
 /// Critical  → memotong semua, tidak bisa dipotong pengguna
@@ -2146,13 +2146,13 @@ class _QueuedSpeech {
   _QueuedSpeech(this.message, this.tier) : queuedAt = DateTime.now();
 }
 
-/// TtsQueue — mesin antrean bertingkat yang dipakai [TtsProvider].
+/// TtsQueue - mesin antrean bertingkat yang dipakai [TtsProvider].
 ///
 /// Fix race condition (temuan 2.4):
 /// - Tambahkan [_drainGeneration] token: setiap kali Critical masuk, token
 ///   dinaikkan sehingga drain lama yang sedang await langsung berhenti saat
 ///   tiba gilirannya untuk set `_speakingTier = null`.
-/// - Critical tidak lagi set `_speakingTier` langsung — cukup invalidasi
+/// - Critical tidak lagi set `_speakingTier` langsung - cukup invalidasi
 ///   drain lama + stop + speak dengan interrupt.
 /// - Warning juga memakai token yang sama untuk keamanan.
 /// - `_pending` dibatasi 8 item; item terlama dibuang saat penuh (anti-OOM).
@@ -2164,7 +2164,7 @@ class _QueuedSpeech {
 /// - Info: masuk antrean; dibuang jika sudah menunggu > 2 detik saat giliran
 ///   tiba (anti-banjir, bagian 15).
 class TtsQueue {
-  /// Singleton — semua caller (DetectionProvider, CameraProvider, TtsProvider,
+  /// Singleton - semua caller (DetectionProvider, CameraProvider, TtsProvider,
   /// NavigationProvider, dll) memakai antrian yang sama: "satu pintu suara".
   static final TtsQueue instance = TtsQueue._internal();
   factory TtsQueue() => instance;
@@ -2205,12 +2205,12 @@ class TtsQueue {
         unawaited(_drain());
         return;
       }
-      // Info belum bicara — cukup antrean sebagai warning
+      // Info belum bicara - cukup antrean sebagai warning
     }
 
     _pending.add(_QueuedSpeech(message, tier));
 
-    // Batasi 8 item — buang item terlama (Info) saat penuh (anti-OOM)
+    // Batasi 8 item - buang item terlama (Info) saat penuh (anti-OOM)
     if (_pending.length > _maxPending) {
       // Buang item Info terlama; kalau semua Warning, buang yang terlama
       final oldestInfoIdx = _pending.indexWhere((q) => q.tier == SpeechTier.info);
@@ -2224,7 +2224,7 @@ class TtsQueue {
     unawaited(_drain());
   }
 
-  /// Pengguna menimpa TTS yang sedang jalan (mis. menekan tombol) — tidak
+  /// Pengguna menimpa TTS yang sedang jalan (mis. menekan tombol) - tidak
   /// berlaku untuk peringatan Critical, yang "tidak bisa dipotong pengguna".
   Future<void> interruptByUser() async {
     if (_speakingTier == SpeechTier.critical) return;
@@ -2294,7 +2294,7 @@ import '../../widgets/tier_icon.dart' show AlertTier;
 
 /// Satu kondisi global aktif (offline, baterai kritis, penyimpanan penuh,
 /// ponsel panas). Storage dan thermal tidak punya sensor resmi yang murah di
-/// Flutter — keduanya dipicu manual lewat [setStorageLow] / [setDeviceHot]
+/// Flutter - keduanya dipicu manual lewat [setStorageLow] / [setDeviceHot]
 /// (mis. dari panel debug atau pengukuran kasar), sesuai bagian 2 dokumen:
 /// "boleh dipalsukan" untuk hal yang bukan inti keselamatan.
 class _Condition {
@@ -2304,7 +2304,7 @@ class _Condition {
   const _Condition(this.id, this.tier, this.label);
 }
 
-/// Hasil StatusBanner setelah kondisi digabung — bagian 5.7 & 13.
+/// Hasil StatusBanner setelah kondisi digabung - bagian 5.7 & 13.
 class MergedBanner {
   final AlertTier tier;
   final String message;
@@ -2313,7 +2313,7 @@ class MergedBanner {
   const MergedBanner({required this.tier, required this.message, this.sub, this.actionLabel});
 }
 
-/// GlobalConditions — penggabungan StatusBanner sesuai bagian 4 & 13.
+/// GlobalConditions - penggabungan StatusBanner sesuai bagian 4 & 13.
 /// Maksimum SATU banner di layar. 1 kondisi → pesan+sub. 2 kondisi →
 /// digabung satu kalimat. 3+ kondisi → dua disebut, sisanya "dan N masalah
 /// lain" + aksi "Lihat semua".
@@ -2336,7 +2336,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
   /// Ini kasus paling umum saat demo: ponsel tersambung WiFi sementara laptop
   /// backend mati, IP-nya berubah, atau firewall menutup port. Kondisi lama
   /// hanya membaca `ConnectivityResult.none`, jadi keadaan ini **tidak pernah
-  /// terdeteksi** — ModePickerSheet menampilkan semua mode sehat, lalu Cari
+  /// terdeteksi** - ModePickerSheet menampilkan semua mode sehat, lalu Cari
   /// Objek gagal saat ditekan.
   bool get isServerUnreachable => _serverUnreachable;
 
@@ -2347,7 +2347,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
   int? get batteryPercent => _batteryPercent;
 
   /// Ambang dokumen: <10%. Versi kode lama memakai <15% **dan** tier Critical,
-  /// sehingga banner baterai bisa menyingkirkan banner kamera error — padahal
+  /// sehingga banner baterai bisa menyingkirkan banner kamera error - padahal
   /// kamera error jauh lebih menentukan keselamatan.
   bool get isBatteryCritical => (_batteryPercent ?? 100) < 10;
   bool get isStorageLow => _storageLow;
@@ -2408,7 +2408,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (_) {
-      // Platform tanpa dukungan battery_plus (mis. desktop web debug) — abaikan.
+      // Platform tanpa dukungan battery_plus (mis. desktop web debug) - abaikan.
     }
   }
 
@@ -2430,7 +2430,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
         if (_cameraError)
           const _Condition('camera', AlertTier.critical, 'Kamera bermasalah'),
         if (_offline) const _Condition('offline', AlertTier.warning, 'Tanpa internet'),
-        // Dibedakan dari offline: tindakan pengguna berikutnya berbeda —
+        // Dibedakan dari offline: tindakan pengguna berikutnya berbeda -
         // menyalakan data seluler, atau memeriksa server.
         if (!_offline && _serverUnreachable)
           const _Condition('server', AlertTier.info, 'Server tidak terhubung'),
@@ -2441,7 +2441,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
       ];
 
   /// null = tidak ada banner. Urutan penyebutan: baterai/critical dulu, baru
-  /// yang lain — "sebut yang masih hidup dulu, baru yang mati" (bagian 17)
+  /// yang lain - "sebut yang masih hidup dulu, baru yang mati" (bagian 17)
   /// diterjemahkan di layar mode masing-masing; di sini tier tertinggi yang
   /// menentukan urutan tampil.
   MergedBanner? get merged {
@@ -2494,7 +2494,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
 ```dart
 import 'intents.dart';
 
-/// CommandParser — varian ucapan → intent, sesuai tabel bagian 14.
+/// CommandParser - varian ucapan → intent, sesuai tabel bagian 14.
 /// Sengaja berbasis keyword lokal (0ms, aman offline) mengikuti pola
 /// [VoiceProvider] yang sudah ada. Panggil [parse] dengan teks hasil STT.
 class CommandParser {
@@ -3025,14 +3025,14 @@ class CommandParser {
   // **mengikuti urutan deklarasi Map**. Dua akibatnya nyata:
   //
   //   1. `actionGoBack` memuat 'stop' dan 'berhenti', dan ia dideklarasikan
-  //      sebelum `actionStopWalking` dan `playPause`. Maka "stop navigasi" —
-  //      yang jelas dimaksudkan untuk menghentikan panduan — malah **keluar
+  //      sebelum `actionStopWalking` dan `playPause`. Maka "stop navigasi" -
+  //      yang jelas dimaksudkan untuk menghentikan panduan - malah **keluar
   //      dari Mode Navigasi**. Sebagian besar frasa kedua intent itu tidak
   //      pernah bisa tercapai.
   //   2. `contains` tanpa batas kata membuat potongan kata ikut cocok.
   //
   // Sekarang: frasa dicocokkan pada batas kata, dan **yang paling panjang
-  // diperiksa lebih dulu** — yang spesifik selalu menang atas yang umum,
+  // diperiksa lebih dulu** - yang spesifik selalu menang atas yang umum,
   // terlepas dari urutan deklarasi.
   // ===========================================================================
 
@@ -3080,7 +3080,7 @@ class CommandParser {
     final norm = _normalize(rawText);
 
     // =========================================================================
-    // [Fuzzy Matching Layer 0] — Natural Conversational Mode Transition
+    // [Fuzzy Matching Layer 0] - Natural Conversational Mode Transition
     // Handles natural spoken sentences like: "Saya pengin pindah ke mode baca teks"
     // Strips conversational prefixes and extracts target keywords (baca, uang, etc).
     // =========================================================================
@@ -3112,7 +3112,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 1] — Frasa kamus MULTI-KATA, terpanjang lebih dulu.
+    // [Layer 1] - Frasa kamus MULTI-KATA, terpanjang lebih dulu.
     //
     // Frasa banyak kata mengungkap maksud jauh lebih tegas daripada satu kata
     // lepas, jadi ia diperiksa sebelum apa pun. Di sinilah "stop navigasi"
@@ -3127,7 +3127,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 2] — Pola cari-objek dinamis ("cari [barang]").
+    // [Layer 2] - Pola cari-objek dinamis ("cari [barang]").
     //
     // Sengaja SEBELUM kata tunggal: "cari uang yang jatuh" harus berarti
     // mencari benda, bukan membuka Mode Kenali Uang hanya karena kata 'uang'
@@ -3143,7 +3143,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 3] — Kata tunggal ("uang", "deteksi", "navigasi", "asisten").
+    // [Layer 3] - Kata tunggal ("uang", "deteksi", "navigasi", "asisten").
     // =========================================================================
     for (final entry in _sortedPhrases) {
       if (_wordCount(entry.key) != 1) continue;
@@ -3153,7 +3153,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 4] — Kombinasi kata kunci longgar ("baca" + "mode").
+    // [Layer 4] - Kombinasi kata kunci longgar ("baca" + "mode").
     // =========================================================================
     bool has(String w) => _containsPhrase(norm, w);
     if (has('mode') || has('buka') || has('aktifkan')) {
@@ -3213,14 +3213,14 @@ class CommandParser {
       (List<String>.from(fillerWords)..sort((a, b) => b.length.compareTo(a.length)));
 
   // =========================================================================
-  // [Fuzzy Matching Layer 3] — Word Overlap Similarity Scoring (Jaccard-like)
+  // [Fuzzy Matching Layer 3] - Word Overlap Similarity Scoring (Jaccard-like)
   // Calculates word intersection overlap between raw STT input and phrase database.
   // Returns top 2 nearest guesses for fallback voice prompts ("Saya dengar X. Maksudmu Y, atau Z?").
   // =========================================================================
   /// Intent yang boleh ditawarkan balik ke pengguna.
   ///
   /// **Hanya yang benar-benar punya handler.** Sebelumnya seluruh isi
-  /// `_phrases` bisa disarankan, termasuk 10 intent tanpa handler — sehingga
+  /// `_phrases` bisa disarankan, termasuk 10 intent tanpa handler - sehingga
   /// Vinara bisa bertanya "Maksudmu jeda?", pengguna menjawab "jeda", dan
   /// jawabannya "Perintah itu belum saya kenali di mode ini". Lingkaran buntu
   /// yang diciptakan aplikasi sendiri, dan pengguna tunanetra tidak punya
@@ -3274,7 +3274,7 @@ class CommandParser {
 }
 
 /// Label ucapan untuk ditawarkan balik ke pengguna, mis. "Maksudmu kenali
-/// uang, atau cari uang yang jatuh?" — bagian 14.
+/// uang, atau cari uang yang jatuh?" - bagian 14.
 extension VoiceIntentSpokenLabel on VoiceIntent {
   String get spokenLabel => switch (this) {
         VoiceIntent.modeMoney => 'kenali uang',
@@ -3311,7 +3311,7 @@ extension VoiceIntentSpokenLabel on VoiceIntent {
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/core/voice/intents.dart`
 
 ```dart
-/// Intent perintah suara — bagian 14 IMPLEMENTASI.md. 20 intent baku.
+/// Intent perintah suara - bagian 14 IMPLEMENTASI.md. 20 intent baku.
 enum VoiceIntent {
   // Ganti mode
   modeMoney,
@@ -3339,7 +3339,7 @@ enum VoiceIntent {
   // Bantuan
   helpWhat,
   helpWhereAmI,
-  // Cari Objek — target dinamis, tangkap terpisah dari intent
+  // Cari Objek - target dinamis, tangkap terpisah dari intent
   findObjectTarget,
 }
 
@@ -3372,10 +3372,10 @@ extension VoiceIntentX on VoiceIntent {
 class VoiceCommand {
   final VoiceIntent? intent;
   final String rawText;
-  /// Untuk `findObjectTarget` / `mode.findObject "cari [nama barang]"` —
+  /// Untuk `findObjectTarget` / `mode.findObject "cari [nama barang]"` -
   /// nama barang yang diekstrak dari ucapan.
   final String? argument;
-  /// Dua tebakan terdekat saat tidak dikenali — bagian 14 "Tidak dikenali".
+  /// Dua tebakan terdekat saat tidak dikenali - bagian 14 "Tidak dikenali".
   final List<VoiceIntent> suggestions;
 
   const VoiceCommand({
@@ -3398,7 +3398,7 @@ class VoiceCommand {
 ```dart
 import 'dart:math';
 
-/// Narration Engine — Merangkai hasil deteksi YOLO menjadi narasi Bahasa Indonesia
+/// Narration Engine - Merangkai hasil deteksi YOLO menjadi narasi Bahasa Indonesia
 /// yang alami untuk dibacakan TTS. 100% offline, tanpa LLM.
 ///
 /// Menggantikan POST /api/narasi yang sebelumnya bergantung pada Qwen LLM di backend.
@@ -3554,7 +3554,7 @@ String mapDirectionPhrase(String direction) {
 // ── Sentence Builder ───────────────────────────────────────────────────────
 
 /// Data deteksi satu objek untuk narasi engine.
-/// Berbeda dari model [Detection] utama — ini versi ringan khusus narasi.
+/// Berbeda dari model [Detection] utama - ini versi ringan khusus narasi.
 class NarrationDetection {
   final String objectClass; // key dari cocoObjectDictionary, mis. "car"
   final double dist;        // jarak dalam meter
@@ -3572,7 +3572,7 @@ class NarrationDetection {
 final _random = Random();
 
 /// Merangkai daftar deteksi objek mentah menjadi satu kalimat narasi
-/// Bahasa Indonesia yang alami untuk dibacakan TTS — 100% tanpa LLM.
+/// Bahasa Indonesia yang alami untuk dibacakan TTS - 100% tanpa LLM.
 ///
 /// Menggantikan POST /api/narasi (backend Qwen).
 ///
@@ -3584,7 +3584,7 @@ String generateNaturalNarration(List<NarrationDetection> detections) {
     return 'Tidak ada objek yang terdeteksi di sekitarmu saat ini.';
   }
 
-  // Urutkan dari yang paling dekat — objek paling berbahaya disebut lebih dulu
+  // Urutkan dari yang paling dekat - objek paling berbahaya disebut lebih dulu
   final sorted = [...detections]..sort((a, b) => a.dist.compareTo(b.dist));
 
   // Batasi maksimal 3 objek utama supaya kalimat tidak terlalu panjang
@@ -3678,20 +3678,20 @@ String labelToIndonesian(String label) {
 /// diasumsikan pada target pengguna: tunanetra di pasar dan warung Indonesia.
 ///
 /// Menambahkan LLM penerjemah akan melanggar prinsip yang sudah dipegang
-/// proyek ini — lambat (1–3 detik), bisa berhalusinasi, dan butuh server.
+/// proyek ini - lambat (1–3 detik), bisa berhalusinasi, dan butuh server.
 /// Jadi pendekatannya sama persis dengan [generateNaturalNarration]: kamus
 /// lokal + aturan urutan kata. 0 ms, offline, dan tidak pernah mengarang.
 ///
 /// **Kalau tidak yakin, ia menyerah.** Caption yang cakupan kamusnya di bawah
 /// [_minCoverage] mengembalikan null, dan pemanggil membacakan versi
 /// Inggrisnya. Bahasa Indonesia yang kacau lebih buruk daripada Bahasa Inggris
-/// yang benar — pengguna tidak punya layar untuk memverifikasi tebakan kita.
+/// yang benar - pengguna tidak punya layar untuk memverifikasi tebakan kita.
 library;
 
 /// Ambang cakupan kamus. Di bawah ini, hasilnya tidak layak diucapkan.
 const double _minCoverage = 0.72;
 
-/// Frasa banyak kata — dicocokkan lebih dulu, terpanjang menang.
+/// Frasa banyak kata - dicocokkan lebih dulu, terpanjang menang.
 const Map<String, String> _phrases = {
   'in front of': 'di depan',
   'next to': 'di sebelah',
@@ -3733,7 +3733,7 @@ const Set<String> _dropped = {
   'a', 'an', 'the', 'is', 'are', 'that', 'which', 'it', 'its', 'be', 'being',
 };
 
-/// Kata sifat — di Bahasa Indonesia posisinya SESUDAH kata benda.
+/// Kata sifat - di Bahasa Indonesia posisinya SESUDAH kata benda.
 const Map<String, String> _adjectives = {
   'white': 'putih', 'black': 'hitam', 'red': 'merah', 'blue': 'biru',
   'green': 'hijau', 'yellow': 'kuning', 'brown': 'cokelat', 'gray': 'abu-abu',
@@ -3839,7 +3839,7 @@ SceneTranslation translateSceneCaption(String englishCaption) {
   text = text.replaceAll(RegExp(r'[^a-z0-9\s\-]'), ' ');
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-  // Frasa multi-kata lebih dulu — ditandai dengan token khusus supaya tidak
+  // Frasa multi-kata lebih dulu - ditandai dengan token khusus supaya tidak
   // ikut dipecah tahap berikutnya.
   final placeholders = <String, String>{};
   final sortedPhrases = _phrases.keys.toList()
@@ -3902,7 +3902,7 @@ SceneTranslation translateSceneCaption(String englishCaption) {
       continue;
     }
 
-    // Tidak dikenal — pertahankan apa adanya, tapi hitung sebagai tidak
+    // Tidak dikenal - pertahankan apa adanya, tapi hitung sebagai tidak
     // tercakup supaya ambang cakupan bisa menolak kalimat yang terlalu asing.
     out.add(token);
   }
@@ -3937,7 +3937,7 @@ import 'theme/index.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Portrait-only — sesuai PRD
+  // Portrait-only - sesuai PRD
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Init TTS di awal
@@ -3954,7 +3954,7 @@ class GuidioApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // SettingsProvider didaftarkan paling awal: ia sumber kebenaran untuk
-        // alamat server, kecerewetan, dan ambang jarak — dan provider lain
+        // alamat server, kecerewetan, dan ambang jarak - dan provider lain
         // membacanya lewat proxy di bawah.
         ChangeNotifierProvider(create: (_) => SettingsProvider()..init()),
 
@@ -3976,7 +3976,7 @@ class GuidioApp extends StatelessWidget {
               (prev ?? AppModeProvider())..applyVerbosity(settings.verbosity),
         ),
 
-        // DetectionProvider — hanya butuh CameraProvider (jalur deteksi
+        // DetectionProvider - hanya butuh CameraProvider (jalur deteksi
         // sepenuhnya on-device), dan ikut mendengarkan SettingsProvider supaya
         // PG-05 (kecerewetan) dan PG-06 (ambang jarak) benar-benar mengubah
         // perilaku deteksi. Tanpa sambungan ini keduanya hanya tersimpan ke disk.
@@ -3992,7 +3992,7 @@ class GuidioApp extends StatelessWidget {
           },
         ),
 
-        // VoiceProvider — butuh CameraProvider + DetectionProvider +
+        // VoiceProvider - butuh CameraProvider + DetectionProvider +
         // AppModeProvider + FindObjectProvider. AppModeProvider ikut disuntik
         // supaya perintah suara "buka mode X" memindah state SENDIRI, tanpa
         // bergantung layar yang sedang aktif memasang callback (bagian 4.1:
@@ -4050,7 +4050,7 @@ import 'dart:math';
 
 /// Kosakata mock untuk Mode Cari Objek (bagian 12 IMPLEMENTASI.md).
 ///
-/// Server pencarian objek sungguhan belum ada — seluruh "pengenalan barang"
+/// Server pencarian objek sungguhan belum ada - seluruh "pengenalan barang"
 /// di mode ini adalah tiruan lokal. [knownCatalog] berperan sebagai daftar
 /// barang yang "dikenali" server tiruan (dipakai untuk memutuskan CO-12,
 /// "objek tak dikenali"); [scanMessages]/[notFoundMessages] adalah kalimat
@@ -4064,7 +4064,7 @@ abstract final class FindObjectMockData {
     'jam tangan', 'dompet uang', 'laptop', 'power bank',
   ];
 
-  /// CO-05 — kalimat pemindaian awal, berganti tiap ~2 detik.
+  /// CO-05 - kalimat pemindaian awal, berganti tiap ~2 detik.
   static const scanMessages = <String>[
     'Memindai ruangan…',
     'Coba putar badan pelan ke kiri.',
@@ -4072,14 +4072,14 @@ abstract final class FindObjectMockData {
     'Periksa area meja atau rak di dekatmu.',
   ];
 
-  /// CO-10 — arahan lanjutan setelah beberapa putaran belum ketemu.
+  /// CO-10 - arahan lanjutan setelah beberapa putaran belum ketemu.
   static const notFoundMessages = <String>[
     'Belum terlihat, coba putar badan ke arah lain.',
     'Masih belum ketemu, coba melangkah beberapa langkah.',
     'Belum terlihat dari sini, coba tengok ke belakangmu.',
   ];
 
-  /// CO-12 — barang tak dikenali menyebut barang yang dikenal sebagai ganti.
+  /// CO-12 - barang tak dikenali menyebut barang yang dikenal sebagai ganti.
   static bool isKnown(String target) {
     final t = target.toLowerCase().trim();
     if (t.isEmpty) return false;
@@ -4097,11 +4097,11 @@ abstract final class FindObjectMockData {
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/guidio_app/lib/mock/ocr_mock_data.dart`
 
 ```dart
-/// Data & katalog mock khusus Mode Baca Teks (OCR) — dipakai HANYA oleh
+/// Data & katalog mock khusus Mode Baca Teks (OCR) - dipakai HANYA oleh
 /// `ocr_screen.dart` dan `ocr_debug_sheet.dart` untuk mendemonstrasikan
 /// 22 state BT-01..BT-22 (bagian 8 dokumen spesifikasi).
 ///
-/// ServerService.readText saat ini hanya mengembalikan `{'text': ...}` —
+/// ServerService.readText saat ini hanya mengembalikan `{'text': ...}` -
 /// tidak ada info bahasa, blok, atau status per-bagian. State yang butuh
 /// info itu (dua bahasa, sebagian gagal, sangat panjang) TIDAK BISA dipicu
 /// dari server sungguhan, jadi datanya dipalsukan di sini secara eksplisit.
@@ -4124,7 +4124,7 @@ class OcrBlock {
   });
 }
 
-/// Satu entri katalog debug — dipakai OcrDebugSheet untuk daftar 22 state.
+/// Satu entri katalog debug - dipakai OcrDebugSheet untuk daftar 22 state.
 class OcrDebugEntry {
   final String id;
   final String title;
@@ -4163,22 +4163,22 @@ String mockShortText() => 'Buka Senin–Sabtu, 08.00–17.00.';
 
 List<OcrBlock> mockLongBlocks() => const [
       OcrBlock(
-        heading: 'Bagian 1 — Judul menu',
+        heading: 'Bagian 1 - Judul menu',
         text: 'Daftar Menu Warung Bu Sari. Semua harga sudah termasuk nasi putih '
             'dan segelas air teh tawar.',
       ),
       OcrBlock(
-        heading: 'Bagian 2 — Menu utama',
+        heading: 'Bagian 2 - Menu utama',
         text: 'Ayam goreng lima belas ribu rupiah. Ikan bakar dua puluh ribu rupiah. '
             'Tahu tempe penyet delapan ribu rupiah. Sayur asem lima ribu rupiah.',
       ),
       OcrBlock(
-        heading: 'Bagian 3 — Minuman',
+        heading: 'Bagian 3 - Minuman',
         text: 'Es teh manis lima ribu rupiah. Es jeruk tujuh ribu rupiah. '
             'Kopi hitam enam ribu rupiah.',
       ),
       OcrBlock(
-        heading: 'Bagian 4 — Catatan',
+        heading: 'Bagian 4 - Catatan',
         text: 'Buka Senin sampai Sabtu, jam delapan pagi sampai lima sore. '
             'Tutup setiap hari Minggu dan hari besar.',
       ),
@@ -4271,7 +4271,7 @@ class Detection {
         dangerLevel:   json['danger_level'] as String? ?? 'info',
         bbox:          Map<String, int>.from(json['bbox'] as Map? ?? {}),
         inferenceMs:   (json['inference_ms'] ?? 0).toDouble(),
-        // isApproaching tidak dari JSON — hanya dari tracker lokal
+        // isApproaching tidak dari JSON - hanya dari tracker lokal
       );
 
   /// Buat salinan Detection dengan field tertentu diubah.
@@ -4354,7 +4354,7 @@ extension AppModeLabel on AppMode {
         AppMode.findObject => 'Cari Objek',
       };
 
-  /// Satu kalimat "apa yang bisa dilakukan" — diumumkan saat masuk mode.
+  /// Satu kalimat "apa yang bisa dilakukan" - diumumkan saat masuk mode.
   String get shortIntro => switch (this) {
         AppMode.tuntun     => 'Arahkan ponsel ke depan, saya akan menyebut rintangan di jalurmu.',
         AppMode.money      => 'Letakkan uang di dalam bingkai, saya akan menyebut nominalnya.',
@@ -4384,7 +4384,7 @@ extension AppModeLabel on AppMode {
   bool get needsServer => switch (this) {
         AppMode.tuntun     => false, // SSD MobileNet TFLite, sepenuhnya on-device
         AppMode.money      => false, // MobileNetV2 TFLite, sepenuhnya on-device
-        AppMode.ocr        => false, // ML Kit on-device — jalan penuh offline
+        AppMode.ocr        => false, // ML Kit on-device - jalan penuh offline
         AppMode.navigasi   => true,  // PIDNet on-device jadi jalur utama; server hanya cadangan
         AppMode.voice      => true,  // butuh server untuk describe; intent parsing lokal, tanpa LLM
         AppMode.findObject => true,  // YOLOE open-vocab hanya ada di server
@@ -4411,7 +4411,7 @@ class AppModeProvider extends ChangeNotifier {
   AppMode _mode = AppMode.tuntun;
   AppMode get mode => _mode;
 
-  /// Mode sebelum perpindahan terakhir — dipakai oleh fitur "kembali"
+  /// Mode sebelum perpindahan terakhir - dipakai oleh fitur "kembali"
   /// (perintah suara atau tombol ✕ di VoiceScreen overlay).
   AppMode? _previousMode;
   AppMode? get previousMode => _previousMode;
@@ -4421,25 +4421,25 @@ class AppModeProvider extends ChangeNotifier {
   int visitCountFor(AppMode m) => _visitCount[m] ?? 0;
 
   /// Kata pembuka yang dititipkan [setMode] untuk diucapkan oleh
-  /// [announceEntry] milik layar tujuan — mis. "Baik." dari perintah suara
+  /// [announceEntry] milik layar tujuan - mis. "Baik." dari perintah suara
   /// (AS-17). Dititipkan, bukan diucapkan di sini, supaya konfirmasi tidak
   /// pernah mendahului perpindahan state (bagian 4.1 ALUR-DAN-TOMBOL.md).
   String? _pendingPrefix;
 
-  /// PG-05 — tingkat kecerewetan pengguna. Bekerja **bersama** verbositas
+  /// PG-05 - tingkat kecerewetan pengguna. Bekerja **bersama** verbositas
   /// menurun bawaan (tiga pemakaian pertama lebih panjang), bukan
   /// menggantikannya: "ringkas" memotong panduan sejak awal, "detail"
   /// mempertahankannya selamanya.
   Verbosity _verbosity = Verbosity.sedang;
   void applyVerbosity(Verbosity v) => _verbosity = v;
 
-  /// Umumkan masuk mode. Dipanggil dari `initState` layar mode — artinya
+  /// Umumkan masuk mode. Dipanggil dari `initState` layar mode - artinya
   /// pengumuman selalu menyusul mode yang BENAR-BENAR terpasang, tidak pernah
   /// mendahuluinya. Mode default (Deteksi Objek) yang aktif sejak boot tanpa
   /// lewat [setMode] ikut lewat sini juga, supaya DO-29 "verbositas lengkap 3
   /// pemakaian pertama" tetap berlaku untuknya.
   Future<void> announceEntry(AppMode mode) async {
-    if (mode != _mode) return; // layar basi (dispose berpapasan) — jangan bicara
+    if (mode != _mode) return; // layar basi (dispose berpapasan) - jangan bicara
     final prefix = _pendingPrefix;
     _pendingPrefix = null;
 
@@ -4466,7 +4466,7 @@ class AppModeProvider extends ChangeNotifier {
     await TtsQueue().speak(announcement, tier: SpeechTier.warning);
   }
 
-  /// NV-18 — satu-satunya konfirmasi wajib di seluruh app: keluar dari Mode
+  /// NV-18 - satu-satunya konfirmasi wajib di seluruh app: keluar dari Mode
   /// Navigasi saat pengguna terdeteksi sedang berjalan. `navigasi_screen.dart`
   /// memasang hook ini selama aktif; kalau terpasang dan mengembalikan
   /// false, perpindahan mode dibatalkan. Ini titik tunggal yang dilewati
@@ -4474,7 +4474,7 @@ class AppModeProvider extends ChangeNotifier {
   Future<bool> Function(AppMode from, AppMode to)? confirmLeave;
 
   /// Berpindah mode. Mengembalikan **true hanya kalau mode benar-benar
-  /// berubah** — pemanggil wajib memeriksa nilai ini sebelum mengucapkan
+  /// berubah** - pemanggil wajib memeriksa nilai ini sebelum mengucapkan
   /// konfirmasi apa pun. [spokenPrefix] dititipkan ke pengumuman kedatangan
   /// layar tujuan, bukan diucapkan di sini.
   Future<bool> setMode(AppMode mode, {String? spokenPrefix}) async {
@@ -4487,7 +4487,7 @@ class AppModeProvider extends ChangeNotifier {
     _pendingPrefix = spokenPrefix;
     _mode = mode;
     notifyListeners();
-    // Pengumuman kedatangan diucapkan `announceEntry` dari layar tujuan —
+    // Pengumuman kedatangan diucapkan `announceEntry` dari layar tujuan -
     // sesudah layarnya benar-benar terpasang.
     return true;
   }
@@ -4519,7 +4519,7 @@ import '../core/speech/tts_queue.dart';
 import '../services/camera_health_service.dart';
 import '../services/tflite_service.dart';
 
-/// CameraProvider — kelola kamera, stream, dan capture.
+/// CameraProvider - kelola kamera, stream, dan capture.
 ///
 /// Fix dari doc 5 masalah 8 + 12:
 /// - Mutex _capturing untuk race condition
@@ -4537,10 +4537,10 @@ class CameraProvider extends ChangeNotifier {
   bool    _darkDismissed  = false; // true = jangan tampilkan tawaran lampu lagi
   bool    _isTorchOn      = false; // status flashlight
 
-  // Fix 2.1: Timer peringatan gelap berkala — ucap setiap 30 detik jika masih gelap
+  // Fix 2.1: Timer peringatan gelap berkala - ucap setiap 30 detik jika masih gelap
   Timer?   _darkWarningTimer;
 
-  /// Sejak kapan kondisi gelap berlangsung — dibaca layar/telemetri untuk
+  /// Sejak kapan kondisi gelap berlangsung - dibaca layar/telemetri untuk
   /// membedakan "baru saja gelap" dari "sudah lama tidak melihat apa-apa".
   DateTime? _darkSince;
   DateTime? get darkSince => _darkSince;
@@ -4555,14 +4555,14 @@ class CameraProvider extends ChangeNotifier {
   /// [isDark] && ![darkDismissed].
   bool get isDark         => _isDark;
 
-  /// True saat pengguna menekan "Lewati" — tawaran lampu tidak tampil,
+  /// True saat pengguna menekan "Lewati" - tawaran lampu tidak tampil,
   /// TAPI deteksi tetap berjalan (Fix 2.1).
   bool get darkDismissed  => _darkDismissed;
 
   /// True saat flashlight sedang menyala.
   bool get isTorchOn => _isTorchOn;
 
-  // Callback — dipanggil dari CameraProvider ketika frame siap
+  // Callback - dipanggil dari CameraProvider ketika frame siap
   // DetectionProvider/InferenceProvider yang subscribe
   Function(CameraImage)? onFrameReady;
 
@@ -4581,7 +4581,7 @@ class CameraProvider extends ChangeNotifier {
   }
 
   Future<void> initCamera() async {
-    // Request camera permission sebelum initialize — mencegah CameraAccessDenied
+    // Request camera permission sebelum initialize - mencegah CameraAccessDenied
     final status = await Permission.camera.request();
     if (!status.isGranted) {
       debugPrint('[CameraProvider] Camera permission denied: $status');
@@ -4631,7 +4631,7 @@ class CameraProvider extends ChangeNotifier {
 
       _frameCount++;
 
-      // [1] On-device brightness check setiap frame — O(100) sangat ringan
+      // [1] On-device brightness check setiap frame - O(100) sangat ringan
       final tooDark = _isTooDark(image);
       if (tooDark != _isDark) {
         _isDark = tooDark;
@@ -4640,7 +4640,7 @@ class CameraProvider extends ChangeNotifier {
           _darkSince = DateTime.now();
           _startDarkWarningTimer();
         } else {
-          // Kondisi terang kembali — reset semua
+          // Kondisi terang kembali - reset semua
           _cancelDarkWarningTimer();
           _darkDismissed = false;
           _darkSince = null;
@@ -4648,7 +4648,7 @@ class CameraProvider extends ChangeNotifier {
         // Notifikasi UI: ContextualActionSlot tampil/sembunyikan tawaran lampu
         notifyListeners();
       }
-      // Fix 2.1: JANGAN return di sini — inference tetap berjalan di kondisi gelap.
+      // Fix 2.1: JANGAN return di sini - inference tetap berjalan di kondisi gelap.
       // Pengguna perlu tahu ada rintangan meski gelap.
       // UI yang memutuskan apakah tawaran lampu tampil (isDark && !darkDismissed).
 
@@ -4666,11 +4666,11 @@ class CameraProvider extends ChangeNotifier {
             // Gunakan TtsQueue agar tunduk pada sistem 3-tier (Fix 1C)
             TtsQueue().speak(health.message, tier: SpeechTier.warning);
           }
-          // Sengaja TIDAK `return` — ini kelas bug yang sama dengan kondisi
+          // Sengaja TIDAK `return` - ini kelas bug yang sama dengan kondisi
           // gelap (Fix 2.1). Ponsel yang miring membuat estimasi jarak kurang
           // akurat, tapi objek di depan tetap terlihat. Menghentikan inference
           // berarti menukar "peringatan yang agak meleset" dengan "tidak ada
-          // peringatan sama sekali" — dan yang kedua jauh lebih berbahaya.
+          // peringatan sama sekali" - dan yang kedua jauh lebih berbahaya.
         } else if (_healthMessage != null) {
           _healthMessage = null;
           notifyListeners();
@@ -4750,7 +4750,7 @@ class CameraProvider extends ChangeNotifier {
     }
   }
 
-  /// Toggle flashlight — nyala → mati, mati → nyala.
+  /// Toggle flashlight - nyala → mati, mati → nyala.
   Future<void> toggleTorch() => setTorch(!_isTorchOn);
 
   /// Ambil foto dan kembalikan **path berkas**, bukan byte-nya.
@@ -4847,11 +4847,11 @@ class CameraProvider extends ChangeNotifier {
       }
     }
 
-    // Encode ke JPEG quality 70 — cukup untuk YOLO server, tidak terlalu besar
+    // Encode ke JPEG quality 70 - cukup untuk YOLO server, tidak terlalu besar
     return Uint8List.fromList(img.encodeJpg(rgbImage, quality: 70));
   }
 
-  /// On-device brightness check — sample 100 piksel dari plane Y (YUV420).
+  /// On-device brightness check - sample 100 piksel dari plane Y (YUV420).
   /// O(100) sangat ringan, aman dipanggil setiap frame.
   ///
   /// Fix dari doc 5 masalah 12.
@@ -4892,10 +4892,10 @@ import 'package:flutter/foundation.dart';
 import '../services/server_service.dart';
 import 'app_mode_provider.dart';
 
-/// Kemampuan server per mode — `GET /api/capabilities`.
+/// Kemampuan server per mode - `GET /api/capabilities`.
 ///
 /// **Ditanyakan sebelum pengguna menekan apa pun.** Tanpa ini, satu-satunya
-/// cara mengetahui sebuah mode sedang mati adalah masuk ke sana lalu gagal —
+/// cara mengetahui sebuah mode sedang mati adalah masuk ke sana lalu gagal -
 /// dan untuk pengguna yang tidak melihat layar, "masuk lalu gagal" berarti
 /// beberapa detik kebingungan di tempat yang salah. Item sheet karena itu
 /// sudah menyebut alasannya sejak sebelum ditekan (bagian 16: "Item nonaktif
@@ -4935,7 +4935,7 @@ class CapabilitiesProvider extends ChangeNotifier {
     if (offline) {
       return mode.disabledWhenOffline ? CapState.down : CapState.limited;
     }
-    // Belum tahu — jangan menghalangi. Menebak "mati" akan mengunci pengguna
+    // Belum tahu - jangan menghalangi. Menebak "mati" akan mengunci pengguna
     // dari mode yang sebenarnya sehat hanya karena satu permintaan lambat.
     return _capOf(mode)?.state ?? CapState.up;
   }
@@ -4978,7 +4978,7 @@ class CapabilitiesProvider extends ChangeNotifier {
     try {
       final res = await ServerService.instance.capabilities();
       if (res == null) {
-        // Server tidak menjawab — seluruh mode yang butuh server dianggap mati.
+        // Server tidak menjawab - seluruh mode yang butuh server dianggap mati.
         _modes = {
           for (final m in AppMode.values)
             if (m.needsServer)
@@ -5048,7 +5048,7 @@ import '../services/haptic_service.dart';
 import '../services/object_tracker.dart';
 import '../services/tflite_service.dart';
 
-/// DetectionProvider — Mode Deteksi Objek, sepenuhnya on-device.
+/// DetectionProvider - Mode Deteksi Objek, sepenuhnya on-device.
 ///
 /// **Jalur server dihapus.** Sebelumnya ada dua jalur (TFLite dan WebSocket
 /// `/ws/detect`) yang dipilih dari `InferenceProvider.realtimeEngine`. Itu
@@ -5070,11 +5070,11 @@ class DetectionProvider extends ChangeNotifier {
   /// Tanpa ini, callback kamera (~30 fps) memicu inferensi yang menumpuk tak
   /// terbatas: tiap frame tertunda memegang buffer sendiri, memori naik, dan
   /// peringatan yang akhirnya terdengar menggambarkan dunia beberapa detik
-  /// lalu. 120 ms ≈ 8 fps — dengan `streakRequired = 2`, objek baru terucap
+  /// lalu. 120 ms ≈ 8 fps - dengan `streakRequired = 2`, objek baru terucap
   /// sekitar 250 ms setelah masuk frame, masih di bawah target 500 ms.
   final _pacer = FramePacer(minInterval: const Duration(milliseconds: 120));
 
-  /// PG-05 / PG-06 — diteruskan dari SettingsProvider setiap kali pengaturan
+  /// PG-05 / PG-06 - diteruskan dari SettingsProvider setiap kali pengaturan
   /// berubah, supaya slider dan segmented benar-benar mengubah perilaku
   /// deteksi alih-alih hanya tersimpan ke disk.
   void applySettings({required double maxDistanceM, required Verbosity verbosity}) {
@@ -5088,7 +5088,7 @@ class DetectionProvider extends ChangeNotifier {
   List<Detection> get detections => _detections;
 
   /// True kalau model on-device tidak bisa dipakai. Layar wajib mengatakannya
-  /// — mode ini tidak punya cadangan lain, jadi diam berarti membiarkan orang
+  /// - mode ini tidak punya cadangan lain, jadi diam berarti membiarkan orang
   /// berjalan menyangka dirinya dijaga.
   bool get isUnavailable => !TFLiteService.instance.isLoaded;
 
@@ -5142,7 +5142,7 @@ class DetectionProvider extends ChangeNotifier {
       // Tracker memberi identitas stabil per objek. Pemetaannya per-indeks,
       // bukan per-label: dengan dua orang di frame, versi lama mengambil track
       // pertama berlabel "person" untuk keduanya, sehingga status "mendekat"
-      // milik orang jauh bisa menempel ke orang dekat — dan status itulah yang
+      // milik orang jauh bisa menempel ke orang dekat - dan status itulah yang
       // memotong cooldown 50%.
       if (!_realtimeActive) return;
 
@@ -5160,7 +5160,7 @@ class DetectionProvider extends ChangeNotifier {
           // sendiri; tanpa penghalusan, objek diam terucap "dua meter… satu
           // meter… dua meter" dan pengguna tidak punya cara tahu mana yang
           // benar. Nilai mentah tetap dipakai untuk klasifikasi tier di
-          // TFLiteService — yang dihaluskan hanya yang diucapkan.
+          // TFLiteService - yang dihaluskan hanya yang diucapkan.
           distanceMeter: track?.smoothedDistance,
         ));
       }
@@ -5175,7 +5175,7 @@ class DetectionProvider extends ChangeNotifier {
     notifyListeners();
     if (filtered.isEmpty) return;
 
-    // Tier = bahaya tertinggi di antara yang lolos. Satu kalimat, satu tier —
+    // Tier = bahaya tertinggi di antara yang lolos. Satu kalimat, satu tier -
     // bukan satu ucapan terpisah per objek yang saling berebut antrean.
     final tier = filtered.any((d) => d.isCritical)
         ? SpeechTier.critical
@@ -5185,7 +5185,7 @@ class DetectionProvider extends ChangeNotifier {
 
     TtsQueue().speak(_composeNarration(filtered), tier: tier);
 
-    // Getar mendampingi suara — di pasar dan jalan raya, getar sering jadi
+    // Getar mendampingi suara - di pasar dan jalan raya, getar sering jadi
     // sinyal utama. Cukup sekali, sesuai tier tertinggi.
     HapticService.instance.fromDangerLevel(
       filtered.first.dangerLevel,
@@ -5195,7 +5195,7 @@ class DetectionProvider extends ChangeNotifier {
   /// Rangkai satu kalimat dari objek yang lolos filter.
   ///
   /// Fix temuan 2A: `narration_engine.dart` akhirnya tersambung. Selama ini
-  /// 265 baris itu tidak pernah dipanggil dari mana pun — yang benar-benar
+  /// 265 baris itu tidak pernah dipanggil dari mana pun - yang benar-benar
   /// terucap adalah `det.ttsMessage`, satu kalimat datar per objek, sehingga
   /// dua objek berarti dua ucapan yang saling menyusul tanpa konektor.
   ///
@@ -5231,7 +5231,7 @@ class DetectionProvider extends ChangeNotifier {
     }
 
     final narration = generateNaturalNarration(grouped.values.toList());
-    // Kelas di luar kamus 80 COCO membuat narasi kosong. Jangan diam —
+    // Kelas di luar kamus 80 COCO membuat narasi kosong. Jangan diam -
     // sampaikan versi datarnya daripada tidak menyebut objeknya sama sekali.
     if (narration.trim().isEmpty || grouped.isEmpty) {
       return filtered.map((d) => d.ttsMessage).join('. ');
@@ -5272,22 +5272,22 @@ import '../core/speech/tts_queue.dart' show SpeechTier;
 
 /// State machine Mode Cari Objek.
 ///
-/// **Trigger-based via backend YOLOE** — pengguna tekan tombol kiri,
+/// **Trigger-based via backend YOLOE** - pengguna tekan tombol kiri,
 /// satu foto dikirim ke POST /api/cari-objek, hasilnya diucapkan via TTS.
 /// Backend menggunakan YOLOE open-vocabulary (300+ barang Bahasa Indonesia).
 ///
 /// Berbeda dari versi on-device sebelumnya yang berjalan real-time (loop
-/// 350 ms), versi ini hanya berjalan sekali per tap — lebih hemat baterai
+/// 350 ms), versi ini hanya berjalan sekali per tap - lebih hemat baterai
 /// dan bisa mendeteksi jauh lebih banyak jenis barang.
 ///
 /// CO-15 (izin kamera), CO-16 (senyap), CO-17 (font scale 200%) sengaja TIDAK
-/// dimodelkan di sini — itu murni keputusan lapisan UI.
+/// dimodelkan di sini - itu murni keputusan lapisan UI.
 enum FindObjectState {
   idle,            // CO-01
   listening,       // CO-02
   unclear,         // CO-03
-  targetActive,    // CO-04 — target aktif, menunggu tombol kiri ditekan
-  scanning,        // CO-05 — sedang mengirim ke backend
+  targetActive,    // CO-04 - target aktif, menunggu tombol kiri ditekan
+  scanning,        // CO-05 - sedang mengirim ke backend
   found,           // CO-06 / CO-07 (lihat matchCount)
   lostFromView,    // CO-09
   notFoundInFrame, // CO-10
@@ -5305,7 +5305,7 @@ class FindObjectProvider extends ChangeNotifier {
   String? _target;
   String? get target => _target;
 
-  /// CO-14 — target yang disimpan saat offline, dipakai lagi begitu pulih.
+  /// CO-14 - target yang disimpan saat offline, dipakai lagi begitu pulih.
   String? _savedTarget;
   String? get savedTarget => _savedTarget;
 
@@ -5327,14 +5327,14 @@ class FindObjectProvider extends ChangeNotifier {
       _serverMessage.isEmpty ? 'Memindai sekitar…' : _serverMessage;
   String get notFoundMessage => scanMessage;
 
-  /// True saat sedang menunggu respons backend — tombol kiri di-disable.
+  /// True saat sedang menunggu respons backend - tombol kiri di-disable.
   bool _isScanning = false;
   bool get isScanning => _isScanning;
 
   final List<String> _knownTargets = const [];
   List<String> get knownTargets => _knownTargets;
 
-  /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan.
+  /// Callback keluar - screen yang mengubahnya jadi suara/getar sungguhan.
   void Function(String text, SpeechTier tier)? onSpeak;
   void Function(String direction)? onDirectionHaptic;
 
@@ -5342,7 +5342,7 @@ class FindObjectProvider extends ChangeNotifier {
   /// BuildContext dan bebas dari paket kamera.
   Future<Uint8List?> Function()? frameSource;
 
-  /// Dibaca sebelum mengirim — CO-14 menuntut mode ini benar-benar berhenti
+  /// Dibaca sebelum mengirim - CO-14 menuntut mode ini benar-benar berhenti
   /// saat offline, bukan mencoba lalu gagal berkali-kali.
   bool Function()? isOffline;
 
@@ -5362,7 +5362,7 @@ class FindObjectProvider extends ChangeNotifier {
     _stepTimer = Timer(Duration(milliseconds: ms), cb);
   }
 
-  /// Tidak dipakai lagi — dipertahankan agar tidak merusak layar yang masih
+  /// Tidak dipakai lagi - dipertahankan agar tidak merusak layar yang masih
   /// memanggil ini.
   Future<void> loadKnownTargets() async {
     // no-op
@@ -5421,7 +5421,7 @@ class FindObjectProvider extends ChangeNotifier {
     final target = _target;
     if (target == null || _isScanning) return;
 
-    // CO-14 — benar-benar berhenti saat offline
+    // CO-14 - benar-benar berhenti saat offline
     final offline = isOffline?.call() ?? false;
     if (offline) {
       _savedTarget = target;
@@ -5456,7 +5456,7 @@ class FindObjectProvider extends ChangeNotifier {
       _isScanning = false;
       _set(FindObjectState.serverError);
       // Warning, bukan Critical. Tier Critical dicadangkan untuk bahaya fisik
-      // dan tidak bisa dipotong pengguna — kegagalan jaringan tidak pernah
+      // dan tidak bisa dipotong pengguna - kegagalan jaringan tidak pernah
       // setara dengan motor yang melaju ke arahmu.
       _speak(
         'Gagal menghubungi server. Periksa koneksi dan coba lagi.',
@@ -5490,7 +5490,7 @@ class FindObjectProvider extends ChangeNotifier {
 
       _notFoundCount++;
       if (_notFoundCount >= 4) {
-        // CO-11 — setelah 4 kali tidak ketemu, tawarkan jalan keluar
+        // CO-11 - setelah 4 kali tidak ketemu, tawarkan jalan keluar
         _set(FindObjectState.longNotFound);
         _speak(
           'Belum ketemu di sini. Pindah posisi, lalu tekan kirim lagi. '
@@ -5590,13 +5590,13 @@ import '../services/camera_intrinsics.dart';
 import '../services/tflite_service.dart';
 import '../services/server_service.dart';
 
-/// InferenceProvider — kesiapan model on-device dan server saat boot.
+/// InferenceProvider - kesiapan model on-device dan server saat boot.
 ///
 /// Sejak jalur deteksi via WebSocket dihapus, tidak ada lagi "engine yang
 /// dipilih": Mode Deteksi Objek selalu on-device. Server hanya dibutuhkan
 /// untuk yang memang tidak ada di perangkat (Cari Objek, Deskripsi Suasana,
 /// dan segmentasi jalur sebagai cadangan), jadi kesiapannya diperiksa lewat
-/// `/health` — bukan dengan membuka soket deteksi yang tidak akan dipakai.
+/// `/health` - bukan dengan membuka soket deteksi yang tidak akan dipakai.
 class InferenceProvider extends ChangeNotifier {
   bool _tfliteReady = false;
   bool _serverReady = false;
@@ -5606,7 +5606,7 @@ class InferenceProvider extends ChangeNotifier {
   bool get serverReady => _serverReady;
 
   /// Deteksi rintangan siap. Ini satu-satunya yang menentukan mode utama
-  /// bisa berjalan — server tidak lagi jadi cadangannya.
+  /// bisa berjalan - server tidak lagi jadi cadangannya.
   bool get isReady => _tfliteReady;
 
   Future<void> initialize() async {
@@ -5614,7 +5614,7 @@ class InferenceProvider extends ChangeNotifier {
 
     // Intrinsik lensa dibaca sekali di sini: estimasi jarak butuh panjang
     // fokus perangkat ini, bukan rata-rata semua ponsel. Kegagalannya tidak
-    // memblokir apa pun — nilainya jatuh ke fallback.
+    // memblokir apa pun - nilainya jatuh ke fallback.
     final results = await Future.wait([
       TFLiteService.instance.tryLoad(),
       _probeServer(),
@@ -5661,19 +5661,19 @@ import '../core/speech/tts_queue.dart' show SpeechTier;
 import '../services/money_tflite_service.dart';
 import '../widgets/nominal_card.dart' show terbilangRupiah;
 
-/// State machine Mode Kenali Uang — bagian 9 IMPLEMENTASI.md
+/// State machine Mode Kenali Uang - bagian 9 IMPLEMENTASI.md
 /// (UG-01..UG-12, UG-18). Sepenuhnya on-device.
 ///
 /// **Tidak ada akumulasi sesi.** Mode ini menjawab satu pertanyaan saja:
 /// "lembar yang sedang saya hadapkan ke kamera ini nominalnya berapa?"
-/// Tombol kiri mengumumkan nominal frame saat itu, lalu selesai — tidak ada
+/// Tombol kiri mengumumkan nominal frame saat itu, lalu selesai - tidak ada
 /// total berjalan, tidak ada rincian lembar, tidak ada kartu "total direset".
 /// Penjumlahan otomatis justru berbahaya di sini: pengguna tunanetra tidak
 /// bisa melihat lembar mana yang sudah terhitung, jadi satu lembar yang
 /// ter-scan dua kali menghasilkan total yang salah tanpa satu pun tanda.
 ///
 /// **Jalur mock hanya hidup di build debug.** Simulasi Timer-nya memanggil
-/// `_enterDetected(_kDenoms[_rand.nextInt(...)])` — yaitu **mengucapkan
+/// `_enterDetected(_kDenoms[_rand.nextInt(...)])` - yaitu **mengucapkan
 /// nominal acak dengan nada yakin**. Di rilis, jalur itu bisa tercapai hanya
 /// karena model gagal dimuat, dan pengguna tunanetra tidak punya cara
 /// membedakannya dari hasil sungguhan. Salah menyebut nominal berarti
@@ -5681,7 +5681,7 @@ import '../widgets/nominal_card.dart' show terbilangRupiah;
 /// kalimat jujur: fiturnya tidak tersedia. Titik.
 ///
 /// UG-13 (offline banner), UG-14 (izin kamera), UG-15 (senyap/TTS mati), dan
-/// UG-16 (font scale 200%) sengaja TIDAK dimodelkan di sini — itu murni
+/// UG-16 (font scale 200%) sengaja TIDAK dimodelkan di sini - itu murni
 /// keputusan lapisan UI (screen membaca GlobalConditionsProvider / izin
 /// sistem / MediaQuery langsung).
 enum MoneyState {
@@ -5699,7 +5699,7 @@ enum MoneyState {
   foreign,     // UG-18
 }
 
-/// Pola getar bagian 3.6 — `positive` (2×25ms) untuk bingkai pas,
+/// Pola getar bagian 3.6 - `positive` (2×25ms) untuk bingkai pas,
 /// `moneyAck` (3×40ms) khusus UG-15 (dipicu dari layar, bukan dari sini).
 enum MoneyHaptic { positive }
 
@@ -5729,7 +5729,7 @@ class MoneyProvider extends ChangeNotifier {
 
   bool get busy => _state == MoneyState.processing;
 
-  /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan
+  /// Callback keluar - screen yang mengubahnya jadi suara/getar sungguhan
   /// lewat TtsProvider/Vibration, supaya provider ini tetap tidak bergantung
   /// pada BuildContext (pola sama dengan `CameraProvider.onFrameReady`).
   void Function(String text, SpeechTier tier)? onSpeak;
@@ -5756,11 +5756,11 @@ class MoneyProvider extends ChangeNotifier {
   /// menjadi konstanta, jadi di rilis seluruh cabang mock ikut tereliminasi.
   static bool get _mockAllowed => kDebugMode;
 
-  /// True kalau model tidak tersedia DAN mock tidak boleh jalan — layar
+  /// True kalau model tidak tersedia DAN mock tidak boleh jalan - layar
   /// memakai ini untuk menonaktifkan tombol dengan alasan yang jujur.
   bool get isUnavailable => !_useRealModel && !_mockAllowed;
 
-  /// Masuk mode (UG-01) — mulai siklus otomatis dari awal.
+  /// Masuk mode (UG-01) - mulai siklus otomatis dari awal.
   void start() {
     if (_running) return;
     _running = true;
@@ -5783,14 +5783,14 @@ class MoneyProvider extends ChangeNotifier {
     );
   }
 
-  /// Keluar mode — hentikan semua timer, jangan bicara lagi.
+  /// Keluar mode - hentikan semua timer, jangan bicara lagi.
   void pause() {
     _running = false;
     _stepTimer?.cancel();
     _hintRotateTimer?.cancel();
   }
 
-  /// Dipanggil dari tombol kamera BottomActionBar — "paksa deteksi ulang".
+  /// Dipanggil dari tombol kamera BottomActionBar - "paksa deteksi ulang".
   void forceRedetect() {
     if (!_running) return;
     _stepTimer?.cancel();
@@ -5826,7 +5826,7 @@ class MoneyProvider extends ChangeNotifier {
   DateTime _lastInference = DateTime.fromMillisecondsSinceEpoch(0);
   int _consecutiveMiss = 0;
 
-  /// Hasil buffer terbaru dari model — diperbarui tiap frame, dipakai saat
+  /// Hasil buffer terbaru dari model - diperbarui tiap frame, dipakai saat
   /// snapAndAnnounce() dipanggil. Tidak pernah auto-diumumkan.
   MoneyResult? _latestResult;
 
@@ -5834,7 +5834,7 @@ class MoneyProvider extends ChangeNotifier {
   /// gunanya berjalan tiap frame: pengguna butuh waktu memposisikan uang.
   static const _inferenceInterval = Duration(milliseconds: 600);
 
-  /// Coba muat model on-device. Mengembalikan false kalau file belum ada —
+  /// Coba muat model on-device. Mengembalikan false kalau file belum ada -
   /// pemanggil lalu membiarkan siklus mock yang jalan.
   Future<bool> enableRealModel() async {
     final ok = await MoneyTFLiteService.instance.load();
@@ -5847,7 +5847,7 @@ class MoneyProvider extends ChangeNotifier {
     return ok;
   }
 
-  /// Umpan frame kamera. Aman dipanggil tiap frame — di-throttle sendiri.
+  /// Umpan frame kamera. Aman dipanggil tiap frame - di-throttle sendiri.
   Future<void> submitFrame(CameraImage image) async {
     if (!_useRealModel || !_running || _inferring) return;
     if (DateTime.now().difference(_lastInference) < _inferenceInterval) return;
@@ -5865,7 +5865,7 @@ class MoneyProvider extends ChangeNotifier {
   void _applyRealResult(MoneyResult result) {
     if (!_running) return;
 
-    // Selalu perbarui buffer — snapAndAnnounce() akan membaca ini saat user
+    // Selalu perbarui buffer - snapAndAnnounce() akan membaca ini saat user
     // menekan tombol, sehingga hasilnya selalu mencerminkan apa yang kamera
     // lihat saat itu tanpa delay inferensi tambahan.
     _latestResult = result;
@@ -5873,7 +5873,7 @@ class MoneyProvider extends ChangeNotifier {
     if (result.detected && result.valueIdr != null) {
       _consecutiveMiss = 0;
       // Update visual state ke "fit" (bingkai hijau) agar user tahu
-      // kamera sudah melihat uang dan siap di-snap — tapi TIDAK bicara.
+      // kamera sudah melihat uang dan siap di-snap - tapi TIDAK bicara.
       if (_state != MoneyState.fit && _state != MoneyState.detected) {
         _set(MoneyState.fit);
       }
@@ -5882,7 +5882,7 @@ class MoneyProvider extends ChangeNotifier {
 
     switch (result.failure) {
       case MoneyFailure.lowConfidence:
-        // UG-06 — ragu. Tampilkan bingkai + indikator tapi tidak bicara
+        // UG-06 - ragu. Tampilkan bingkai + indikator tapi tidak bicara
         // secara otomatis; pesan muncul saat user snap.
         _consecutiveMiss = 0;
         if (_state != MoneyState.uncertain) {
@@ -5894,7 +5894,7 @@ class MoneyProvider extends ChangeNotifier {
         _fallbackWhenModelMissing();
       case MoneyFailure.error:
       case null:
-        // UG-08 — tidak ada kandidat: pill instruksi berputar tiap 5 detik.
+        // UG-08 - tidak ada kandidat: pill instruksi berputar tiap 5 detik.
         _consecutiveMiss++;
         if (_consecutiveMiss >= 8 && _state != MoneyState.noCandidate) {
           _set(MoneyState.noCandidate);
@@ -5903,7 +5903,7 @@ class MoneyProvider extends ChangeNotifier {
     }
   }
 
-  /// Dipanggil saat user menekan tombol kiri — umumkan hasil buffer terbaru.
+  /// Dipanggil saat user menekan tombol kiri - umumkan hasil buffer terbaru.
   ///
   /// Tidak ada delay inferensi: model sudah berjalan di background tiap 600ms,
   /// jadi _latestResult selalu segar. User mendapat jawaban instan.
@@ -5919,7 +5919,7 @@ class MoneyProvider extends ChangeNotifier {
 
     final result = _latestResult;
     if (result == null || !result.detected || result.valueIdr == null) {
-      // Tidak ada uang di frame saat ini — beri tahu user.
+      // Tidak ada uang di frame saat ini - beri tahu user.
       final msg = (result?.failure == MoneyFailure.lowConfidence)
           ? 'Belum yakin, dekatkan sedikit dan tahan diam.'
           : 'Tidak ada uang terdeteksi. Arahkan kamera ke uang.';
@@ -5927,7 +5927,7 @@ class MoneyProvider extends ChangeNotifier {
       return;
     }
 
-    // Ada uang — masuk ke alur deteksi normal (session tracking + TTS).
+    // Ada uang - masuk ke alur deteksi normal (session tracking + TTS).
     _enterDetected(result.valueIdr!);
   }
 
@@ -6072,7 +6072,7 @@ class MoneyProvider extends ChangeNotifier {
   // -------------------------------------------------------------- detected
 
   /// Satu lembar, satu jawaban. Menekan tombol lagi pada lembar yang sama
-  /// hanya mengulang nominal yang sama — tidak pernah menambah apa pun.
+  /// hanya mengulang nominal yang sama - tidak pernah menambah apa pun.
   void _enterDetected(int amount) {
     _lastAmount = amount;
     _set(MoneyState.detected);
@@ -6101,7 +6101,7 @@ import '../services/pidnet_service.dart';
 import '../services/yolo_navigasi_service.dart';
 import '../widgets/zone_indicator.dart' show ZoneStatus;
 
-/// NavigationStep — placeholder tanpa GPS/Google Maps (belum diimplementasi,
+/// NavigationStep - placeholder tanpa GPS/Google Maps (belum diimplementasi,
 /// menyusul sprint lain).
 class NavigationStep {
   final String instruction;
@@ -6109,14 +6109,14 @@ class NavigationStep {
   const NavigationStep({required this.instruction, required this.distanceM});
 }
 
-/// Fase segmentasi jalur — bagian 10 IMPLEMENTASI.md (NV-01..NV-13).
+/// Fase segmentasi jalur - bagian 10 IMPLEMENTASI.md (NV-01..NV-13).
 ///
 /// **Sepenuhnya on-device.** PIDNet-S (segmentasi 3 zona) dan YOLO11n
 /// (rintangan) berjalan di ponsel; keduanya sudah dibundel di APK.
 ///
 /// > Jalur server dihapus. `navigasi.router` memang sudah dinonaktifkan di
 /// > `backend/main.py` sejak navigasi dipindah on-device, sehingga fallback
-/// > `POST /api/navigasi` di sini hanya menghasilkan 404 — lalu diterjemahkan
+/// > `POST /api/navigasi` di sini hanya menghasilkan 404 - lalu diterjemahkan
 /// > menjadi "Saya tidak bisa membaca jalur tanpa sambungan ke server".
 /// > Kalimat itu menyalahkan jaringan untuk endpoint yang memang sengaja
 /// > tidak disediakan, dan mendorong pengguna mencari sinyal yang tidak akan
@@ -6124,10 +6124,10 @@ class NavigationStep {
 /// > dan mengatakannya apa adanya.
 enum NavPhase {
   calibrating, // NV-01
-  loadingModels, // NV-02 — memuat PIDNet + YOLO on-device
+  loadingModels, // NV-02 - memuat PIDNet + YOLO on-device
   active, // NV-03..NV-09
-  unavailable, // NV-11 — model on-device tidak bisa dipakai
-  degraded, // NV-13 — model jalan tapi frame sering gagal dibaca
+  unavailable, // NV-11 - model on-device tidak bisa dipakai
+  degraded, // NV-13 - model jalan tapi frame sering gagal dibaca
   paused, // NV-15
 }
 
@@ -6159,7 +6159,7 @@ class NavigationProvider extends ChangeNotifier {
   final double _potholeSteps = 3;
   double get potholeSteps => _potholeSteps;
 
-  /// Zona rawan dari laporan komunitas — informasi yang tidak terlihat kamera.
+  /// Zona rawan dari laporan komunitas - informasi yang tidak terlihat kamera.
   String? _riskZoneWarning;
   String? get riskZoneWarning => _riskZoneWarning;
 
@@ -6169,7 +6169,7 @@ class NavigationProvider extends ChangeNotifier {
   List<Detection> get obstacles => _obstacles;
 
   void Function(String text, SpeechTier tier)? onSpeak;
-  void Function()? onTakeover; // NV-06 — mengambil alih layar
+  void Function()? onTakeover; // NV-06 - mengambil alih layar
 
   /// Sumber frame kamera mentah (YUV) untuk PIDNet + YOLO on-device.
   Future<CameraImage?> Function()? cameraSource;
@@ -6189,7 +6189,7 @@ class NavigationProvider extends ChangeNotifier {
 
   /// Pesan yang sedang menunggu konfirmasi frame berikutnya, dan sudah berapa
   /// frame berturut-turut ia bertahan. Dipakai [_emitGuidance] sebagai
-  /// histeresis — lihat alasannya di sana.
+  /// histeresis - lihat alasannya di sana.
   String _candidateMessage = '';
   int _candidateStreak = 0;
 
@@ -6200,7 +6200,7 @@ class NavigationProvider extends ChangeNotifier {
   static const _sameMessageGap = Duration(seconds: 6);
 
   /// Jeda sebelum peringatan critical yang SAMA boleh diulang. Lebih pendek
-  /// dari [_sameMessageGap] karena bahayanya nyata, tapi tidak nol — lihat
+  /// dari [_sameMessageGap] karena bahayanya nyata, tapi tidak nol - lihat
   /// [_emitGuidance].
   static const _criticalRepeatGap = Duration(seconds: 4);
 
@@ -6238,7 +6238,7 @@ class NavigationProvider extends ChangeNotifier {
     _modelsReady = results[0] && results[1];
 
     if (!_modelsReady) {
-      // Tidak ada cadangan server lagi. Katakan apa adanya — dan sebut mode
+      // Tidak ada cadangan server lagi. Katakan apa adanya - dan sebut mode
       // apa yang MASIH bisa dipakai, supaya ini bukan jalan buntu.
       debugPrint('[Nav] Model on-device gagal dimuat.');
       _phase = NavPhase.unavailable;
@@ -6263,7 +6263,7 @@ class NavigationProvider extends ChangeNotifier {
     _candidateMessage = '';
     _candidateStreak = 0;
     // ~2 frame per detik. Kecepatan jalan kaki sekitar 1,4 m/s, jadi tiap
-    // frame mewakili kurang dari satu meter perjalanan — cukup rapat untuk
+    // frame mewakili kurang dari satu meter perjalanan - cukup rapat untuk
     // memperingatkan sebelum terlambat, cukup jarang untuk tidak menguras
     // baterai dan kuota di sepanjang perjalanan.
     _loopTimer = Timer.periodic(const Duration(milliseconds: 500), (_) => _tick());
@@ -6331,8 +6331,8 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   /// Susun satu pesan untuk frame ini: rintangan kritis didahulukan, lalu
-  /// rintangan peringatan, baru arahan zona. Fungsi ini murni — tidak bicara
-  /// dan tidak mengubah state — supaya keputusan "apa yang perlu dikatakan"
+  /// rintangan peringatan, baru arahan zona. Fungsi ini murni - tidak bicara
+  /// dan tidak mengubah state - supaya keputusan "apa yang perlu dikatakan"
   /// terpisah dari keputusan "apakah sekarang saatnya mengatakannya".
   (String, SpeechTier, bool) _composeGuidance(ZoneAnalysis zones, List<Detection> obstacles) {
     final critical = obstacles.where((d) => d.dangerLevel == 'critical').toList();
@@ -6358,7 +6358,7 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   /// Anti-banjir suara. Loop menghasilkan pesan tiap frame; mengucapkan
-  /// semuanya akan menutupi suara lalu lintas — hal terakhir yang boleh
+  /// semuanya akan menutupi suara lalu lintas - hal terakhir yang boleh
   /// terjadi pada orang yang sedang menyeberang.
   ///
   /// Tiga rem, masing-masing menutup lubang yang berbeda:
@@ -6366,7 +6366,7 @@ class NavigationProvider extends ChangeNotifier {
   /// 1. **Histeresis.** PIDNet dan YOLO berkedip antar-frame; tanpa ini satu
   ///    kedipan model langsung jadi satu kedipan suara. Info dan Warning
   ///    butuh dua frame berturut-turut dengan pesan yang sama. Critical lewat
-  ///    pada kemunculan pertama — menunda peringatan bahaya ~700 ms demi
+  ///    pada kemunculan pertama - menunda peringatan bahaya ~700 ms demi
   ///    kerapian suara adalah pertukaran yang salah di mode ini.
   ///
   /// 2. **Critical tidak memotong dirinya sendiri.** Sebelumnya kedua rem
@@ -6381,7 +6381,7 @@ class NavigationProvider extends ChangeNotifier {
   /// 3. **Jangan menumpuk di atas ucapan yang belum habis.** [_lastSpokenAt]
   ///    dicatat saat pesan DIKIRIM, bukan saat selesai dibacakan. Satu
   ///    kalimat arahan zona ("Kiri aman, tengah hati-hati, kanan bahaya.
-  ///    Geser ke kiri.") butuh ~4 detik pada `speechRate` 0,5 — jauh lebih
+  ///    Geser ke kiri.") butuh ~4 detik pada `speechRate` 0,5 - jauh lebih
   ///    lama dari rem 1,8 detik. Tanpa cek [TtsQueue.isSpeaking], pesan
   ///    berikutnya selalu berangkat sebelum yang sekarang habis, lalu
   ///    dibuang antrean karena kedaluwarsa 2 detik. Itulah yang terdengar
@@ -6418,14 +6418,14 @@ class NavigationProvider extends ChangeNotifier {
 
   /// Frame gagal dianalisis berturut-turut.
   ///
-  /// Penyebabnya sekarang lokal — lensa tertutup, terlalu gelap, model
-  /// kehabisan memori — bukan jaringan. Naskahnya ikut berubah: menyalahkan
+  /// Penyebabnya sekarang lokal - lensa tertutup, terlalu gelap, model
+  /// kehabisan memori - bukan jaringan. Naskahnya ikut berubah: menyalahkan
   /// "sambungan server" untuk masalah yang ada di tangan pengguna hanya
   /// mengirimnya mencari sinyal yang tidak akan menolong.
   void _handleFailure() {
     _consecutiveFailures++;
 
-    // Satu kegagalan bisa jadi hanya satu frame buruk — jangan langsung
+    // Satu kegagalan bisa jadi hanya satu frame buruk - jangan langsung
     // menakuti pengguna. Beberapa berturut-turut berarti mode ini memang
     // sedang tidak melihat apa-apa, dan itu harus dikatakan segera: diam
     // berarti membiarkan orang berjalan menyangka dirinya dituntun.
@@ -6448,7 +6448,7 @@ class NavigationProvider extends ChangeNotifier {
     }
   }
 
-  /// NV-14a/b — telepon masuk (disimulasikan manual dari panel debug).
+  /// NV-14a/b - telepon masuk (disimulasikan manual dari panel debug).
   void simulateIncomingCall() {
     _phase = NavPhase.paused;
     _stopLoop();
@@ -6457,7 +6457,7 @@ class NavigationProvider extends ChangeNotifier {
 
   void endSimulatedCall() {
     _phase = NavPhase.active;
-    // NV-14b — status jalur SEKARANG, bukan yang tadi. Karena itu loop-nya
+    // NV-14b - status jalur SEKARANG, bukan yang tadi. Karena itu loop-nya
     // dijalankan lagi lebih dulu dan ringkasannya menyusul dari frame baru.
     _speak('Navigasi lanjut. ${_summaryPhrase()}', tier: SpeechTier.info);
     notifyListeners();
@@ -6471,7 +6471,7 @@ class NavigationProvider extends ChangeNotifier {
 
   /// Ringkasan tiga zona dalam kata, bukan warna.
   ///
-  /// `ZoneIndicator` menampilkan tiga blok berwarna — tidak ada gunanya bagi
+  /// `ZoneIndicator` menampilkan tiga blok berwarna - tidak ada gunanya bagi
   /// pengguna yang tidak melihat layar. Ini padanan verbalnya, dan inilah yang
   /// dibacakan tombol kiri "Ulangi arahan".
   String zoneSummary() {
@@ -6493,7 +6493,7 @@ class NavigationProvider extends ChangeNotifier {
 
     final parts = 'Kiri ${word(_left)}, tengah ${word(_center)}, kanan ${word(_right)}.';
 
-    // Sebutkan rekomendasinya, bukan hanya keadaannya — pengguna butuh tahu
+    // Sebutkan rekomendasinya, bukan hanya keadaannya - pengguna butuh tahu
     // harus berbuat apa, bukan sekadar daftar status.
     final saran = _center == ZoneStatus.safe
         ? 'Tetap di tengah.'
@@ -6514,7 +6514,7 @@ class NavigationProvider extends ChangeNotifier {
     _speak(zoneSummary(), tier: SpeechTier.warning);
   }
 
-  /// `actionStopWalking` — hentikan panduan tanpa keluar mode.
+  /// `actionStopWalking` - hentikan panduan tanpa keluar mode.
   /// Mengembalikan false kalau memang tidak ada yang berjalan.
   bool pauseGuidance() {
     if (_phase == NavPhase.paused) return false;
@@ -6522,7 +6522,7 @@ class NavigationProvider extends ChangeNotifier {
     return true;
   }
 
-  /// NV-15 — jeda otomatis (berhenti berjalan / ponsel diturunkan).
+  /// NV-15 - jeda otomatis (berhenti berjalan / ponsel diturunkan).
   /// Menghentikan loop juga menghentikan unggahan frame: berhenti berjalan
   /// berarti berhenti membakar kuota dan baterai.
   void autoPause() {
@@ -6645,7 +6645,7 @@ class SettingsProvider extends ChangeNotifier {
     // Tanpa baris ini, pilihan "Getar: Mati" tersimpan ke disk tapi tidak
     // mematikan apa pun.
     HapticService.instance.setMode(_vibrationMode);
-    // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama —
+    // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama -
     // tanpa ini, alamat kustom baru berlaku setelah pengguna membukanya lagi.
     ServerService.instance.setHost(_serverHost);
     notifyListeners();
@@ -6720,7 +6720,7 @@ import '../core/speech/tts_queue.dart';
 
 export '../core/speech/tts_queue.dart' show SpeechTier;
 
-/// TtsProvider — pembungkus [TtsQueue] tier-based (bagian 15). Dipakai
+/// TtsProvider - pembungkus [TtsQueue] tier-based (bagian 15). Dipakai
 /// screen/mode baru lewat `context.read<TtsProvider>().speak(msg, tier: ...)`
 /// alih-alih memanggil TTSService langsung, supaya aturan interupsi
 /// Critical/Warning/Info dan anti-banjir Info konsisten di seluruh app.
@@ -6768,7 +6768,7 @@ import '../providers/find_object_provider.dart';
 import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
-/// VoiceState — bagian 11 IMPLEMENTASI.md (AS-01..AS-25). Granular dari 4
+/// VoiceState - bagian 11 IMPLEMENTASI.md (AS-01..AS-25). Granular dari 4
 /// fase asli (idle/listening/processing/responding) supaya tiap sub-state
 /// yang dipisah dokumen (mendengarkan vs tanpa suara vs berisik, proses
 /// lokal vs LLM, dst.) punya representasi sendiri.
@@ -6795,7 +6795,7 @@ class ChatTurn {
   ChatTurn({required this.isUser, required this.text}) : at = DateTime.now();
 }
 
-/// VoiceProvider — STT → intent routing → API call → TTS.
+/// VoiceProvider - STT → intent routing → API call → TTS.
 ///
 /// Intent routing 2-lapis dipertahankan dari implementasi awal:
 /// - Layer 1: keyword lokal (0ms latency, aman offline) via [CommandParser].
@@ -6827,23 +6827,23 @@ class VoiceProvider extends ChangeNotifier {
   String get lastText => _lastText;
   String get response => _response;
 
-  /// AS-18 — dua tebakan terdekat saat perintah tidak dikenali.
+  /// AS-18 - dua tebakan terdekat saat perintah tidak dikenali.
   List<VoiceIntent> _suggestions = [];
   List<VoiceIntent> get suggestions => _suggestions;
   String _heardRaw = '';
   String get heardRaw => _heardRaw;
 
-  /// Dipasang layar untuk menyalurkan suara lewat antrean tier — menjaga
+  /// Dipasang layar untuk menyalurkan suara lewat antrean tier - menjaga
   /// provider ini tidak bergantung BuildContext, pola sama dengan mode lain.
   void Function(String text)? onSpeak;
   void Function()? onAllFeaturesFailed;
 
   /// Dipasang oleh VoiceScreen saat masuk sebagai overlay (push Navigator).
-  /// Dipanggil setelah `actionGoBack` berhasil — agar layar bisa pop dirinya
+  /// Dipanggil setelah `actionGoBack` berhasil - agar layar bisa pop dirinya
   /// sendiri tanpa VoiceProvider bergantung pada BuildContext/Navigator.
   void Function()? onNavigateBack;
 
-  /// Pengaturan adalah layar penunjang, bukan mode — pembukaannya butuh
+  /// Pengaturan adalah layar penunjang, bukan mode - pembukaannya butuh
   /// Navigator. Layar yang aktif memasang ini dan mengembalikan **true hanya
   /// kalau halaman benar-benar terbuka**; kalau null atau false, Vinara
   /// mengatakan yang sejujurnya alih-alih mengonfirmasi.
@@ -6855,9 +6855,9 @@ class VoiceProvider extends ChangeNotifier {
   // sekali; semuanya jatuh ke `default:` dan dijawab "Perintah itu belum saya
   // kenali di mode ini". Callback di bawah menyambungkannya ke mode yang
   // sedang aktif, sehingga perintah suara dan tombol kiri menjalankan hal
-  // yang persis sama — satu model mental, dua cara memicunya.
+  // yang persis sama - satu model mental, dua cara memicunya.
 
-  /// Aksi utama mode aktif — setara menekan tombol kiri.
+  /// Aksi utama mode aktif - setara menekan tombol kiri.
   /// Dipasang tiap layar mode; `null` berarti mode ini memang tidak punya.
   void Function()? onPrimaryAction;
 
@@ -6875,7 +6875,7 @@ class VoiceProvider extends ChangeNotifier {
   /// Berhenti berjalan (Mode Navigasi).
   bool Function()? onStopWalking;
 
-  /// Pengaturan kecepatan bicara — dipasang layar dari SettingsProvider.
+  /// Pengaturan kecepatan bicara - dipasang layar dari SettingsProvider.
   Future<double> Function(double delta)? onAdjustSpeechRate;
 
   Future<void> init() async {
@@ -6885,7 +6885,7 @@ class VoiceProvider extends ChangeNotifier {
     );
   }
 
-  /// AS-23 — riwayat kedaluwarsa setelah 15 menit tanpa aktivitas.
+  /// AS-23 - riwayat kedaluwarsa setelah 15 menit tanpa aktivitas.
   bool checkAndExpireHistory() {
     if (_history.isEmpty || _lastActivity == null) return false;
     if (DateTime.now().difference(_lastActivity!) > const Duration(minutes: 15)) {
@@ -6917,7 +6917,7 @@ class VoiceProvider extends ChangeNotifier {
       listenOptions: SpeechListenOptions(
         // 5 detik memotong kalimat yang wajar-wajar saja ("tolong bacakan
         // tulisan yang ada di depan saya"), dan potongannya lalu gagal
-        // dikenali — pengguna menyimpulkan parsernya bodoh, padahal ia tidak
+        // dikenali - pengguna menyimpulkan parsernya bodoh, padahal ia tidak
         // pernah mendengar kalimat utuhnya. `pauseFor` yang menutup rekaman:
         // 2 detik hening berarti pengguna sudah selesai bicara.
         listenFor: const Duration(seconds: 10),
@@ -6947,7 +6947,7 @@ class VoiceProvider extends ChangeNotifier {
     _lastActivity = DateTime.now();
     _heardRaw = text;
     _history.add(ChatTurn(isUser: true, text: text));
-    // AS-06 — jeda pendek "mentranskrip", tanpa kata "memproses".
+    // AS-06 - jeda pendek "mentranskrip", tanpa kata "memproses".
     _setState(VoiceState.transcribing);
     await Future.delayed(const Duration(milliseconds: 250));
 
@@ -6955,7 +6955,7 @@ class VoiceProvider extends ChangeNotifier {
 
     if (!command.recognized) {
       if (command.suggestions.length >= 2) {
-        // AS-19 — ambigu, pertanyaan pilihan dua.
+        // AS-19 - ambigu, pertanyaan pilihan dua.
         _suggestions = command.suggestions;
         _setState(VoiceState.ambiguous);
         _respond(
@@ -6965,19 +6965,19 @@ class VoiceProvider extends ChangeNotifier {
         return;
       }
       if (command.suggestions.isNotEmpty) {
-        // AS-18 — tidak dikenali, satu tebakan tersedia.
+        // AS-18 - tidak dikenali, satu tebakan tersedia.
         _suggestions = command.suggestions;
         _setState(VoiceState.unrecognized);
         _respond('Saya dengar "$text". Maksudmu ${command.suggestions[0].spokenLabel}?', save: false);
         return;
       }
-      // Tidak dikenali sama sekali — tidak ada saran.
+      // Tidak dikenali sama sekali - tidak ada saran.
       await _handleLocal('Maaf, saya tidak mengerti. Coba katakan lagi dengan cara berbeda.');
       return;
     }
 
     if (command.intent!.isModeChange) {
-      // AS-17 — perintah ganti mode.
+      // AS-17 - perintah ganti mode.
       await _applyModeChange(command.intent!);
       return;
     }
@@ -6988,19 +6988,19 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
-    // Perintah cari objek dengan target dinamis — pindah ke FindObject.
+    // Perintah cari objek dengan target dinamis - pindah ke FindObject.
     if (command.intent == VoiceIntent.findObjectTarget && command.argument != null) {
       await _handleFindObjectTarget(command.argument!);
       return;
     }
 
-    // Perintah nyalakan/matikan lampu — toggle torch.
+    // Perintah nyalakan/matikan lampu - toggle torch.
     if (command.intent == VoiceIntent.actionTorch) {
       await _handleTorch();
       return;
     }
 
-    // Perintah deskripsi suasana — Moondream2 via server.
+    // Perintah deskripsi suasana - Moondream2 via server.
     if (command.intent == VoiceIntent.describeScene) {
       await _handleDescribeScene();
       return;
@@ -7012,7 +7012,7 @@ class VoiceProvider extends ChangeNotifier {
 
       case VoiceIntent.helpWhereAmI:
         // Sebutkan mode yang SEDANG aktif. Jawaban lama selalu "Kamu di mode
-        // Asisten Suara" — benar hanya kalau Asisten sedang jadi mode, dan
+        // Asisten Suara" - benar hanya kalau Asisten sedang jadi mode, dan
         // menyesatkan setiap kali mic dibuka sebagai overlay dari mode lain.
         await _handleLocal('Kamu di mode ${_appMode.mode.label}.');
 
@@ -7043,7 +7043,7 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// `actionCapture` — "jepret", "ambil gambar". Menjalankan aksi utama mode
+  /// `actionCapture` - "jepret", "ambil gambar". Menjalankan aksi utama mode
   /// aktif, yaitu hal yang sama dengan tombol kiri.
   Future<void> _handlePrimaryAction() async {
     final action = onPrimaryAction;
@@ -7079,7 +7079,7 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
     // Tidak ada pembacaan panjang yang berjalan. Perlakukan "jeda" sebagai
-    // permintaan menghentikan suara — itu maksud yang paling mungkin.
+    // permintaan menghentikan suara - itu maksud yang paling mungkin.
     if (pause) {
       await TTSService.instance.stop();
       _setState(VoiceState.responded);
@@ -7114,13 +7114,13 @@ class VoiceProvider extends ChangeNotifier {
     await _respond('Panduan jalan dihentikan.', save: false);
   }
 
-  /// AS-17 — ganti mode lewat suara. **Aturan mutlak bagian 4.1: suara Vinara
+  /// AS-17 - ganti mode lewat suara. **Aturan mutlak bagian 4.1: suara Vinara
   /// tidak boleh pernah mengonfirmasi sesuatu yang tidak terjadi.** State
   /// dipindah dulu lewat [AppModeProvider.setMode]; konfirmasi "Baik."
   /// dititipkan sebagai prefiks pengumuman kedatangan, jadi ia baru terdengar
   /// setelah layar mode tujuan benar-benar terpasang. Kalau perpindahan
   /// dibatalkan (NV-18 saat pengguna masih berjalan), yang diucapkan adalah
-  /// keadaan yang sebenarnya — bukan konfirmasi.
+  /// keadaan yang sebenarnya - bukan konfirmasi.
   Future<void> _applyModeChange(VoiceIntent intent) async {
     if (intent == VoiceIntent.modeSettings) {
       final opened = await onOpenSettings?.call() ?? false;
@@ -7161,7 +7161,7 @@ class VoiceProvider extends ChangeNotifier {
 
     final changed = await _appMode.setMode(target, spokenPrefix: 'Baik.');
     if (!changed || _appMode.mode != target) {
-      // Dibatalkan konfirmasi NV-18 — pengguna tetap di tempatnya.
+      // Dibatalkan konfirmasi NV-18 - pengguna tetap di tempatnya.
       await _respond('Tetap di mode ${_appMode.mode.label}.', save: false);
       return;
     }
@@ -7172,12 +7172,12 @@ class VoiceProvider extends ChangeNotifier {
   }
 
   Future<void> _handleLocal(String answer) async {
-    // AS-08 — proses lokal, "Baik." lalu langsung hasilnya.
+    // AS-08 - proses lokal, "Baik." lalu langsung hasilnya.
     _setState(VoiceState.processingLocal);
     await _respond('Baik. $answer');
   }
 
-  /// Toggle flashlight — nyala jadi mati, mati jadi nyala.\n  /// Konfirmasi TTS menyebutkan status baru, bukan perintah.
+  /// Toggle flashlight - nyala jadi mati, mati jadi nyala.\n  /// Konfirmasi TTS menyebutkan status baru, bukan perintah.
   Future<void> _handleTorch() async {
     _setState(VoiceState.processingLocal);
     await _camera.toggleTorch();
@@ -7190,18 +7190,18 @@ class VoiceProvider extends ChangeNotifier {
   /// Deskripsikan suasana di depan via Moondream2 (on-server).
   ///
   /// Moondream2 menjawab dalam Bahasa Inggris. Sebelum ini kalimatnya
-  /// dibacakan apa adanya dengan TTS `en-US` — menuntut kemampuan Inggris
+  /// dibacakan apa adanya dengan TTS `en-US` - menuntut kemampuan Inggris
   /// lisan yang tidak bisa diasumsikan pada tunanetra di pasar dan warung
   /// Indonesia.
   ///
   /// Sekarang diterjemahkan lokal lewat [translateSceneCaption]: kamus + aturan
-  /// urutan kata, 0 ms, offline, tanpa LLM — prinsip yang sama yang membuat
+  /// urutan kata, 0 ms, offline, tanpa LLM - prinsip yang sama yang membuat
   /// `narration_engine` dan `CommandParser` menggantikan Qwen. Menambahkan LLM
   /// penerjemah akan mengembalikan tepat tiga masalah yang sudah dibuang:
   /// lambat, bisa berhalusinasi, dan butuh server.
   ///
   /// Kalau cakupan kamus terlalu rendah, penerjemah **menyerah** dan kalimat
-  /// Inggrisnya dibacakan — didahului satu penanda singkat, supaya pengguna
+  /// Inggrisnya dibacakan - didahului satu penanda singkat, supaya pengguna
   /// tahu bahasanya berganti dan tidak menyangka aplikasinya rusak. Bahasa
   /// Indonesia yang kacau lebih buruk daripada Bahasa Inggris yang benar.
   Future<void> _handleDescribeScene() async {
@@ -7233,7 +7233,7 @@ class VoiceProvider extends ChangeNotifier {
       }
 
       debugPrint('[Describe] cakupan kamus ${translated.coverage.toStringAsFixed(2)} '
-          '— dibacakan dalam Bahasa Inggris');
+          '- dibacakan dalam Bahasa Inggris');
       _response = description;
       _setState(VoiceState.responded);
       await TTSService.instance.speak('Dalam bahasa Inggris.');
@@ -7295,7 +7295,7 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// AS-20 — pengguna menekan tombol Bicara lagi saat Vinara masih bicara:
+  /// AS-20 - pengguna menekan tombol Bicara lagi saat Vinara masih bicara:
   /// memotong tanpa nada khusus, langsung mulai dengar lagi.
   Future<void> interruptAndListenAgain() async {
     await TTSService.instance.stop();
@@ -7358,7 +7358,7 @@ import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Cari Objek — bagian 12 IMPLEMENTASI.md, 19 state (CO-01..CO-19).
+/// Mode Cari Objek - bagian 12 IMPLEMENTASI.md, 19 state (CO-01..CO-19).
 /// **Sepenuhnya di server** lewat `POST /api/cari-objek`; layar ini hanya
 /// memasok frame dan menggambar hasilnya. Karena itu ia benar-benar
 /// dinonaktifkan saat offline (CO-14), dengan targetnya disimpan.
@@ -7409,12 +7409,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Prinsip 6 "umumkan saat tiba" — sesudah layar terpasang.
+      // Prinsip 6 "umumkan saat tiba" - sesudah layar terpasang.
       context.read<AppModeProvider>().announceEntry(AppMode.findObject);
       final provider = context.read<FindObjectProvider>();
       provider.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
       provider.onDirectionHaptic = _fireDirectionHaptic;
-      // Server tidak menjawab sama saja tidak bisa mencari — periksa sebelum
+      // Server tidak menjawab sama saja tidak bisa mencari - periksa sebelum
       // memotret, bukan sesudah permintaannya gagal.
       provider.isOffline = () =>
           context.read<GlobalConditionsProvider>().isBackendDown;
@@ -7442,12 +7442,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     });
   }
 
-  /// Status koneksi frame sebelumnya — dipakai mendeteksi transisi
+  /// Status koneksi frame sebelumnya - dipakai mendeteksi transisi
   /// offline→online untuk menepati janji CO-14.
   bool _wasOffline = false;
 
   /// Frame terakhir dari stream kamera. Disimpan mentah dan baru dikodekan
-  /// saat benar-benar akan dikirim — mengodekan tiap frame kamera padahal
+  /// saat benar-benar akan dikirim - mengodekan tiap frame kamera padahal
   /// hanya sebagian kecil yang terkirim adalah pemborosan CPU dan baterai
   /// yang langsung terasa sebagai panas di tangan pengguna.
   CameraImage? _latestFrame;
@@ -7522,7 +7522,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
 
   Future<void> _startListening() async {
     final offline = context.read<GlobalConditionsProvider>().isOffline;
-    if (offline) return; // CO-14 — mode benar-benar dinonaktifkan
+    if (offline) return; // CO-14 - mode benar-benar dinonaktifkan
     if (!_sttReady) return;
     setState(() => _debugOverride = null);
     final provider = context.read<FindObjectProvider>();
@@ -7578,7 +7578,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final topInset = media.padding.top;
     final bottomInset = media.padding.bottom;
 
-    // CO-14 — janji "saya coba lagi begitu internet kembali" hanya bernilai
+    // CO-14 - janji "saya coba lagi begitu internet kembali" hanya bernilai
     // kalau benar-benar ditepati tanpa pengguna menyebut ulang barangnya.
     if (_wasOffline && !offline && fo.savedTarget != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -7621,7 +7621,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             ),
 
           if (!_hasCameraPermission || _debugOverride == _Debug.co15)
-            // CO-15 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // CO-15 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera',
@@ -7647,7 +7647,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
               cameraDisabledReason: fo.target == null
                   ? 'tekan tombol bicara lalu sebutkan barangnya'
                   : 'sedang memindai',
-              cameraLabel: fo.target != null ? 'Kirim — cari ${fo.target}' : 'Sebutkan barang dulu',
+              cameraLabel: fo.target != null ? 'Kirim - cari ${fo.target}' : 'Sebutkan barang dulu',
               onMicPressed: _startListening,
               listeningOverride: fo.state == FindObjectState.listening,
             ),
@@ -7738,7 +7738,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       case FindObjectState.tooDark:
         return [_bottomPanel(bottomInset, const CameraHealthToast(issue: CameraHealthIssue.dark))];
       case FindObjectState.offlineSaved:
-        // CO-14 — targetnya disimpan, dan itu dikatakan. Bukan "perintah
+        // CO-14 - targetnya disimpan, dan itu dikatakan. Bukan "perintah
         // gagal": perintahnya diterima, hanya pelaksanaannya yang menunggu.
         return [
           _bottomPanel(
@@ -7758,7 +7758,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final title = fo.matchCount > 1
         ? '${fo.matchCount} ${fo.target} terlihat, yang terdekat di ${fo.direction}'
         : '${fo.target} di ${fo.direction}';
-    // CO-08 — panduan bertahap: dekat sekali menyebut "ulurkan tangan".
+    // CO-08 - panduan bertahap: dekat sekali menyebut "ulurkan tangan".
     final description = fo.distanceMeter < 1 ? 'Sudah sangat dekat, ulurkan tangan' : null;
     return Stack(
       clipBehavior: Clip.none,
@@ -7818,7 +7818,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       case _Debug.co15:
         return [];
       case _Debug.co16:
-        return [_bottomPanel(bottomInset, const AlertCard(tier: AlertTier.positive, title: 'kunci di kiri', distanceMeter: 1.2, description: 'Senyap aktif — arah lewat getar: 1 ketuk kiri, 2 ketuk kanan'))];
+        return [_bottomPanel(bottomInset, const AlertCard(tier: AlertTier.positive, title: 'kunci di kiri', distanceMeter: 1.2, description: 'Senyap aktif - arah lewat getar: 1 ketuk kiri, 2 ketuk kanan'))];
       case _Debug.co17:
         return [_bottomPanel(bottomInset, const AlertCard(tier: AlertTier.positive, title: 'kunci di depan', distanceMeter: 1.2))];
       case _Debug.co18:
@@ -7845,7 +7845,7 @@ class _DebugSheet extends StatelessWidget {
           children: [
             Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                 decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-            Text('Debug — Mode Cari Objek', style: AppTypography.title()),
+            Text('Debug - Mode Cari Objek', style: AppTypography.title()),
             const SizedBox(height: AppSpacing.s2),
             Flexible(
               child: ListView(
@@ -7907,7 +7907,7 @@ import '../theme/index.dart';
 
 enum _BootStage { splash, onboarding, permissions, initializing, ready }
 
-/// MainScreen — mengelola alur boot (bagian 6 & 13): Splash → Onboarding
+/// MainScreen - mengelola alur boot (bagian 6 & 13): Splash → Onboarding
 /// (hanya pertama kali) → Izin → mode default (Deteksi Objek). Tidak ada
 /// layar beranda: setelah boot, aplikasi langsung berada di salah satu dari
 /// enam mode sejajar.
@@ -7973,7 +7973,7 @@ class _MainScreenState extends State<MainScreen> {
     if (!mounted) return;
     setState(() => _stage = _BootStage.ready);
     // Status kamera & backend offline ditangani oleh StatusBanner
-    // dan GlobalConditionsProvider di tiap mode screen — tidak perlu
+    // dan GlobalConditionsProvider di tiap mode screen - tidak perlu
     // SnackBar di sini yang menutupi BottomActionBar.
   }
 
@@ -8059,7 +8059,7 @@ import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Kenali Uang — bagian 9 IMPLEMENTASI.md, 18 state (UG-01..UG-18).
+/// Mode Kenali Uang - bagian 9 IMPLEMENTASI.md, 18 state (UG-01..UG-18).
 /// Sepenuhnya on-device, nol sentuhan: [MoneyProvider] menjalankan siklus
 /// deteksi mock sendiri lewat Timer, layar ini murni merender.
 class MoneyScreen extends StatefulWidget {
@@ -8069,7 +8069,7 @@ class MoneyScreen extends StatefulWidget {
   State<MoneyScreen> createState() => _MoneyScreenState();
 }
 
-/// Satu entri per baris tabel bagian 9 — termasuk pemecahan UG-09a/UG-09b
+/// Satu entri per baris tabel bagian 9 - termasuk pemecahan UG-09a/UG-09b
 /// dan UG-12a/UG-12b apa adanya, supaya panel debug bisa menunjukkan kedua
 /// varian secara terpisah (mis. UG-09b: campuran Rp20.000×2 + Rp5.000×1).
 enum MoneyDebugState {
@@ -8112,7 +8112,7 @@ extension _DebugMeta on MoneyDebugState {
 
 enum _CardPlacement { center, bottomSlot }
 
-/// Deskripsi render untuk satu momen layar — dihasilkan baik dari
+/// Deskripsi render untuk satu momen layar - dihasilkan baik dari
 /// [MoneyProvider] (otomatis) maupun dari [MoneyDebugState] (paksa manual).
 class _RenderSpec {
   final FrameFit? frame; // null = bingkai disembunyikan (UG-05/09/11)
@@ -8154,7 +8154,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // Prinsip 6 "umumkan saat tiba" — sesudah layar terpasang.
+      // Prinsip 6 "umumkan saat tiba" - sesudah layar terpasang.
       context.read<AppModeProvider>().announceEntry(AppMode.money);
       final money = context.read<MoneyProvider>();
       money.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
@@ -8329,7 +8329,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // z0 — kamera adalah lantai, full bleed.
+          // z0 - kamera adalah lantai, full bleed.
           if (cam.isInitialized && cam.controller != null)
             Positioned.fill(child: CameraPreview(cam.controller!))
           else
@@ -8349,7 +8349,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
               ),
             ),
 
-          // z25 — ModeBadge, turun otomatis kalau banner hadir.
+          // z25 - ModeBadge, turun otomatis kalau banner hadir.
           Positioned(
             top: badgeTop,
             left: AppSpacing.screenMargin,
@@ -8371,7 +8371,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             ),
 
           if (showPermissionCard)
-            // UG-14 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // UG-14 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera diperlukan',
@@ -8452,7 +8452,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
               ),
           ],
 
-          // z60 — BottomActionBar, selalu ada, selalu di tempat yang sama.
+          // z60 - BottomActionBar, selalu ada, selalu di tempat yang sama.
           // Tombol kiri = "Kenali Uang": snap frame saat ini, umumkan hasilnya.
           Positioned(
             left: 0,
@@ -8597,7 +8597,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           ),
         );
       case MoneyDebugState.ug13:
-        // Banner-nya sendiri dirender terpisah (showOfflineBanner) — konten
+        // Banner-nya sendiri dirender terpisah (showOfflineBanner) - konten
         // di baliknya tetap jalan normal (deteksi on-device tak terpengaruh).
         return _RenderSpec(card: NominalCard(amount: 20000, onReplay: () => _replay(20000)));
       case MoneyDebugState.ug14:
@@ -8645,7 +8645,7 @@ class _DebugStateSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Panel debug — Kenali Uang', style: AppTypography.title()),
+              child: Text('Panel debug - Kenali Uang', style: AppTypography.title()),
             ),
           ),
           const SizedBox(height: AppSpacing.s2),
@@ -8666,7 +8666,7 @@ class _DebugStateSheet extends StatelessWidget {
                     dense: true,
                     selected: current == d,
                     selectedTileColor: AppColors.actionTint,
-                    title: Text('${d.id} — ${d.title}', style: AppTypography.body()),
+                    title: Text('${d.id} - ${d.title}', style: AppTypography.body()),
                     onTap: () => onSelect(d),
                   ),
               ],
@@ -8697,11 +8697,11 @@ import '../providers/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Navigasi — bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
+/// Mode Navigasi - bagian 10 IMPLEMENTASI.md, 25 state (NV-01..NV-25).
 ///
 /// **Sepenuhnya on-device**: segmentasi jalur via PIDNet-S TFLite dan deteksi
 /// rintangan via YOLO11n TFLite berjalan langsung di HP. Tidak ada upload
-/// frame, tidak ada cadangan server — kalau model gagal dimuat, mode ini
+/// frame, tidak ada cadangan server - kalau model gagal dimuat, mode ini
 /// mengatakannya apa adanya lewat NavPhase.unavailable.
 class NavigasiScreen extends StatefulWidget {
   const NavigasiScreen({super.key});
@@ -8740,12 +8740,12 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
 
       final nav = context.read<NavigationProvider>();
       nav.onSpeak = (text, tier) {
-        // NV-22 — senyap/TTS mati: arah lewat getar, 1 ketuk kiri, 2 ketuk kanan.
+        // NV-22 - senyap/TTS mati: arah lewat getar, 1 ketuk kiri, 2 ketuk kanan.
         if (_silentMode) {
           // Critical selalu bergetar, apa pun rekomendasinya. Sebelum ini
           // hanya rekomendasi kiri/kanan yang menghasilkan getar, sehingga
-          // "Berhenti! Jalur di depan tidak aman" — yang rekomendasinya
-          // tengah atau tidak ada sama sekali — lewat tanpa suara DAN tanpa
+          // "Berhenti! Jalur di depan tidak aman" - yang rekomendasinya
+          // tengah atau tidak ada sama sekali - lewat tanpa suara DAN tanpa
           // getar. Dibisukan tidak boleh berarti peringatan bahaya hilang.
           if (tier == SpeechTier.critical) {
             _fireCriticalHaptic();
@@ -8763,11 +8763,11 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       nav.cameraSource = _grabCameraImage;
       nav.startCalibration();
 
-      // NV-18 — satu-satunya konfirmasi wajib di seluruh app.
+      // NV-18 - satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
 
       // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
-      // sama persis dengan menekan tombol kiri — di mode ini, membisukan dan
+      // sama persis dengan menekan tombol kiri - di mode ini, membisukan dan
       // menyalakan kembali suara panduan.
       //
       // "Ulangi arahan" tidak hilang, hanya pindah: tetap tersedia lewat
@@ -8844,11 +8844,11 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     }
   }
 
-  /// NV-18 — satu-satunya konfirmasi wajib di seluruh app.
+  /// NV-18 - satu-satunya konfirmasi wajib di seluruh app.
   ///
   /// **Lembar bawah, bukan dialog tengah layar.** Pengguna sedang berjalan;
   /// menjangkau tombol di tengah layar berarti berhenti dan menyesuaikan
-  /// pegangan — dengan satu tangan yang lain memegang tongkat. Tombolnya
+  /// pegangan - dengan satu tangan yang lain memegang tongkat. Tombolnya
   /// karena itu menempel di dasar, mengikuti `zone/page-action`.
   ///
   /// Fokus terkunci di dalam lembar (bawaan `showModalBottomSheet`); setelah
@@ -8917,12 +8917,12 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     await context.read<NavigationProvider>().startNavigation(dest);
   }
 
-  /// Tombol kiri BottomActionBar — membisukan / menyalakan suara panduan.
+  /// Tombol kiri BottomActionBar - membisukan / menyalakan suara panduan.
   ///
   /// **Hanya suaranya.** PIDNet dan YOLO tetap berjalan dan indikator zona di
   /// layar tetap hidup, jadi pendamping yang melihat layar tetap terbantu,
   /// dan panduan arah tetap sampai lewat getar (NV-22). Membisukan di sini
-  /// bukan mematikan panduan — itu sebabnya loop-nya sengaja tidak disentuh.
+  /// bukan mematikan panduan - itu sebabnya loop-nya sengaja tidak disentuh.
   void _toggleGuidanceVoice() {
     final tts = context.read<TtsProvider>();
     if (_silentMode) {
@@ -8974,7 +8974,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             children: [
               Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                   decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-              Text('Debug — Mode Navigasi', style: AppTypography.title()),
+              Text('Debug - Mode Navigasi', style: AppTypography.title()),
               const SizedBox(height: 4),
               Text('NV-01..13,15,17,22..24 tercapai lewat kalibrasi/simulasi/kondisi nyata',
                   textAlign: TextAlign.center, style: AppTypography.caption()),
@@ -9040,7 +9040,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     final hasCriticalObstacle = obstacles.any((d) => d.isCritical);
 
     if (_debugOverride == 'NV-21') {
-      // NV-21 — layar mengambil alih penuh, tidak ada BottomActionBar, jadi
+      // NV-21 - layar mengambil alih penuh, tidak ada BottomActionBar, jadi
       // aksinya memakai `zone/page-action`. Ini layar yang paling mungkin
       // muncul saat pengguna sedang memegang tongkat: tombol wajib di dasar.
       return const PageActionScaffold(
@@ -9130,7 +9130,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
           Positioned(
             left: 0, right: 0, bottom: 0,
             child: BottomActionBar(
-              // Dulu `const BottomActionBar()` — labelnya jatuh ke bawaan
+              // Dulu `const BottomActionBar()` - labelnya jatuh ke bawaan
               // "Ambil gambar", tombolnya tampak aktif, dan menekannya tidak
               // melakukan apa pun. Lalu sempat "Ulangi arahan". Sekarang:
               // saklar bisu untuk suara panduan, sesuai kontrak tombol kiri
@@ -9180,7 +9180,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (nav.phase == NavPhase.paused && _debugOverride == 'NV-14a') {
       return const StatusBanner(tier: AlertTier.info, message: 'Panggilan masuk, peringatan pindah ke getar');
     }
-    // NV-11 — mode ini sepenuhnya on-device. Kalau modelnya tidak bisa
+    // NV-11 - mode ini sepenuhnya on-device. Kalau modelnya tidak bisa
     // dipakai atau frame tidak terbaca, tidak ada cadangan apa pun: bannernya
     // Critical dan menyuruh berhenti, bukan Warning yang menjanjikan sisa
     // fungsi yang sebenarnya tidak ada.
@@ -9379,7 +9379,7 @@ import '../widgets/index.dart';
 import '../widgets/ocr_debug_sheet.dart';
 import '../widgets/ocr_long_result_panel.dart';
 
-/// Mode Baca Teks — bagian 8 IMPLEMENTASI.md, 22 state (BT-01..BT-22).
+/// Mode Baca Teks - bagian 8 IMPLEMENTASI.md, 22 state (BT-01..BT-22).
 /// Alur nyata (jepret → ServerService.readText → TTS) tetap dipakai untuk
 /// state dasar; state yang butuh data server yang belum ada (dua bahasa,
 /// sebagian gagal, sangat panjang) dicapai lewat panel debug (lib/mock/
@@ -9402,7 +9402,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
   int _elapsedSeconds = 0;
   _FailKind _fail = _FailKind.none;
   // BT-10 (terbaca sebagian) tidak bisa dipicu dari server nyata saat ini
-  // (ServerService.readText tidak mengembalikan status per-blok) — dicapai
+  // (ServerService.readText tidak mengembalikan status per-blok) - dicapai
   // lewat panel debug saja (lihat _resolveBanner / _renderDebug 'BT-10').
   static const _partialRead = false;
 
@@ -9424,14 +9424,14 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     _checkPermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Prinsip 6 "umumkan saat tiba" — diucapkan di sini, sesudah layarnya
+      // Prinsip 6 "umumkan saat tiba" - diucapkan di sini, sesudah layarnya
       // benar-benar terpasang, bukan oleh pemanggil setMode.
       context.read<AppModeProvider>().announceEntry(AppMode.ocr);
       if (_hasCameraPermission) context.read<CameraProvider>().startStream();
 
       // Kontrak tombol kiri + perintah suara. `playPause` / `playResume` /
       // `actionReplay` punya bank kata lengkap sejak awal tapi tidak pernah
-      // punya handler — di mode inilah ketiganya paling masuk akal.
+      // punya handler - di mode inilah ketiganya paling masuk akal.
       final voice = context.read<VoiceProvider>();
       voice.onPrimaryAction = () => (_speaking || _paused) ? _togglePause() : _scan();
       voice.primaryActionLabel = () =>
@@ -9448,7 +9448,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         return true;
       };
     });
-    // BT-20 — cek kedaluwarsa tiap 30 detik.
+    // BT-20 - cek kedaluwarsa tiap 30 detik.
     _expiryTicker = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -9507,7 +9507,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     // Tidak ada lagi penghalang offline di sini. Pengenalan teks berjalan
     // sepenuhnya di perangkat lewat ML Kit, jadi BT-02 ("butuh internet")
     // tidak berlaku: melarang jepret saat offline berarti mematikan fitur
-    // yang sebenarnya masih hidup — kesalahan yang sama seperti mematikan
+    // yang sebenarnya masih hidup - kesalahan yang sama seperti mematikan
     // Mode Navigasi offline.
 
     final cameraProvider = context.read<CameraProvider>();
@@ -9554,7 +9554,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       setState(() => _scanning = false);
 
       if (result.isEmpty) {
-        // BT-11 — instruksi jarak konkret, bukan "tidak ada teks".
+        // BT-11 - instruksi jarak konkret, bukan "tidak ada teks".
         setState(() => _fail = _FailKind.zeroText);
         await context.read<TtsProvider>().speak(
               'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal, pastikan tulisan rata di tengah.',
@@ -9565,7 +9565,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
 
       setState(() {
         // ML Kit sudah memisahkan teks per blok tata letak, jadi heading
-        // ResultPanel/long jadi nyata — bukan satu blok "Hasil baca" untuk
+        // ResultPanel/long jadi nyata - bukan satu blok "Hasil baca" untuk
         // seluruh halaman seperti waktu OCR dikerjakan server.
         _blocks = [
           for (final b in result.blocks)
@@ -9574,7 +9574,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         _completedAt = null;
       });
 
-      // BT-08 — kalau bacaannya panjang, sebut durasinya SEBELUM mulai,
+      // BT-08 - kalau bacaannya panjang, sebut durasinya SEBELUM mulai,
       // supaya pengguna sempat memilih ringkasan.
       final secs = result.estimatedDuration.inSeconds;
       if (secs > 90) {
@@ -9615,7 +9615,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     final fullText = flat.join(' ');
     unawaited(_animateActiveSentence(flat.length));
     // Warning, bukan Info: pembacaan ini diminta pengguna secara eksplisit dan
-    // bisa berlangsung menit-menitan — membiarkannya dibuang sebagai "Info
+    // bisa berlangsung menit-menitan - membiarkannya dibuang sebagai "Info
     // basi" karena antre 2 detik akan membatalkan permintaan yang disengaja.
     // Tetap bisa dipotong pengguna lewat tombol "Jeda bacaan".
     if (!mounted) return;
@@ -9749,7 +9749,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             ),
 
           if (!_hasCameraPermission)
-            // BT-17 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // BT-17 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera',
@@ -10083,11 +10083,11 @@ const _steps = [
   ),
 ];
 
-/// OB-01..OB-07 — panduan awal 3 langkah. Bisa dilewati (OB-05, menyebut
+/// OB-01..OB-07 - panduan awal 3 langkah. Bisa dilewati (OB-05, menyebut
 /// apa yang dilewatkan) dan diulang dari Pengaturan (OB-06).
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onDone;
-  /// True saat dipanggil ulang dari Pengaturan (OB-06) — menampilkan tombol
+  /// True saat dipanggil ulang dari Pengaturan (OB-06) - menampilkan tombol
   /// kembali alih-alih alur pertama-kali.
   final bool fromSettings;
 
@@ -10138,7 +10138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final step = _steps[_index];
     final isLast = _index == _steps.length - 1;
 
-    // OB-01..OB-07 — layar penunjang, memakai `zone/page-action`. "Lewati
+    // OB-01..OB-07 - layar penunjang, memakai `zone/page-action`. "Lewati
     // panduan" (dan "Kembali ke Pengaturan" pada OB-06) adalah tombol sekunder
     // 56 dp tepat di atas primer, **tidak pernah di pojok kanan atas**: pojok
     // atas adalah zona merah thumb zone, butuh ganti pegangan.
@@ -10170,7 +10170,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const SizedBox(height: AppSpacing.s6),
                     Semantics(
                       header: true,
-                      // Eyebrow langkah dibaca sebagai bagian judul — bagian 10
+                      // Eyebrow langkah dibaca sebagai bagian judul - bagian 10
                       // nomor 5, bukan simpul fokus tersendiri.
                       label: 'Langkah ${_index + 1} dari ${_steps.length}. ${step.title}',
                       child: ExcludeSemantics(
@@ -10183,7 +10183,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               const Spacer(),
-              // Titik langkah: ExcludeSemantics wajib (bagian 16) — maknanya
+              // Titik langkah: ExcludeSemantics wajib (bagian 16) - maknanya
               // sudah dibawa label judul di atas.
               ExcludeSemantics(
                 child: Row(
@@ -10226,7 +10226,7 @@ import '../services/tts_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// IZ-01..IZ-07 — dua kartu alasan terpisah (kamera dulu, lalu mikrofon).
+/// IZ-01..IZ-07 - dua kartu alasan terpisah (kamera dulu, lalu mikrofon).
 /// IZ-04: ditolak permanen dibacakan empat langkah bernomor, bertahap.
 class PermissionsScreen extends StatefulWidget {
   final VoidCallback onDone;
@@ -10258,7 +10258,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // IZ-06 — kembali dari Pengaturan sistem, cek ulang status izin.
+    // IZ-06 - kembali dari Pengaturan sistem, cek ulang status izin.
     if (state == AppLifecycleState.resumed && _permanentlyDenied) {
       _checkAfterSettingsReturn();
     }
@@ -10292,7 +10292,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
       _advance();
     } else if (status.isPermanentlyDenied) {
       setState(() => _permanentlyDenied = true);
-      // IZ-04 — empat langkah bernomor, dibacakan satu per satu, bertahap.
+      // IZ-04 - empat langkah bernomor, dibacakan satu per satu, bertahap.
       await TTSService.instance.speak(
         'Izin ditolak permanen. Empat langkah untuk menyalakannya kembali. '
         'Langkah satu: buka Pengaturan ponsel.',
@@ -10314,7 +10314,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     }
   }
 
-  /// IZ-04 — dibacakan bertahap. Membacakan empat langkah sekaligus tidak
+  /// IZ-04 - dibacakan bertahap. Membacakan empat langkah sekaligus tidak
   /// mungkin diikuti.
   Future<void> _openSystemSettings(bool isCamera) async {
     await TTSService.instance.speak(
@@ -10329,7 +10329,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   Widget build(BuildContext context) {
     final isCamera = _step == _Step.camera;
 
-    // IZ-01..IZ-04 — layar penunjang tanpa BottomActionBar, jadi seluruh
+    // IZ-01..IZ-04 - layar penunjang tanpa BottomActionBar, jadi seluruh
     // aksinya memakai `zone/page-action`: primer di dasar layar, sekunder 56 dp
     // tepat di atasnya. Kartu tetap di zona konten; perannya memberi tahu.
     if (_permanentlyDenied) {
@@ -10373,7 +10373,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   }
 }
 
-/// IZ-04 — kartu penjelasan saja. Kedua tombolnya ("Buka Pengaturan ponsel",
+/// IZ-04 - kartu penjelasan saja. Kedua tombolnya ("Buka Pengaturan ponsel",
 /// "Ulangi langkah ini") dipasang pemanggil di `zone/page-action`.
 class _PermanentlyDeniedCard extends StatelessWidget {
   final String label;
@@ -10446,11 +10446,11 @@ import '../services/tts_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// PG-08a..PG-08e — Alamat server, halaman sendiri (PG-02: "halaman kontrol
+/// PG-08a..PG-08e - Alamat server, halaman sendiri (PG-02: "halaman kontrol
 /// sendiri, bukan sheet").
 ///
 /// Dulu kontrol ini adalah satu baris di dalam daftar Pengaturan, dengan
-/// tombol "Uji" menempel di samping kolom isian — di sepertiga atas layar,
+/// tombol "Uji" menempel di samping kolom isian - di sepertiga atas layar,
 /// zona merah thumb zone. Sekarang aksinya memakai `zone/page-action`.
 ///
 /// **Tombolnya tidak pernah berpindah saat pesan hasil berganti.** Target yang
@@ -10496,7 +10496,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
   Future<void> _test() async {
     final host = _ctrl.text.trim();
 
-    // PG-08d — sebutkan apa yang salah, bukan "tidak valid" saja.
+    // PG-08d - sebutkan apa yang salah, bukan "tidak valid" saja.
     if (!_hostPattern.hasMatch(host)) {
       setState(() {
         _state = ServerFieldState.invalid;
@@ -10529,7 +10529,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
         'Terhubung. Waktu tempuh $ms milidetik. Tekan Simpan alamat untuk memakainya.',
       );
     } else {
-      // PG-08e — kegagalan uji tidak boleh diam-diam mencabut server yang
+      // PG-08e - kegagalan uji tidak boleh diam-diam mencabut server yang
       // sebenarnya masih bekerja.
       setState(() {
         _state = ServerFieldState.failed;
@@ -10545,14 +10545,14 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
     final host = _ctrl.text.trim();
     await context.read<SettingsProvider>().setServerHost(host);
     if (!mounted) return;
-    // Konfirmasi diucapkan SESUDAH tersimpan — bagian 4.1 berlaku untuk semua
+    // Konfirmasi diucapkan SESUDAH tersimpan - bagian 4.1 berlaku untuk semua
     // konfirmasi, bukan hanya ganti mode.
     await TTSService.instance.speak('Alamat server tersimpan.');
     if (mounted) Navigator.of(context).pop();
   }
 
   /// Label tombol utama berubah, posisinya tidak. PG-08c satu-satunya state
-  /// yang aksinya "Simpan alamat" — alamat baru hanya dipakai sesudah terbukti
+  /// yang aksinya "Simpan alamat" - alamat baru hanya dipakai sesudah terbukti
   /// bisa dihubungi.
   String get _primaryLabel => switch (_state) {
         ServerFieldState.testing => 'Menguji koneksi…',
@@ -10568,7 +10568,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
             icon: Icons.check_circle_outline_rounded,
           ),
         ServerFieldState.invalid => (
-            text: 'Format salah — alamat butuh titik dua dan nomor port. Contoh benar: 10.0.2.2:8000',
+            text: 'Format salah - alamat butuh titik dua dan nomor port. Contoh benar: 10.0.2.2:8000',
             color: AppColors.criticalLabel,
             icon: Icons.error_outline_rounded,
           ),
@@ -10614,7 +10614,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                   child: Text('Alamat server', style: AppTypography.bodyStrong()),
                 ),
                 const SizedBox(height: AppSpacing.s1),
-                // PG-08a — penjelasan server bawaan.
+                // PG-08a - penjelasan server bawaan.
                 Text(
                   'Vinara memakai server bawaan untuk Baca Teks, Asisten Suara, Cari Objek, dan segmentasi jalur. '
                   'Ganti alamat ini hanya kalau kamu menjalankan server sendiri.',
@@ -10713,11 +10713,11 @@ import '../widgets/index.dart';
 import 'onboarding_screen.dart';
 import 'server_address_screen.dart';
 
-/// PG-01..PG-11 — delapan pengaturan, urutan baku (bagian 13).
+/// PG-01..PG-11 - delapan pengaturan, urutan baku (bagian 13).
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  /// PG-11 — penyimpanan penuh. Kartu error tetap di atas karena perannya
+  /// PG-11 - penyimpanan penuh. Kartu error tetap di atas karena perannya
   /// memberi tahu, tapi aksinya **diulang di dasar layar**: aksi yang hanya
   /// ada di kartu atas memaksa pengguna low vision menjangkau zona merah.
   Future<void> _manageStorage() async {
@@ -10833,7 +10833,7 @@ class SettingsScreen extends StatelessWidget {
               child: const Text('Mulai panduan'),
             ),
           ),
-          // PG-08 — halaman kontrol sendiri, bukan kontrol inline. Aksinya
+          // PG-08 - halaman kontrol sendiri, bukan kontrol inline. Aksinya
           // ("Uji koneksi" / "Simpan alamat") butuh `zone/page-action`, dan
           // zona itu tidak bisa hadir di tengah daftar.
           _SettingsRow(
@@ -10849,10 +10849,10 @@ class SettingsScreen extends StatelessWidget {
         ],
       );
 
-    // PG-11 — selama penyimpanan penuh, aksinya diulang di `zone/page-action`
+    // PG-11 - selama penyimpanan penuh, aksinya diulang di `zone/page-action`
     // supaya terjangkau tanpa menggulung dan tanpa menjangkau kartu di atas.
     // Di luar kondisi itu Pengaturan tidak punya aksi halaman, jadi tidak ada
-    // zona aksi sama sekali — daftar boleh memenuhi layar.
+    // zona aksi sama sekali - daftar boleh memenuhi layar.
     if (storageLow) {
       return PageActionScaffold(
         backgroundColor: AppColors.surfaceMuted,
@@ -10890,7 +10890,7 @@ class SettingsScreen extends StatelessWidget {
       };
 }
 
-/// PG-11 — kartu error penyimpanan penuh. Tetap di atas: perannya memberi
+/// PG-11 - kartu error penyimpanan penuh. Tetap di atas: perannya memberi
 /// tahu, dan pemberitahuan harus terbaca lebih dulu. Aksinya diulang di
 /// `zone/page-action` oleh [SettingsScreen], bukan hanya ada di sini.
 class _StorageFullCard extends StatelessWidget {
@@ -10992,7 +10992,7 @@ import 'package:flutter/material.dart';
 import '../services/tts_service.dart';
 import '../theme/index.dart';
 
-/// SP-01 — Splash. Logo tampil, narasi TTS mulai di milidetik pertama,
+/// SP-01 - Splash. Logo tampil, narasi TTS mulai di milidetik pertama,
 /// durasi maksimum 900 ms sebelum lanjut ke langkah berikutnya.
 class SplashScreen extends StatefulWidget {
   final VoidCallback onDone;
@@ -11058,7 +11058,7 @@ import '../services/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Deteksi Objek — bagian 7 IMPLEMENTASI.md, 29 state (DO-01..DO-29).
+/// Mode Deteksi Objek - bagian 7 IMPLEMENTASI.md, 29 state (DO-01..DO-29).
 /// Kamera, TFLite/server, filter kestabilan, dan SORT tracker SUDAH nyata
 /// lewat [DetectionProvider]. State yang tak bisa dipicu dari kondisi nyata
 /// (multi-objek serentak, kelas tak dikenal, dst.) dicapai lewat panel debug
@@ -11104,14 +11104,14 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
 
   /// Apakah deteksi objek sedang aktif (jalan) atau dijeda.
   ///
-  /// **Dimulai false — deteksi tidak menyala sendiri.** Ini layar pertama
+  /// **Dimulai false - deteksi tidak menyala sendiri.** Ini layar pertama
   /// saat aplikasi dibuka, dan saat itu ponsel biasanya masih di tangan yang
   /// turun, di saku, atau menghadap tanah. Peringatan pertama dari posisi itu
   /// hampir selalu keliru, dan peringatan keliru dari alat bantu jalan lebih
   /// merusak daripada diam: sekali pengguna belajar aplikasinya sering salah,
   /// peringatan yang benar ikut diabaikan.
   ///
-  /// Konsekuensinya ditangani, bukan diabaikan — lihat [initState] dan
+  /// Konsekuensinya ditangani, bukan diabaikan - lihat [initState] dan
   /// [_armPausedReminder]: keadaan mati diucapkan saat masuk dan diingatkan
   /// tiap 30 detik, supaya tidak ada yang berjalan menyangka sudah dijaga.
   bool _detectionActive = false;
@@ -11122,12 +11122,12 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   Timer? _warmupTimer;
   Timer? _speakingPoll;
 
-  /// DO — pengingat berkala saat deteksi dijeda.
+  /// DO - pengingat berkala saat deteksi dijeda.
   ///
   /// Tanpa ini, "Deteksi dijeda." terucap sekali lalu hening permanen. Untuk
   /// pengguna yang tidak melihat layar, aplikasi yang dijeda **tidak bisa
   /// dibedakan** dari aplikasi yang aktif tapi kebetulan tidak melihat apa
-  /// pun — dan ia berjalan menyangka masih dijaga.
+  /// pun - dan ia berjalan menyangka masih dijaga.
   Timer? _pausedReminder;
 
   @override
@@ -11155,7 +11155,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
         );
         _armPausedReminder();
       }
-      // Listener dark detection — TTS satu kali saat transisi gelap
+      // Listener dark detection - TTS satu kali saat transisi gelap
       context.read<CameraProvider>().addListener(_onCameraDarkChanged);
 
       // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
@@ -11202,7 +11202,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // DO-18 — kembali dari latar belakang.
+    // DO-18 - kembali dari latar belakang.
     if (state == AppLifecycleState.resumed) {
       _checkPermissions();
       if (mounted) {
@@ -11210,7 +11210,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
         context.read<CameraProvider>().startStream();
         // Hormati keadaan jeda. Sebelumnya `startRealtime()` dipanggil tanpa
         // memeriksa apa pun, jadi deteksi hidup lagi diam-diam sementara
-        // tombol tetap bertuliskan "Lanjutkan" — label dan keadaan berbohong
+        // tombol tetap bertuliskan "Lanjutkan" - label dan keadaan berbohong
         // ke arah yang berlawanan.
         if (_detectionActive) {
           _startDetection();
@@ -11245,7 +11245,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     }
   }
 
-  /// "ulangi" di Mode Deteksi — sebutkan lagi apa yang terlihat sekarang.
+  /// "ulangi" di Mode Deteksi - sebutkan lagi apa yang terlihat sekarang.
   void _repeatLastDetection() {
     final det = context.read<DetectionProvider>();
     if (!_detectionActive) {
@@ -11267,7 +11267,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     context.read<DetectionProvider>().startRealtime();
   }
 
-  /// Ingatkan tiap 30 detik selama dijeda — suara + getar, karena di jalan
+  /// Ingatkan tiap 30 detik selama dijeda - suara + getar, karena di jalan
   /// yang ramai getar sering lebih terdengar daripada suara.
   void _armPausedReminder() {
     _pausedReminder?.cancel();
@@ -11337,7 +11337,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       if (!stillThere && !alreadyGhost) {
         final ghost = _GhostDetection(prev);
         _ghosts.add(ghost);
-        // DO-20 — memudar tanpa suara "objek hilang", dibersihkan setelah animasi.
+        // DO-20 - memudar tanpa suara "objek hilang", dibersihkan setelah animasi.
         Timer(const Duration(milliseconds: 900), () {
           if (mounted) setState(() => _ghosts.remove(ghost));
         });
@@ -11418,7 +11418,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
             ),
 
           if (!_hasCameraPermission)
-            // DO-14 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // DO-14 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera',
@@ -11429,7 +11429,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
           else if (!warmingUp)
             ..._buildDetectionZone(context, bottomInset, dets, cam, showTorchSlot),
 
-          // ContextualActionSlot — tawaran / kontrol lampu senter.
+          // ContextualActionSlot - tawaran / kontrol lampu senter.
           // Selalu di posisi yang sama: tepat di atas BottomActionBar.
           if (showTorchSlot)
             Positioned(
@@ -11438,7 +11438,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
               child: ContextualActionSlot(
                 message: cam.isTorchOn
                     ? 'Lampu senter menyala'
-                    : 'Sekitar gelap — perlu nyalakan lampu?',
+                    : 'Sekitar gelap - perlu nyalakan lampu?',
                 primaryLabel: cam.isTorchOn ? 'Matikan Lampu' : 'Nyalakan Lampu',
                 primaryIcon: cam.isTorchOn
                     ? Icons.flashlight_off_rounded
@@ -11616,7 +11616,7 @@ class _DebugSheet extends StatelessWidget {
           children: [
             Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                 decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-            Text('Debug — Mode Deteksi Objek', style: AppTypography.title()),
+            Text('Debug - Mode Deteksi Objek', style: AppTypography.title()),
             const SizedBox(height: 4),
             Text('DO-01..05,08..12,14,16..18,27,28 sudah tercapai lewat kamera/izin/koneksi nyata',
                 textAlign: TextAlign.center, style: AppTypography.caption()),
@@ -11675,7 +11675,7 @@ const List<(String, String)> _asDebugCatalog = [
   ('AS-25', 'Critical menyela jawaban'),
 ];
 
-/// Mode Asisten Suara — bagian 11 IMPLEMENTASI.md, 25 state (AS-01..AS-25).
+/// Mode Asisten Suara - bagian 11 IMPLEMENTASI.md, 25 state (AS-01..AS-25).
 /// [isOverlay] = true saat dimasukkan via Navigator push dari mode lain
 /// (fitur "Jarvis Global Mic"). Dalam mode overlay:
 /// - Tampil tombol ✕ (tutup) di pojok kanan atas.
@@ -11710,7 +11710,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       final voice = context.read<VoiceProvider>();
 
       if (voice.checkAndExpireHistory()) {
-        // AS-23 — riwayat kedaluwarsa, sudah dibersihkan oleh provider.
+        // AS-23 - riwayat kedaluwarsa, sudah dibersihkan oleh provider.
         context.read<TtsProvider>().speak('Percakapan tadi sudah saya hapus.', tier: SpeechTier.info);
       }
 
@@ -11718,7 +11718,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       voice.onOpenSettings = _openSettings;
       voice.onAllFeaturesFailed = () {};
 
-      // "lebih cepat" / "lebih pelan" — dulu keduanya punya bank kata lengkap
+      // "lebih cepat" / "lebih pelan" - dulu keduanya punya bank kata lengkap
       // tapi tidak ada yang menjalankannya.
       voice.onAdjustSpeechRate = (delta) async {
         final settings = context.read<SettingsProvider>();
@@ -11728,7 +11728,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       };
 
       // Sebagai MODE (bukan overlay), aksi utamanya adalah mengulang jawaban.
-      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa —
+      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa -
       // "jepret" saat mic terbuka harus menjalankan aksi mode aslinya.
       if (!widget.isOverlay) {
         voice.onPrimaryAction = _repeatLastAnswer;
@@ -11795,13 +11795,13 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     if (status.isGranted) setState(() => _hasMicPermission = true);
   }
 
-  /// `mode.settings` — Pengaturan layar penunjang, bukan mode. Mengembalikan
+  /// `mode.settings` - Pengaturan layar penunjang, bukan mode. Mengembalikan
   /// true hanya kalau halamannya benar-benar terdorong ke Navigator, supaya
   /// VoiceProvider tidak mengonfirmasi pembukaan yang tidak terjadi.
   Future<bool> _openSettings() async {
     if (!mounted) return false;
     // Rute sudah masuk tumpukan begitu `push` dipanggil; Future-nya baru
-    // selesai saat halaman DITUTUP, jadi ia sengaja tidak ditunggu — kalau
+    // selesai saat halaman DITUTUP, jadi ia sengaja tidak ditunggu - kalau
     // ditunggu, konfirmasinya baru terdengar setelah pengguna keluar lagi.
     unawaited(Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -11809,13 +11809,13 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     return true;
   }
 
-  /// Tombol kiri Mode Asisten Suara — baca ulang jawaban terakhir.
+  /// Tombol kiri Mode Asisten Suara - baca ulang jawaban terakhir.
   ///
   /// Rencana perbaikan menyarankan tombol ini dinonaktifkan dengan label jujur.
   /// Itu benar dan jujur, tapi menyisakan satu tombol mati dari enam mode dan
   /// membuat aturan tombol kiri punya pengecualian. "Ulangi jawaban" berguna
   /// nyata: pengguna yang tidak menangkap jawaban cukup menekan tombol yang
-  /// posisinya sudah ia hafal — tanpa bertanya ulang, dan tanpa memicu
+  /// posisinya sudah ia hafal - tanpa bertanya ulang, dan tanpa memicu
   /// panggilan Moondream2 kedua yang makan lima detik dan kuota.
   void _repeatLastAnswer() {
     final voice = context.read<VoiceProvider>();
@@ -11836,7 +11836,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     if (voice.isListening) {
       await voice.stopListening();
     } else if (voice.state == VoiceState.responded) {
-      // AS-20 — menekan lagi saat masih bicara: potong tanpa nada khusus.
+      // AS-20 - menekan lagi saat masih bicara: potong tanpa nada khusus.
       await voice.interruptAndListenAgain();
     } else {
       await voice.startListening();
@@ -11859,7 +11859,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             children: [
               Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                   decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-              Text('Debug — Mode Asisten Suara', style: AppTypography.title()),
+              Text('Debug - Mode Asisten Suara', style: AppTypography.title()),
               const SizedBox(height: 4),
               Text('AS-01..04,06,08..12,14,15,17..20,22 tercapai lewat alur bicara nyata',
                   textAlign: TextAlign.center, style: AppTypography.caption()),
@@ -11905,7 +11905,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     final topInset = media.padding.top;
     final bottomInset = media.padding.bottom;
 
-    // AS-25 — Critical dari mode lain menyela jawaban yang sedang dibacakan.
+    // AS-25 - Critical dari mode lain menyela jawaban yang sedang dibacakan.
     if (voice.state == VoiceState.responded && det.detections.any((d) => d.isCritical) && !_hasCameraPermission == false) {
       final critical = det.detections.firstWhere((d) => d.isCritical);
       context.read<TtsProvider>().speak(critical.ttsMessage, tier: SpeechTier.critical);
@@ -11946,7 +11946,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             Positioned(top: topInset + 52, right: 24, child: const SpeakingIndicator()),
 
           if (!_hasMicPermission && _debugOverride == null)
-            // AS-02 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // AS-02 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.mic_none_rounded,
               title: 'Izin mikrofon',
@@ -11971,9 +11971,9 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             ),
           ),
 
-          // ContextualActionSlot "Kembali" — hanya saat overlay push.
+          // ContextualActionSlot "Kembali" - hanya saat overlay push.
           // Posisi konsisten dengan slot lampu di TuntunScreen (tepat di atas
-          // BottomActionBar) — pengguna terbiasa dengan lokasi yang sama.
+          // BottomActionBar) - pengguna terbiasa dengan lokasi yang sama.
           if (widget.isOverlay)
             Positioned(
               left: 0, right: 0,
@@ -12079,7 +12079,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
 
   Widget _historyTranscript(VoiceProvider voice) {
     if (_silentMode) {
-      // AS-21 — senyap: seluruh jawaban ditampilkan penuh.
+      // AS-21 - senyap: seluruh jawaban ditampilkan penuh.
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(color: AppColors.surfaceCard, borderRadius: AppRadius.card, boxShadow: AppElevation.card),
@@ -12208,7 +12208,7 @@ class CameraHealthResult {
   const CameraHealthResult({required this.ok, required this.message});
 }
 
-/// Camera Health Service — cek orientasi kamera via accelerometer.
+/// Camera Health Service - cek orientasi kamera via accelerometer.
 /// Pengecekan gelap/buram/tertutup dilakukan di server (camera_health.py)
 /// dan secara on-device di CameraProvider (brightness dari plane Y).
 class CameraHealthService {
@@ -12222,12 +12222,12 @@ class CameraHealthService {
   ///
   /// Saat pengguna berjalan, ponsel yang dipegang ikut mengayun naik-turun.
   /// Ayunan itu membuat kotak deteksi membesar-mengecil sendiri, sehingga
-  /// objek yang diam terbaca "maju-mundur" — dan `isApproaching` yang memotong
+  /// objek yang diam terbaca "maju-mundur" - dan `isApproaching` yang memotong
   /// cooldown 50% ikut menyala tanpa ada yang benar-benar mendekat.
   ///
   /// Diukur dari perubahan percepatan antar sampel. Ini bukan pengganti
   /// gyroscope, tapi cukup untuk **membedakan tangan diam dari tangan
-  /// mengayun** — dan itulah satu-satunya yang dibutuhkan: saat goyang, ambang
+  /// mengayun** - dan itulah satu-satunya yang dibutuhkan: saat goyang, ambang
   /// "mendekat" dinaikkan dan penghalusan jarak diperlambat.
   double _motionLevel = 0.0;
   double get motionLevel => _motionLevel;
@@ -12318,7 +12318,7 @@ import 'package:flutter/services.dart';
 /// ```
 /// jarak_m = tinggi_asli_cm × fokus_px / (tinggi_kotak_px × 100)
 /// ```
-/// `fokus_px` bukan properti universal — ia tergantung lensa **dan** resolusi
+/// `fokus_px` bukan properti universal - ia tergantung lensa **dan** resolusi
 /// keluaran. Konstanta 615 yang dipakai sebelumnya adalah rata-rata yang
 /// kebetulan tidak benar untuk perangkat mana pun secara khusus: lensa
 /// ultrawide dan telefoto bisa meleset jauh lebih dari 2×, dan seluruh
@@ -12368,7 +12368,7 @@ class CameraIntrinsics {
     try {
       final info = await _channel.invokeMapMethod<String, dynamic>('lensInfo');
       if (info == null) {
-        debugPrint('[Intrinsics] perangkat tidak melaporkan intrinsik lensa — pakai fallback');
+        debugPrint('[Intrinsics] perangkat tidak melaporkan intrinsik lensa - pakai fallback');
         return;
       }
       final h = (info['horizontalFovRad'] as num?)?.toDouble();
@@ -12377,7 +12377,7 @@ class CameraIntrinsics {
       // lebih mungkin salah baca daripada lensa aneh, dan lebih baik memakai
       // fallback yang diketahui daripada angka yang diketahui ngawur.
       if (h == null || v == null || h <= 0.5 || h >= 2.3 || v <= 0.3 || v >= 2.3) {
-        debugPrint('[Intrinsics] FOV di luar rentang wajar ($h, $v) — pakai fallback');
+        debugPrint('[Intrinsics] FOV di luar rentang wajar ($h, $v) - pakai fallback');
         return;
       }
       _horizontalFovRad = h;
@@ -12387,7 +12387,7 @@ class CameraIntrinsics {
           'V=${(v * 180 / math.pi).toStringAsFixed(1)}° '
           '(fokus ${info['focalLengthMm']}mm, sensor ${info['sensorWidthMm']}×${info['sensorHeightMm']}mm)');
     } catch (e) {
-      debugPrint('[Intrinsics] gagal membaca intrinsik: $e — pakai fallback');
+      debugPrint('[Intrinsics] gagal membaca intrinsik: $e - pakai fallback');
     }
   }
 
@@ -12395,7 +12395,7 @@ class CameraIntrinsics {
   ///
   /// Ponsel terkunci portrait sementara sensor memberi frame landscape, jadi
   /// sumbu vertikal yang dilihat pengguna adalah sumbu **horizontal** sensor.
-  /// [srcWidth] adalah lebar frame sensor (mis. 640) — itulah yang menjadi
+  /// [srcWidth] adalah lebar frame sensor (mis. 640) - itulah yang menjadi
   /// tinggi bingkai tegak, dan itulah sumbu tempat tinggi kotak diukur.
   double focalPxForUprightFrame(int srcWidth) {
     final fov = _horizontalFovRad;
@@ -12416,14 +12416,14 @@ import 'package:flutter/foundation.dart';
 import '../models/detection.dart';
 import '../providers/settings_provider.dart' show Verbosity;
 
-/// Filter pipeline — dipanggil oleh BOTH TFLite dan Server result.
+/// Filter pipeline - dipanggil oleh BOTH TFLite dan Server result.
 /// Satu instance, state persist selama sesi aktif.
 ///
 /// Fix dari doc 5 masalah 5:
 /// - Streak hanya di-increment SETELAH lolos distance + confidence filter
 /// - Cooldown berbeda per tier (Netra AI: critical=2s, warning=3s, info=5s)
 ///
-/// Fix temuan 2B — kunci cooldown dan streak adalah **identitas objek**
+/// Fix temuan 2B - kunci cooldown dan streak adalah **identitas objek**
 /// ([Detection.filterKey], berasal dari `trackId` SORT), bukan lagi `labelEn`.
 /// Dengan kunci label, dua orang di frame yang sama dianggap satu objek:
 /// orang yang jauh diumumkan lebih dulu, lalu orang yang dekat dan sedang
@@ -12439,7 +12439,7 @@ class DetectionFilter {
   static const int    _streakRequired = 2;
   static const double _minConfidence  = 0.5;  // SSD lebih noisy, threshold lebih tinggi dari YOLO
 
-  /// PG-06 "Ambang jarak peringatan" (1–5 m) — objek lebih jauh dari ini tidak
+  /// PG-06 "Ambang jarak peringatan" (1–5 m) - objek lebih jauh dari ini tidak
   /// diumumkan. Diisi `SettingsProvider`; dulu nilainya konstanta 10 m dan
   /// slider di Pengaturan tidak berpengaruh sama sekali.
   ///
@@ -12448,7 +12448,7 @@ class DetectionFilter {
   /// koridor ramai berarti bicara terus-menerus.
   double _maxDistance = 10.0;
 
-  /// PG-05 "Tingkat kecerewetan" — menentukan berapa banyak yang diumumkan
+  /// PG-05 "Tingkat kecerewetan" - menentukan berapa banyak yang diumumkan
   /// sekaligus, bukan hanya panjang kalimatnya.
   Verbosity _verbosity = Verbosity.sedang;
 
@@ -12513,7 +12513,7 @@ class DetectionFilter {
       return a.distanceMeter.compareTo(b.distanceMeter);
     });
 
-    // [8] Berapa banyak yang boleh bicara sekaligus — PG-05. Batas atas tetap
+    // [8] Berapa banyak yang boleh bicara sekaligus - PG-05. Batas atas tetap
     // 2 (Cognitive Load Theory, dan kontrak zona hanya menampung 2 kartu);
     // "ringkas" memangkasnya jadi satu supaya hanya yang paling mendesak
     // terdengar.
@@ -12530,7 +12530,7 @@ class DetectionFilter {
     return approved.take(maxPerCycle).toList();
   }
 
-  /// Buang catatan cooldown yang jauh lebih lama dari cooldown terpanjang —
+  /// Buang catatan cooldown yang jauh lebih lama dari cooldown terpanjang -
   /// objek itu sudah pasti tidak akan tertahan lagi.
   void _pruneAnnounced() {
     final cutoff = DateTime.now().subtract(const Duration(seconds: 30));
@@ -12544,7 +12544,7 @@ class DetectionFilter {
       };
 
   /// Cooldown berbeda per tier, dipotong 50% jika objek sedang mendekat.
-  /// Ref: Netra AI paper — critical=2s, warning=3s, info=5s sebagai base.
+  /// Ref: Netra AI paper - critical=2s, warning=3s, info=5s sebagai base.
   Duration _cooldownFor(Detection det) {
     final base = switch (det.dangerLevel) {
       'critical' => const Duration(seconds: 2),
@@ -12552,7 +12552,7 @@ class DetectionFilter {
       _          => const Duration(seconds: 5),
     };
 
-    // PG-05 — kecerewetan menggeser jeda antar pengumuman. Critical TIDAK
+    // PG-05 - kecerewetan menggeser jeda antar pengumuman. Critical TIDAK
     // ikut digeser: seberapa pun pengguna ingin sepi, peringatan bahaya
     // tidak boleh ditahan lebih lama.
     final scaled = det.dangerLevel == 'critical'
@@ -12587,10 +12587,10 @@ import 'package:vibration/vibration.dart';
 
 import '../providers/settings_provider.dart' show VibrationMode;
 
-/// HapticService — vibration feedback pendamping TTS.
+/// HapticService - vibration feedback pendamping TTS.
 ///
 /// Di lingkungan bising (pasar, jalan raya), haptic menjadi primary signal.
-/// Tidak perlu init() — vibration package sudah handle internally
+/// Tidak perlu init() - vibration package sudah handle internally
 /// jika device tidak punya vibrator (fail silent).
 ///
 /// Pola berdasarkan penelitian clock-based directional feedback:
@@ -12622,19 +12622,19 @@ class HapticService {
 
   // ── Tier peringatan rintangan ─────────────────────────────────────────────
 
-  /// Critical: orang/motor/mobil < 1.5m — triple pulse cepat.
+  /// Critical: orang/motor/mobil < 1.5m - triple pulse cepat.
   Future<void> critical() async {
     if (!_allowed(isDanger: true)) return;
     Vibration.vibrate(pattern: [0, 100, 50, 100, 50, 100]);
   }
 
-  /// Warning: objek < 3m — double pulse sedang.
+  /// Warning: objek < 3m - double pulse sedang.
   Future<void> warning() async {
     if (!_allowed(isDanger: true)) return;
     Vibration.vibrate(pattern: [0, 200, 100, 200]);
   }
 
-  /// Info: objek jauh/tidak berbahaya — single pulse pelan.
+  /// Info: objek jauh/tidak berbahaya - single pulse pelan.
   Future<void> info() async {
     if (!_allowed(isDanger: false)) return;
     Vibration.vibrate(pattern: [0, 300]);
@@ -12715,7 +12715,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
-/// Klasifikasi nominal uang kertas rupiah — SEPENUHNYA ON-DEVICE.
+/// Klasifikasi nominal uang kertas rupiah - SEPENUHNYA ON-DEVICE.
 ///
 /// Tidak pernah memanggil server. Tiga alasan yang tidak bisa ditawar:
 /// transaksi tunai sering terjadi tanpa sinyal (pasar, warung), foto uang
@@ -12723,7 +12723,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// seketika saat mengarahkan kamera.
 ///
 /// Model: MobileNetV2 transfer learning (repo `rupiah-vision`), **7 kelas**,
-/// varian INT8-quantized dengan I/O float32 — input 224x224x3, output [1,7]
+/// varian INT8-quantized dengan I/O float32 - input 224x224x3, output [1,7]
 /// softmax. Test accuracy 99,52%; varian INT8 ~98% pada sampel evaluasi.
 ///
 /// **Rentang input: -1..1, BUKAN 0..255.** Ini berbeda dari model lama
@@ -12734,14 +12734,14 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// tanpa `inference_input_type` sehingga tensor masuk tetap float32 mentah
 /// tanpa parameter kuantisasi.
 ///
-/// Salah rentang di sini TIDAK memunculkan error apa pun — interpreter tetap
+/// Salah rentang di sini TIDAK memunculkan error apa pun - interpreter tetap
 /// menerima float32 berapa pun nilainya, hanya prediksinya yang diam-diam
 /// salah. Di mode uang itu berarti nominal keliru dibacakan ke pengguna
 /// tunanetra. Jadi kalau model diganti lagi, periksa dulu apakah
 /// preprocessing ada di dalam graf atau tidak, jangan diasumsikan.
 ///
 /// ATURAN MUTLAK: nominal TIDAK PERNAH ditebak. Di bawah ambang keyakinan,
-/// yang dikembalikan hanya instruksi perbaikan — salah menyebut nominal ke
+/// yang dikembalikan hanya instruksi perbaikan - salah menyebut nominal ke
 /// pengguna tunanetra berarti kerugian uang nyata, jadi false positive di
 /// sini jauh lebih berbahaya daripada false negative.
 class MoneyTFLiteService {
@@ -12757,12 +12757,12 @@ class MoneyTFLiteService {
   static const double confidenceThreshold = 0.85;
 
   /// Urutan kelas sesuai `CLASS_ORDER` di `scripts/02_export_tflite.py` dan
-  /// isi `assets/models/rupiah_labels.txt` — sudah dicocokkan baris per
+  /// isi `assets/models/rupiah_labels.txt` - sudah dicocokkan baris per
   /// baris, **jangan diubah**.
   ///
   /// Kalau model diganti, urutan ini WAJIB dicocokkan ulang: model
   /// mengeluarkan indeks, dan indeks yang dipetakan ke nominal yang salah
-  /// menghasilkan jawaban yang percaya diri dan keliru — kegagalan paling
+  /// menghasilkan jawaban yang percaya diri dan keliru - kegagalan paling
   /// mahal yang bisa dilakukan aplikasi ini.
   static const List<int> classValues = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
 
@@ -12856,7 +12856,7 @@ class MoneyTFLiteService {
     }
     final confidence = probs[bestIndex];
 
-    // UG-06 — ragu: nominal TIDAK ditampilkan, hanya instruksi perbaikan.
+    // UG-06 - ragu: nominal TIDAK ditampilkan, hanya instruksi perbaikan.
     if (confidence < confidenceThreshold) {
       return MoneyResult.uncertain(confidence);
     }
@@ -12934,7 +12934,7 @@ class _JpegArgs {
 
 const int _size = MoneyTFLiteService._inputSize;
 
-/// Sampling langsung ke grid 224x224 dari area crop — piksel yang diproses
+/// Sampling langsung ke grid 224x224 dari area crop - piksel yang diproses
 /// turun drastis dibanding mengonversi seluruh frame lalu me-resize.
 List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
   final cropW = (a.width * a.cropRatio).round();
@@ -12958,7 +12958,7 @@ List<List<List<List<double>>>> _prepareInput(_PrepareArgs a) {
         final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toDouble();
         final b = (yVal + 1.772 * uVal).clamp(0, 255).toDouble();
 
-        // Normalisasi ke [-1, 1] — preprocessing mobilenet_v2 TIDAK ada di
+        // Normalisasi ke [-1, 1] - preprocessing mobilenet_v2 TIDAK ada di
         // dalam graf model ini, jadi harus dikerjakan di sini.
         return [r / 127.5 - 1.0, g / 127.5 - 1.0, b / 127.5 - 1.0];
       });
@@ -13062,7 +13062,7 @@ import 'dart:math';
 import '../models/detection.dart';
 import 'camera_health_service.dart';
 
-/// TrackedObject — state satu objek yang sedang di-track.
+/// TrackedObject - state satu objek yang sedang di-track.
 ///
 /// ## Kompensasi ayunan tangan
 ///
@@ -13072,15 +13072,15 @@ import 'camera_health_service.dart';
 ///
 /// 1. Jarak yang diucapkan melompat-lompat ("dua meter… satu meter… dua
 ///    meter") padahal tidak ada yang bergerak.
-/// 2. Aturan lama — `area > lastArea * 1.20` dari **satu** frame ke frame
-///    berikutnya — menyalakan `isApproaching` pada ayunan biasa, dan itu
+/// 2. Aturan lama - `area > lastArea * 1.20` dari **satu** frame ke frame
+///    berikutnya - menyalakan `isApproaching` pada ayunan biasa, dan itu
 ///    memotong cooldown jadi separuh. Peringatan jadi lebih sering justru
 ///    karena tangan bergoyang, bukan karena ada bahaya mendekat.
 ///
 /// Perbaikannya tidak butuh matematika gyroscope: dua EMA jarak dengan
 /// kecepatan berbeda, plus syarat tren yang harus bertahan beberapa frame.
 /// Saat [CameraHealthService.motionLevel] tinggi, penghalusan diperlambat dan
-/// ambangnya dinaikkan — sinyal yang berisik diperlakukan sebagai sinyal yang
+/// ambangnya dinaikkan - sinyal yang berisik diperlakukan sebagai sinyal yang
 /// berisik, bukan sebagai kebenaran.
 class TrackedObject {
   final int    id;
@@ -13095,7 +13095,7 @@ class TrackedObject {
   /// Berapa frame berturut-turut tren menunjukkan mendekat.
   int _approachStreak = 0;
 
-  /// Jarak yang sudah dihaluskan — inilah yang layak diucapkan ke pengguna.
+  /// Jarak yang sudah dihaluskan - inilah yang layak diucapkan ke pengguna.
   /// Null sebelum ada satu pun pembaruan jarak.
   double? get smoothedDistance => _slowDist;
 
@@ -13148,7 +13148,7 @@ class TrackedObject {
   }
 }
 
-/// ObjectTracker — SORT (Simple Online Realtime Tracking) pure Dart.
+/// ObjectTracker - SORT (Simple Online Realtime Tracking) pure Dart.
 ///
 /// Tidak ada library eksternal. Cocok untuk 5–15 objek per frame.
 /// Manfaat utama untuk Guidio:
@@ -13168,7 +13168,7 @@ class ObjectTracker {
   /// terakhir, sejajar indeks dengan daftar deteksi yang dikirim.
   ///
   /// Ini yang membuat cooldown bisa dikunci per objek, bukan per kelas.
-  /// Tanpa pemetaan ini, pemanggil hanya bisa mencocokkan track lewat label —
+  /// Tanpa pemetaan ini, pemanggil hanya bisa mencocokkan track lewat label -
   /// dan dengan dua objek sekelas di frame, yang ketemu selalu track pertama,
   /// sehingga status "mendekat" milik objek jauh bisa menempel ke objek dekat.
   List<TrackedObject?> _lastAssignment = const [];
@@ -13200,7 +13200,7 @@ class ObjectTracker {
 
       for (int i = 0; i < detections.length; i++) {
         if (matched.contains(i)) continue;
-        // Hanya match dengan label yang sama — tidak cross-class matching
+        // Hanya match dengan label yang sama - tidak cross-class matching
         if (detections[i].labelEn != track.label) continue;
 
         final iou = _iou(
@@ -13256,7 +13256,7 @@ class ObjectTracker {
       _tracks.removeWhere((_, t) => t.missedFrames > _maxMissedFrames);
 
   /// Intersection over Union dalam pixel coords.
-  /// Formula identik dengan normalized coords — unit tidak mempengaruhi rasio.
+  /// Formula identik dengan normalized coords - unit tidak mempengaruhi rasio.
   double _iou(
     double ax, double ay, double aw, double ah,
     double bx, double by, double bw, double bh,
@@ -13275,7 +13275,7 @@ class ObjectTracker {
     return inter / (aw * ah + bw * bh - inter);
   }
 
-  /// Reset semua track — dipanggil saat mode berganti (stopRealtime).
+  /// Reset semua track - dipanggil saat mode berganti (stopRealtime).
   void reset() {
     _tracks.clear();
     _lastAssignment = const [];
@@ -13302,7 +13302,7 @@ class OcrTextBlock {
   final String heading;
   final List<String> sentences;
 
-  /// Perkiraan jumlah kata — dipakai BT-08 untuk menghitung durasi bacaan
+  /// Perkiraan jumlah kata - dipakai BT-08 untuk menghitung durasi bacaan
   /// sebelum mulai, supaya tawaran "ringkas / penuh / pilih bagian" muncul
   /// sebelum pengguna terjebak mendengarkan tiga menit teks.
   final int wordCount;
@@ -13324,7 +13324,7 @@ class OcrResult {
   bool get isEmpty => fullText.trim().isEmpty;
   int get totalWords => blocks.fold(0, (sum, b) => sum + b.wordCount);
 
-  /// BT-08 — perkiraan durasi baca. ~150 kata per menit adalah laju TTS
+  /// BT-08 - perkiraan durasi baca. ~150 kata per menit adalah laju TTS
   /// Bahasa Indonesia yang wajar pada kecepatan bawaan.
   Duration get estimatedDuration =>
       Duration(seconds: (totalWords / 150 * 60).round());
@@ -13335,17 +13335,17 @@ class OcrResult {
 /// Ini menggantikan OCR di server. Tiga akibat langsung, semuanya perbaikan:
 ///
 /// 1. **Baca Teks jalan tanpa internet.** BT-02 ("tombol nonaktif + alasan")
-///    tidak berlaku lagi — tidak ada alasan menonaktifkan tombol untuk kerja
+///    tidak berlaku lagi - tidak ada alasan menonaktifkan tombol untuk kerja
 ///    yang tidak butuh jaringan sama sekali.
 /// 2. **Tidak ada gambar yang meninggalkan perangkat.** Foto dokumen, resep,
-///    surat — semuanya tetap di ponsel.
+///    surat - semuanya tetap di ponsel.
 /// 3. **Hasil datang dalam ratusan milidetik**, bukan detik. BT-05 (banner
 ///    lambat 8 detik) dan BT-15 (timeout 15 detik) praktis tidak pernah kena.
 ///
 /// Yang hilang: ML Kit tidak melakukan koreksi berbasis LLM, jadi teks
 /// bersudut miring atau tulisan tangan lebih sering meleset daripada OCR
-/// server. Untuk menu, label harga, dan papan nama — kasus pemakaian utama
-/// mode ini — itu pertukaran yang menguntungkan.
+/// server. Untuk menu, label harga, dan papan nama - kasus pemakaian utama
+/// mode ini - itu pertukaran yang menguntungkan.
 class OcrService {
   static final OcrService instance = OcrService._();
   OcrService._();
@@ -13358,7 +13358,7 @@ class OcrService {
   /// Mengenali teks dari berkas gambar hasil `takePicture`.
   ///
   /// ML Kit membaca langsung dari path berkas, jadi byte-nya **tidak perlu**
-  /// dibaca ke memori Dart lebih dulu — untuk foto 4 MP itu menghemat satu
+  /// dibaca ke memori Dart lebih dulu - untuk foto 4 MP itu menghemat satu
   /// salinan besar yang tidak ada gunanya.
   Future<OcrResult> recognizeFile(String imagePath) async {
     final input = InputImage.fromFilePath(imagePath);
@@ -13377,7 +13377,7 @@ class OcrService {
     try {
       return await recognizeFile(file.path);
     } finally {
-      // Foto tidak ditinggalkan di penyimpanan — BT-21 mengeluh soal ruang,
+      // Foto tidak ditinggalkan di penyimpanan - BT-21 mengeluh soal ruang,
       // dan menumpuk berkas sementara akan memperburuknya.
       if (await file.exists()) {
         await file.delete();
@@ -13393,7 +13393,7 @@ class OcrService {
       if (lines.isEmpty) continue;
 
       // ML Kit sudah mengelompokkan teks jadi blok berdasarkan tata letak.
-      // Baris pertama tiap blok dipakai sebagai heading — itu yang membuat
+      // Baris pertama tiap blok dipakai sebagai heading - itu yang membuat
       // ResultPanel/long punya heading nyata, bukan satu blok "Hasil baca"
       // untuk seluruh halaman seperti waktu memakai OCR server.
       final heading = _asHeading(lines.first);
@@ -13479,7 +13479,7 @@ class ZoneAnalysis {
     required this.inferenceMs,
   });
 
-  /// Pesan TTS sederhana berdasarkan zona — sama dengan yang dipakai backend.
+  /// Pesan TTS sederhana berdasarkan zona - sama dengan yang dipakai backend.
   String get ttsMessage {
     // Rintangan akan ditangani lapisan atas (NavigationProvider).
     // Di sini hanya beri arahan zona jalur.
@@ -13526,7 +13526,7 @@ const List<double> _mean = [0.485, 0.456, 0.406];
 const List<double> _std  = [0.229, 0.224, 0.225];
 
 // ─────────────────────────────────────────────────────────────
-// PidnetService — segmentasi jalur 3 zona on-device
+// PidnetService - segmentasi jalur 3 zona on-device
 // ─────────────────────────────────────────────────────────────
 class PidnetService {
   static final PidnetService instance = PidnetService._();
@@ -13536,8 +13536,8 @@ class PidnetService {
   bool _loaded = false;
   bool get isLoaded => _loaded;
 
-  // Input shape: [1, 384, 640, 3] (BHWC — TFLite default)
-  // Atau [1, 3, 384, 640] (BCHW — jika model tidak di-transpose saat export)
+  // Input shape: [1, 384, 640, 3] (BHWC - TFLite default)
+  // Atau [1, 3, 384, 640] (BCHW - jika model tidak di-transpose saat export)
   // Akan dideteksi otomatis saat load.
   bool _isBHWC = true;
 
@@ -13546,7 +13546,7 @@ class PidnetService {
   /// fallback ke FP32 jika tidak.
   Future<bool> tryLoad() async {
     try {
-      // Coba FP16 dulu — lebih efisien di Mali-G71 (Samsung A30S)
+      // Coba FP16 dulu - lebih efisien di Mali-G71 (Samsung A30S)
       Uint8List? modelBytes;
       try {
         final bd = await rootBundle.load('assets/models/pidnet_s_3zona_fp16.tflite');
@@ -13559,7 +13559,7 @@ class PidnetService {
         debugPrint('[PIDNet] Memuat FP32 model (${(modelBytes.length / 1024).toStringAsFixed(0)} KB)');
       }
 
-      // GPU delegate — coba aktifkan di Android; jika gagal, CPU saja
+      // GPU delegate - coba aktifkan di Android; jika gagal, CPU saja
       InterpreterOptions options;
       try {
         if (Platform.isAndroid) {
@@ -13622,7 +13622,7 @@ class PidnetService {
         numChannels: 3,
       );
 
-      // Resize ke 640×384 (W×H) — cv2.resize pakai (W, H)
+      // Resize ke 640×384 (W×H) - cv2.resize pakai (W, H)
       // Untuk rotasi Android: rotate 90° dulu sebelum resize
       img.Image resized;
       if (Platform.isAndroid) {
@@ -13637,10 +13637,10 @@ class PidnetService {
       // Bangun tensor input sesuai format model
       final List input;
       if (_isBHWC) {
-        // [1, 384, 640, 3] — float32 normalized
+        // [1, 384, 640, 3] - float32 normalized
         input = _buildBHWC(resized);
       } else {
-        // [1, 3, 384, 640] — float32 normalized
+        // [1, 3, 384, 640] - float32 normalized
         input = _buildBCHW(resized);
       }
 
@@ -13764,7 +13764,7 @@ class PidnetService {
     } else if (rStatus != ZoneStatus.danger) {
       recommended = 2;
     } else {
-      // Semua bahaya — pilih yang paling tinggi rasionya
+      // Semua bahaya - pilih yang paling tinggi rasionya
       if (lRatio >= cRatio && lRatio >= rRatio) {
         recommended = 0;
       } else if (rRatio >= cRatio) {
@@ -13820,10 +13820,10 @@ const String kDefaultServerHost = '10.0.2.2:8000';
 /// memang tidak ada di perangkat: YOLOE (Cari Objek), Moondream2 (Deskripsi
 /// Suasana), dan segmentasi jalur sebagai cadangan PIDNet on-device.
 ///
-/// Dua belas method lain — `detectOnce`, `routeIntent`, `resolveIntent`,
+/// Dua belas method lain - `detectOnce`, `routeIntent`, `resolveIntent`,
 /// `cariObjekTargets`, `health`, `sendEvents`, `sendCrashReport`,
 /// `lastModeBeforeCrash`, `flushQueue`, `labels`, `modelManifest`,
-/// `checkRiskZone` — dihapus karena tidak punya satu pun pemanggil. Endpoint
+/// `checkRiskZone` - dihapus karena tidak punya satu pun pemanggil. Endpoint
 /// backend-nya ikut diarsipkan.
 class ServerService {
   static final ServerService instance = ServerService._();
@@ -13831,7 +13831,7 @@ class ServerService {
 
   /// Alamat server aktif (PG-08). Dulu ini konstanta hardcoded, jadi
   /// pengaturan "Alamat server" tersimpan ke disk tapi **tidak berpengaruh
-  /// sama sekali** — aplikasi mengatakan "tersimpan" untuk perubahan yang
+  /// sama sekali** - aplikasi mengatakan "tersimpan" untuk perubahan yang
   /// tidak pernah terjadi. Itu pelanggaran bagian 4.1 yang sama seperti
   /// konfirmasi ganti mode palsu, hanya di tempat berbeda.
   ///
@@ -13849,7 +13849,7 @@ class ServerService {
     _host = next;
   }
 
-  /// Satu klien HTTP untuk seluruh aplikasi — koneksi dipakai ulang
+  /// Satu klien HTTP untuk seluruh aplikasi - koneksi dipakai ulang
   /// (keep-alive) alih-alih handshake baru tiap permintaan. Lihat
   /// [ApiClient] untuk alasan lengkapnya.
   late final ApiClient _api = ApiClient()..hostProvider = (() => _host);
@@ -13859,7 +13859,7 @@ class ServerService {
   //
   // `WS /ws/detect`, `POST /api/detect`, dan `POST /api/narasi` dihapus.
   // Deteksi rintangan sepenuhnya on-device (SSD MobileNet TFLite) dan
-  // narasinya dirangkai `narration_engine.dart` — keduanya sudah ada di
+  // narasinya dirangkai `narration_engine.dart` - keduanya sudah ada di
   // perangkat, jadi jalur server hanya menggandakan kode di mode paling
   // kritis keselamatan sambil menambahkan ketergantungan diam-diam pada
   // laptop yang menyala.
@@ -13867,11 +13867,11 @@ class ServerService {
 
   /// Kirim satu frame ke backend YOLOE untuk mencari [target].
   ///
-  /// Backend YOLOE open-vocabulary (300+ barang Bahasa Indonesia) — jauh lebih
+  /// Backend YOLOE open-vocabulary (300+ barang Bahasa Indonesia) - jauh lebih
   /// fleksibel dari on-device ONNX 80 kelas. Melempar exception saat gagal.
   ///
   /// `found: false` dengan reason `not_in_frame` adalah kondisi NORMAL (CO-10)
-  /// — pengguna cukup arahkan kamera ke tempat lain lalu tekan kirim lagi.
+  /// - pengguna cukup arahkan kamera ke tempat lain lalu tekan kirim lagi.
   Future<Map<String, dynamic>> cariObjek(Uint8List jpegBytes, String target) =>
       _api.postMultipart(
         '/api/cari-objek',
@@ -13882,7 +13882,7 @@ class ServerService {
         op: ApiOp.frame,
       );
 
-  /// Daftar barang yang dikenali — dipakai CO-12 untuk menawarkan
+  /// Daftar barang yang dikenali - dipakai CO-12 untuk menawarkan
   /// barang lain saat target tidak dikenal.
   Future<List<String>> cariObjekTargets() async {
     final json = await _api.getJson('/api/cari-objek/targets');
@@ -13916,12 +13916,12 @@ class ServerService {
     }
   }
 
-  /// Health check ke alamat tertentu **tanpa mengubah alamat aktif** — dipakai
+  /// Health check ke alamat tertentu **tanpa mengubah alamat aktif** - dipakai
   /// PG-08b untuk menguji kandidat sebelum disimpan. Memisahkan "menguji" dari
   /// "memakai" itulah yang membuat PG-08e mungkin: uji boleh gagal tanpa
   /// merusak sambungan yang sedang bekerja.
   Future<Map<String, dynamic>?> healthAt(String host, {Duration? timeout}) async {
-    // Klien sementara dengan host tetap — tidak menyentuh alamat aktif.
+    // Klien sementara dengan host tetap - tidak menyentuh alamat aktif.
     final probe = ApiClient()..hostProvider = (() => host);
     final sw = Stopwatch()..start();
     try {
@@ -13975,7 +13975,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
 import 'camera_intrinsics.dart';
 
-// Label Bahasa Indonesia — kunci adalah label Inggris dari labelmap.txt
+// Label Bahasa Indonesia - kunci adalah label Inggris dari labelmap.txt
 const Map<String, String> _labelId = {
   // Orang
   'person':         'orang',
@@ -14183,7 +14183,7 @@ class TFLiteService {
   // Model bytes disimpan agar bisa dikirim ke isolate
   Uint8List? _modelBytes;
 
-  // Tilt correction — sudut kemiringan kamera dari accelerometer (radian)
+  // Tilt correction - sudut kemiringan kamera dari accelerometer (radian)
   double _lastTiltAngle = 0.0;
 
   /// Dipanggil CameraProvider setiap 30 frame saat orientasi di-check.
@@ -14233,7 +14233,7 @@ class TFLiteService {
   /// YUV→RGB dengan `setPixelRgb()` per piksel, lalu `copyResize`, lalu
   /// `copyRotate`, lalu membangun `List<List<List<List<num>>>>` berisi
   /// 270.000 angka ter-boxing. Hanya interpreter-nya yang ada di isolate;
-  /// bagian yang jauh lebih mahal justru menghalangi thread UI — dan karena
+  /// bagian yang jauh lebih mahal justru menghalangi thread UI - dan karena
   /// TTS dijadwalkan dari thread yang sama, suaralah yang ikut tersendat.
   Future<List<Detection>> runInference(CameraImage image) async {
     if (!_loaded || _isolateInterpreter == null) return [];
@@ -14248,10 +14248,10 @@ class TFLiteService {
     }
 
     // SSD MobileNet output 4 tensor terpisah:
-    //   tensor[0]: locations [1][10][4]   — [ymin, xmin, ymax, xmax] normalized
-    //   tensor[1]: classes   [1][10]      — class index (float)
-    //   tensor[2]: scores    [1][10]      — confidence score
-    //   tensor[3]: count     [1]          — jumlah deteksi valid
+    //   tensor[0]: locations [1][10][4]   - [ymin, xmin, ymax, xmax] normalized
+    //   tensor[1]: classes   [1][10]      - class index (float)
+    //   tensor[2]: scores    [1][10]      - confidence score
+    //   tensor[3]: count     [1]          - jumlah deteksi valid
     final outputLocations = List.generate(1, (_) => List.generate(10, (_) => List.filled(4, 0.0)));
     final outputClasses   = List.generate(1, (_) => List.filled(10, 0.0));
     final outputScores    = List.generate(1, (_) => List.filled(10, 0.0));
@@ -14282,7 +14282,7 @@ class TFLiteService {
   ///   classes[i]   = class index (float, bukan int)
   ///   scores[i]    = confidence score
   ///
-  /// NMS sudah dilakukan di dalam model — tidak perlu NMS manual.
+  /// NMS sudah dilakukan di dalam model - tidak perlu NMS manual.
   List<Detection> _postProcess(
     List<List<double>> locations, // [10][4]: ymin, xmin, ymax, xmax
     List<double> classes,
@@ -14291,7 +14291,7 @@ class TFLiteService {
   ) {
     const double confThreshold = 0.5;
     // Fokus per-perangkat, dihitung ulang dari lebar frame yang benar-benar
-    // dipakai — bukan konstanta yang mengasumsikan satu lensa untuk semua HP.
+    // dipakai - bukan konstanta yang mengasumsikan satu lensa untuk semua HP.
     final focalPx = CameraIntrinsics.instance.focalPxForUprightFrame(geo.srcW);
     final List<Detection> results = [];
 
@@ -14302,7 +14302,7 @@ class TFLiteService {
       if (classIdx < 0 || classIdx >= _labels.length) continue;
 
       final labelEn = _labels[classIdx];
-      // Skip entry '???' di labelmap — bukan kelas valid
+      // Skip entry '???' di labelmap - bukan kelas valid
       if (labelEn == '???') continue;
 
       final labelId = _labelId[labelEn] ?? labelEn;
@@ -14315,7 +14315,7 @@ class TFLiteService {
 
       // Koordinat piksel di ruang **bingkai tegak**. Karena crop-nya persegi
       // dan skalanya seragam, tinggi kotak di sini sebanding lurus dengan
-      // tinggi objek sebenarnya — syarat yang tidak dipenuhi versi lama, yang
+      // tinggi objek sebenarnya - syarat yang tidak dipenuhi versi lama, yang
       // meregangkan 640×480 menjadi 300×300 (rasio berubah) lalu memutarnya,
       // sehingga "tinggi" kotak sebenarnya mengukur lebar objek.
       final x1 = (geo.offsetX + xmin * geo.cropSide).round();
@@ -14438,7 +14438,7 @@ class _FrameGeometry {
   }
 }
 
-/// Argumen preprocessing — semua sudah berupa data biasa supaya bisa dikirim
+/// Argumen preprocessing - semua sudah berupa data biasa supaya bisa dikirim
 /// ke isolate lewat [compute].
 class _SsdPrepArgs {
   final Uint8List yPlane, uPlane, vPlane;
@@ -14475,7 +14475,7 @@ class _SsdPrepArgs {
 
 /// YUV420 → RGB langsung ke grid 300×300, dalam satu lintasan, di isolate.
 ///
-/// Rotasi 90° dan crop persegi dilakukan lewat pemetaan indeks — tidak ada
+/// Rotasi 90° dan crop persegi dilakukan lewat pemetaan indeks - tidak ada
 /// gambar antara yang dialokasikan, dan piksel yang disentuh hanya 90.000
 /// alih-alih 307.200. Hasilnya buffer datar `Uint8List` yang disalin apa
 /// adanya ke tensor uint8 (`ByteConversionUtils` memakai jalur cepat untuk
@@ -14525,13 +14525,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-/// TTS Service — Text-to-Speech, satu-satunya pintu keluar suara aplikasi.
+/// TTS Service - Text-to-Speech, satu-satunya pintu keluar suara aplikasi.
 ///
 /// **Aturan mutlak: tidak ada ucapan yang dibuang diam-diam.**
 ///
 /// Versi sebelumnya menjaga flag `_speaking` lalu membungkus `speak()` dengan
 /// `if (!_speaking)`. Akibatnya setiap permintaan bicara yang datang saat TTS
-/// sedang berjalan **hilang tanpa jejak** — termasuk peringatan rintangan —
+/// sedang berjalan **hilang tanpa jejak** - termasuk peringatan rintangan -
 /// dan pemanggilnya tetap menerima Future yang selesai normal, jadi
 /// [TtsQueue] mengira pesannya sudah tersampaikan. Untuk pengguna yang
 /// berjalan sambil mengandalkan suara, itu bukan bug performa; itu peringatan
@@ -14555,7 +14555,7 @@ class TTSService {
   bool get isSpeaking => _speaking;
 
   /// Locale yang sedang terpasang di engine. Dilacak supaya `setLanguage`
-  /// hanya dipanggil saat benar-benar berganti — pemanggilan berulang pada
+  /// hanya dipanggil saat benar-benar berganti - pemanggilan berulang pada
   /// sebagian engine Android memotong ucapan yang sedang berjalan.
   String _engineLocale = localeId;
 
@@ -14594,7 +14594,7 @@ class TTSService {
   /// oleh ucapan lain yang meminta [interrupt].
   ///
   /// [english] memakai locale `en-US` (hasil Moondream2), lalu mengembalikan
-  /// engine ke `id-ID` — pengembaliannya di blok `finally`, jadi kegagalan di
+  /// engine ke `id-ID` - pengembaliannya di blok `finally`, jadi kegagalan di
   /// tengah tidak meninggalkan aplikasi berbicara Inggris selamanya.
   Future<void> speak(
     String message, {
@@ -14659,7 +14659,7 @@ class TTSService {
     }
   }
 
-  /// Kecepatan bicara — Pengaturan "Kecepatan bicara".
+  /// Kecepatan bicara - Pengaturan "Kecepatan bicara".
   Future<void> setRate(double rate) async {
     await _tts.setSpeechRate(rate.clamp(0.1, 1.0));
   }
@@ -14693,7 +14693,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
 
 // ─────────────────────────────────────────────────────────────
-// Kelas navigasi custom (6 kelas) — urutan sesuai training
+// Kelas navigasi custom (6 kelas) - urutan sesuai training
 // ─────────────────────────────────────────────────────────────
 const List<String> _navLabels = [
   'lubang',
@@ -14727,7 +14727,7 @@ const double _iouThresh = 0.45;
 const int _yoloSize = 640;
 
 // ─────────────────────────────────────────────────────────────
-// YoloNavigasiService — deteksi rintangan on-device (YOLO11n)
+// YoloNavigasiService - deteksi rintangan on-device (YOLO11n)
 // ─────────────────────────────────────────────────────────────
 class YoloNavigasiService {
   static final YoloNavigasiService instance = YoloNavigasiService._();
@@ -14744,7 +14744,7 @@ class YoloNavigasiService {
       final bytes = bd.buffer.asUint8List();
       debugPrint('[YOLO-Nav] Memuat model ${(bytes.length / 1024).toStringAsFixed(0)} KB');
 
-      // CPU saja — model INT8 sudah sangat ringan di CPU
+      // CPU saja - model INT8 sudah sangat ringan di CPU
       final options = InterpreterOptions()..threads = 4;
       final interpreter = Interpreter.fromBuffer(bytes, options: options);
 
@@ -14793,7 +14793,7 @@ class YoloNavigasiService {
             interpolation: img.Interpolation.linear);
       }
 
-      // Build input [1][640][640][3] — float32 normalized 0..1
+      // Build input [1][640][640][3] - float32 normalized 0..1
       final input = List.generate(1, (_) =>
         List.generate(_yoloSize, (y) =>
           List.generate(_yoloSize, (x) {
@@ -14803,7 +14803,7 @@ class YoloNavigasiService {
         ),
       );
 
-      // Output [1][10][8400] — 10 = 4 (box) + 6 (class scores)
+      // Output [1][10][8400] - 10 = 4 (box) + 6 (class scores)
       final output = [List.generate(10, (_) => List.filled(8400, 0.0))];
       final outputs = {0: output};
 
@@ -14998,22 +14998,22 @@ import 'package:flutter/material.dart';
 /// positive/fill, critical/fill) TIDAK BOLEH memuat teks putih kecil.
 abstract final class AppColors {
   // Action (biru)
-  static const actionFill    = Color(0xFF3181E7); // 3.87:1 — ikon & bidang besar saja
-  static const actionLabel   = Color(0xFF1A56B0); // 7.00:1 — teks & tombol bertulisan
-  static const actionPressed = Color(0xFF1D5FC2); // 6.05:1 — state ditekan
+  static const actionFill    = Color(0xFF3181E7); // 3.87:1 - ikon & bidang besar saja
+  static const actionLabel   = Color(0xFF1A56B0); // 7.00:1 - teks & tombol bertulisan
+  static const actionPressed = Color(0xFF1D5FC2); // 6.05:1 - state ditekan
   static const actionTint    = Color(0xFFEAF2FE); // isian lembut, item aktif
 
-  // Positive (hijau — arah/aman)
+  // Positive (hijau - arah/aman)
   static const positiveFill  = Color(0xFF51B055); // ikon & bidang besar saja (putih gagal 2.75:1)
   static const positiveLabel = Color(0xFF1C6323); // teks "AMAN", isian chip zona aktif
   static const positiveTint  = Color(0xFFE8F4E9);
 
-  // Critical (merah — bahaya)
+  // Critical (merah - bahaya)
   static const criticalFill  = Color(0xFFE5484D); // ikon oktagon, pita prioritas, garis bbox
   static const criticalLabel = Color(0xFFA82727); // teks "Bahaya", isian pill jarak
   static const criticalTint  = Color(0xFFFDECEC);
 
-  // Warning (kuning — hati-hati). Kuning TIDAK PERNAH membawa teks putih.
+  // Warning (kuning - hati-hati). Kuning TIDAK PERNAH membawa teks putih.
   static const warningFill   = Color(0xFFF2A93C);
   static const warningLabel  = Color(0xFF7A4A00);
   static const warningTint   = Color(0xFFFFF6E9);
@@ -15034,16 +15034,16 @@ abstract final class AppColors {
 
   // Scrim di atas video kamera
   static const scrimText = Color(0xDB0B0D12); // #0B0D12 @ 86%
-  static const scrimDim  = Color(0x660B0D12); // #0B0D12 @ 40% — tidak pernah membawa teks
+  static const scrimDim  = Color(0x660B0D12); // #0B0D12 @ 40% - tidak pernah membawa teks
 
   // ── Foreground di atas bidang gelap/berwarna ────────────────────────────
 
-  /// Teks & ikon di atas bidang gelap atau vibrant — scrim di atas kamera,
+  /// Teks & ikon di atas bidang gelap atau vibrant - scrim di atas kamera,
   /// [pillBg], dan isian `*Fill`.
   ///
   /// Ini yang dulu ditulis sebagai `Colors.white` mentah di 64 tempat.
   /// Nilainya memang putih, tapi menyebutnya lewat token membuat maksudnya
-  /// terbaca — dan membuat tema kontras tinggi bisa menggesernya di **satu**
+  /// terbaca - dan membuat tema kontras tinggi bisa menggesernya di **satu**
   /// tempat alih-alih di 64 tempat yang harus ditemukan satu per satu dulu.
   ///
   /// Aturan 3:1 di header berkas ini tetap berlaku: putih di atas isian
@@ -15176,7 +15176,7 @@ import 'app_colors.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
-/// ThemeData Vinara — dirakit dari token di app_colors / app_typography /
+/// ThemeData Vinara - dirakit dari token di app_colors / app_typography /
 /// app_spacing. Dipasang sekali di MaterialApp.theme.
 abstract final class AppTheme {
   static ThemeData get light {
@@ -15249,10 +15249,10 @@ abstract final class AppTheme {
     );
   }
 
-  /// Tema gelap — chrome Material (AppBar, tombol, snackbar, scaffold).
+  /// Tema gelap - chrome Material (AppBar, tombol, snackbar, scaffold).
   /// Catatan: komponen desain sistem (AlertCard, ModeBadge, dst.) memakai
   /// token AppColors langsung sehingga tetap tampil dengan palet terang di
-  /// atas kamera — itu memang benar untuk pill/kartu yang melayang di atas
+  /// atas kamera - itu memang benar untuk pill/kartu yang melayang di atas
   /// video, tapi permukaan non-kamera (Settings, Onboarding) mengikuti tema
   /// gelap lewat ThemeData ini.
   static ThemeData get dark {
@@ -15272,7 +15272,7 @@ abstract final class AppTheme {
     );
   }
 
-  /// Tema kontras tinggi — seluruh bayangan diganti garis 2 dp putih (bagian
+  /// Tema kontras tinggi - seluruh bayangan diganti garis 2 dp putih (bagian
   /// 3.4): kedalaman lewat bayangan tidak terbaca oleh sensitivitas kontras
   /// rendah.
   static ThemeData get highContrast {
@@ -15310,7 +15310,7 @@ import 'app_colors.dart';
 
 /// Skala tipografi design system Vinara.
 /// IBM Plex Sans untuk semua teks, IBM Plex Mono untuk angka teknis
-/// (jarak, persentase, waktu) — dipakai bersama `tabularFigures` supaya
+/// (jarak, persentase, waktu) - dipakai bersama `tabularFigures` supaya
 /// nominal tidak bergeser saat berubah. Fallback otomatis lewat GoogleFonts
 /// (Noto Sans / Roboto), tidak pernah font geometris.
 abstract final class AppTypography {
@@ -15404,7 +15404,7 @@ import '../theme/index.dart';
 import 'distance_pill.dart';
 import 'tier_icon.dart';
 
-/// AlertCard — kartu melayang di sepertiga bawah layar (F2).
+/// AlertCard - kartu melayang di sepertiga bawah layar (F2).
 /// Kartu putih opaque + Pita Prioritas 3 dp di tepi kiri dalam, warna
 /// mengikuti tier. Tier terbaca dari bentuk ikon, bukan cuma warna.
 class AlertCard extends StatelessWidget {
@@ -15512,7 +15512,7 @@ class AlertCard extends StatelessWidget {
   }
 }
 
-/// Tumpukan AlertCard — maksimum 2, gap 8, tier tertinggi di slot bawah
+/// Tumpukan AlertCard - maksimum 2, gap 8, tier tertinggi di slot bawah
 /// (paling dekat ibu jari / BottomActionBar).
 class AlertCardStack extends StatelessWidget {
   final List<Widget> cards;
@@ -15555,9 +15555,9 @@ import '../services/haptic_service.dart';
 import '../theme/index.dart';
 import 'mode_picker_sheet.dart';
 
-/// BottomActionBar (F3) — selalu ada, selalu di tempat yang sama, tidak
+/// BottomActionBar (F3) - selalu ada, selalu di tempat yang sama, tidak
 /// pernah menggulung. Tiga slot: Aksi Utama 48, Bicara 64, Pilih Mode 48.
-/// Saat mic aktif, dua tombol lain nonaktif — supaya tidak ada aksi
+/// Saat mic aktif, dua tombol lain nonaktif - supaya tidak ada aksi
 /// tabrakan sambil berjalan.
 ///
 /// ## Kontrak tombol kiri
@@ -15566,7 +15566,7 @@ import 'mode_picker_sheet.dart';
 /// punya "hal utama", ia mengulang hal penting terakhir yang diucapkan.**
 ///
 /// Bagian kedua yang membuat aturannya utuh: dengan itu tidak ada satu pun
-/// mode dengan tombol kiri mati, dan pengguna punya jaring pengaman — kalau
+/// mode dengan tombol kiri mati, dan pengguna punya jaring pengaman - kalau
 /// lupa tombol kiri melakukan apa di mode ini, paling buruk ia mengulang
 /// sesuatu. Tidak pernah merusak, tidak pernah hening.
 ///
@@ -15577,7 +15577,7 @@ import 'mode_picker_sheet.dart';
 /// | Baca Teks     | "Baca teks" → "Jeda bacaan"  | Kontekstual              |
 /// | Navigasi      | "Ulangi arahan"              | Baca ulang status zona   |
 /// | Asisten Suara | "Ulangi jawaban"             | Baca ulang respons       |
-/// | Cari Objek    | "Kirim — cari [X]"           | Scan                     |
+/// | Cari Objek    | "Kirim - cari [X]"           | Scan                     |
 ///
 /// Aturan pendukung: label berupa kata kerja + objek maksimal 3 kata (TalkBack
 /// membacanya tiap fokus mendarat), tombol nonaktif tetap bersuara saat
@@ -15586,7 +15586,7 @@ import 'mode_picker_sheet.dart';
 /// [cameraLabel] sengaja **wajib**. Nilai bawaan lamanya "Ambil gambar" membuat
 /// dua mode (Navigasi dan Asisten) menampilkan tombol aktif yang dibacakan
 /// TalkBack sebagai "Ambil gambar, tombol" padahal menekannya tidak melakukan
-/// apa pun — label yang berbohong, dan jalan buntu yang hening.
+/// apa pun - label yang berbohong, dan jalan buntu yang hening.
 class BottomActionBar extends StatelessWidget {
   final VoidCallback? onCameraPressed;
   final VoidCallback? onMicPressed;
@@ -15596,7 +15596,7 @@ class BottomActionBar extends StatelessWidget {
   /// Alasan tombol kiri nonaktif, diucapkan saat ditekan.
   final String? cameraDisabledReason;
 
-  /// DO-24 — izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
+  /// DO-24 - izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
   final bool micEnabled;
   /// Saat mode aktif punya STT sendiri (mis. Cari Objek), timpa visual
   /// listening/processing bawaan `VoiceProvider` supaya tombol tetap sesuai
@@ -15744,7 +15744,7 @@ class _MicButton extends StatelessWidget {
                   return;
                 }
 
-                // Sudah di mode voice — perilaku bawaan
+                // Sudah di mode voice - perilaku bawaan
                 if (onTap != null) {
                   onTap!();
                 } else if (v.isListening) {
@@ -15788,7 +15788,7 @@ class _SquareButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
-  /// Alasan tombol nonaktif — diucapkan saat ditekan, bukan didiamkan.
+  /// Alasan tombol nonaktif - diucapkan saat ditekan, bukan didiamkan.
   final String? disabledReason;
 
   const _SquareButton({
@@ -15802,7 +15802,7 @@ class _SquareButton extends StatelessWidget {
   /// Menekan tombol nonaktif TIDAK boleh hening.
   ///
   /// Untuk pengguna yang tidak melihat layar, tombol yang diam saat ditekan
-  /// tidak bisa dibedakan dari aplikasi yang macet — dan satu-satunya cara
+  /// tidak bisa dibedakan dari aplikasi yang macet - dan satu-satunya cara
   /// menguji dugaannya adalah menekan lagi. Katakan alasannya, sekali, dengan
   /// getar pendek supaya jelas tekanannya terdaftar.
   void _explainDisabled() {
@@ -15862,7 +15862,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// CameraHealthToast (5.10) — pill gelap melayang, instruksi fisik dan
+/// CameraHealthToast (5.10) - pill gelap melayang, instruksi fisik dan
 /// konkret ("miringkan sedikit"), bukan abstrak. Tidak fokusable; live
 /// region polite.
 enum CameraHealthIssue { dark, blurry, covered, tilted }
@@ -15916,14 +15916,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// ChatBubble (5.12) — Mode Asisten Suara. Giliran dipisah garis, bukan
+/// ChatBubble (5.12) - Mode Asisten Suara. Giliran dipisah garis, bukan
 /// gelembung berwarna. Live region polite, MergeSemantics per giliran.
 enum ChatSpeaker { user, vinara }
 
 class ChatBubble extends StatelessWidget {
   final ChatSpeaker speaker;
   final String text;
-  /// Giliran terbaru mendapat live region — bagian 12 "AS-12: hanya giliran
+  /// Giliran terbaru mendapat live region - bagian 12 "AS-12: hanya giliran
   /// terbaru dibacakan".
   final bool isLatest;
 
@@ -15957,7 +15957,7 @@ class ChatBubble extends StatelessWidget {
   }
 }
 
-/// Daftar giliran percakapan — membungkus scroll + aturan ringkas riwayat
+/// Daftar giliran percakapan - membungkus scroll + aturan ringkas riwayat
 /// (AS-13: 8 giliran diringkas).
 class ChatTranscript extends StatelessWidget {
   final List<ChatBubble> turns;
@@ -15989,7 +15989,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// ContextualActionSlot — slot tombol kontekstual yang selalu duduk di posisi
+/// ContextualActionSlot - slot tombol kontekstual yang selalu duduk di posisi
 /// yang sama: tepat di atas BottomActionBar, dari kiri ke kanan layar.
 ///
 /// Dipakai untuk prompt situasional jangka pendek yang butuh respons segera:
@@ -15998,7 +15998,7 @@ import '../theme/index.dart';
 ///
 /// **Aturan keamanan zona:**
 /// Konten di atas slot (kartu deteksi, panel bubble) wajib membaca
-/// [slotHeight] dan menggeser dirinya ke atas — bukan sebaliknya.
+/// [slotHeight] dan menggeser dirinya ke atas - bukan sebaliknya.
 ///
 /// Slot ini diposisikan oleh pemanggil via [Positioned] karena tiap layar
 /// punya cara berbeda mengelola Stack-nya.
@@ -16029,7 +16029,7 @@ class ContextualActionSlot extends StatelessWidget {
     this.secondaryIcon,
   });
 
-  /// Tinggi tombol saja (tanpa message) — pemanggil pakai ini untuk geser kartu.
+  /// Tinggi tombol saja (tanpa message) - pemanggil pakai ini untuk geser kartu.
   static const double slotHeight = 64.0;
 
   /// Tinggi total dengan message (pill + gap + tombol).
@@ -16258,14 +16258,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// FullScreenButton (5.4) — tombol aksi tunggal yang sangat besar, 96 dp.
+/// FullScreenButton (5.4) - tombol aksi tunggal yang sangat besar, 96 dp.
 /// Dipakai untuk aksi utama satu-jari: jepret di Mode Baca Teks, izin di
 /// PermissionCard, dst.
 class FullScreenButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   final bool disabled;
-  /// Wajib diisi saat [disabled] — bagian 5.4: tombol disabled selalu
+  /// Wajib diisi saat [disabled] - bagian 5.4: tombol disabled selalu
   /// menyebut alasannya sebagai baris di bawah teks.
   final String? disabledReason;
   final IconData? icon;
@@ -16357,7 +16357,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// GuideFrame (F11) — empat busur sudut yang mengencang saat objek makin
+/// GuideFrame (F11) - empat busur sudut yang mengencang saat objek makin
 /// pas, bukan persegi putus-putus statis (itu pola kamera QR dan tidak
 /// mengabarkan apa pun).
 enum FrameFit { empty, partial, fit, tooClose }
@@ -16512,7 +16512,7 @@ import 'package:flutter/semantics.dart';
 import '../providers/app_mode_provider.dart';
 import '../theme/index.dart';
 
-/// Ikon garis per mode — dipakai bersama oleh ModeBadge & ModePickerSheet.
+/// Ikon garis per mode - dipakai bersama oleh ModeBadge & ModePickerSheet.
 IconData modeIcon(AppMode mode) => switch (mode) {
       AppMode.tuntun     => Icons.remove_red_eye_outlined,
       AppMode.money      => Icons.payments_outlined,
@@ -16522,10 +16522,10 @@ IconData modeIcon(AppMode mode) => switch (mode) {
       AppMode.findObject => Icons.search_rounded,
     };
 
-/// ModeBadge (F1) — pill identitas mode, opaque #202432, di atas kamera.
+/// ModeBadge (F1) - pill identitas mode, opaque #202432, di atas kamera.
 /// Bukan tombol untuk ganti mode (itu lewat tombol Pilih Mode / suara), tapi
 /// ketuk 5× membuka panel debug tersembunyi (state switcher) bila disediakan
-/// lewat [onDebugActivate] — mekanisme baku bagian 2 "Cara memalsukan fitur".
+/// lewat [onDebugActivate] - mekanisme baku bagian 2 "Cara memalsukan fitur".
 class ModeBadge extends StatefulWidget {
   final AppMode mode;
   final bool transitioning;
@@ -16576,7 +16576,7 @@ class _ModeBadgeState extends State<ModeBadge> {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      // Urutan fokus 3 — bagian 10, sesudah StatusBanner dan aksinya.
+      // Urutan fokus 3 - bagian 10, sesudah StatusBanner dan aksinya.
       sortKey: const OrdinalSortKey(3),
       header: true,
       label: _label,
@@ -16657,15 +16657,15 @@ import '../screens/settings_screen.dart';
 import '../theme/index.dart';
 import 'mode_badge.dart';
 
-/// ModePickerSheet (5.5) — enam mode, cadangan untuk situasi tidak bisa
+/// ModePickerSheet (5.5) - enam mode, cadangan untuk situasi tidak bisa
 /// bicara. Fokus terkunci di dalam sheet; setelah ditutup, fokus kembali ke
 /// tombol Pilih Mode (ditangani otomatis oleh showModalBottomSheet).
 ///
-/// Keputusan audit: Navigasi TIDAK PERNAH dinonaktifkan offline — deteksi
+/// Keputusan audit: Navigasi TIDAK PERNAH dinonaktifkan offline - deteksi
 /// rintangan on-device tetap hidup, jadi statenya `limited` dengan alasan
 /// "Tanpa internet: rintangan saja". Cari Objek yang benar-benar disabled.
 void showModePickerSheet(BuildContext context) {
-  // Ditanyakan saat sheet dibuka, bukan saat item ditekan — status harus
+  // Ditanyakan saat sheet dibuka, bukan saat item ditekan - status harus
   // sudah terbaca sebelum pengguna memilih. Tidak di-await: sheet tampil
   // segera, dan item memperbarui dirinya begitu jawaban datang.
   context.read<CapabilitiesProvider>().refreshIfStale(
@@ -16748,7 +16748,7 @@ class _ModePickerSheet extends StatelessWidget {
                 itemBuilder: (_, i) {
                   final mode = AppMode.values[i];
                   // Status ditentukan jaringan DAN jawaban server, ditanyakan
-                  // sebelum sheet dibuka — bukan ditebak dari koneksi saja.
+                  // sebelum sheet dibuka - bukan ditebak dari koneksi saja.
                   final state = caps.stateOf(mode, offline: offline);
                   final disabled = state == CapState.down;
                   final limited = state == CapState.limited && mode != current;
@@ -16768,7 +16768,7 @@ class _ModePickerSheet extends StatelessWidget {
                             // tidak jalan karena mode tidak berubah, dan
                             // pengguna yang tidak melihat layar menyimpulkan
                             // modenya sudah berganti. VoiceProvider sudah
-                            // menangani ini dengan benar sejak awal — hanya
+                            // menangani ini dengan benar sejak awal - hanya
                             // jalur sheet yang bocor.
                             final appMode = context.read<AppModeProvider>();
                             final tts = context.read<TtsProvider>();
@@ -16790,7 +16790,7 @@ class _ModePickerSheet extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s3),
             // Layar penunjang bukan saudara mode, jadi ia TIDAK muncul sebagai
-            // item mode. Tempatnya di paling bawah sheet, dipisah garis —
+            // item mode. Tempatnya di paling bawah sheet, dipisah garis -
             // bagian 2 ALUR-DAN-TOMBOL.md. Tanpa ini Pengaturan sama sekali
             // tidak punya pintu masuk di layar: satu-satunya jalan adalah
             // perintah suara, dan itu memutus pengguna yang tidak bisa bicara.
@@ -16994,7 +16994,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// Terbilang rupiah — "angka rupiah selalu dibacakan penuh dalam kata, tidak
+/// Terbilang rupiah - "angka rupiah selalu dibacakan penuh dalam kata, tidak
 /// pernah 'seratus rb'" (bagian 9 & 17). Dipakai NominalCard dan naskah TTS.
 String terbilangRupiah(int amount) {
   if (amount == 0) return 'nol rupiah';
@@ -17041,13 +17041,13 @@ String formatRupiah(int amount) {
   return 'Rp$buf';
 }
 
-/// NominalCard (5.13) — khusus Mode Kenali Uang. Satu-satunya tempat
+/// NominalCard (5.13) - khusus Mode Kenali Uang. Satu-satunya tempat
 /// `display` 56sp dipakai. Nominal WAJIB dua bentuk (angka + kata), dan
-/// tidak pernah ditampilkan saat keyakinan rendah — pemanggil bertanggung
+/// tidak pernah ditampilkan saat keyakinan rendah - pemanggil bertanggung
 /// jawab tidak me-render kartu ini pada kondisi itu.
 ///
 /// Kartu ini hanya menampilkan **satu nominal**: lembar yang sedang dihadapi
-/// kamera. Tidak ada rincian lembar dan tidak ada total berjalan — mode ini
+/// kamera. Tidak ada rincian lembar dan tidak ada total berjalan - mode ini
 /// tidak menjumlahkan apa pun.
 class NominalCard extends StatelessWidget {
   final int amount;
@@ -17132,9 +17132,9 @@ import 'package:flutter/material.dart';
 import '../mock/ocr_mock_data.dart';
 import '../theme/index.dart';
 
-/// OcrDebugSheet — bottom sheet QA khusus Mode Baca Teks: daftar 22 state
+/// OcrDebugSheet - bottom sheet QA khusus Mode Baca Teks: daftar 22 state
 /// BT-01..BT-22 (bagian 8). Memilih satu item memaksa tampilan lokal
-/// `ocr_screen.dart` ke kondisi itu (data mock) sampai dibatalkan — dibuka
+/// `ocr_screen.dart` ke kondisi itu (data mock) sampai dibatalkan - dibuka
 /// lewat ketuk 5× pada [ModeBadge] (`onDebugActivate`).
 Future<void> showOcrDebugSheet(
   BuildContext context, {
@@ -17197,7 +17197,7 @@ class _OcrDebugSheetContent extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Debug — Mode Baca Teks', style: AppTypography.title()),
+                    child: Text('Debug - Mode Baca Teks', style: AppTypography.title()),
                   ),
                   if (activeId != null)
                     GestureDetector(
@@ -17271,7 +17271,7 @@ import 'package:flutter/material.dart';
 import '../theme/index.dart';
 import 'tier_icon.dart';
 
-/// Satu blok siap-render untuk [OcrLongResultPanel] — kalimatnya sudah
+/// Satu blok siap-render untuk [OcrLongResultPanel] - kalimatnya sudah
 /// dipecah oleh pemanggil (ocr_screen.dart) supaya panel ini tidak perlu
 /// tahu aturan pemisahan kalimat, cuma menyorot kalimat aktif.
 class OcrRenderBlock {
@@ -17292,11 +17292,11 @@ class OcrRenderBlock {
   });
 }
 
-/// OcrLongResultPanel — varian ResultPanel khusus hasil panjang/dua
+/// OcrLongResultPanel - varian ResultPanel khusus hasil panjang/dua
 /// bahasa/sebagian-gagal/senyap Mode Baca Teks (BT-07/08/09/10/12a/19).
 /// ResultPanel (komponen sistem, read-only) sengaja tidak dipakai di sini
 /// karena butuh: blok berheading, progress baca, dan kontrol yang berubah
-/// bentuk saat senyap — di luar API ResultPanel.
+/// bentuk saat senyap - di luar API ResultPanel.
 class OcrLongResultPanel extends StatelessWidget {
   final List<OcrRenderBlock> blocks;
   final bool speaking;
@@ -17600,11 +17600,11 @@ import '../core/layout/zone_contract.dart';
 import '../theme/index.dart';
 import 'full_screen_button.dart';
 
-/// `zone/page-action` — bagian 6 ALUR-DAN-TOMBOL.md.
+/// `zone/page-action` - bagian 6 ALUR-DAN-TOMBOL.md.
 ///
 /// Kontrak zona di IMPLEMENTASI.md dirancang untuk enam mode, yang semuanya
-/// diakhiri `BottomActionBar` 112 dp. Layar penunjang — Pengaturan,
-/// Onboarding, Izin — tidak punya bar itu, jadi tidak ada zona yang menampung
+/// diakhiri `BottomActionBar` 112 dp. Layar penunjang - Pengaturan,
+/// Onboarding, Izin - tidak punya bar itu, jadi tidak ada zona yang menampung
 /// tombol aksi halaman; itu sebabnya tombol seperti "Uji koneksi" dulu
 /// berakhir menempel di kolom isian, di sepertiga atas layar.
 ///
@@ -17617,7 +17617,7 @@ import 'full_screen_button.dart';
 /// [bottomCardSlotOffset] sebagai gantinya.
 ///
 /// Sekunder digambar **di atas** primer, dan karena itu juga dibaca TalkBack
-/// lebih dulu — urutan fokus bagian 10 nomor 10 lalu 11. Urutan itu dipasang
+/// lebih dulu - urutan fokus bagian 10 nomor 10 lalu 11. Urutan itu dipasang
 /// eksplisit lewat [SemanticsSortKey]; di Flutter urutan fokus tidak otomatis
 /// mengikuti posisi visual.
 class PageActionZone extends StatelessWidget {
@@ -17625,7 +17625,7 @@ class PageActionZone extends StatelessWidget {
   final VoidCallback? onPrimary;
   final bool primaryDisabled;
 
-  /// Wajib diisi saat [primaryDisabled] — bagian 5.4: tombol nonaktif selalu
+  /// Wajib diisi saat [primaryDisabled] - bagian 5.4: tombol nonaktif selalu
   /// menyebut alasannya, dan alasan itu ikut dibacakan sebagai bagian nilai.
   final String? primaryDisabledReason;
   final IconData? primaryIcon;
@@ -17691,7 +17691,7 @@ class PageActionZone extends StatelessWidget {
   }
 }
 
-/// Tombol sekunder 56 dp untuk `zone/page-action` — "Lewati panduan",
+/// Tombol sekunder 56 dp untuk `zone/page-action` - "Lewati panduan",
 /// "Ulangi langkah ini", "Keluar dari aplikasi". Lebar penuh supaya target
 /// sentuhnya sama besarnya dengan primer; yang membedakan hanya bobot visual,
 /// bukan kemudahan dijangkau.
@@ -17736,7 +17736,7 @@ class VinaraSecondaryButton extends StatelessWidget {
 
 /// Scaffold layar penunjang: isi halaman + [PageActionZone] menempel di dasar.
 /// Zona dipasang lewat `bottomNavigationBar` supaya ia sticky saat [body]
-/// digulung — aksi utama halaman wajib terjangkau **tanpa** pengguna
+/// digulung - aksi utama halaman wajib terjangkau **tanpa** pengguna
 /// menggulung (bagian 5 "Aturan penempatan").
 class PageActionScaffold extends StatelessWidget {
   final Widget body;
@@ -17806,13 +17806,13 @@ import '../core/layout/zone_contract.dart';
 import '../theme/index.dart';
 import 'full_screen_button.dart';
 
-/// PermissionCard (5.16) — kartu izin yang mengambil zona konten. ModeBadge
+/// PermissionCard (5.16) - kartu izin yang mengambil zona konten. ModeBadge
 /// dan BottomActionBar tetap di tempatnya (dipasang oleh screen pemanggil).
-/// Alasan ditulis per izin, bukan satu paragraf gabungan — bagian 5.16.
+/// Alasan ditulis per izin, bukan satu paragraf gabungan - bagian 5.16.
 ///
 /// **Kartu ini tidak lagi memuat tombolnya.** Dulu tombol "Berikan izin" ikut
 /// di dalam kartu, dan karena kartunya berada di zona konten, tombol berakhir
-/// di tengah layar — zona kuning/merah thumb zone, di luar jangkauan ibu jari
+/// di tengah layar - zona kuning/merah thumb zone, di luar jangkauan ibu jari
 /// satu tangan. Tombolnya sekarang dipasang [PermissionPrompt] di slot kartu
 /// bawah. Lihat bagian 5 & 8 ALUR-DAN-TOMBOL.md.
 class PermissionCard extends StatelessWidget {
@@ -17853,12 +17853,12 @@ class PermissionCard extends StatelessWidget {
   }
 }
 
-/// Permintaan izin di **layar mode** — DO-14, BT-17, UG-14, AS-02, CO-15,
+/// Permintaan izin di **layar mode** - DO-14, BT-17, UG-14, AS-02, CO-15,
 /// NV-21.
 ///
 /// Layar mode sudah memakai `BottomActionBar`, jadi menurut kontrak zona ia
 /// tidak boleh juga memakai `zone/page-action`. Aksinya karena itu mendarat di
-/// slot kartu bawah (bottom 120 dp, tepat di atas action bar) — tempat yang
+/// slot kartu bawah (bottom 120 dp, tepat di atas action bar) - tempat yang
 /// sama dengan seluruh kartu hasil mode lain, dan tetap di sepertiga bawah
 /// layar tempat ibu jari beristirahat.
 ///
@@ -17892,7 +17892,7 @@ class PermissionPrompt extends StatelessWidget {
     return Positioned.fill(
       child: Stack(
         children: [
-          // Kartu tetap di zona konten — perannya memberi tahu, bukan
+          // Kartu tetap di zona konten - perannya memberi tahu, bukan
           // ditekan. Padding bawah menjaga ia tidak pernah menabrak tombol.
           Positioned(
             top: 0,
@@ -17910,7 +17910,7 @@ class PermissionPrompt extends StatelessWidget {
           ),
 
           // Aksi utama: slot kartu bawah, tepat di atas BottomActionBar.
-          // Urutan fokus 6 — sesudah isi kartu, sebelum tiga tombol bar.
+          // Urutan fokus 6 - sesudah isi kartu, sebelum tiga tombol bar.
           Positioned(
             left: AppSpacing.screenMargin,
             right: AppSpacing.screenMargin,
@@ -17943,7 +17943,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// ResultPanel (F9) — kontrol audio selalu di baris atas kanan supaya
+/// ResultPanel (F9) - kontrol audio selalu di baris atas kanan supaya
 /// posisinya tidak bergeser saat isi berubah panjang.
 class ResultPanel extends StatelessWidget {
   final String title;
@@ -18137,7 +18137,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// SpeakingIndicator (5.15) — pil kecil kanan atas menandakan TTS berjalan.
+/// SpeakingIndicator (5.15) - pil kecil kanan atas menandakan TTS berjalan.
 /// Varian senyap: ikon speaker dicoret + "Getar saja".
 class SpeakingIndicator extends StatefulWidget {
   final bool silent;
@@ -18220,7 +18220,7 @@ import 'package:flutter/semantics.dart';
 import '../theme/index.dart';
 import 'tier_icon.dart';
 
-/// StatusBanner (F7) — lebar penuh, tinggi 56, tanpa radius, menempel tepi
+/// StatusBanner (F7) - lebar penuh, tinggi 56, tanpa radius, menempel tepi
 /// atas. Isian tint tier + Pita Prioritas horizontal 3 dp di tepi bawah.
 /// Satu banner saja pada satu waktu; tier lebih tinggi menang.
 class StatusBanner extends StatelessWidget {
@@ -18240,7 +18240,7 @@ class StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      // Urutan fokus 1 — bagian 10. Di Flutter urutan fokus TIDAK otomatis
+      // Urutan fokus 1 - bagian 10. Di Flutter urutan fokus TIDAK otomatis
       // mengikuti posisi visual, jadi tiap simpul zona dipasangi kunci urut
       // eksplisit. Elemen yang tidak hadir dilewati tanpa mengubah nomor
       // sisanya, dan itulah gunanya nomor tetap alih-alih urutan relatif.
@@ -18303,7 +18303,7 @@ import 'package:flutter/semantics.dart';
 
 import '../theme/index.dart';
 
-/// TargetChip (5.14) — khusus Mode Cari Objek. Baris sendiri di bawah
+/// TargetChip (5.14) - khusus Mode Cari Objek. Baris sendiri di bawah
 /// ModeBadge, TIDAK PERNAH berbagi baris dengannya. Elipsis hanya pada nama
 /// barang; kata "Mencari:" selalu utuh.
 class TargetChip extends StatelessWidget {
@@ -18314,7 +18314,7 @@ class TargetChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      // Urutan fokus 4 — bagian 10, baris sendiri di bawah ModeBadge.
+      // Urutan fokus 4 - bagian 10, baris sendiri di bawah ModeBadge.
       sortKey: const OrdinalSortKey(4),
       liveRegion: true,
       label: 'Mencari: $itemName',
@@ -18460,7 +18460,7 @@ class _TierIconPainter extends CustomPainter {
     }
   }
 
-  /// Tanda seru (garis + titik) — tier Critical/Warning garis-lalu-titik,
+  /// Tanda seru (garis + titik) - tier Critical/Warning garis-lalu-titik,
   /// tier Info titik-lalu-garis (menyerupai huruf "i").
   void _mark(Canvas canvas, double scale, Color color, {required bool dotFirst}) {
     final stroke = Paint()
@@ -18510,7 +18510,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// VoiceOrb (F6) — setiap state punya bentuk/isi berbeda, bukan cuma warna.
+/// VoiceOrb (F6) - setiap state punya bentuk/isi berbeda, bukan cuma warna.
 enum VoiceOrbState { idle, listening, processing, success, failure, disabled }
 
 class VoiceOrb extends StatelessWidget {
@@ -18650,7 +18650,7 @@ extension ZoneStatusX on ZoneStatus {
       };
 }
 
-/// ZoneIndicator (F8) — tiga chip 111 × 56, gap 8. Chip yang sedang
+/// ZoneIndicator (F8) - tiga chip 111 × 56, gap 8. Chip yang sedang
 /// direkomendasikan memakai isian pekat (bukan hijau vibrant) supaya
 /// teks putih di atasnya lolos 7.35:1.
 class ZoneIndicator extends StatelessWidget {
@@ -19140,7 +19140,7 @@ dependencies:
   # Sensor accelerometer (camera health check posisi)
   sensors_plus: ^7.0.0
 
-  # Kondisi global — offline, baterai kritis (StatusBanner gabungan)
+  # Kondisi global - offline, baterai kritis (StatusBanner gabungan)
   connectivity_plus: ^6.0.5
   battery_plus: ^6.0.2
 
@@ -19159,7 +19159,7 @@ dependencies:
   # Icon
   cupertino_icons: ^1.0.8
 
-  # Font — IBM Plex Sans / IBM Plex Mono (design system Vinara)
+  # Font - IBM Plex Sans / IBM Plex Mono (design system Vinara)
   google_fonts: ^6.2.1
   google_mlkit_text_recognition: ^0.16.0
 
@@ -19185,27 +19185,27 @@ flutter:
     #
     # `- assets/models/` ikut membundel semua yang kebetulan ada di folder itu,
     # termasuk yolo11l_float32.tflite (96,9 MB), yoloe_find.onnx (11 MB),
-    # pidnet_s.onnx.data (2,5 MB) dan pidnet_s_3zona.onnx — tidak satu pun
+    # pidnet_s.onnx.data (2,5 MB) dan pidnet_s_3zona.onnx - tidak satu pun
     # dimuat kode, semuanya ikut ke APK. Untuk pengguna dengan kuota terbatas
     # itu ratusan megabyte yang dibayar tanpa satu pun manfaat.
     #
     # Menambah berkas ke assets/models/ TIDAK otomatis membundelnya. Itu
     # disengaja: tambahkan barisnya di sini hanya kalau kode benar-benar
     # memuatnya lewat rootBundle.
-    - assets/models/ssd_mobilenet.tflite        # TFLiteService — deteksi rintangan
-    - assets/models/labelmap.txt                # TFLiteService — label COCO
-    - assets/models/rupiah_classifier_int8.tflite  # MoneyTFLiteService — 7 pecahan
+    - assets/models/ssd_mobilenet.tflite        # TFLiteService - deteksi rintangan
+    - assets/models/labelmap.txt                # TFLiteService - label COCO
+    - assets/models/rupiah_classifier_int8.tflite  # MoneyTFLiteService - 7 pecahan
     #
     # uang_rupiah.tflite (model lama) sengaja TIDAK dibundel lagi: sudah
     # digantikan rupiah_classifier_int8.tflite. Berkasnya tetap ada di
     # assets/models/ sebagai arsip, tapi tidak ikut ke APK.
     #
-    # rupiah_labels.txt juga tidak dibundel — urutan kelasnya sudah tetap di
+    # rupiah_labels.txt juga tidak dibundel - urutan kelasnya sudah tetap di
     # MoneyTFLiteService.classValues, jadi tidak ada yang memuatnya lewat
     # rootBundle. Berkasnya disimpan sebagai rujukan saat mengganti model.
-    - assets/models/pidnet_s_3zona_fp16.tflite  # PidnetService — segmentasi jalur
-    - assets/models/pidnet_s_3zona.tflite       # PidnetService — cadangan non-fp16
-    - assets/models/yolo11n.tflite              # YoloNavigasiService — rintangan navigasi
+    - assets/models/pidnet_s_3zona_fp16.tflite  # PidnetService - segmentasi jalur
+    - assets/models/pidnet_s_3zona.tflite       # PidnetService - cadangan non-fp16
+    - assets/models/yolo11n.tflite              # YoloNavigasiService - rintangan navigasi
     - assets/icons/
 ```
 
@@ -19226,18 +19226,18 @@ import 'package:guidio_app/services/money_tflite_service.dart';
 /// ─────────────────────────────────────────────────────────────────────────────
 /// Test suite gabungan untuk:
 ///
-/// 1. **CommandParser** — memastikan intent mapping tetap benar setelah
+/// 1. **CommandParser** - memastikan intent mapping tetap benar setelah
 ///    refactor apa pun.
-/// 2. **Kenali Uang (TFLite)** — integrasi ringan: muat model dan klasifikasi
+/// 2. **Kenali Uang (TFLite)** - integrasi ringan: muat model dan klasifikasi
 ///    sampel nyata dari dataset `uang-emisi-2022-baru`.
-/// 3. **Mode Navigasi** — fixture gambar bahaya jalan ada & valid.
-/// 4. **Cari Objek** — test parse command, hanya dieksekusi kalau backend
+/// 3. **Mode Navigasi** - fixture gambar bahaya jalan ada & valid.
+/// 4. **Cari Objek** - test parse command, hanya dieksekusi kalau backend
 ///    tersedia (skip otomatis jika offline/belum deploy).
 /// ─────────────────────────────────────────────────────────────────────────────
 void main() {
   VoiceIntent? intentOf(String text) => CommandParser.parse(text).intent;
 
-  // ─── 1. Command Parser — contoh ucapan dari dokumen arsitektur ─────────────
+  // ─── 1. Command Parser - contoh ucapan dari dokumen arsitektur ─────────────
   group('contoh ucapan dari dokumen arsitektur', () {
     const cases = <String, VoiceIntent>{
       // Deteksi Objek
@@ -19330,7 +19330,7 @@ void main() {
           expect(
             CommandParser.suggestableIntents.contains(s),
             isTrue,
-            reason: '"$text" menyarankan $s yang tidak punya handler — '
+            reason: '"$text" menyarankan $s yang tidak punya handler - '
                 'inilah yang membuat "Maksudmu X?" → "X" → "belum saya kenali"',
           );
         }
@@ -19338,14 +19338,14 @@ void main() {
     });
   });
 
-  // ─── 6. Kenali Uang — sample gambar nyata dari dataset ────────────────────
+  // ─── 6. Kenali Uang - sample gambar nyata dari dataset ────────────────────
   //
   // Test ini muat model TFLite on-device lalu mengklasifikasi gambar dari
   // dataset asli emisi 2022. Setiap pecahan diuji dengan 2 sampel berbeda.
   // Fixture ada di test/fixtures/money/ (sudah di-copy dari dataset).
   //
   // Skip otomatis kalau model asset tidak tersedia (misalnya CI tanpa assets).
-  group('Kenali Uang — klasifikasi gambar nyata', () {
+  group('Kenali Uang - klasifikasi gambar nyata', () {
     late MoneyTFLiteService svc;
     late bool modelLoaded;
 
@@ -19355,7 +19355,7 @@ void main() {
       modelLoaded = await svc.load();
     });
 
-    tearDownAll(() {/* singleton — jangan dispose; bisa dipakai test lain */});
+    tearDownAll(() {/* singleton - jangan dispose; bisa dipakai test lain */});
 
     /// Helper: baca fixture → kirim ke classifyJpeg → kembalikan MoneyResult.
     Future<MoneyResult> classify(String fixtureName) async {
@@ -19385,7 +19385,7 @@ void main() {
     for (final (fixture, expected) in samples) {
       test('${fixture.replaceAll('.jpg', '')} → Rp${_fmt(expected)}', () async {
         if (!modelLoaded) {
-          markTestSkipped('Model TFLite tidak berhasil dimuat — skip.');
+          markTestSkipped('Model TFLite tidak berhasil dimuat - skip.');
           return;
         }
         final result = await classify(fixture);
@@ -19406,12 +19406,12 @@ void main() {
     }
   });
 
-  // ─── 7. Mode Navigasi — fixture gambar valid ───────────────────────────────
+  // ─── 7. Mode Navigasi - fixture gambar valid ───────────────────────────────
   //
   // Test ini TIDAK menjalankan inference (model YOLOv11 terlalu besar untuk
   // dipush ke repo). Yang diverifikasi: gambar fixture ada, bisa dibaca, dan
   // berukuran wajar (> 100 KB) sehingga coverage integrasi tetap terjaga.
-  group('Navigation mode — fixture images exist and are valid', () {
+  group('Navigation mode - fixture images exist and are valid', () {
     const fixtures = [
       '01_got_terbuka.png',   // open drain / got terbuka
       '02_lubang_trotoar.png', // sidewalk hole
@@ -19421,12 +19421,12 @@ void main() {
     ];
 
     for (final name in fixtures) {
-      test('$name — file exists and is readable', () {
+      test('$name - file exists and is readable', () {
         final file = File('test/fixtures/navigation/$name');
         expect(file.existsSync(), isTrue, reason: 'Fixture tidak ada: $name');
         final bytes = file.readAsBytesSync();
         expect(bytes.length, greaterThan(100 * 1024),
-            reason: '$name terlalu kecil — mungkin file rusak atau terpotong.');
+            reason: '$name terlalu kecil - mungkin file rusak atau terpotong.');
         // Validasi magic bytes PNG: 0x89 0x50 0x4E 0x47
         expect(bytes[0], equals(0x89));
         expect(bytes[1], equals(0x50)); // 'P'
@@ -19436,12 +19436,12 @@ void main() {
     }
   });
 
-  // ─── 8. Cari Objek — parse command + guard backend ────────────────────────
+  // ─── 8. Cari Objek - parse command + guard backend ────────────────────────
   //
   // CommandParser harus mengekstrak target dari perintah bahasa Indonesia dan
   // Sunda. Backend check (HTTP ping) dilakukan di sini: kalau tidak reachable,
   // semua sub-test "would call backend" di-skip secara eksplisit, bukan fail.
-  group('Find Object — command parsing', () {
+  group('Find Object - command parsing', () {
     // --- 8a. Parser: bahasa Indonesia
     test('"cari dompet" extracts target "dompet"', () {
       final cmd = CommandParser.parse('cari dompet');
@@ -19494,7 +19494,7 @@ void main() {
     //
     // To run locally: start the backend, then:
     //   flutter test --name "object_find"
-    group('object_find — backend integration (skipped unless BE running)', () {
+    group('object_find - backend integration (skipped unless BE running)', () {
       const backendUrl = String.fromEnvironment(
         'GUIDO_BACKEND_URL',
         defaultValue: '',
@@ -19525,7 +19525,7 @@ void main() {
       for (final (target, fixturePath) in objectTargets) {
         test('find "$target" in ${fixturePath.split('/').last}', () {
           if (!backendAvailable) {
-            markTestSkipped('Backend not reachable — set GUIDO_BACKEND_URL to run.');
+            markTestSkipped('Backend not reachable - set GUIDO_BACKEND_URL to run.');
             return;
           }
           final file = File(fixturePath);
@@ -19562,7 +19562,7 @@ import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
-/// Inferensi on-device — TIDAK membutuhkan Flutter binding / rootBundle.
+/// Inferensi on-device - TIDAK membutuhkan Flutter binding / rootBundle.
 ///
 /// Dua kelompok besar:
 ///
@@ -19577,7 +19577,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// **B. Navigasi YOLO11n (INT8)**
 ///   - Model  : assets/models/yolo11n.tflite
 ///   - Input  : [1,640,640,3] float32, rentang 0..1
-///   - Output : [1,10,8400] — 4 box + 6 class scores
+///   - Output : [1,10,8400] - 4 box + 6 class scores
 ///   - Fixture: test/fixtures/navigation/ (PNG gambar bahaya jalan)
 ///   - Validasi: setidaknya satu Detection terdeteksi, dan labelnya
 ///              ada di daftar kelas yang diketahui dari gambar itu
@@ -19593,10 +19593,10 @@ const _kMoneyModelPath = 'assets/models/rupiah_classifier_int8.tflite';
 const _kYoloModelPath  = 'assets/models/yolo11n.tflite';
 
 /// Urutan kelas sesuai CLASS_ORDER di scripts/02_export_tflite.py.
-/// Harus identik dengan MoneyTFLiteService.classValues — jangan diubah.
+/// Harus identik dengan MoneyTFLiteService.classValues - jangan diubah.
 const List<int> _moneyClasses = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
 
-/// Kelas navigasi — urutan sesuai training (lihat yolo_navigasi_service.dart).
+/// Kelas navigasi - urutan sesuai training (lihat yolo_navigasi_service.dart).
 const List<String> _navLabels = [
   'lubang', 'got_terbuka', 'tangga', 'orang', 'motor', 'tiang',
 ];
@@ -19748,21 +19748,21 @@ List<_Box> _postProcessYolo(List<List<double>> raw) {
 
 void main() {
   // ─── A. Kenali Uang ────────────────────────────────────────────────────────
-  group('A. Kenali Uang — MobileNetV2 INT8 inference', () {
+  group('A. Kenali Uang - MobileNetV2 INT8 inference', () {
     late Interpreter? interp;
 
     setUpAll(() {
       interp = _loadInterpreter(_kMoneyModelPath);
       if (interp == null) {
         // ignore: avoid_print
-        print('[TEST] TFLite SO tidak ada — semua test Money akan di-skip.');
+        print('[TEST] TFLite SO tidak ada - semua test Money akan di-skip.');
       }
     });
 
     tearDownAll(() => interp?.close());
 
     /// Ground-truth: langsung dari nama file via regex.
-    /// Tidak ada hard-coded mapping — kalau nama file salah, regex gagal,
+    /// Tidak ada hard-coded mapping - kalau nama file salah, regex gagal,
     /// test langsung merah.
     const moneyFixtures = [
       'uang_1000_a.jpg',
@@ -19835,33 +19835,33 @@ void main() {
                       'seharusnya Rp${_fmtIdr(expected)}.\n  Semua prob: $probStr');
         } else {
           // Uncertain: tetap tidak boleh salah kelas (argmax harus benar)
-          // — ini lebih longgar; test pass tapi print peringatan
+          // - ini lebih longgar; test pass tapi print peringatan
           // ignore: avoid_print
           print('  ⚠ Uncertain (conf=${(confidence*100).toStringAsFixed(1)}% '
                 '< ${(_moneyConfThresh*100).toStringAsFixed(0)}%): '
                 'argmax Rp${_fmtIdr(predictedValue)} vs expected Rp${_fmtIdr(expected)}');
-          // Tidak assert gagal — production juga tidak tampilkan nominal saat uncertain
+          // Tidak assert gagal - production juga tidak tampilkan nominal saat uncertain
         }
       });
     }
   });
 
   // ─── B. Navigasi YOLO11n ───────────────────────────────────────────────────
-  group('B. Navigasi YOLO11n — hazard detection inference', () {
+  group('B. Navigasi YOLO11n - hazard detection inference', () {
     late Interpreter? interp;
 
     setUpAll(() {
       interp = _loadInterpreter(_kYoloModelPath, threads: 4);
       if (interp == null) {
         // ignore: avoid_print
-        print('[TEST] TFLite SO tidak ada — semua test YOLO akan di-skip.');
+        print('[TEST] TFLite SO tidak ada - semua test YOLO akan di-skip.');
       }
     });
 
     tearDownAll(() => interp?.close());
 
     /// Fixture + label yang DIHARAPKAN terdeteksi (dari nama file).
-    /// Regex dipakai oleh _navLabelsFromFilename() — tidak ada hard-coded list.
+    /// Regex dipakai oleh _navLabelsFromFilename() - tidak ada hard-coded list.
     const navFixtures = [
       '01_got_terbuka.png',    // → got_terbuka
       '02_lubang_trotoar.png', // → lubang
@@ -19890,7 +19890,7 @@ void main() {
         // 2. Preprocessing: resize ke 640×640, normalisasi 0..1
         final input = _preprocessYolo(decoded!);
 
-        // 3. Inferensi — output [1][10][8400]
+        // 3. Inferensi - output [1][10][8400]
         final rawOutput = [List.generate(10, (_) => List.filled(8400, 0.0))];
         final outputs = {0: rawOutput};
         interp!.runForMultipleInputs([input], outputs);
@@ -19908,7 +19908,7 @@ void main() {
           // Gambar tidak punya mapping label yang diketahui → skip validasi label,
           // cukup pastikan inference tidak crash
           // ignore: avoid_print
-          print('  ⚠ Tidak ada expected label dari nama file "$fixture" — skip label check.');
+          print('  ⚠ Tidak ada expected label dari nama file "$fixture" - skip label check.');
           return;
         }
 

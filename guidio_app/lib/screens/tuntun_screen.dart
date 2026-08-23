@@ -12,7 +12,7 @@ import '../services/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Deteksi Objek — bagian 7 IMPLEMENTASI.md, 29 state (DO-01..DO-29).
+/// Mode Deteksi Objek - bagian 7 IMPLEMENTASI.md, 29 state (DO-01..DO-29).
 /// Kamera, TFLite/server, filter kestabilan, dan SORT tracker SUDAH nyata
 /// lewat [DetectionProvider]. State yang tak bisa dipicu dari kondisi nyata
 /// (multi-objek serentak, kelas tak dikenal, dst.) dicapai lewat panel debug
@@ -58,14 +58,14 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
 
   /// Apakah deteksi objek sedang aktif (jalan) atau dijeda.
   ///
-  /// **Dimulai false — deteksi tidak menyala sendiri.** Ini layar pertama
+  /// **Dimulai false - deteksi tidak menyala sendiri.** Ini layar pertama
   /// saat aplikasi dibuka, dan saat itu ponsel biasanya masih di tangan yang
   /// turun, di saku, atau menghadap tanah. Peringatan pertama dari posisi itu
   /// hampir selalu keliru, dan peringatan keliru dari alat bantu jalan lebih
   /// merusak daripada diam: sekali pengguna belajar aplikasinya sering salah,
   /// peringatan yang benar ikut diabaikan.
   ///
-  /// Konsekuensinya ditangani, bukan diabaikan — lihat [initState] dan
+  /// Konsekuensinya ditangani, bukan diabaikan - lihat [initState] dan
   /// [_armPausedReminder]: keadaan mati diucapkan saat masuk dan diingatkan
   /// tiap 30 detik, supaya tidak ada yang berjalan menyangka sudah dijaga.
   bool _detectionActive = false;
@@ -76,12 +76,12 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   Timer? _warmupTimer;
   Timer? _speakingPoll;
 
-  /// DO — pengingat berkala saat deteksi dijeda.
+  /// DO - pengingat berkala saat deteksi dijeda.
   ///
   /// Tanpa ini, "Deteksi dijeda." terucap sekali lalu hening permanen. Untuk
   /// pengguna yang tidak melihat layar, aplikasi yang dijeda **tidak bisa
   /// dibedakan** dari aplikasi yang aktif tapi kebetulan tidak melihat apa
-  /// pun — dan ia berjalan menyangka masih dijaga.
+  /// pun - dan ia berjalan menyangka masih dijaga.
   Timer? _pausedReminder;
 
   @override
@@ -109,7 +109,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
         );
         _armPausedReminder();
       }
-      // Listener dark detection — TTS satu kali saat transisi gelap
+      // Listener dark detection - TTS satu kali saat transisi gelap
       context.read<CameraProvider>().addListener(_onCameraDarkChanged);
 
       // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
@@ -156,7 +156,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // DO-18 — kembali dari latar belakang.
+    // DO-18 - kembali dari latar belakang.
     if (state == AppLifecycleState.resumed) {
       _checkPermissions();
       if (mounted) {
@@ -164,7 +164,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
         context.read<CameraProvider>().startStream();
         // Hormati keadaan jeda. Sebelumnya `startRealtime()` dipanggil tanpa
         // memeriksa apa pun, jadi deteksi hidup lagi diam-diam sementara
-        // tombol tetap bertuliskan "Lanjutkan" — label dan keadaan berbohong
+        // tombol tetap bertuliskan "Lanjutkan" - label dan keadaan berbohong
         // ke arah yang berlawanan.
         if (_detectionActive) {
           _startDetection();
@@ -199,14 +199,14 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     }
   }
 
-  /// "ulangi" di Mode Deteksi — sebutkan lagi apa yang terlihat sekarang.
+  /// "ulangi" di Mode Deteksi - sebutkan lagi apa yang terlihat sekarang.
   ///
   /// Cabang "tidak ada rintangan" adalah satu-satunya kalimat di mode ini yang
   /// berupa JAMINAN, bukan laporan. Karena itu dia harus dijaga paling ketat:
   /// pengguna tidak punya cara lain memeriksanya, dan "aman" yang keliru
   /// dipercaya penuh sampai terbukti dengan cara yang menyakitkan.
   ///
-  /// Daftar deteksi yang kosong bisa berarti dua hal yang sangat berbeda —
+  /// Daftar deteksi yang kosong bisa berarti dua hal yang sangat berbeda -
   /// "memang tidak ada apa-apa" atau "sistem tidak sedang melihat apa pun".
   /// Sebelumnya keduanya menghasilkan kalimat yang sama.
   void _repeatLastDetection() {
@@ -304,7 +304,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     context.read<DetectionProvider>().startRealtime();
   }
 
-  /// Ingatkan tiap 30 detik selama dijeda — suara + getar, karena di jalan
+  /// Ingatkan tiap 30 detik selama dijeda - suara + getar, karena di jalan
   /// yang ramai getar sering lebih terdengar daripada suara.
   void _armPausedReminder() {
     _pausedReminder?.cancel();
@@ -377,7 +377,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       if (!stillThere && !alreadyGhost) {
         final ghost = _GhostDetection(prev);
         _ghosts.add(ghost);
-        // DO-20 — memudar tanpa suara "objek hilang", dibersihkan setelah animasi.
+        // DO-20 - memudar tanpa suara "objek hilang", dibersihkan setelah animasi.
         Timer(const Duration(milliseconds: 900), () {
           if (mounted) setState(() => _ghosts.remove(ghost));
         });
@@ -441,7 +441,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
           // CameraStage. `CameraPreview` menjaga rasio kamera dan tidak
           // benar-benar mengisi layar, jadi hamparan yang dipasang dengan
           // `Positioned.fill` akan memetakan koordinatnya ke area yang lebih
-          // besar daripada gambarnya — setiap kotak meleset dari objeknya.
+          // besar daripada gambarnya - setiap kotak meleset dari objeknya.
           if (_hasCameraPermission && cam.isInitialized && cam.controller != null)
             CameraStage(
               controller: cam.controller!,
@@ -472,7 +472,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
             ),
 
           if (!_hasCameraPermission)
-            // DO-14 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // DO-14 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera',
@@ -483,7 +483,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
           else if (!warmingUp)
             ..._buildDetectionZone(context, bottomInset, dets, cam, showTorchSlot),
 
-          // ContextualActionSlot — tawaran / kontrol lampu senter.
+          // ContextualActionSlot - tawaran / kontrol lampu senter.
           // Selalu di posisi yang sama: tepat di atas BottomActionBar.
           if (showTorchSlot)
             Positioned(
@@ -492,7 +492,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
               child: ContextualActionSlot(
                 message: cam.isTorchOn
                     ? 'Lampu senter menyala'
-                    : 'Sekitar gelap — perlu nyalakan lampu?',
+                    : 'Sekitar gelap - perlu nyalakan lampu?',
                 primaryLabel: cam.isTorchOn ? 'Matikan Lampu' : 'Nyalakan Lampu',
                 primaryIcon: cam.isTorchOn
                     ? Icons.flashlight_off_rounded
@@ -670,7 +670,7 @@ class _DebugSheet extends StatelessWidget {
           children: [
             Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                 decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-            Text('Debug — Mode Deteksi Objek', style: AppTypography.title()),
+            Text('Debug - Mode Deteksi Objek', style: AppTypography.title()),
             const SizedBox(height: 4),
             Text('DO-01..05,08..12,14,16..18,27,28 sudah tercapai lewat kamera/izin/koneksi nyata',
                 textAlign: TextAlign.center, style: AppTypography.caption()),

@@ -44,7 +44,7 @@ class _WindowEntry {
   }) : addedAt = DateTime.now();
 }
 
-/// NarrationScheduler — mengubah aliran deteksi per-frame menjadi narasi
+/// NarrationScheduler - mengubah aliran deteksi per-frame menjadi narasi
 /// yang nyaman didengar.
 ///
 /// ## Masalah yang dipecahkan
@@ -296,7 +296,7 @@ class NarrationScheduler {
     // objek yang tidak pernah disebut namanya tetap masuk cooldown dan naik
     // tingkat backoff-nya, jadi giliran bicaranya justru makin jauh setiap
     // kali dia dipangkas. Itu persis kegagalan yang revisi ini ada untuk
-    // memperbaiki — cuma pindah satu lapis ke bawah, dan lebih sulit
+    // memperbaiki - cuma pindah satu lapis ke bawah, dan lebih sulit
     // terlihat karena narasinya TERDENGAR baik-baik saja.
     final entriesNamed = entries.where((e) => named.contains(e.trackId));
     for (final e in entriesNamed) {

@@ -5,7 +5,7 @@ import 'package:flutter/semantics.dart';
 import '../providers/app_mode_provider.dart';
 import '../theme/index.dart';
 
-/// Ikon garis per mode — dipakai bersama oleh ModeBadge & ModePickerSheet.
+/// Ikon garis per mode - dipakai bersama oleh ModeBadge & ModePickerSheet.
 IconData modeIcon(AppMode mode) => switch (mode) {
       AppMode.tuntun     => Icons.remove_red_eye_outlined,
       AppMode.money      => Icons.payments_outlined,
@@ -15,10 +15,10 @@ IconData modeIcon(AppMode mode) => switch (mode) {
       AppMode.findObject => Icons.search_rounded,
     };
 
-/// ModeBadge (F1) — pill identitas mode, opaque #202432, di atas kamera.
+/// ModeBadge (F1) - pill identitas mode, opaque #202432, di atas kamera.
 /// Bukan tombol untuk ganti mode (itu lewat tombol Pilih Mode / suara), tapi
 /// ketuk 5× membuka panel debug tersembunyi (state switcher) bila disediakan
-/// lewat [onDebugActivate] — mekanisme baku bagian 2 "Cara memalsukan fitur".
+/// lewat [onDebugActivate] - mekanisme baku bagian 2 "Cara memalsukan fitur".
 class ModeBadge extends StatefulWidget {
   final AppMode mode;
   final bool transitioning;
@@ -69,7 +69,7 @@ class _ModeBadgeState extends State<ModeBadge> {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      // Urutan fokus 3 — bagian 10, sesudah StatusBanner dan aksinya.
+      // Urutan fokus 3 - bagian 10, sesudah StatusBanner dan aksinya.
       sortKey: const OrdinalSortKey(3),
       header: true,
       label: _label,

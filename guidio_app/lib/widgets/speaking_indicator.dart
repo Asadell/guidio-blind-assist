@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// SpeakingIndicator (5.15) — pil kecil kanan atas menandakan TTS berjalan.
+/// SpeakingIndicator (5.15) - pil kecil kanan atas menandakan TTS berjalan.
 /// Varian senyap: ikon speaker dicoret + "Getar saja".
 class SpeakingIndicator extends StatefulWidget {
   final bool silent;

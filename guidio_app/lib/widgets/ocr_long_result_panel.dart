@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/index.dart';
 import 'tier_icon.dart';
 
-/// Satu blok siap-render untuk [OcrLongResultPanel] — kalimatnya sudah
+/// Satu blok siap-render untuk [OcrLongResultPanel] - kalimatnya sudah
 /// dipecah oleh pemanggil (ocr_screen.dart) supaya panel ini tidak perlu
 /// tahu aturan pemisahan kalimat, cuma menyorot kalimat aktif.
 class OcrRenderBlock {
@@ -24,11 +24,11 @@ class OcrRenderBlock {
   });
 }
 
-/// OcrLongResultPanel — varian ResultPanel khusus hasil panjang/dua
+/// OcrLongResultPanel - varian ResultPanel khusus hasil panjang/dua
 /// bahasa/sebagian-gagal/senyap Mode Baca Teks (BT-07/08/09/10/12a/19).
 /// ResultPanel (komponen sistem, read-only) sengaja tidak dipakai di sini
 /// karena butuh: blok berheading, progress baca, dan kontrol yang berubah
-/// bentuk saat senyap — di luar API ResultPanel.
+/// bentuk saat senyap - di luar API ResultPanel.
 class OcrLongResultPanel extends StatelessWidget {
   final List<OcrRenderBlock> blocks;
   final bool speaking;

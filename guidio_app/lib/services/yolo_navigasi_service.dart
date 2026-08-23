@@ -8,7 +8,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
 
 // ─────────────────────────────────────────────────────────────
-// Kelas navigasi custom (6 kelas) — urutan sesuai training
+// Kelas navigasi custom (6 kelas) - urutan sesuai training
 // ─────────────────────────────────────────────────────────────
 const List<String> _navLabels = [
   'lubang',
@@ -42,7 +42,7 @@ const double _iouThresh = 0.45;
 const int _yoloSize = 640;
 
 // ─────────────────────────────────────────────────────────────
-// YoloNavigasiService — deteksi rintangan on-device (YOLO11n)
+// YoloNavigasiService - deteksi rintangan on-device (YOLO11n)
 // ─────────────────────────────────────────────────────────────
 class YoloNavigasiService {
   static final YoloNavigasiService instance = YoloNavigasiService._();
@@ -78,7 +78,7 @@ class YoloNavigasiService {
       // Model yang dibundel sebelumnya berbentuk NCHW [1,3,640,640] sementara
       // kode ini menyusun input NHWC [1,640,640,3]. Interpreter menolaknya,
       // pengecualiannya tertangkap di bawah, dan `detect()` mengembalikan
-      // daftar kosong pada SETIAP frame — mode navigasi berjalan tanpa pernah
+      // daftar kosong pada SETIAP frame - mode navigasi berjalan tanpa pernah
       // melaporkan satu pun rintangan, tanpa satu pun tanda di layar bahwa
       // ada yang salah.
       if (inputShape.length != 4 ||
@@ -124,7 +124,7 @@ class YoloNavigasiService {
   ///
   /// Model yang dibundel sebelumnya memakai konvensi kedua, model ini yang
   /// pertama. Memakai pengali yang salah menggeser setiap kotak sejauh 640
-  /// kali — semuanya terdorong ke tepi frame lalu ter-clamp, jadi jaraknya
+  /// kali - semuanya terdorong ke tepi frame lalu ter-clamp, jadi jaraknya
   /// ngawur dan arahnya selalu sama.
   ///
   /// Dan yang membuatnya berbahaya: TIDAK ADA error. Modelnya termuat,
@@ -140,7 +140,7 @@ class YoloNavigasiService {
       //
       // Buffer datar, bukan `List` bersarang. Ini cuma berjalan sekali saat
       // muat, tapi versi bersarang membangun 409.600 objek List kecil
-      // sekaligus — lonjakan memori yang di HP 4 GB bisa memicu pengumpulan
+      // sekaligus - lonjakan memori yang di HP 4 GB bisa memicu pengumpulan
       // sampah tepat saat pengguna membuka mode navigasi.
       final probe = Float32List(_yoloSize * _yoloSize * 3)..fillRange(
           0, _yoloSize * _yoloSize * 3, 0.5);
@@ -184,11 +184,11 @@ class YoloNavigasiService {
   /// [input] datang dari [NavFrameConverter.prepare]: `[1,640,640,3]` datar,
   /// rentang 0..1, sudah diputar dan diskalakan di isolate.
   ///
-  /// [uprightW] dan [uprightH] adalah ukuran bingkai TEGAK — bingkai yang
+  /// [uprightW] dan [uprightH] adalah ukuran bingkai TEGAK - bingkai yang
   /// dilihat pengguna di preview. Di Android bingkai sensor datang dalam
   /// lanskap lalu diputar 90 derajat, jadi lebar dan tingginya bertukar.
   /// Versi sebelumnya menskalakan hasil dengan dimensi yang BELUM ditukar,
-  /// sehingga setiap kotak melar di satu sumbu dan menciut di sumbu lain — dan
+  /// sehingga setiap kotak melar di satu sumbu dan menciut di sumbu lain - dan
   /// `_direction()` pun membagi tiga memakai lebar yang salah, jadi objek di
   /// kiri bisa diucapkan "di kanan".
   Future<List<Detection>> detect(
@@ -201,7 +201,7 @@ class YoloNavigasiService {
     final t0 = DateTime.now();
     try {
       final out = _outputBuffer ??= Float32List(10 * 8400);
-      // View byte, bukan Float32List — lihat catatan panjang di
+      // View byte, bukan Float32List - lihat catatan panjang di
       // `PidnetService.analyze`. Singkatnya: `tflite_flutter` hanya melewati
       // konversi untuk `Uint8List`/`ByteBuffer`; `Float32List` datar dibaca
       // sebagai tensor 1 dimensi dan grafnya gagal disiapkan.
@@ -229,7 +229,7 @@ class YoloNavigasiService {
     int uprightH,
   ) {
     // Tata letak [kanal][anchor]: kanal 0..3 = cx, cy, w, h; 4..9 = skor kelas.
-    // Datar, jadi indeksnya dihitung sebagai `kanal * numAnchors + anchor` —
+    // Datar, jadi indeksnya dihitung sebagai `kanal * numAnchors + anchor` -
     // tanpa `List` bersarang dan tanpa cast dinamis per pembacaan.
     const numAnchors = 8400;
     final numClasses = _navLabels.length; // 6
@@ -272,7 +272,7 @@ class YoloNavigasiService {
     // NMS per kelas
     final kept = _nms(boxes);
 
-    // Skala kembali ke ukuran bingkai TEGAK — bingkai yang sama dengan yang
+    // Skala kembali ke ukuran bingkai TEGAK - bingkai yang sama dengan yang
     // dilihat pengguna di preview, sehingga kotaknya bisa langsung digambar.
     final scaleX = uprightW / _yoloSize;
     final scaleY = uprightH / _yoloSize;

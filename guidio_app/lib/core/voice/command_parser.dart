@@ -1,6 +1,6 @@
 import 'intents.dart';
 
-/// CommandParser — varian ucapan → intent, sesuai tabel bagian 14.
+/// CommandParser - varian ucapan → intent, sesuai tabel bagian 14.
 /// Sengaja berbasis keyword lokal (0ms, aman offline) mengikuti pola
 /// [VoiceProvider] yang sudah ada. Panggil [parse] dengan teks hasil STT.
 class CommandParser {
@@ -531,14 +531,14 @@ class CommandParser {
   // **mengikuti urutan deklarasi Map**. Dua akibatnya nyata:
   //
   //   1. `actionGoBack` memuat 'stop' dan 'berhenti', dan ia dideklarasikan
-  //      sebelum `actionStopWalking` dan `playPause`. Maka "stop navigasi" —
-  //      yang jelas dimaksudkan untuk menghentikan panduan — malah **keluar
+  //      sebelum `actionStopWalking` dan `playPause`. Maka "stop navigasi" -
+  //      yang jelas dimaksudkan untuk menghentikan panduan - malah **keluar
   //      dari Mode Navigasi**. Sebagian besar frasa kedua intent itu tidak
   //      pernah bisa tercapai.
   //   2. `contains` tanpa batas kata membuat potongan kata ikut cocok.
   //
   // Sekarang: frasa dicocokkan pada batas kata, dan **yang paling panjang
-  // diperiksa lebih dulu** — yang spesifik selalu menang atas yang umum,
+  // diperiksa lebih dulu** - yang spesifik selalu menang atas yang umum,
   // terlepas dari urutan deklarasi.
   // ===========================================================================
 
@@ -586,7 +586,7 @@ class CommandParser {
     final norm = _normalize(rawText);
 
     // =========================================================================
-    // [Fuzzy Matching Layer 0] — Natural Conversational Mode Transition
+    // [Fuzzy Matching Layer 0] - Natural Conversational Mode Transition
     // Handles natural spoken sentences like: "Saya pengin pindah ke mode baca teks"
     // Strips conversational prefixes and extracts target keywords (baca, uang, etc).
     // =========================================================================
@@ -618,7 +618,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 1] — Frasa kamus MULTI-KATA, terpanjang lebih dulu.
+    // [Layer 1] - Frasa kamus MULTI-KATA, terpanjang lebih dulu.
     //
     // Frasa banyak kata mengungkap maksud jauh lebih tegas daripada satu kata
     // lepas, jadi ia diperiksa sebelum apa pun. Di sinilah "stop navigasi"
@@ -633,7 +633,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 2] — Pola cari-objek dinamis ("cari [barang]").
+    // [Layer 2] - Pola cari-objek dinamis ("cari [barang]").
     //
     // Sengaja SEBELUM kata tunggal: "cari uang yang jatuh" harus berarti
     // mencari benda, bukan membuka Mode Kenali Uang hanya karena kata 'uang'
@@ -649,7 +649,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 3] — Kata tunggal ("uang", "deteksi", "navigasi", "asisten").
+    // [Layer 3] - Kata tunggal ("uang", "deteksi", "navigasi", "asisten").
     // =========================================================================
     for (final entry in _sortedPhrases) {
       if (_wordCount(entry.key) != 1) continue;
@@ -659,7 +659,7 @@ class CommandParser {
     }
 
     // =========================================================================
-    // [Layer 4] — Kombinasi kata kunci longgar ("baca" + "mode").
+    // [Layer 4] - Kombinasi kata kunci longgar ("baca" + "mode").
     // =========================================================================
     bool has(String w) => _containsPhrase(norm, w);
     if (has('mode') || has('buka') || has('aktifkan')) {
@@ -719,14 +719,14 @@ class CommandParser {
       (List<String>.from(fillerWords)..sort((a, b) => b.length.compareTo(a.length)));
 
   // =========================================================================
-  // [Fuzzy Matching Layer 3] — Word Overlap Similarity Scoring (Jaccard-like)
+  // [Fuzzy Matching Layer 3] - Word Overlap Similarity Scoring (Jaccard-like)
   // Calculates word intersection overlap between raw STT input and phrase database.
   // Returns top 2 nearest guesses for fallback voice prompts ("Saya dengar X. Maksudmu Y, atau Z?").
   // =========================================================================
   /// Intent yang boleh ditawarkan balik ke pengguna.
   ///
   /// **Hanya yang benar-benar punya handler.** Sebelumnya seluruh isi
-  /// `_phrases` bisa disarankan, termasuk 10 intent tanpa handler — sehingga
+  /// `_phrases` bisa disarankan, termasuk 10 intent tanpa handler - sehingga
   /// Vinara bisa bertanya "Maksudmu jeda?", pengguna menjawab "jeda", dan
   /// jawabannya "Perintah itu belum saya kenali di mode ini". Lingkaran buntu
   /// yang diciptakan aplikasi sendiri, dan pengguna tunanetra tidak punya
@@ -780,7 +780,7 @@ class CommandParser {
 }
 
 /// Label ucapan untuk ditawarkan balik ke pengguna, mis. "Maksudmu kenali
-/// uang, atau cari uang yang jatuh?" — bagian 14.
+/// uang, atau cari uang yang jatuh?" - bagian 14.
 extension VoiceIntentSpokenLabel on VoiceIntent {
   String get spokenLabel => switch (this) {
         VoiceIntent.modeMoney => 'kenali uang',

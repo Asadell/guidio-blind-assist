@@ -10,7 +10,7 @@ import '../theme/app_colors.dart';
 /// Warna hamparan segmentasi jalur.
 ///
 /// Alfa-nya sengaja rendah. Hamparan ini dibaca oleh pendamping awas, juri,
-/// atau pengguna low-vision — bukan oleh pengguna tunanetra total — jadi dia
+/// atau pengguna low-vision - bukan oleh pengguna tunanetra total - jadi dia
 /// harus menjelaskan apa yang dilihat sistem TANPA menutupi permukaan asli
 /// yang sedang dinilai. Hamparan pekat justru menyembunyikan bukti yang
 /// membuatnya berguna.
@@ -21,7 +21,7 @@ class SegmentationPalette {
   /// Lubang, tangga, dan bahaya permukaan lain.
   final Color hazard;
 
-  /// Bukan jalur — dibiarkan transparan secara bawaan supaya yang menonjol
+  /// Bukan jalur - dibiarkan transparan secara bawaan supaya yang menonjol
   /// hanya jalurnya, bukan seluruh layar.
   final Color nonWalkable;
 
@@ -101,7 +101,7 @@ List<int> _rgba(Color c) {
 ///
 /// Menggambar [image] meregang penuh mengisi ruang yang diberikan. Itu benar
 /// selama pemanggil menempatkannya pada persegi yang SAMA dengan preview
-/// kamera — lihat `CameraStage`, yang ada justru untuk menjamin hal itu.
+/// kamera - lihat `CameraStage`, yang ada justru untuk menjamin hal itu.
 ///
 /// Kenapa meregang penuh dan bukan menjaga rasio: mask memang dihasilkan dari
 /// frame yang diregangkan ke ukuran masukan model (640x384), jadi posisi
@@ -164,7 +164,7 @@ class _SegmentationPainter extends CustomPainter {
 /// Legenda kecil untuk menjelaskan arti warna hamparan.
 ///
 /// Hamparan berwarna tanpa keterangan itu tebak-tebakan bagi siapa pun yang
-/// baru melihat aplikasi ini — termasuk juri dan penguji. Sengaja dibungkus
+/// baru melihat aplikasi ini - termasuk juri dan penguji. Sengaja dibungkus
 /// [ExcludeSemantics]: ini murni bantuan visual, dan pembaca layar sudah
 /// mendapat informasi yang sama lewat narasi suara. Membacakannya lagi hanya
 /// menambah panjang antrean suara tanpa menambah informasi.

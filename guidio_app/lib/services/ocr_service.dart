@@ -9,7 +9,7 @@ class OcrTextBlock {
   final String heading;
   final List<String> sentences;
 
-  /// Perkiraan jumlah kata — dipakai BT-08 untuk menghitung durasi bacaan
+  /// Perkiraan jumlah kata - dipakai BT-08 untuk menghitung durasi bacaan
   /// sebelum mulai, supaya tawaran "ringkas / penuh / pilih bagian" muncul
   /// sebelum pengguna terjebak mendengarkan tiga menit teks.
   final int wordCount;
@@ -31,7 +31,7 @@ class OcrResult {
   bool get isEmpty => fullText.trim().isEmpty;
   int get totalWords => blocks.fold(0, (sum, b) => sum + b.wordCount);
 
-  /// BT-08 — perkiraan durasi baca. ~150 kata per menit adalah laju TTS
+  /// BT-08 - perkiraan durasi baca. ~150 kata per menit adalah laju TTS
   /// Bahasa Indonesia yang wajar pada kecepatan bawaan.
   Duration get estimatedDuration =>
       Duration(seconds: (totalWords / 150 * 60).round());
@@ -42,17 +42,17 @@ class OcrResult {
 /// Ini menggantikan OCR di server. Tiga akibat langsung, semuanya perbaikan:
 ///
 /// 1. **Baca Teks jalan tanpa internet.** BT-02 ("tombol nonaktif + alasan")
-///    tidak berlaku lagi — tidak ada alasan menonaktifkan tombol untuk kerja
+///    tidak berlaku lagi - tidak ada alasan menonaktifkan tombol untuk kerja
 ///    yang tidak butuh jaringan sama sekali.
 /// 2. **Tidak ada gambar yang meninggalkan perangkat.** Foto dokumen, resep,
-///    surat — semuanya tetap di ponsel.
+///    surat - semuanya tetap di ponsel.
 /// 3. **Hasil datang dalam ratusan milidetik**, bukan detik. BT-05 (banner
 ///    lambat 8 detik) dan BT-15 (timeout 15 detik) praktis tidak pernah kena.
 ///
 /// Yang hilang: ML Kit tidak melakukan koreksi berbasis LLM, jadi teks
 /// bersudut miring atau tulisan tangan lebih sering meleset daripada OCR
-/// server. Untuk menu, label harga, dan papan nama — kasus pemakaian utama
-/// mode ini — itu pertukaran yang menguntungkan.
+/// server. Untuk menu, label harga, dan papan nama - kasus pemakaian utama
+/// mode ini - itu pertukaran yang menguntungkan.
 class OcrService {
   static final OcrService instance = OcrService._();
   OcrService._();
@@ -65,7 +65,7 @@ class OcrService {
   /// Mengenali teks dari berkas gambar hasil `takePicture`.
   ///
   /// ML Kit membaca langsung dari path berkas, jadi byte-nya **tidak perlu**
-  /// dibaca ke memori Dart lebih dulu — untuk foto 4 MP itu menghemat satu
+  /// dibaca ke memori Dart lebih dulu - untuk foto 4 MP itu menghemat satu
   /// salinan besar yang tidak ada gunanya.
   Future<OcrResult> recognizeFile(String imagePath) async {
     final input = InputImage.fromFilePath(imagePath);
@@ -84,7 +84,7 @@ class OcrService {
     try {
       return await recognizeFile(file.path);
     } finally {
-      // Foto tidak ditinggalkan di penyimpanan — BT-21 mengeluh soal ruang,
+      // Foto tidak ditinggalkan di penyimpanan - BT-21 mengeluh soal ruang,
       // dan menumpuk berkas sementara akan memperburuknya.
       if (await file.exists()) {
         await file.delete();
@@ -100,7 +100,7 @@ class OcrService {
       if (lines.isEmpty) continue;
 
       // ML Kit sudah mengelompokkan teks jadi blok berdasarkan tata letak.
-      // Baris pertama tiap blok dipakai sebagai heading — itu yang membuat
+      // Baris pertama tiap blok dipakai sebagai heading - itu yang membuat
       // ResultPanel/long punya heading nyata, bukan satu blok "Hasil baca"
       // untuk seluruh halaman seperti waktu memakai OCR server.
       final heading = _asHeading(lines.first);

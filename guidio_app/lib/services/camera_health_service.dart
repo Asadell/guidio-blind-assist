@@ -8,7 +8,7 @@ class CameraHealthResult {
   const CameraHealthResult({required this.ok, required this.message});
 }
 
-/// Camera Health Service — cek orientasi kamera via accelerometer.
+/// Camera Health Service - cek orientasi kamera via accelerometer.
 /// Pengecekan gelap/buram/tertutup dilakukan di server (camera_health.py)
 /// dan secara on-device di CameraProvider (brightness dari plane Y).
 class CameraHealthService {
@@ -22,12 +22,12 @@ class CameraHealthService {
   ///
   /// Saat pengguna berjalan, ponsel yang dipegang ikut mengayun naik-turun.
   /// Ayunan itu membuat kotak deteksi membesar-mengecil sendiri, sehingga
-  /// objek yang diam terbaca "maju-mundur" — dan `isApproaching` yang memotong
+  /// objek yang diam terbaca "maju-mundur" - dan `isApproaching` yang memotong
   /// cooldown 50% ikut menyala tanpa ada yang benar-benar mendekat.
   ///
   /// Diukur dari perubahan percepatan antar sampel. Ini bukan pengganti
   /// gyroscope, tapi cukup untuk **membedakan tangan diam dari tangan
-  /// mengayun** — dan itulah satu-satunya yang dibutuhkan: saat goyang, ambang
+  /// mengayun** - dan itulah satu-satunya yang dibutuhkan: saat goyang, ambang
   /// "mendekat" dinaikkan dan penghalusan jarak diperlambat.
   double _motionLevel = 0.0;
   double get motionLevel => _motionLevel;

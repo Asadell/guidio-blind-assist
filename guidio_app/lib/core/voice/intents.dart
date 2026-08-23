@@ -1,4 +1,4 @@
-/// Intent perintah suara — bagian 14 IMPLEMENTASI.md. 20 intent baku.
+/// Intent perintah suara - bagian 14 IMPLEMENTASI.md. 20 intent baku.
 enum VoiceIntent {
   // Ganti mode
   modeMoney,
@@ -26,7 +26,7 @@ enum VoiceIntent {
   // Bantuan
   helpWhat,
   helpWhereAmI,
-  // Cari Objek — target dinamis, tangkap terpisah dari intent
+  // Cari Objek - target dinamis, tangkap terpisah dari intent
   findObjectTarget,
 }
 
@@ -59,10 +59,10 @@ extension VoiceIntentX on VoiceIntent {
 class VoiceCommand {
   final VoiceIntent? intent;
   final String rawText;
-  /// Untuk `findObjectTarget` / `mode.findObject "cari [nama barang]"` —
+  /// Untuk `findObjectTarget` / `mode.findObject "cari [nama barang]"` -
   /// nama barang yang diekstrak dari ucapan.
   final String? argument;
-  /// Dua tebakan terdekat saat tidak dikenali — bagian 14 "Tidak dikenali".
+  /// Dua tebakan terdekat saat tidak dikenali - bagian 14 "Tidak dikenali".
   final List<VoiceIntent> suggestions;
 
   const VoiceCommand({

@@ -58,7 +58,7 @@ suara yang ambigu, dan membaca jalur trotoar.
 **Hal pertama yang perlu dipahami:** dua dari enam mode **tidak pernah
 memanggil server ini sama sekali**, yaitu Deteksi Objek dan Kenali Uang.
 Itu keputusan sengaja, bukan kekurangan. Dan sekarang ditambah dua lagi:
-**intent parsing** dan **narasi deteksi** juga dikerjakan lokal di Flutter —
+**intent parsing** dan **narasi deteksi** juga dikerjakan lokal di Flutter -
 tanpa server, tanpa LLM.
 
 > **Tidak ada LLM di backend ini.** `QwenService` dan `narasi.py` telah
@@ -93,7 +93,7 @@ tanpa server, tanpa LLM.
 sudo dnf install -y tesseract tesseract-langpack-ind tesseract-langpack-eng
 ```
 
-Paket `tesseract-langpack-ind` penting — OCR dipanggil dengan bahasa `ind+eng`.
+Paket `tesseract-langpack-ind` penting - OCR dipanggil dengan bahasa `ind+eng`.
 
 **PostgreSQL** yang sedang berjalan, lalu buat basis datanya sekali saja:
 
@@ -164,7 +164,7 @@ rata dan warnanya konsisten.
 
 ### Deskripsi suasana: Moondream2
 
-`POST /api/describe` mengembalikan `description_en` — caption Bahasa Inggris
+`POST /api/describe` mengembalikan `description_en` - caption Bahasa Inggris
 langsung dari Moondream2. Flutter membacakannya dengan TTS locale `en-US`
 tanpa terjemahan tambahan. Tidak ada LLM terjemahan di tengah alur ini.
 
@@ -248,11 +248,11 @@ Kirim `file` (gambar JPEG), opsional `lat` dan `lng`.
 Memahami perintah suara yang **tidak dikenali** `CommandParser` lokal di
 Flutter. Server hanya dipanggil untuk dua kasus:
 
-- **Ambigu** — dua kemungkinan sama-sama masuk akal → server bertanya balik
-- **Tidak dikenali** — server menawarkan dua tebakan terdekat
+- **Ambigu** - dua kemungkinan sama-sama masuk akal → server bertanya balik
+- **Tidak dikenali** - server menawarkan dua tebakan terdekat
 
 Urutan usahanya: cocokkan frasa persis (Lapis 1) → skor kemiripan kata
-(Lapis 2). **Tidak ada LLM** — Lapis 3 telah dihapus.
+(Lapis 2). **Tidak ada LLM** - Lapis 3 telah dihapus.
 
 ```json
 POST {"text": "kenal kunci"}
@@ -298,7 +298,7 @@ Jalur utama fitur ini ada di Flutter. Endpoint ini hanya untuk pembanding.
 
 ## 4. Basis data
 
-Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi** — identifikasi
+Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi** - identifikasi
 cukup memakai `device_id` anonim yang dibuat aplikasi sendiri.
 
 | Tabel | Isi |
@@ -332,7 +332,7 @@ melayani sisanya.
 **Jujur soal kemampuan.** Kalau segmentasi jalur sedang memakai cadangan
 sederhana, itu disebutkan di kolom `source`.
 
-**Tidak ada LLM.** Semua teks natural — narasi deteksi dan resolusi intent —
+**Tidak ada LLM.** Semua teks natural - narasi deteksi dan resolusi intent -
 dikerjakan di sisi Flutter, offline, tanpa latensi jaringan.
 
 ---
@@ -430,7 +430,7 @@ curl -s -X POST $B/api/navigasi -F "file=@foto.jpg" -F "lat=0" -F "lng=0"
 ## 9. Testing Backend (pytest)
 
 Suite pengujian otomatis untuk semua endpoint backend menggunakan `pytest` +
-`httpx` (via `TestClient` FastAPI — tidak perlu server menyala).
+`httpx` (via `TestClient` FastAPI - tidak perlu server menyala).
 
 ### Instalasi
 
@@ -479,7 +479,7 @@ backend/tests/
 ### Catatan: simulasi kamera HP
 
 Semua gambar fixture dikirim ke backend sebagai `multipart/form-data` dengan
-`Content-Type: image/png` — **byte-for-byte identik** dengan yang dikirim
+`Content-Type: image/png` - **byte-for-byte identik** dengan yang dikirim
 Flutter saat user mengarahkan kamera. Backend tidak membedakan sumber gambar.
 
 ```
@@ -498,14 +498,14 @@ sebelum menjalankan test tersebut, atau jalankan dengan backend menyala:
 # Terminal 1
 uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Terminal 2 — setelah backend siap
+# Terminal 2: setelah backend siap
 python -m pytest tests/test_describe.py -v
 ```
 
 ### Hasil terakhir (2026-08-20)
 
 ```
-32 passed, 4 skipped — 44.80s
+32 passed, 4 skipped - 44.80s
 ```
 
 4 test di-skip adalah validasi isi caption Moondream (membutuhkan model warm).
@@ -569,7 +569,7 @@ Isi alamat server di Guidio: `localhost:8000`
 Moondream2 FP16  ~1.2 GB
 YOLO/YOLOE       ~0.5 GB
 ─────────────────────────
-Total            ~1.7 GB  (dari 4 GB — aman)
+Total            ~1.7 GB  (dari 4 GB - aman)
 ```
 
 Tidak ada LLM. Tidak ada `llama-cpp-python`. VRAM yang tersisa (~2.3 GB)
@@ -583,7 +583,7 @@ bebas untuk kebutuhan lain.
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/_archive/routers/asisten.py`
 
 ```python
-"""Mode Asisten Suara — resolusi perintah + riwayat percakapan.
+"""Mode Asisten Suara - resolusi perintah + riwayat percakapan.
 
   POST /api/intent            resolusi perintah suara (AS-17/18/19)
   GET  /api/intent/catalog    20 intent baku + varian ucapannya
@@ -611,7 +611,7 @@ class IntentRequest(BaseModel):
 
 @router.get("/intent/catalog")
 async def intent_catalog():
-    """20 intent baku beserta varian ucapan — aplikasi bisa menyinkronkan
+    """20 intent baku beserta varian ucapan - aplikasi bisa menyinkronkan
     CommandParser lokalnya tanpa rilis ulang."""
     if not is_available():
         return {"ok": False, "reason": "database_unavailable", "intents": []}
@@ -625,7 +625,7 @@ async def resolve_intent(request: Request, body: IntentRequest):
 
     Urutan usaha: frasa persis → skor kemiripan → LLM. Kalau tidak ada yang
     yakin, balasannya TETAP menawarkan dua tebakan terdekat, bukan
-    "perintah gagal" — prinsip tidak ada jalan buntu.
+    "perintah gagal" - prinsip tidak ada jalan buntu.
     """
     svc = request.app.state.intent_service
     text = body.text.strip()
@@ -645,12 +645,12 @@ async def resolve_intent(request: Request, body: IntentRequest):
             "suggestions": [],
         }
 
-    # Lapis 1 — frasa persis.
+    # Lapis 1 - frasa persis.
     exact = svc.match_exact(text)
     if exact:
         return _intent_payload(svc, exact, text, resolved=True)
 
-    # Lapis 2 — kumpulkan kandidat: kemiripan frasa + nama barang yang bisa
+    # Lapis 2 - kumpulkan kandidat: kemiripan frasa + nama barang yang bisa
     # dicari. Ucapan seperti "kenal kunci" menghasilkan DUA kandidat
     # ("cari kunci" dan "kenali uang"), dan itu memang harus ditanyakan
     # balik, bukan ditebak.
@@ -663,7 +663,7 @@ async def resolve_intent(request: Request, body: IntentRequest):
     if len(strong) == 1 and len(candidates) == 1:
         return _intent_payload(svc, {**strong[0], "source": "similarity"}, text, resolved=True)
 
-    # AS-19 — dua kandidat yang sama-sama masuk akal: tanya balik.
+    # AS-19 - dua kandidat yang sama-sama masuk akal: tanya balik.
     # Menebak salah lebih mahal daripada satu pertanyaan.
     if len(candidates) >= 2:
         return {
@@ -674,8 +674,8 @@ async def resolve_intent(request: Request, body: IntentRequest):
             "suggestions": candidates,
         }
 
-    # AS-18 — tidak dikenali: sebut yang didengar, tawarkan tebakan terdekat.
-    # (Lapis 3 LLM dihapus — tidak ada LLM di backend)
+    # AS-18 - tidak dikenali: sebut yang didengar, tawarkan tebakan terdekat.
+    # (Lapis 3 LLM dihapus - tidak ada LLM di backend)
     return {
         "resolved": False,
         "reason": "unrecognized",
@@ -725,7 +725,7 @@ async def add_turn(body: TurnIn):
 
 @router.get("/asisten/history")
 async def history(session_id: str, limit: int = 20):
-    """AS-12 / AS-13 — riwayat percakapan. Aplikasi yang memutuskan hanya
+    """AS-12 / AS-13 - riwayat percakapan. Aplikasi yang memutuskan hanya
     giliran terbaru yang dibacakan; yang lama cukup tampil."""
     if not is_available():
         return {"ok": False, "reason": "database_unavailable", "turns": []}
@@ -741,7 +741,7 @@ async def history(session_id: str, limit: int = 20):
 
 @router.post("/asisten/expire")
 async def expire_sessions():
-    """AS-23 — sesi menganggur lebih dari 15 menit dibersihkan."""
+    """AS-23 - sesi menganggur lebih dari 15 menit dibersihkan."""
     if not is_available():
         return {"ok": False, "reason": "database_unavailable"}
     return {"ok": True, "expired_sessions": repo.expire_stale_sessions()}
@@ -765,7 +765,7 @@ router = APIRouter(prefix="/api", tags=["detect"])
 @router.post("/detect")
 async def detect_once(request: Request):
     """
-    Single-shot inference untuk Voice Assistant — 'Ada apa di sekitar saya?'
+    Single-shot inference untuk Voice Assistant - 'Ada apa di sekitar saya?'
     Flutter kirim raw JPEG bytes di body.
     Return: raw detections saja (narasi ada di /api/narasi).
     """
@@ -790,11 +790,11 @@ async def detect_once(request: Request):
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/_archive/routers/navigasi.py`
 
 ```python
-"""Mode Navigasi — POST /api/navigasi (segmentasi jalur 3 zona + rintangan).
+"""Mode Navigasi - POST /api/navigasi (segmentasi jalur 3 zona + rintangan).
 
 Sejak deteksi rintangan dipindah dari perangkat ke server, endpoint ini
 mengembalikan **keduanya dari satu frame**: status tiga zona jalur DAN daftar
-rintangan di depan. Menggabungkannya di sini disengaja — aplikasi kalau tidak
+rintangan di depan. Menggabungkannya di sini disengaja - aplikasi kalau tidak
 harus mengunggah frame yang sama dua kali ke dua endpoint, dan itu menggandakan
 pemakaian kuota serta latensi pada mode yang dipakai sambil berjalan.
 
@@ -828,7 +828,7 @@ async def navigasi(
     """Bagi frame jadi tiga zona jalur dan sebut mana yang layak dilewati.
 
     Kalau `lat`/`lng` diisi, sekalian cek zona rawan dari laporan pengguna
-    lain (Risk Zone) — itu informasi yang tidak terlihat kamera.
+    lain (Risk Zone) - itu informasi yang tidak terlihat kamera.
     """
     raw = await file.read()
     frame = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
@@ -845,7 +845,7 @@ async def navigasi(
     result = svc.zones(frame)
 
     # Rintangan dari frame yang SAMA. Prioritas suara di aplikasi menaruh
-    # rintangan di atas zona — jaraknya lebih dekat dan lebih mendesak — jadi
+    # rintangan di atas zona - jaraknya lebih dekat dan lebih mendesak - jadi
     # keduanya harus datang bersamaan, bukan dari dua permintaan yang bisa
     # tiba dengan selisih waktu.
     yolo = getattr(request.app.state, "yolo_service", None)
@@ -895,7 +895,7 @@ async def navigasi_status(request: Request):
         "note": (
             "Model PIDNet-S aktif."
             if svc.loaded
-            else "Model belum ada — memakai fallback heuristik OpenCV. "
+            else "Model belum ada - memakai fallback heuristik OpenCV. "
                  "Arahan jalur tetap keluar, tapi akurasinya di bawah model terlatih."
         ),
     }
@@ -1052,7 +1052,7 @@ async def capabilities(request: Request):
         "money": {"state": "up", "on_device": True,
                   "note": "Klasifikasi nominal on-device (TFLite), tidak pernah memanggil server."},
 
-        # Baca Teks pindah ke ML Kit on-device — server tidak dipanggil lagi,
+        # Baca Teks pindah ke ML Kit on-device - server tidak dipanggil lagi,
         # jadi ia tidak pernah 'down' dan tetap jalan penuh tanpa internet.
         "read_text": {
             "state": "up",
@@ -1200,7 +1200,7 @@ class EventBatch(BaseModel):
 
 @router.post("/events")
 async def post_events(batch: EventBatch):
-    """Telemetri alur — mengukur target desain, bukan analitik pemasaran.
+    """Telemetri alur - mengukur target desain, bukan analitik pemasaran.
 
     Yang dilacak: jumlah gestur per alur (target bayar < 4), waktu buka
     sampai deteksi aktif, berapa kali perintah suara tidak dikenali.
@@ -1242,7 +1242,7 @@ class CrashIn(BaseModel):
 
 @router.post("/crash-report")
 async def post_crash(body: CrashIn):
-    """ER-06 — tombol "Kirim laporan" setelah aplikasi dibuka pasca-crash."""
+    """ER-06 - tombol "Kirim laporan" setelah aplikasi dibuka pasca-crash."""
     guard = _db_guard()
     if guard:
         return guard
@@ -1257,7 +1257,7 @@ async def post_crash(body: CrashIn):
 
 @router.get("/crash-report/last-mode")
 async def last_mode(device_id: str):
-    """ER-06 — mode terakhir sebelum crash, untuk dipulihkan otomatis."""
+    """ER-06 - mode terakhir sebelum crash, untuk dipulihkan otomatis."""
     guard = _db_guard()
     if guard:
         return guard
@@ -1276,7 +1276,7 @@ async def queue_flush(
     queued_at: datetime | None = Form(None),
     file: UploadFile = File(...),
 ):
-    """BT-13 — gambar yang gagal terkirim saat offline, dikirim ulang saat
+    """BT-13 - gambar yang gagal terkirim saat offline, dikirim ulang saat
     internet kembali.
 
     `idempotency_key` mencegah pemrosesan dobel: pengiriman ulang dengan
@@ -1332,13 +1332,13 @@ async def queue_pending(device_id: str):
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/_archive/routers/uang.py`
 
 ```python
-"""Mode Kenali Uang — endpoint server OPSIONAL.
+"""Mode Kenali Uang - endpoint server OPSIONAL.
 
 Jalur utama fitur ini ada di perangkat (.tflite MobileNetV2, 6 kelas emisi
 2016) dan TIDAK pernah memanggil endpoint ini. Yang di sini hanya cadangan
 untuk pembanding akurasi dan pengujian dari alat lain (curl/Postman).
 
-Kalau model server belum ada, balasannya jujur `model_unavailable` — tidak
+Kalau model server belum ada, balasannya jujur `model_unavailable` - tidak
 pernah menebak nominal.
 """
 
@@ -1403,7 +1403,7 @@ async def kenali_uang(request: Request, file: UploadFile = File(...)):
 ```python
 """
 Router: POST /api/route-intent
-Intent routing untuk Voice Assistant — ARSITEKTUR LAMA.
+Intent routing untuk Voice Assistant - ARSITEKTUR LAMA.
 
 Catatan: Endpoint ini merupakan sisa arsitektur lama sebelum CommandParser
 Flutter dibangun. Flutter sekarang melakukan intent parsing secara lokal
@@ -1414,7 +1414,7 @@ break backward compatibility jika ada client lain yang masih menggunakannya.
 
 Claude Haiku yang sebelumnya di sini sudah DIHAPUS. Sekarang menggunakan
 keyword-based classifier sederhana yang tidak membutuhkan API key maupun
-model LLM — sesuai dengan sifat tugas yang hanya 4 kategori.
+model LLM - sesuai dengan sifat tugas yang hanya 4 kategori.
 """
 
 import logging
@@ -1427,7 +1427,7 @@ router = APIRouter()
 VALID_INTENTS = {"describe_scene", "ocr", "navigation", "chitchat"}
 DEFAULT_INTENT = "describe_scene"  # fallback paling aman untuk tunanetra
 
-# Keyword sederhana per intent — cukup untuk 4 kategori ini tanpa LLM
+# Keyword sederhana per intent: cukup untuk 4 kategori ini tanpa LLM
 _KEYWORDS: dict[str, list[str]] = {
     "describe_scene": [
         "deskripsikan", "jelaskan", "ceritakan", "gambarkan", "lihatkan",
@@ -1449,7 +1449,7 @@ _KEYWORDS: dict[str, list[str]] = {
 
 
 def _classify_keyword(text: str) -> str:
-    """Klasifikasi berdasarkan keyword match — O(n) sederhana, tanpa model."""
+    """Klasifikasi berdasarkan keyword match - O(n) sederhana, tanpa model."""
     low = text.strip().lower()
     scores: dict[str, int] = {intent: 0 for intent in VALID_INTENTS}
     for intent, keywords in _KEYWORDS.items():
@@ -1474,7 +1474,7 @@ async def route_intent(req: RouteRequest):
     """
     Intent routing berbasis keyword (tanpa LLM, tanpa API key).
 
-    Endpoint ini adalah sisa arsitektur lama — Flutter tidak lagi
+    Endpoint ini adalah sisa arsitektur lama - Flutter tidak lagi
     memanggilnya karena CommandParser lokal sudah lebih lengkap.
     Dipertahankan untuk backward compatibility.
     """
@@ -1512,7 +1512,7 @@ async def ws_detect(ws: WebSocket):
     Filter pipeline ada di Flutter, BUKAN di sini.
 
     Query params:
-      lat, lng — koordinat GPS user (opsional, untuk Risk Zone)
+      lat, lng - koordinat GPS user (opsional, untuk Risk Zone)
     """
     await ws.accept()
 
@@ -1564,7 +1564,7 @@ async def ws_detect(ws: WebSocket):
             await ws.send_json({
                 "type":       "detections",
                 "frame_id":   frame_count,
-                "detections": detections,   # raw, tanpa filter — filter di Flutter
+                "detections": detections,   # raw, tanpa filter - filter di Flutter
                 "risk_zone":  risk_warning, # None atau dict warning
             })
 
@@ -1628,7 +1628,7 @@ def check_camera_health(frame: np.ndarray) -> dict:
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/_archive/services/intent_service.py`
 
 ```python
-"""Resolusi perintah suara sisi server — POST /api/intent.
+"""Resolusi perintah suara sisi server - POST /api/intent.
 
 CommandParser lokal di Flutter menangani 20 intent baku tanpa internet
 (0 ms, tetap jalan offline). Server hanya dipanggil saat lokal TIDAK match,
@@ -1637,7 +1637,7 @@ untuk dua kasus yang memang butuh pemahaman bahasa:
   - AS-19 "ambigu"         → pertanyaan pilihan dua
 
 Urutan usaha: cocokkan frasa persis → skor kemiripan kata.
-LLM (Qwen Lapis 3) DIHAPUS — tidak ada LLM di backend.
+LLM (Qwen Lapis 3) DIHAPUS - tidak ada LLM di backend.
 """
 
 import re
@@ -1758,7 +1758,7 @@ class IntentService:
 
     @staticmethod
     def compose_suggestion(heard: str, candidates: list[dict]) -> str:
-        """AS-18 / AS-19 — sebut yang didengar, lalu tawarkan dua pilihan."""
+        """AS-18 / AS-19 - sebut yang didengar, lalu tawarkan dua pilihan."""
         if len(candidates) >= 2:
             return (
                 f"Saya dengar {heard}. "
@@ -1795,7 +1795,7 @@ try:
     TESSERACT_AVAILABLE = True
 except ImportError:
     TESSERACT_AVAILABLE = False
-    logger.warning("pytesseract / Pillow tidak tersedia — OCR tidak aktif")
+    logger.warning("pytesseract / Pillow tidak tersedia - OCR tidak aktif")
 
 
 class OCRService:
@@ -1873,7 +1873,7 @@ class OCRService:
 
     @staticmethod
     def _duration_words(seconds: float) -> str:
-        """Durasi dalam kata, bukan angka desimal — aturan penulisan copy."""
+        """Durasi dalam kata, bukan angka desimal - aturan penulisan copy."""
         if seconds <= 0:
             return "kurang dari satu detik"
         if seconds < 60:
@@ -1928,7 +1928,7 @@ class OCRService:
 """Risk Zone: lokasi yang sering dilaporkan ada hambatan.
 
 Dikumpulkan anonim dari semua pengguna (tanpa auth, cukup koordinat).
-Sejak versi ini datanya PERSISTEN di PostgreSQL — sebelumnya dict in-memory
+Sejak versi ini datanya PERSISTEN di PostgreSQL - sebelumnya dict in-memory
 yang hilang tiap server restart, jadi zona bahaya tidak pernah benar-benar
 terbentuk.
 
@@ -1952,7 +1952,7 @@ class RiskZoneService:
         logger.info(
             "RiskZoneService init (PostgreSQL)"
             if is_available()
-            else "RiskZoneService init — DB mati, fitur zona rawan nonaktif"
+            else "RiskZoneService init - DB mati, fitur zona rawan nonaktif"
         )
 
     def report(self, lat: float, lng: float, label: str) -> None:
@@ -1997,10 +1997,10 @@ class RiskZoneService:
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/_archive/services/segmentation_service.py`
 
 ```python
-"""Mode Navigasi — segmentasi jalur jadi 3 zona (kiri / tengah / kanan).
+"""Mode Navigasi - segmentasi jalur jadi 3 zona (kiri / tengah / kanan).
 
 Model utama: PIDNet-S ONNX (three-branch, ada cabang khusus boundary, jadi
-tepi trotoar presisi — penting karena overlay zona dipakai terus-menerus).
+tepi trotoar presisi - penting karena overlay zona dipakai terus-menerus).
 Kalau file model belum ada, service memakai fallback heuristik OpenCV yang
 tetap menghasilkan tiga zona berbeda dari isi gambar sungguhan, sehingga
 seluruh state NV-03..NV-09 di aplikasi bisa diuji tanpa menunggu model.
@@ -2016,7 +2016,7 @@ import cv2
 import numpy as np
 from loguru import logger
 
-# Status zona — cocok dengan enum ZoneStatus di Flutter.
+# Status zona: cocok dengan enum ZoneStatus di Flutter.
 SAFE = "safe"
 CAUTION = "caution"
 DANGER = "danger"
@@ -2039,12 +2039,12 @@ class SegmentationService:
         self.source = "heuristic"
 
     def load(self) -> bool:
-        """Muat PIDNet ONNX bila ada. Tidak adanya model BUKAN kegagalan —
+        """Muat PIDNet ONNX bila ada. Tidak adanya model BUKAN kegagalan -
         fallback heuristik tetap melayani, dan itu dilaporkan apa adanya
         lewat field `source` supaya tidak ada klaim palsu ke pengguna."""
         if not os.path.exists(self.model_path):
             logger.warning(
-                f"Model segmentasi '{self.model_path}' belum ada — "
+                f"Model segmentasi '{self.model_path}' belum ada - "
                 "Mode Navigasi pakai fallback heuristik OpenCV."
             )
             self.source = "heuristic"
@@ -2063,7 +2063,7 @@ class SegmentationService:
             logger.success(f"Model segmentasi dimuat: {self.model_path}")
             return True
         except Exception as e:
-            logger.error(f"Segmentasi gagal dimuat: {e} — pakai fallback heuristik")
+            logger.error(f"Segmentasi gagal dimuat: {e} - pakai fallback heuristik")
             self.source = "heuristic"
             return False
 
@@ -2142,7 +2142,7 @@ class SegmentationService:
         """Perkiraan jalur layak-injak dari keseragaman permukaan.
 
         Dasarnya: permukaan yang bisa dijalani (trotoar, aspal, lantai)
-        cenderung RATA — sedikit tepi, warna konsisten. Rintangan, rumput,
+        cenderung RATA - sedikit tepi, warna konsisten. Rintangan, rumput,
         tangga, dan jalur kendaraan memecah keseragaman itu.
 
         Bukan pengganti segmentasi sungguhan, tapi memberi keluaran yang
@@ -2230,7 +2230,7 @@ class SegmentationService:
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/_archive/services/uang_service.py`
 
 ```python
-"""Mode Kenali Uang — endpoint server OPSIONAL.
+"""Mode Kenali Uang - endpoint server OPSIONAL.
 
 Jalur utama fitur ini ON-DEVICE (.tflite MobileNetV3, klasifikasi 7
 denominasi), karena tiga alasan yang tidak bisa ditawar:
@@ -2274,7 +2274,7 @@ class UangService:
         if not os.path.exists(self.model_path):
             logger.warning(
                 f"Model uang '{self.model_path}' belum ada. "
-                "Endpoint /api/uang akan balas 'model_unavailable' — TIDAK menebak. "
+                "Endpoint /api/uang akan balas 'model_unavailable' - TIDAK menebak. "
                 "Jalur utama fitur ini tetap on-device (.tflite)."
             )
             return False
@@ -2325,7 +2325,7 @@ class UangService:
             inference_ms = (time.time() - t0) * 1000
 
             if confidence < self.threshold:
-                # UG-06 — ragu. Nominal TIDAK ditampilkan.
+                # UG-06 - ragu. Nominal TIDAK ditampilkan.
                 return {
                     "detected": False,
                     "reason": "low_confidence",
@@ -2403,7 +2403,7 @@ LABEL_ID: dict[str, str] = {
     "suitcase":      "koper",
 }
 
-# Tinggi nyata objek dalam cm — model COCO
+# Tinggi nyata objek dalam cm: model COCO
 REAL_HEIGHTS_CM: dict[str, int] = {
     "person":     170,
     "motorcycle": 120,
@@ -2493,7 +2493,7 @@ class YOLOService:
                     logger.success(f"YOLO navigasi custom loaded. "
                                    f"Classes: {list(self.navigasi_model.names.values())}")
                 except Exception as e:
-                    logger.warning(f"Model navigasi custom gagal load: {e} — fallback ke COCO.")
+                    logger.warning(f"Model navigasi custom gagal load: {e} - fallback ke COCO.")
                     self.navigasi_model = None
 
             return True
@@ -2577,7 +2577,7 @@ class YOLOService:
         return (real_h * FOCAL_LENGTH_PX) / (box_h * 100)
 
     def _estimate_distance_nav(self, label: str, box_h: int) -> float:
-        """Estimasi jarak model navigasi custom — pakai real heights skema nav."""
+        """Estimasi jarak model navigasi custom - pakai real heights skema nav."""
         if box_h <= 0:
             return 999.0
         real_h = REAL_HEIGHTS_NAVIGASI.get(label, REAL_HEIGHTS_NAVIGASI["default"])
@@ -2610,7 +2610,7 @@ class YOLOService:
         """Tentukan level bahaya dari kombinasi class navigasi custom + jarak.
 
         Lubang & got_terbuka lebih kritis dari orang/motor pada jarak dekat
-        karena pengguna bisa langsung jatuh — tidak ada waktu menghindar.
+        karena pengguna bisa langsung jatuh - tidak ada waktu menghindar.
         """
         if label in ("lubang", "got_terbuka"):
             if dist < 1.0:
@@ -2637,12 +2637,12 @@ class YOLOService:
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/compass_artifact_wf-6faa4e5a-1dfa-5f2a-b75b-7ac36d56a1d7_text_markdown.md`
 
 ```markdown
-# Riset Teknis Mendalam — Pengembangan Aplikasi Vinara (eks Guidio)
+# Riset Teknis Mendalam: Pengembangan Aplikasi Vinara (eks Guidio)
 
 **TL;DR**
 - Untuk Scene Description & Live Assistant, arsitektur terbaik untuk Vinara adalah **hybrid grounding**: pertahankan pola "Grounded Text-to-Language" tapi kirim GAMBAR + konteks deteksi on-device ke satu VLM murah (Gemini 2.5 Flash-Lite $0.10/$0.40 per 1M token, atau Claude Haiku 4.5 $1/$5). Biaya per query 640×480 ≈ Rp2–35, sangat terjangkau; jangan self-host VLM di tahap awal.
-- Untuk Light Detection & sonifikasi Cari Objek, semua bisa 100% on-device tanpa model ML baru: baca plane Y (luma) langsung dari `CameraImage` YUV420 yang SUDAH ada (nol konversi RGB), dan pakai `flutter_soloud` untuk beep dinamis PCM real-time. Menurut studi Delaunay & Ambard ("How well do you see what you hear?", 28 partisipan) dan Bazilinskyy et al. (2016, N=29), **beep repetition rate** (tempo) memberi estimasi jarak/kedalaman terbaik — jadikan tempo mapping utama.
-- Mode Tuntun dan Navigasi Jalur SEBAIKNYA TIDAK dilebur total; jadikan Mode Tuntun sebagai mode "obstacle level mata/kepala" (memakai pitch HP dari `sensors_plus`) dan Navigasi Jalur sebagai mode trotoar. Satu `CameraController` tidak bisa dipakai dua konsumen ML berat sekaligus — auto-switch kontekstual lebih baik daripada dua mode paralel.
+- Untuk Light Detection & sonifikasi Cari Objek, semua bisa 100% on-device tanpa model ML baru: baca plane Y (luma) langsung dari `CameraImage` YUV420 yang SUDAH ada (nol konversi RGB), dan pakai `flutter_soloud` untuk beep dinamis PCM real-time. Menurut studi Delaunay & Ambard ("How well do you see what you hear?", 28 partisipan) dan Bazilinskyy et al. (2016, N=29), **beep repetition rate** (tempo) memberi estimasi jarak/kedalaman terbaik - jadikan tempo mapping utama.
+- Mode Tuntun dan Navigasi Jalur SEBAIKNYA TIDAK dilebur total; jadikan Mode Tuntun sebagai mode "obstacle level mata/kepala" (memakai pitch HP dari `sensors_plus`) dan Navigasi Jalur sebagai mode trotoar. Satu `CameraController` tidak bisa dipakai dua konsumen ML berat sekaligus - auto-switch kontekstual lebih baik daripada dua mode paralel.
 
 ---
 
@@ -2651,10 +2651,10 @@ Semua harga API dan benchmark di bawah punya sumber. Beberapa angka (harga image
 
 ---
 
-# FITUR 1: Scene Description AI (deskripsi naratif + Q&A) — ekstensi Asisten Suara
+# FITUR 1: Scene Description AI (deskripsi naratif + Q&A): ekstensi Asisten Suara
 
 ## Requirement & UX Goal
-Upgrade Asisten Suara Claude Haiku existing menjadi multimodal: user memotret/pakai kamera, bertanya natural ("ini apa di depan?", "deskripsikan ruangan"), asisten memberi deskripsi naratif, lalu multi-turn Q&A dengan konteks gambar yang sama. Prinsip pembeda Vinara: transparansi ketidakpastian, karena riset Gonzalez, Collins, Bennett & Azenkot (CHI 2024, arXiv:2403.15604) menemukan aplikasi scene description AI diberi skor kepercayaan hanya **2,43/4 (SD=1,16)** dan kepuasan **2,76/5 (SD=1,49)** oleh 16 partisipan BLV — halusinasi dengan nada meyakinkan adalah masalah utama. MacLeod et al. berargumen untuk "designing for mistrust" dengan menampilkan confidence rating.
+Upgrade Asisten Suara Claude Haiku existing menjadi multimodal: user memotret/pakai kamera, bertanya natural ("ini apa di depan?", "deskripsikan ruangan"), asisten memberi deskripsi naratif, lalu multi-turn Q&A dengan konteks gambar yang sama. Prinsip pembeda Vinara: transparansi ketidakpastian, karena riset Gonzalez, Collins, Bennett & Azenkot (CHI 2024, arXiv:2403.15604) menemukan aplikasi scene description AI diberi skor kepercayaan hanya **2,43/4 (SD=1,16)** dan kepuasan **2,76/5 (SD=1,49)** oleh 16 partisipan BLV - halusinasi dengan nada meyakinkan adalah masalah utama. MacLeod et al. berargumen untuk "designing for mistrust" dengan menampilkan confidence rating.
 
 ## Opsi 1: Satu VLM multimodal (Claude Haiku 4.5 vision)
 - **Cara kerja teknis**: kirim JPEG 640×480 + prompt teks langsung ke Claude Haiku 4.5 (`claude-haiku-4-5`, model yang SUDAH dipakai untuk narasi). Model ini mendukung vision, tool calling, prompt caching, structured output.
@@ -2670,7 +2670,7 @@ Upgrade Asisten Suara Claude Haiku existing menjadi multimodal: user memotret/pa
 - **Kelebihan**: termurah; context window 1M; kualitas vision baik.
 - **Kekurangan**: kualitas hedging/kejujuran ketidakpastian perlu diuji; model 2.5 akan pensiun.
 
-## Opsi 3: Pipeline 2 model (VLM caption → Claude Haiku teks) — TIDAK disarankan
+## Opsi 3: Pipeline 2 model (VLM caption → Claude Haiku teks): TIDAK disarankan
 - **Cara kerja**: VLM kecil deskripsikan gambar → teks → diteruskan ke Claude Haiku untuk dinaturalkan.
 - **Kekurangan**: menambah latency (2 hop), menambah biaya, dan justru menambah risiko halusinasi karena Claude tidak bisa memverifikasi teks perantara. Kalah dibanding satu VLM yang lihat gambar langsung + grounding deteksi.
 
@@ -2678,18 +2678,18 @@ Upgrade Asisten Suara Claude Haiku existing menjadi multimodal: user memotret/pa
 Gabungkan deteksi terstruktur on-device (SSD MobileNet: label + jarak + arah + danger) SEBAGAI grounding context ke prompt VLM. Contoh prompt:
 > "Detektor on-device melaporkan: orang 1.2m depan, kursi 2m kanan (confidence 0.7). Konfirmasi atau koreksi berdasarkan gambar. Jika ragu tentang detail, katakan 'sepertinya' atau 'saya tidak yakin'. Jangan sebut objek yang tidak terlihat jelas. Jawab 1–2 kalimat, Bahasa Indonesia."
 
-Ini bentuk **detection-augmented VLM prompting** / visual grounding. Teknik pendukung dari literatur: chain-of-verification, uncertainty-aware captioning. Karena Vinara sudah punya deteksi terstruktur, ini pembeda kuat — VLM tidak start dari nol dan halusinasi bisa "dijangkarkan" ke fakta detektor. Gunakan structured output dengan field `confidence` dan instruksi eksplisit "jawab tidak tahu kalau ragu". Riset Alharbi et al. (ASSETS 2024, "Misfitting With AI: How Blind People Verify and Contest AI Errors") menegaskan error VLM sering tak terdeteksi oleh pengguna tunanetra → menampilkan ketidakpastian adalah safety feature, bukan sekadar UX.
+Ini bentuk **detection-augmented VLM prompting** / visual grounding. Teknik pendukung dari literatur: chain-of-verification, uncertainty-aware captioning. Karena Vinara sudah punya deteksi terstruktur, ini pembeda kuat - VLM tidak start dari nol dan halusinasi bisa "dijangkarkan" ke fakta detektor. Gunakan structured output dengan field `confidence` dan instruksi eksplisit "jawab tidak tahu kalau ragu". Riset Alharbi et al. (ASSETS 2024, "Misfitting With AI: How Blind People Verify and Contest AI Errors") menegaskan error VLM sering tak terdeteksi oleh pengguna tunanetra → menampilkan ketidakpastian adalah safety feature, bukan sekadar UX.
 
 ## Multi-turn Q&A dengan gambar sama: gunakan prompt caching
-- **Anthropic prompt caching**: cache read = **10% harga input** (90% diskon, ≈$0.10/M untuk Haiku); cache write 5-menit = 1.25× input, 1-jam = 2× (platform.claude.com/docs/en/build-with-claude/prompt-caching). Minimum 1.024 token untuk cacheable — gambar 640×480 (410 token) sendirian TIDAK cukup, tapi gambar 1024×768 (1.048 token) atau gambar+system prompt gabungan bisa. Untuk multi-turn 3–5 giliran soal gambar sama, caching memotong biaya input drastis.
+- **Anthropic prompt caching**: cache read = **10% harga input** (90% diskon, ≈$0.10/M untuk Haiku); cache write 5-menit = 1.25× input, 1-jam = 2× (platform.claude.com/docs/en/build-with-claude/prompt-caching). Minimum 1.024 token untuk cacheable - gambar 640×480 (410 token) sendirian TIDAK cukup, tapi gambar 1024×768 (1.048 token) atau gambar+system prompt gabungan bisa. Untuk multi-turn 3–5 giliran soal gambar sama, caching memotong biaya input drastis.
 - **Integrasi dengan PostgreSQL existing**: tabel sesi asisten (`/api/asisten/turn`, expired 15 menit) sudah ada. Simpan `image_ref` per sesi; kirim ulang gambar dengan `cache_control` di turn pertama, lalu cache-read di turn berikutnya. Cache TTL 5 menit cocok dengan window percakapan pendek. Alternatif: cache gambar di server (path lokal) dan re-attach; hindari re-upload dari HP tiap turn (hemat kuota user).
 
 ## Rekomendasi Fitur 1
 **Gunakan Gemini 2.5 Flash-Lite (atau penerusnya 3.1 Flash-Lite) sebagai default untuk deskripsi naratif, dengan hybrid grounding dari deteksi on-device, dan Claude Haiku 4.5 sebagai fallback/premium.** Alasan: biaya Flash-Lite ~5× lebih murah cocok untuk pasar Indonesia yang sensitif harga; hybrid grounding memanfaatkan aset deteksi yang SUDAH ada dan langsung menyerang problem trust 2,43/4. Pertahankan prinsip "jawab tidak tahu kalau ragu" via prompt + structured confidence. Multi-turn pakai prompt caching + tabel sesi PostgreSQL yang ada.
 
 ## Ditemukan tapi tidak disarankan
-- **Pipeline 2 model terpisah** — menambah latency & biaya tanpa mengurangi halusinasi.
-- **GPT-4o-mini vision** — layak secara harga tapi menambah vendor ketiga tanpa keunggulan jelas vs Gemini/Claude yang sudah/mudah diintegrasi.
+- **Pipeline 2 model terpisah** - menambah latency & biaya tanpa mengurangi halusinasi.
+- **GPT-4o-mini vision** - layak secara harga tapi menambah vendor ketiga tanpa keunggulan jelas vs Gemini/Claude yang sudah/mudah diintegrasi.
 
 ## Pertanyaan buat user
 1. Budget API vision per bulan (menentukan Gemini vs Claude)?
@@ -2703,10 +2703,10 @@ Ini bentuk **detection-augmented VLM prompting** / visual grounding. Teknik pend
 ## Requirement & UX Goal
 Deteksi lampu menyala/mati & terang/gelap. Harus murah baterai, jalan di device kelas bawah, dan membedakan "gelap beneran" vs "kamera tertutup tangan/kantong" (false positive kritis untuk tunanetra). Jadi shared service reusable (`tooDark` CO-19 Cari Objek + Navigasi butuh).
 
-## Opsi 1: Baca plane Y (luma) dari CameraImage YUV420 — DIREKOMENDASIKAN
-- **Cara kerja teknis**: `CameraProvider` sudah pakai `ImageFormatGroup.yuv420`. Plane Y (`CameraImage.planes[0]`) ADALAH luminance mentah (0–255) tanpa perlu konversi RGB sama sekali. Hitung rata-rata luma dengan **sampling** (mis. tiap 16 piksel, atau grid 32×32 sampel) — bukan seluruh 640×480 piksel — supaya <1ms CPU.
+## Opsi 1: Baca plane Y (luma) dari CameraImage YUV420: DIREKOMENDASIKAN
+- **Cara kerja teknis**: `CameraProvider` sudah pakai `ImageFormatGroup.yuv420`. Plane Y (`CameraImage.planes[0]`) ADALAH luminance mentah (0–255) tanpa perlu konversi RGB sama sekali. Hitung rata-rata luma dengan **sampling** (mis. tiap 16 piksel, atau grid 32×32 sampel) - bukan seluruh 640×480 piksel - supaya <1ms CPU.
 - **Membedakan lampu mati vs kamera tertutup**: gunakan **variance/histogram spread**, bukan hanya mean. Kamera tertutup tangan/kantong = mean sangat rendah DAN variance sangat rendah (nyaris seragam gelap). Ruangan gelap dengan sedikit cahaya = mean rendah tapi variance lebih tinggi (ada tepi/titik cahaya). Ambang contoh (perlu kalibrasi per-device): mean <30 & variance <50 → "kamera mungkin tertutup"; mean <50 → "gelap"; 50–120 → "redup"; >120 → "terang".
-- **Backend**: tidak perlu — 100% on-device.
+- **Backend**: tidak perlu - 100% on-device.
 - **Frontend**: buat `LightService` yang meng-consume frame Y-plane. Ekspos `LightLevel {dark, dim, bright, blocked}` + `luma`, `variance`.
 - **Kelebihan**: nol biaya, nol model ML, hampir nol baterai, jalan offline, jalan di semua device.
 - **Kekurangan**: perlu kalibrasi ambang per-device (auto-exposure kamera memengaruhi absolut luma).
@@ -2720,10 +2720,10 @@ Deteksi lampu menyala/mati & terang/gelap. Harus murah baterai, jalan di device 
 - **Kekurangan**: package `camera ^0.11.0` tidak mengekspos ISO/exposure mentah secara konsisten lintas device; auto-exposure justru mengompensasi kegelapan sehingga menyesatkan. Kalah dari analisis luma langsung.
 
 ## Rekomendasi Fitur 2
-**Opsi 1 (luma Y-plane + variance).** Tidak perlu model ML — image processing sederhana cukup. Desain `LightService` sebagai shared service: satu konsumen frame Y-plane yang dipanggil Cari Objek (isi `tooDark`/CO-19 secara lokal, mengurangi ketergantungan server `invalid_frame`), Navigasi, dan Live Assistant (trigger flashlight). Kalibrasi ambang lewat telemetri (`/api/events` sudah ada). Variance/histogram spread WAJIB dipakai untuk membedakan kamera tertutup — ini masalah false-positive nyata untuk tunanetra.
+**Opsi 1 (luma Y-plane + variance).** Tidak perlu model ML - image processing sederhana cukup. Desain `LightService` sebagai shared service: satu konsumen frame Y-plane yang dipanggil Cari Objek (isi `tooDark`/CO-19 secara lokal, mengurangi ketergantungan server `invalid_frame`), Navigasi, dan Live Assistant (trigger flashlight). Kalibrasi ambang lewat telemetri (`/api/events` sudah ada). Variance/histogram spread WAJIB dipakai untuk membedakan kamera tertutup - ini masalah false-positive nyata untuk tunanetra.
 
 ## Ditemukan tapi tidak disarankan
-- **Model ML klasifikasi cahaya** — overkill; luma statistik sudah cukup akurat dan jauh lebih murah.
+- **Model ML klasifikasi cahaya** - overkill; luma statistik sudah cukup akurat dan jauh lebih murah.
 
 ## Pertanyaan buat user
 1. Perlu output lux absolut, atau kategori (gelap/redup/terang) cukup?
@@ -2731,7 +2731,7 @@ Deteksi lampu menyala/mati & terang/gelap. Harus murah baterai, jalan di device 
 
 ---
 
-# FITUR 3: Live Visual Assistant ala Project Astra — PALING KOMPLEKS
+# FITUR 3: Live Visual Assistant ala Project Astra: PALING KOMPLEKS
 
 ## Requirement & UX Goal
 Asisten yang "melihat" real-time via kamera sambil user gerakkan HP, ngobrol natural (voice in/out) tanpa foto manual: live scene description, text recognition, object localization ("di kanan atas"), kontrol flashlight otomatis, voice interface tanpa menu. Harus realistis dengan Flutter+FastAPI TANPA infrastruktur seberat Google, dan layak di device RAM 4–6GB + kuota data Indonesia.
@@ -2744,12 +2744,12 @@ Asisten yang "melihat" real-time via kamera sambil user gerakkan HP, ngobrol nat
 ## Opsi Arsitektur B: Gemini Live API (streaming multimodal native)
 - **Cara kerja**: WebSocket stateful, stream audio+video, terima suara balik. Ini yang paling mendekati Astra.
 - **Batasan konkret (Google official)**: sesi audio+video **maks 2 menit** tanpa context compression (audio-only 15 menit); video diproses **1 FPS @ 768×768**, **258 token/detik** untuk video, **25 token/detik** audio; context window 128K. Dengan sliding-window compression, durasi bisa diperpanjang (ai.google.dev/gemini-api/docs/live-api/best-practices).
-- **Biaya**: model native-audio 2.5 Flash = $0.50/M teks input, **$3.00/M audio-video input**, $12/M audio output. Per-menit ekuivalen Gemini 3.1 Flash Live preview ≈ **$0.005/menit audio in, $0.018/menit audio out** (rywalker.com/research/gemini-live-api). Video menambah 258 token/detik = 15.480 token/menit × $3/M ≈ **$0.046/menit video**. Jadi percakapan aktif audio+video ≈ **$0.05–0.07/menit** (~Rp800–1.100/menit). 10 menit/hari × 30 hari × 100 user ≈ $1.500–2.100/bulan — MAHAL untuk skala.
+- **Biaya**: model native-audio 2.5 Flash = $0.50/M teks input, **$3.00/M audio-video input**, $12/M audio output. Per-menit ekuivalen Gemini 3.1 Flash Live preview ≈ **$0.005/menit audio in, $0.018/menit audio out** (rywalker.com/research/gemini-live-api). Video menambah 258 token/detik = 15.480 token/menit × $3/M ≈ **$0.046/menit video**. Jadi percakapan aktif audio+video ≈ **$0.05–0.07/menit** (~Rp800–1.100/menit). 10 menit/hari × 30 hari × 100 user ≈ $1.500–2.100/bulan - MAHAL untuk skala.
 - **Region Indonesia**: ⚠️ ketersediaan region Live API untuk asia-southeast2 (Jakarta) BELUM terverifikasi dari dokumen resmi; perlu cek cloud.google.com/vertex-ai/generative-ai/docs/learn/locations.
 - **Kelebihan**: pengalaman paling mulus, natural barge-in built-in.
 - **Kekurangan**: biaya tinggi, sesi video pendek, ketergantungan penuh online, region belum pasti. Live API server-to-server only → FastAPI harus jadi perantara.
 
-## Opsi Arsitektur C: Hybrid pintar — on-device gate + capture frame periodik (DIREKOMENDASIKAN)
+## Opsi Arsitektur C: Hybrid pintar: on-device gate + capture frame periodik (DIREKOMENDASIKAN)
 - **Cara kerja**: SSD MobileNet on-device (SUDAH ADA) jadi *trigger/gate* yang menentukan KAPAN kirim frame ke vision API. Kirim frame hanya saat: (a) user bertanya, (b) scene berubah signifikan (frame differencing / semantic change: himpunan label deteksi berubah), (c) deteksi danger baru. Antara trigger, jawab dari konteks terakhir + deteksi lokal.
 - **Biaya**: alih-alih streaming kontinu, mungkin hanya 3–10 frame vision API per percakapan. Dengan Gemini Flash-Lite ~$0.0004/frame → **<$0.005 per percakapan** (~Rp8). Ini 10× lebih murah dari Gemini Live.
 - **Teknik**: keyframe selection, scene change detection via perbandingan histogram luma (pakai `LightService`!) atau perubahan set label deteksi. FramePacer existing (buang frame saat in-flight) sudah pola yang tepat.
@@ -2757,13 +2757,13 @@ Asisten yang "melihat" real-time via kamera sambil user gerakkan HP, ngobrol nat
 - **Kekurangan**: tidak se-"live" Astra (ada jeda trigger), STT masih push-to-talk kecuali ditambah wake word/VAD.
 
 ## Opsi Arsitektur D: On-device VLM (Gemini Nano via ML Kit GenAI / SmolVLM / Moondream)
-- **ML Kit GenAI Image Description** (developers.google.com/ml-kit/genai/image-description): pakai Gemini Nano via AICore. TAPI hanya jalan di device flagship (Pixel 8+, Galaxy S24+, chip MediaTek Dimensity/Snapdragon/Tensor tertentu) — **TIDAK jalan di device kelas bawah Indonesia (RAM 4–6GB, Snapdragon 6xx/Helio G)**. Prompt API masih Alpha, terbaik di Pixel 10 (nano-v3).
+- **ML Kit GenAI Image Description** (developers.google.com/ml-kit/genai/image-description): pakai Gemini Nano via AICore. TAPI hanya jalan di device flagship (Pixel 8+, Galaxy S24+, chip MediaTek Dimensity/Snapdragon/Tensor tertentu) - **TIDAK jalan di device kelas bawah Indonesia (RAM 4–6GB, Snapdragon 6xx/Helio G)**. Prompt API masih Alpha, terbaik di Pixel 10 (nano-v3).
 - **SmolVLM (2.2B)**: encode 384×384 patch = 81 token, hemat memori; SmolVLM-256M <1GB GPU. Moondream 0.5B/2B ada int4/int8 QAT untuk mobile. MobileVLM-3B: 21.5 token/detik di Snapdragon 888 CPU.
 - **Kekurangan**: di device 4–6GB, VLM 2B+ berebut RAM dengan kamera+TFLite existing → risiko OOM & thermal throttling; token/detik rendah (~20 t/s) bikin deskripsi terasa lambat. Realistis hanya di flagship.
 - **Rekomendasi**: JANGAN andalkan on-device VLM untuk device target sekarang; simpan sebagai opsi masa depan / khusus flagship.
 
 ## OpenAI Realtime API (untuk kelengkapan)
-- **Vision**: mendukung **input gambar (still), BUKAN video streaming** — sistem "treats it more like adding a picture into the conversation" (openai.com/index/introducing-gpt-realtime/). Jadi bukan live video seperti Gemini Live.
+- **Vision**: mendukung **input gambar (still), BUKAN video streaming** - sistem "treats it more like adding a picture into the conversation" (openai.com/index/introducing-gpt-realtime/). Jadi bukan live video seperti Gemini Live.
 - **Biaya**: gpt-realtime audio input $32/M, output $64/M (resmi OpenAI). ⚠️ Harga image input flagship (~$5/M) berasal dari tracker pihak ketiga, belum diverifikasi di platform.openai.com/docs/pricing.
 - **Kesimpulan**: kalah dari Gemini Live untuk kasus "live vision" karena tidak streaming video; tidak direkomendasikan untuk Vinara.
 
@@ -2773,12 +2773,12 @@ Asisten yang "melihat" real-time via kamera sambil user gerakkan HP, ngobrol nat
 - **Kesimpulan**: self-host baru masuk akal di skala ribuan user aktif dengan volume tinggi; di bawah itu, API pay-per-use (Gemini/Claude) lebih murah + tanpa ops overhead. Untuk MVP, JANGAN self-host.
 
 ## Desain UX voice hands-free
-- **Wake word**: Picovoice Porcupine mendukung English, Mandarin, Prancis, Jerman, Italia, Jepang, Korea, Portugis, Spanyol — **Bahasa Indonesia TIDAK didukung** built-in ("Support for additional languages is available for commercial customers on a case-by-case basis", github.com/Picovoice/porcupine). Lisensi enterprise mahal (dilaporkan Foundation Plan ~$6.000). openWakeWord/Vosk open-source bisa dilatih ID tapi butuh effort. → **Wake word bahasa Indonesia native BELUM realistis** dari vendor jadi.
+- **Wake word**: Picovoice Porcupine mendukung English, Mandarin, Prancis, Jerman, Italia, Jepang, Korea, Portugis, Spanyol - **Bahasa Indonesia TIDAK didukung** built-in ("Support for additional languages is available for commercial customers on a case-by-case basis", github.com/Picovoice/porcupine). Lisensi enterprise mahal (dilaporkan Foundation Plan ~$6.000). openWakeWord/Vosk open-source bisa dilatih ID tapi butuh effort. → **Wake word bahasa Indonesia native BELUM realistis** dari vendor jadi.
 - **Rekomendasi**: pertahankan **push-to-talk (SUDAH ADA)** sebagai default + tambah **VAD (Voice Activity Detection)** sebagai jalan tengah untuk hands-free dalam mode Live (Picovoice Cobra VAD, atau `speech_to_text` `listenFor` diperpanjang). Continuous listening boros baterai & privasi.
-- **Barge-in & echo (masalah nyata)**: `flutter_tts` + `speech_to_text` berebut audio session Android — ada bug terdokumentasi (github dlutton/flutter_tts #308: memulai STT saat TTS jalan bisa "mem-block" TTS). Solusi: gunakan `audio_session` package untuk konfigurasi kategori & focus; terapkan **half-duplex gating** (matikan STT saat TTS bicara untuk frasa kritis, aktifkan setelahnya) untuk hindari mic menangkap suara TTS sendiri. AEC penuh sulit di Flutter murni. `TtsQueue` + `interruptByUser()` existing sudah fondasi bagus untuk barge-in terkontrol.
+- **Barge-in & echo (masalah nyata)**: `flutter_tts` + `speech_to_text` berebut audio session Android - ada bug terdokumentasi (github dlutton/flutter_tts #308: memulai STT saat TTS jalan bisa "mem-block" TTS). Solusi: gunakan `audio_session` package untuk konfigurasi kategori & focus; terapkan **half-duplex gating** (matikan STT saat TTS bicara untuk frasa kritis, aktifkan setelahnya) untuk hindari mic menangkap suara TTS sendiri. AEC penuh sulit di Flutter murni. `TtsQueue` + `interruptByUser()` existing sudah fondasi bagus untuk barge-in terkontrol.
 
 ## Object localization dengan arah relatif
-Manfaatkan stack ada: bbox on-device + `_getDirection` (3-zona) + field `vertical` server (atas/tengah/bawah — SUDAH dihitung tapi belum dipakai!). Petakan bbox → frasa: gabungkan horizontal (kiri/depan/kanan) + vertical (atas/tengah/bawah) = "kanan atas", "kiri bawah". Clock-face ("jam 2") berguna untuk presisi tapi riset O&M menyarankan kiri/kanan egocentric untuk mayoritas kasus; pakai clock-face hanya saat user minta presisi. AKTIFKAN field `vertical` yang sudah ada.
+Manfaatkan stack ada: bbox on-device + `_getDirection` (3-zona) + field `vertical` server (atas/tengah/bawah - SUDAH dihitung tapi belum dipakai!). Petakan bbox → frasa: gabungkan horizontal (kiri/depan/kanan) + vertical (atas/tengah/bawah) = "kanan atas", "kiri bawah". Clock-face ("jam 2") berguna untuk presisi tapi riset O&M menyarankan kiri/kanan egocentric untuk mayoritas kasus; pakai clock-face hanya saat user minta presisi. AKTIFKAN field `vertical` yang sudah ada.
 
 ## Kontrol flashlight di Flutter
 - Package `torch_light` (pub.dev/packages/torch_light) atau `camera` `setFlashMode(FlashMode.torch)`. Konflik: saat kamera dipakai stream, `torch_light` bisa lempar `EnableTorchExistentUserException` ("camera in use"). Karena Vinara pakai `camera` untuk stream, gunakan `CameraController.setFlashMode(FlashMode.torch)` (satu controller, hindari konflik) BUKAN torch_light terpisah.
@@ -2791,11 +2791,11 @@ Jangan bikin Live Assistant sebagai fitur terpisah dari Scene Description + Cari
 **Opsi C (hybrid gate + frame periodik) sebagai fondasi, dengan `LiveAssistantProvider` + tool-calling.** Alasan: 10× lebih murah dari Gemini Live, hemat kuota Indonesia, memanfaatkan SSD MobileNet + LightService + deteksi terstruktur yang SUDAH ada, dan offline-tolerant. Pertahankan push-to-talk + tambah VAD untuk hands-free. Gemini Live API disimpan sebagai mode "premium/flagship" opsional bila budget & region memungkinkan. On-device VLM TIDAK untuk device target sekarang.
 
 ## Ditemukan tapi tidak disarankan
-- **Gemini Live API sebagai default** — biaya ~Rp800–1.100/menit terlalu mahal untuk pasar Indonesia di skala; sesi video 2 menit; region belum pasti.
-- **OpenAI Realtime API untuk live vision** — hanya input gambar still, bukan video streaming.
-- **Wake word Picovoice Porcupine bahasa Indonesia** — tidak didukung + lisensi mahal.
-- **On-device VLM (Gemini Nano/SmolVLM)** — tidak jalan di RAM 4–6GB / chip entry; hanya flagship.
-- **WebRTC streaming kontinu** — dependency berat, boros device low-end.
+- **Gemini Live API sebagai default** - biaya ~Rp800–1.100/menit terlalu mahal untuk pasar Indonesia di skala; sesi video 2 menit; region belum pasti.
+- **OpenAI Realtime API untuk live vision** - hanya input gambar still, bukan video streaming.
+- **Wake word Picovoice Porcupine bahasa Indonesia** - tidak didukung + lisensi mahal.
+- **On-device VLM (Gemini Nano/SmolVLM)** - tidak jalan di RAM 4–6GB / chip entry; hanya flagship.
+- **WebRTC streaming kontinu** - dependency berat, boros device low-end.
 
 ## Pertanyaan buat user
 1. Budget API bulanan untuk fitur live (menentukan hybrid vs Gemini Live)?
@@ -2814,27 +2814,27 @@ Berdasarkan ReCog (CHI 2020) & VizWiz::LocateIt: granularitas jarak kategori kas
 1. **Granularitas jarak kasar**: SEBAGIAN. Ada threshold-crossing `[0.6, 1.0, 2.0, 3.0]` tapi diumumkan sebagai angka presisi, bukan kategori "dekat/sedang/jauh". PERLU REVISI: umumkan kategori, angka presisi hanya saat sangat dekat (<0.6m).
 2. **Sonifikasi**: TIDAK ADA sama sekali (hanya TTS + vibration per arah). PERLU DIBANGUN.
 3. **Disambiguasi objek serupa**: TIDAK ADA (hanya count + nearest). `vertical` dihitung server tapi tidak dipakai. PERLU: umumkan tiap instans saat kamera menyapu dengan clock-position + jarak.
-4. **Scanning/sweep guidance**: SEBAGIAN — ada "putar badan pelan-pelan" tiap 6 tick, tapi tidak ada feedback eksplisit saat objek masuk/keluar frame. `lostFromView` ada di enum tapi TIDAK PERNAH di-set. PERLU DIPERBAIKI.
+4. **Scanning/sweep guidance**: SEBAGIAN - ada "putar badan pelan-pelan" tiap 6 tick, tapi tidak ada feedback eksplisit saat objek masuk/keluar frame. `lostFromView` ada di enum tapi TIDAK PERNAH di-set. PERLU DIPERBAIKI.
 5. **Camera framing feedback kontinu**: TIDAK ADA. PERLU sonifikasi kontinu.
 
 ## Opsi sonifikasi real-time di Flutter
-- **Opsi 1 — `flutter_soloud` (DIREKOMENDASIKAN)**: engine C++ SoLoud low-latency, bisa **generate waveform real-time (sine/square/saw/triangle)**, buffer stream PCM, efek pitch shift, 3D positional/panning (pub.dev/packages/flutter_soloud). Cocok untuk beep dinamis: ubah frekuensi/tempo/volume/pan real-time berdasarkan jarak & arah tanpa file statis.
-- **Opsi 2 — `flutter_pcm_sound`**: kirim PCM 16-bit real-time via callback, nol dependency selain platform. Bagus untuk sintesis tone kustom penuh; lebih low-level.
-- **Opsi 3 — `just_audio` + tone bank pre-generated / `soundpool`**: play file tone dengan playbackRate. Kurang fleksibel untuk pitch/tempo kontinu; latency lebih tinggi.
+- **Opsi 1 - `flutter_soloud` (DIREKOMENDASIKAN)**: engine C++ SoLoud low-latency, bisa **generate waveform real-time (sine/square/saw/triangle)**, buffer stream PCM, efek pitch shift, 3D positional/panning (pub.dev/packages/flutter_soloud). Cocok untuk beep dinamis: ubah frekuensi/tempo/volume/pan real-time berdasarkan jarak & arah tanpa file statis.
+- **Opsi 2 - `flutter_pcm_sound`**: kirim PCM 16-bit real-time via callback, nol dependency selain platform. Bagus untuk sintesis tone kustom penuh; lebih low-level.
+- **Opsi 3 - `just_audio` + tone bank pre-generated / `soundpool`**: play file tone dengan playbackRate. Kurang fleksibel untuk pitch/tempo kontinu; latency lebih tinggi.
 - **Audio focus conflict**: sonifikasi + `flutter_tts` + `speech_to_text` berebut audio session Android. Gunakan `audio_session` untuk kategori "playback + mixWithOthers/duck"; beep di-duck saat TTS critical bicara. flutter_soloud dan flutter_tts bisa koeksis bila kategori diset benar.
 
 ## Mapping parameter sonifikasi (berbasis literatur, bukan asumsi)
-Studi **Bazilinskyy et al. (2016, IFAC-PapersOnLine 49(19):531–536, DOI 10.1016/j.ifacol.2016.10.614, N=29)** membandingkan 3 metode: **Beep Repetition Rate (BRR)** — tempo beep fungsi jarak; **Sound Intensity (SI)** — volume fungsi jarak; **Sound Fundamental Frequency (SFF)** — pitch fungsi jarak; azimuth/arah dipetakan lewat **beda volume kiri-kanan (stereo panning)**. Studi **Delaunay & Ambard ("How well do you see what you hear?", 28 partisipan)** menemukan: "The best depth estimates... were obtained with the sound frequency and the repetition rate of beeps... the beep repetition rate yielded the best depth estimation." Rekomendasi mapping Vinara:
+Studi **Bazilinskyy et al. (2016, IFAC-PapersOnLine 49(19):531–536, DOI 10.1016/j.ifacol.2016.10.614, N=29)** membandingkan 3 metode: **Beep Repetition Rate (BRR)** - tempo beep fungsi jarak; **Sound Intensity (SI)** - volume fungsi jarak; **Sound Fundamental Frequency (SFF)** - pitch fungsi jarak; azimuth/arah dipetakan lewat **beda volume kiri-kanan (stereo panning)**. Studi **Delaunay & Ambard ("How well do you see what you hear?", 28 partisipan)** menemukan: "The best depth estimates... were obtained with the sound frequency and the repetition rate of beeps... the beep repetition rate yielded the best depth estimation." Rekomendasi mapping Vinara:
 - **Jarak → tempo (BRR)**: makin dekat, makin cepat (mis. 2 Hz @ 3m → 8 Hz @ 0.6m). Utama.
-- **Jarak → pitch (opsional redundan)**: The Sonification Handbook memperingatkan mapping redundan pitch+tempo TIDAK selalu memperbaiki performa — jangan berlebihan. Cukup tempo + panning.
+- **Jarak → pitch (opsional redundan)**: The Sonification Handbook memperingatkan mapping redundan pitch+tempo TIDAK selalu memperbaiki performa - jangan berlebihan. Cukup tempo + panning.
 - **Arah horizontal → stereo panning** (pakai headphone/speaker stereo).
-- **Vertical (atas/bawah) → pitch dasar** (atas=pitch tinggi, bawah=rendah) — memanfaatkan `vertical` server yang ada.
+- **Vertical (atas/bawah) → pitch dasar** (atas=pitch tinggi, bawah=rendah) - memanfaatkan `vertical` server yang ada.
 - **Objek dalam frame → earcon "found"** yang beda dari sweep tone.
-CATATAN spatial audio: teknik panning stereo di sini adalah reuse ringan dari konsep spatial audio (yang dicoret sebagai fitur mandiri) — hanya panning L/R, bukan 3D beacon.
+CATATAN spatial audio: teknik panning stereo di sini adalah reuse ringan dari konsep spatial audio (yang dicoret sebagai fitur mandiri) - hanya panning L/R, bukan 3D beacon.
 
 ## Estimasi jarak: bbox similar-triangle vs depth estimation
 - **Sekarang**: similar-triangle `FOCAL_LENGTH_PX=615`. Kelemahan: butuh kalibrasi per-device (fokus px beda tiap kamera), objek tidak tegak/terpotong bikin error besar, tinggi asli bervariasi (`DEFAULT_HEIGHT_CM=20` kasar). Untuk kategori kasar (dekat/sedang/jauh) ini CUKUP.
-- **Depth estimation on-device**: MiDaS v2 TFLite = 66.3MB; di NPU flagship (Galaxy S23) ~1–3ms, tapi rentang 2.1–84.5ms tergantung device — di Snapdragon 6xx/Helio G CPU jauh lebih lambat (huggingface.co/qualcomm/Midas-V2). Depth Anything V2 Small (25M param) bagus tapi berat untuk entry Android. Jalan BERSAMAAN dengan SSD MobileNet = beban ganda, risiko thermal.
+- **Depth estimation on-device**: MiDaS v2 TFLite = 66.3MB; di NPU flagship (Galaxy S23) ~1–3ms, tapi rentang 2.1–84.5ms tergantung device - di Snapdragon 6xx/Helio G CPU jauh lebih lambat (huggingface.co/qualcomm/Midas-V2). Depth Anything V2 Small (25M param) bagus tapi berat untuk entry Android. Jalan BERSAMAAN dengan SSD MobileNet = beban ganda, risiko thermal.
 - **Rekomendasi**: PERTAHANKAN similar-triangle untuk kategori jarak kasar (murah, cukup). Depth estimation TIDAK sepadan untuk device target sekarang.
 
 ## Pipeline & jalur on-device untuk Cari Objek
@@ -2850,9 +2850,9 @@ CATATAN spatial audio: teknik panning stereo di sini adalah reuse ringan dari ko
 Pertahankan similar-triangle (jangan tambah depth model). Semua ini menghormati loop 350ms + FramePacer 600ms existing.
 
 ## Ditemukan tapi tidak disarankan
-- **Monocular depth (MiDaS/Depth Anything) on-device** — terlalu berat jalan bareng SSD MobileNet di device entry; overkill untuk kategori jarak kasar.
-- **Grounding DINO server** — akurasi tinggi tapi latency/VRAM besar, tidak real-time untuk sweep.
-- **Mapping pitch+tempo redundan penuh** — literatur (Sonification Handbook) menunjukkan tidak menambah performa.
+- **Monocular depth (MiDaS/Depth Anything) on-device** - terlalu berat jalan bareng SSD MobileNet di device entry; overkill untuk kategori jarak kasar.
+- **Grounding DINO server** - akurasi tinggi tapi latency/VRAM besar, tidak real-time untuk sweep.
+- **Mapping pitch+tempo redundan penuh** - literatur (Sonification Handbook) menunjukkan tidak menambah performa.
 
 ## Pertanyaan buat user
 1. User biasanya pakai headphone (panning stereo efektif) atau speaker HP (panning lemah)?
@@ -2861,18 +2861,18 @@ Pertahankan similar-triangle (jangan tambah depth model). Semua ini menghormati 
 
 ---
 
-# FITUR 5: Upgrade Navigasi Trotoar — deteksi bahaya & panduan hindari halangan
+# FITUR 5: Upgrade Navigasi Trotoar: deteksi bahaya & panduan hindari halangan
 
 ## Requirement & UX Goal
-(a) Deteksi bahaya jalur (lubang, tangga turun, halangan mendadak) dengan peringatan prioritas tinggi; (b) arahan hindari ("ada orang di depan, geser kanan sedikit"). BUKAN face recognition — murni deteksi keberadaan sebagai halangan. Prinsip: egocentric framing, prioritas bahaya > info, framing "jalur aman", hindari overload multimodal.
+(a) Deteksi bahaya jalur (lubang, tangga turun, halangan mendadak) dengan peringatan prioritas tinggi; (b) arahan hindari ("ada orang di depan, geser kanan sedikit"). BUKAN face recognition - murni deteksi keberadaan sebagai halangan. Prinsip: egocentric framing, prioritas bahaya > info, framing "jalur aman", hindari overload multimodal.
 
 ## Arsitektur pipeline: segmentasi + object detection
 - **Kombinasi**: PIDNet-S/SegFormer-B0 (jalur walkable) + SSD MobileNet (halangan) dengan **masking bbox terhadap mask jalur**: hitung IoU/overlap footprint bbox (bagian bawah bbox = titik kontak tanah) dengan region walkable. Kalau footprint objek jatuh DI DALAM jalur aman → itu halangan yang relevan; kalau di luar → abaikan. Ini lebih murah dari occupancy grid penuh.
 - **Model multi-task satu forward pass**: YOLOP, HybridNets, YOLOPv2 (deteksi + drivable area + lane dalam satu jaringan). Menarik secara efisiensi tapi dilatih untuk jalan raya mobil, bukan trotoar pejalan → perlu retraining dengan data trotoar. Belum realistis tanpa dataset.
 
 ## Deteksi drop-off/tangga turun/lubang
-- **Dataset**: **SideGuide** (IROS 2020, Park et al., DOI 10.1109/IROS45743.2020.9340734) — 350K bbox, 100K polygon mask, 180K stereo pair, objek trotoar dari wawancara penyandang disabilitas (curb, stairs, dll). SENSATION-DS (2.752 image chest-view, 9 kelas navigasi). Cityscapes/Mapillary (jalan raya, kurang cocok trotoar). Dataset trotoar Indonesia spesifik: tidak ditemukan — ini gap nyata.
-- **Realistis dengan kamera monokuler**: deteksi lubang/curb sebagai OBJEK (bbox/segmentasi) bisa dilatih dari SideGuide. TAPI drop-off/tangga TURUN sangat sulit dari monokuler tanpa depth — depth discontinuity/ground-plane fitting/vanishing point membantu tapi rawan false negative. **Ini fitur safety-critical: risiko false negative tinggi** — jangan janjikan deteksi tangga turun yang andal dari kamera HP saja. Sampaikan keterbatasan ini ke user secara jujur (konsisten dengan prinsip Vinara).
+- **Dataset**: **SideGuide** (IROS 2020, Park et al., DOI 10.1109/IROS45743.2020.9340734) - 350K bbox, 100K polygon mask, 180K stereo pair, objek trotoar dari wawancara penyandang disabilitas (curb, stairs, dll). SENSATION-DS (2.752 image chest-view, 9 kelas navigasi). Cityscapes/Mapillary (jalan raya, kurang cocok trotoar). Dataset trotoar Indonesia spesifik: tidak ditemukan - ini gap nyata.
+- **Realistis dengan kamera monokuler**: deteksi lubang/curb sebagai OBJEK (bbox/segmentasi) bisa dilatih dari SideGuide. TAPI drop-off/tangga TURUN sangat sulit dari monokuler tanpa depth - depth discontinuity/ground-plane fitting/vanishing point membantu tapi rawan false negative. **Ini fitur safety-critical: risiko false negative tinggi** - jangan janjikan deteksi tangga turun yang andal dari kamera HP saja. Sampaikan keterbatasan ini ke user secara jujur (konsisten dengan prinsip Vinara).
 
 ## Menentukan "arah geser" (algoritma konkret)
 Backend `segmentation_service.py` sudah bagi frame bawah jadi 3 kolom (kiri/tengah/kanan) dengan `walkable_ratio`. Perluas:
@@ -2888,12 +2888,12 @@ Vinara SUDAH punya `SpeechTier` (info/warning/critical) + DetectionFilter cooldo
 Literatur alert prioritization/interruption management mendukung: bahaya mendadak interupsi, info non-kritis antre (sudah tercermin di TtsQueue: Info dibuang kalau menunggu >2s).
 
 ## Performa real-time on-device (benchmark)
-- **PIDNet-S**: 78.6% mIoU @ 93.2 FPS di Cityscapes test (RTX GPU — bukan mobile). Di mobile CPU/NNAPI jauh lebih lambat.
+- **PIDNet-S**: 78.6% mIoU @ 93.2 FPS di Cityscapes test (RTX GPU - bukan mobile). Di mobile CPU/NNAPI jauh lebih lambat.
 - **SegFormer-B0**: ~82.98% mIoU tapi hybrid transformer, lebih berat di CPU.
 - **Fast-SCNN / BiSeNetV2 / DDRNet-23-slim**: dirancang real-time, lebih ringan. Fast-SCNN "learning to downsample" sangat ringan.
-- **Angka mobile spesifik (Snapdragon 680/695, Helio G85/G99, Exynos 1330)**: ⚠️ benchmark publik langsung TIDAK ditemukan — data tidak tersedia. Yang pasti: transformer (SegFormer) lebih berat dari CNN ringan (Fast-SCNN/PIDNet-S) di mobile CPU.
+- **Angka mobile spesifik (Snapdragon 680/695, Helio G85/G99, Exynos 1330)**: ⚠️ benchmark publik langsung TIDAK ditemukan - data tidak tersedia. Yang pasti: transformer (SegFormer) lebih berat dari CNN ringan (Fast-SCNN/PIDNet-S) di mobile CPU.
 - **Strategi optimasi**: input resolution lebih kecil (512→384/256), **INT8 quantization**, **NNAPI/GPU delegate** di `tflite_flutter ^0.12.1`, **frame skipping / temporal alternation** (segmentasi tiap N frame, deteksi tiap frame), **IsolateInterpreter terpisah** (sudah dipakai). 
-- **Server vs on-device**: sekarang Navigasi 100% server (offline = berhenti total). Memindah segmentasi on-device memberi offline-capability tapi berat di device entry. **Rekomendasi**: tetap server-primary untuk segmentasi (PIDNet ONNX saat model tersedia), tapi tambah **fallback on-device ringan** (mis. heuristik OpenCV yang sudah ada dijalankan lokal, atau Fast-SCNN INT8) agar offline tidak "berhenti total". CATATAN: model PIDNet (`pidnet_s_3zona.onnx`) BELUM ADA — sekarang jalan heuristik OpenCV; field `source` jujur melaporkan ini.
+- **Server vs on-device**: sekarang Navigasi 100% server (offline = berhenti total). Memindah segmentasi on-device memberi offline-capability tapi berat di device entry. **Rekomendasi**: tetap server-primary untuk segmentasi (PIDNet ONNX saat model tersedia), tapi tambah **fallback on-device ringan** (mis. heuristik OpenCV yang sudah ada dijalankan lokal, atau Fast-SCNN INT8) agar offline tidak "berhenti total". CATATAN: model PIDNet (`pidnet_s_3zona.onnx`) BELUM ADA - sekarang jalan heuristik OpenCV; field `source` jujur melaporkan ini.
 
 ## TTS responsif & bisa diinterupsi untuk urgent alert
 - `flutter_tts` `stop()` + `speak()` di Android: ada latency kecil; `awaitSpeakCompletion(true)` bisa menghambat interupsi cepat. Untuk alert kritis ("Berhenti!"), latency TTS berbahaya.
@@ -2905,13 +2905,13 @@ Literatur alert prioritization/interruption management mendukung: bahaya mendada
 3. **Prioritization**: perluas SpeechTier dengan TTC + urgency score + threshold dinamis dari accelerometer.
 4. **Earcon pre-rendered untuk "Berhenti!"** (latency ~0) via flutter_soloud, jangan TTS.
 5. **Fallback on-device ringan** (Fast-SCNN INT8 atau heuristik lokal) agar offline tidak berhenti total.
-6. **Jujur soal keterbatasan** deteksi tangga turun/drop-off monokuler (risiko false negative) — jangan over-promise.
+6. **Jujur soal keterbatasan** deteksi tangga turun/drop-off monokuler (risiko false negative) - jangan over-promise.
 
 ## Ditemukan tapi tidak disarankan
-- **YOLOP/HybridNets/YOLOPv2 multi-task** — dilatih untuk jalan raya mobil, butuh retraining data trotoar yang belum ada.
-- **Deteksi tangga turun andal dari monokuler** — risiko false negative terlalu tinggi untuk safety-critical tanpa depth sensor.
-- **SegFormer-B0 on-device di device entry** — transformer terlalu berat; pilih CNN ringan bila on-device.
-- **Multimodal overload** (haptik+audio+speech bersamaan) — riset EEG menunjukkan menambah beban kognitif.
+- **YOLOP/HybridNets/YOLOPv2 multi-task** - dilatih untuk jalan raya mobil, butuh retraining data trotoar yang belum ada.
+- **Deteksi tangga turun andal dari monokuler** - risiko false negative terlalu tinggi untuk safety-critical tanpa depth sensor.
+- **SegFormer-B0 on-device di device entry** - transformer terlalu berat; pilih CNN ringan bila on-device.
+- **Multimodal overload** (haptik+audio+speech bersamaan) - riset EEG menunjukkan menambah beban kognitif.
 
 ## Pertanyaan buat user
 1. Prioritas: offline-capability (perlu segmentasi on-device) vs akurasi (server)?
@@ -2926,7 +2926,7 @@ Literatur alert prioritization/interruption management mendukung: bahaya mendada
 **Rekomendasi tegas: JANGAN lebur total; jadikan dua mode dengan pembagian use-case JELAS + auto-switch kontekstual, dan bedakan Mode Tuntun menjadi fokus rintangan level mata/kepala.**
 
 ## Alasan teknis
-1. **Satu `CameraController` tidak bisa dilayani dua konsumen ML berat sekaligus** di Android. Menjalankan Mode Tuntun (SSD MobileNet) DAN Navigasi (segmentasi) paralel dari satu stream = rebutan frame + CPU/RAM ganda + thermal throttling di device entry. Jadi 2 mode PARALEL boros/redundant — harus satu mode aktif pada satu waktu.
+1. **Satu `CameraController` tidak bisa dilayani dua konsumen ML berat sekaligus** di Android. Menjalankan Mode Tuntun (SSD MobileNet) DAN Navigasi (segmentasi) paralel dari satu stream = rebutan frame + CPU/RAM ganda + thermal throttling di device entry. Jadi 2 mode PARALEL boros/redundant - harus satu mode aktif pada satu waktu.
 2. **Melebur total juga tidak optimal**: segmentasi trotoar (mask jalur) dan deteksi objek umum (indoor/jalan bebas) punya tujuan berbeda. Trotoar butuh walkable-region; indoor butuh deteksi objek murni.
 
 ## Usulan pembedaan (menjawab opsi 2 & 3)
@@ -2947,11 +2947,11 @@ Karena satu kamera = satu konsumen aktif, auto-switch memastikan hanya SATU mode
 # PENUTUP
 
 ## Dependency & Urutan Pengerjaan
-1. **Fitur 2 (Light Detection) DULU** — paling murah, jadi fondasi shared service (`LightService`) yang dipakai Fitur 3 (trigger flashlight & scene-change gate), Fitur 4 (deteksi tooDark), Fitur 5.
-2. **Fitur 4 (Perbaikan Cari Objek)** — bangun infrastruktur **sonifikasi `flutter_soloud`** yang akan dipakai ulang untuk earcon Fitur 5. Aktifkan `vertical`, jalur on-device COCO.
-3. **Fitur 5 (Navigasi upgrade)** — pakai sonifikasi/earcon dari Fitur 4, prioritization SpeechTier, footprint masking. Juga menyiapkan pola deteksi-di-jalur untuk Mode Tuntun.
-4. **Fitur 1 (Scene Description hybrid grounding)** — perluas `/api/narasi` dengan gambar + grounding; fondasi VLM untuk Fitur 3.
-5. **Fitur 3 (Live Assistant) TERAKHIR** — butuh Fitur 1 (VLM), Fitur 2 (gate/flashlight), Fitur 4 (object localization), dan deteksi Fitur 5 sudah jalan; menyatukan semua via `LiveAssistantProvider` + tool-calling.
+1. **Fitur 2 (Light Detection) DULU** - paling murah, jadi fondasi shared service (`LightService`) yang dipakai Fitur 3 (trigger flashlight & scene-change gate), Fitur 4 (deteksi tooDark), Fitur 5.
+2. **Fitur 4 (Perbaikan Cari Objek)** - bangun infrastruktur **sonifikasi `flutter_soloud`** yang akan dipakai ulang untuk earcon Fitur 5. Aktifkan `vertical`, jalur on-device COCO.
+3. **Fitur 5 (Navigasi upgrade)** - pakai sonifikasi/earcon dari Fitur 4, prioritization SpeechTier, footprint masking. Juga menyiapkan pola deteksi-di-jalur untuk Mode Tuntun.
+4. **Fitur 1 (Scene Description hybrid grounding)** - perluas `/api/narasi` dengan gambar + grounding; fondasi VLM untuk Fitur 3.
+5. **Fitur 3 (Live Assistant) TERAKHIR** - butuh Fitur 1 (VLM), Fitur 2 (gate/flashlight), Fitur 4 (object localization), dan deteksi Fitur 5 sudah jalan; menyatukan semua via `LiveAssistantProvider` + tool-calling.
 
 ## Potensi Konflik Teknis (antisipasi sejak awal)
 - **Rebutan kamera**: satu `CameraController`, banyak konsumen. WAJIB arsitektur satu-konsumen-aktif + frame fan-out terkontrol. FramePacer existing sudah pola tepat. Jangan dua mode ML paralel.
@@ -2983,25 +2983,25 @@ Karena satu kamera = satu konsumen aktif, auto-switch memastikan hanya SATU mode
 | 5 Navigasi | Earcon pre-rendered "Berhenti!" | Ya | ~0ms | Rp0 | Rendah | ✅ Ya |
 
 ## Fitur yang tidak dibahas (sesuai batasan)
-Color detection, barcode/product recognition, face/person recognition & identifikasi, remote sighted assistance, GPS turn-by-turn + POI, spatial/3D audio beacon, handwriting recognition — TIDAK direkomendasikan sesuai instruksi. Teknik panning stereo dari spatial audio hanya dipakai ringan sebagai catatan untuk sonifikasi Cari Objek, bukan fitur beacon mandiri.
+Color detection, barcode/product recognition, face/person recognition & identifikasi, remote sighted assistance, GPS turn-by-turn + POI, spatial/3D audio beacon, handwriting recognition - TIDAK direkomendasikan sesuai instruksi. Teknik panning stereo dari spatial audio hanya dipakai ringan sebagai catatan untuk sonifikasi Cari Objek, bukan fitur beacon mandiri.
 
 ---
 
 ## Referensi Kunci (untuk verifikasi klaim)
-- Claude Haiku 4.5 pricing — anthropic.com/claude/haiku ($1/M input, $5/M output; cache read $0.10/M, write $1.25/M).
-- Gemini pricing — ai.google.dev/gemini-api/docs/pricing (2.5 Flash-Lite $0.10/$0.40; batch $0.05/$0.20; 3.1 Flash-Lite $0.25/$1.50).
-- Anthropic image tokens — `(w×h)/750`; prompt caching — platform.claude.com/docs/en/build-with-claude/prompt-caching.
-- Gemini Live API limits — ai.google.dev/gemini-api/docs/live-api/best-practices (audio+video 2 min, video 258 TPS @ 1 FPS).
-- OpenAI Realtime — openai.com/index/introducing-gpt-realtime/ (image still only; audio $32/$64 per 1M).
-- CHI 2024 scene description trust — arXiv:2403.15604 (trust 2,43/4; satisfaction 2,76/5); ASSETS 2024 "Misfitting With AI" dl.acm.org/doi/10.1145/3663548.3675659.
-- Sonifikasi — Bazilinskyy et al. 2016 (DOI 10.1016/j.ifacol.2016.10.614, N=29, BRR/SI/SFF + panning); Delaunay & Ambard (repetition rate best depth); The Sonification Handbook (redundant mapping caveat).
-- Picovoice Porcupine languages — github.com/Picovoice/porcupine (ID tidak didukung built-in).
-- MiDaS-V2 TFLite — huggingface.co/qualcomm/Midas-V2 (66.3MB, 2.1–84.5ms).
-- PIDNet-S — 78.6% mIoU @ 93.2 FPS Cityscapes (arXiv:2206.02066); SideGuide — DOI 10.1109/IROS45743.2020.9340734.
-- Head-level obstacle — doi:10.3390/technologies13090407.
+- Claude Haiku 4.5 pricing - anthropic.com/claude/haiku ($1/M input, $5/M output; cache read $0.10/M, write $1.25/M).
+- Gemini pricing - ai.google.dev/gemini-api/docs/pricing (2.5 Flash-Lite $0.10/$0.40; batch $0.05/$0.20; 3.1 Flash-Lite $0.25/$1.50).
+- Anthropic image tokens - `(w×h)/750`; prompt caching - platform.claude.com/docs/en/build-with-claude/prompt-caching.
+- Gemini Live API limits - ai.google.dev/gemini-api/docs/live-api/best-practices (audio+video 2 min, video 258 TPS @ 1 FPS).
+- OpenAI Realtime - openai.com/index/introducing-gpt-realtime/ (image still only; audio $32/$64 per 1M).
+- CHI 2024 scene description trust - arXiv:2403.15604 (trust 2,43/4; satisfaction 2,76/5); ASSETS 2024 "Misfitting With AI" dl.acm.org/doi/10.1145/3663548.3675659.
+- Sonifikasi - Bazilinskyy et al. 2016 (DOI 10.1016/j.ifacol.2016.10.614, N=29, BRR/SI/SFF + panning); Delaunay & Ambard (repetition rate best depth); The Sonification Handbook (redundant mapping caveat).
+- Picovoice Porcupine languages - github.com/Picovoice/porcupine (ID tidak didukung built-in).
+- MiDaS-V2 TFLite - huggingface.co/qualcomm/Midas-V2 (66.3MB, 2.1–84.5ms).
+- PIDNet-S - 78.6% mIoU @ 93.2 FPS Cityscapes (arXiv:2206.02066); SideGuide - DOI 10.1109/IROS45743.2020.9340734.
+- Head-level obstacle - doi:10.3390/technologies13090407.
 - Flutter: flutter_soloud (pub.dev/packages/flutter_soloud), torch_light (pub.dev/packages/torch_light), flutter_tts↔speech_to_text konflik (github dlutton/flutter_tts #308).
-- ML Kit GenAI / Gemini Nano — developers.google.com/ml-kit/genai/image-description (flagship only).
-- RunPod GPU — L4 24GB $0.39/jam, A5000 24GB $0.27/jam, A100 80GB $1.39/jam; Qwen2.5-VL-7B A100 40GB 20,89 img req/s vs 7,35 video req/s (github vllm #24728).
+- ML Kit GenAI / Gemini Nano - developers.google.com/ml-kit/genai/image-description (flagship only).
+- RunPod GPU - L4 24GB $0.39/jam, A5000 24GB $0.27/jam, A100 80GB $1.39/jam; Qwen2.5-VL-7B A100 40GB 20,89 img req/s vs 7,35 video req/s (github vllm #24728).
 ```
 
 ---
@@ -3047,7 +3047,7 @@ def _build_url() -> str:
 def init_db() -> bool:
     """Buat engine, jalankan skema (idempoten), seed data rujukan.
 
-    Mengembalikan False kalau database tidak terjangkau — server TETAP jalan,
+    Mengembalikan False kalau database tidak terjangkau - server TETAP jalan,
     hanya endpoint yang butuh DB yang menyerah dengan pesan jelas. Prinsip
     "tidak ada jalan buntu" berlaku juga untuk backend.
     """
@@ -3116,12 +3116,12 @@ def execute_returning(sql: str, params: dict | None = None) -> dict | None:
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/db/schema.sql`
 
 ```sql
--- Skema Vinara/Guidio — PostgreSQL.
+-- Skema Vinara/Guidio - PostgreSQL.
 -- Tanpa auth: semua identifikasi pakai device_id anonim yang di-generate app.
 -- Dijalankan otomatis (idempoten) saat startup oleh db/database.py.
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 1. Risk zone — dulu in-memory di risk_zone_service.py, sekarang persisten.
+-- 1. Risk zone - dulu in-memory di risk_zone_service.py, sekarang persisten.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS risk_zones (
     id           BIGSERIAL PRIMARY KEY,
@@ -3136,7 +3136,7 @@ CREATE TABLE IF NOT EXISTS risk_zones (
 CREATE INDEX IF NOT EXISTS idx_risk_zones_latlng ON risk_zones (lat, lng);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 2. Kamus label objek — GET /api/labels?lang=id
+-- 2. Kamus label objek - GET /api/labels?lang=id
 --    Dipakai DO-19 (kelas tak dikenal) & DO-08 (nama meluap). Nama kelas
 --    mentah model tidak layak dibacakan TTS, jadi pemetaannya harus bisa
 --    diperbaiki dari server tanpa rilis ulang aplikasi.
@@ -3155,7 +3155,7 @@ CREATE TABLE IF NOT EXISTS object_labels (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 3. Perintah suara — POST /api/intent
+-- 3. Perintah suara - POST /api/intent
 --    20 intent baku bagian 14. CommandParser lokal tetap jalan lebih dulu;
 --    server hanya dipanggil saat lokal tidak match (AS-18 / AS-19).
 -- ─────────────────────────────────────────────────────────────────────────
@@ -3176,7 +3176,7 @@ CREATE TABLE IF NOT EXISTS intent_phrases (
 CREATE INDEX IF NOT EXISTS idx_intent_phrases_phrase ON intent_phrases (phrase);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 4. Manifest model on-device — GET /api/models/manifest
+-- 4. Manifest model on-device - GET /api/models/manifest
 --    UG-18: emisi uang baru = update model, bukan update aplikasi.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS model_manifest (
@@ -3196,7 +3196,7 @@ CREATE TABLE IF NOT EXISTS model_manifest (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 5. Telemetri alur — POST /api/events
+-- 5. Telemetri alur - POST /api/events
 --    Bukan analitik pemasaran. Yang diukur target desain: jumlah gestur per
 --    alur, waktu buka sampai deteksi aktif, perintah suara tak dikenali.
 -- ─────────────────────────────────────────────────────────────────────────
@@ -3215,7 +3215,7 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_name_time ON telemetry_events (event_na
 CREATE INDEX IF NOT EXISTS idx_telemetry_device ON telemetry_events (device_id);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 6. Laporan crash — POST /api/crash-report (ER-06 "Kirim laporan")
+-- 6. Laporan crash - POST /api/crash-report (ER-06 "Kirim laporan")
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS crash_reports (
     id           BIGSERIAL PRIMARY KEY,
@@ -3233,7 +3233,7 @@ CREATE TABLE IF NOT EXISTS crash_reports (
 CREATE INDEX IF NOT EXISTS idx_crash_time ON crash_reports (received_at DESC);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 7. Antrean unggah offline — POST /api/queue/flush (BT-13)
+-- 7. Antrean unggah offline - POST /api/queue/flush (BT-13)
 --    idempotency_key mencegah dobel saat aplikasi mengirim ulang.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS upload_queue (
@@ -3251,7 +3251,7 @@ CREATE TABLE IF NOT EXISTS upload_queue (
 CREATE INDEX IF NOT EXISTS idx_queue_device_status ON upload_queue (device_id, status);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 8. Sesi Asisten Suara — AS-12 (giliran terbaru), AS-13 (riwayat diringkas),
+-- 8. Sesi Asisten Suara - AS-12 (giliran terbaru), AS-13 (riwayat diringkas),
 --    AS-23 (riwayat kedaluwarsa 15 menit).
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS assistant_sessions (
@@ -3274,7 +3274,7 @@ CREATE TABLE IF NOT EXISTS assistant_turns (
 CREATE INDEX IF NOT EXISTS idx_turns_session ON assistant_turns (session_id, created_at);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 9. Denominasi rupiah — data rujukan untuk Mode Kenali Uang.
+-- 9. Denominasi rupiah - data rujukan untuk Mode Kenali Uang.
 --    Klasifikasi nominalnya sendiri ON-DEVICE (TFLite), tabel ini dipakai
 --    untuk: manifest model, terbilang kata, dan validasi emisi yang didukung
 --    (UG-18 "uang asing / rusak" perlu tahu mana yang memang didukung).
@@ -3290,7 +3290,7 @@ CREATE TABLE IF NOT EXISTS money_denominations (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 10. Status kemampuan server — GET /api/capabilities
+-- 10. Status kemampuan server - GET /api/capabilities
 --     Aplikasi perlu tahu mode mana yang server-nya hidup SEBELUM pengguna
 --     menekan tombol (menentukan item limited/disabled di ModePickerSheet).
 --     Baris ini bisa di-override manual untuk demo/maintenance.
@@ -3621,8 +3621,8 @@ from loguru import logger
 
 from db.database import init_db, is_available
 from routers import (
-    cari_objek,   # /api/cari-objek — YOLOE open-vocabulary
-    describe,     # /api/describe   — Moondream2
+    cari_objek,   # /api/cari-objek - YOLOE open-vocabulary
+    describe,     # /api/describe   - Moondream2
     support,      # /api/capabilities
 )
 from services.find_object_service import FindObjectService
@@ -3644,18 +3644,18 @@ async def lifespan(app: FastAPI):
     """
     logger.info("=== Menyalakan Vinara/Guidio Backend ===")
 
-    # PostgreSQL — risk zone + capability overrides. Tabel telemetri, crash,
+    # PostgreSQL - risk zone + capability overrides. Tabel telemetri, crash,
     # antrean, label, dan manifest tidak lagi punya endpoint aktif; lihat
     # `_archive/routers/support_full.py`.
     init_db()
 
-    # Cari Objek — YOLOE open-vocabulary, trigger-based (bukan real-time).
+    # Cari Objek - YOLOE open-vocabulary, trigger-based (bukan real-time).
     # Satu dari dua fitur yang benar-benar butuh server: modelnya tidak ada
     # di ponsel.
     app.state.find_object_service = FindObjectService()
     logger.info("[FindObject] Service terdaftar (lazy-load model YOLOE).")
 
-    # Scene Description — Moondream2 dimuat malas saat request pertama.
+    # Scene Description - Moondream2 dimuat malas saat request pertama.
     # Model ~2GB, tidak pantas menahan startup. RTX 3050 4GB VRAM cukup
     # untuk FP16 (~1.2GB efektif setelah kuantisasi runtime).
     app.state.moondream_service = MoonDreamService(
@@ -3672,7 +3672,7 @@ app = FastAPI(
     title="Vinara / Guidio Vision API",
     version="2.0.0",
     description=(
-        "Backend untuk Vinara — asisten visual suara untuk pengguna tunanetra. "
+        "Backend untuk Vinara - asisten visual suara untuk pengguna tunanetra. "
         "Empat dari enam mode (Deteksi Objek, Kenali Uang, Baca Teks, "
         "Navigasi) berjalan sepenuhnya on-device dan tidak memanggil API ini "
         "sama sekali. Yang tersisa di sini hanya yang modelnya tidak muat di "
@@ -3751,12 +3751,12 @@ pytesseract>=0.3.10
 Pillow>=10.0.0
 httpx>=0.27.0
 
-# Local LLM — menggantikan Claude Haiku (anthropic) untuk narasi, terjemahan, intent.
+# Local LLM: menggantikan Claude Haiku (anthropic) untuk narasi, terjemahan, intent.
 # Qwen2.5-1.5B-Instruct GGUF via llama-cpp-python dengan akselerasi CUDA.
 # Install dengan CUDA: CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
 llama-cpp-python>=0.3.0
 
-# Vision Language Model — scene description (bukan LLM teks biasa)
+# Vision Language Model: scene description (bukan LLM teks biasa)
 transformers>=4.40.0
 
 # PostgreSQL (telemetri, crash report, antrean offline, kamus label,
@@ -3772,7 +3772,7 @@ psycopg[binary]>=3.2
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/routers/cari_objek.py`
 
 ```python
-"""Mode Cari Objek — POST /api/cari-objek
+"""Mode Cari Objek - POST /api/cari-objek
 
 Trigger-based: dipanggil sekali per perintah suara, bukan stream. Aplikasi
 memanggil ulang tiap kali pengguna memutar badan (CO-05 / CO-10), jadi
@@ -3792,7 +3792,7 @@ router = APIRouter(prefix="/api", tags=["cari-objek"])
 
 @router.get("/cari-objek/targets")
 async def searchable_targets():
-    """Daftar barang yang dikenali sistem — CO-12 (objek tak dikenali)
+    """Daftar barang yang dikenali sistem - CO-12 (objek tak dikenali)
     memakai ini untuk menawarkan barang lain yang memang bisa dicari."""
     from services.find_object_service import EXTRA_ID_TO_EN
 
@@ -3812,7 +3812,7 @@ async def cari_objek(
 ):
     """Cari satu jenis barang di satu frame.
 
-    Balasan `found=False` dengan reason `not_in_frame` BUKAN error — itu
+    Balasan `found=False` dengan reason `not_in_frame` BUKAN error - itu
     kondisi normal CO-10 yang membuat aplikasi menyuruh pengguna memutar
     badan lalu memanggil endpoint ini lagi.
     """
@@ -3874,7 +3874,7 @@ Pipeline (TANPA LLM):
   Foto JPEG → Moondream2 (VLM, caption EN) → dikembalikan langsung ke mobile
 
 Keputusan desain:
-- Terjemahan ke Bahasa Indonesia via Qwen DIHAPUS — tidak ada LLM di backend.
+- Terjemahan ke Bahasa Indonesia via Qwen DIHAPUS - tidak ada LLM di backend.
 - Output tetap Bahasa Inggris; mobile membacanya via TTS dengan locale 'en-US'.
 - Key response: 'description_en' (bukan 'deskripsi').
 """
@@ -3899,7 +3899,7 @@ async def describe_scene(
 
     Pipeline:
     1. Gambar JPEG → Moondream2 → caption Bahasa Inggris (length='short')
-    2. Caption dikembalikan langsung — tanpa terjemahan.
+    2. Caption dikembalikan langsung - tanpa terjemahan.
 
     Fallback:
     - Jika Moondream gagal/belum dimuat: pesan error informatif.
@@ -3915,7 +3915,7 @@ async def describe_scene(
     if len(image_bytes) == 0:
         return {"description_en": "Image is empty or invalid.", "error": "empty_image"}
 
-    # Inferensi Moondream2 — length='short' → ringkas dan cepat (~300ms di GPU)
+    # Inferensi Moondream2 - length='short' → ringkas dan cepat (~300ms di GPU)
     logger.info(f"[describe] Menerima gambar {len(image_bytes) // 1024} KB")
     caption_en = await moondream.describe(image_bytes, length="short")
 
@@ -3937,13 +3937,13 @@ async def describe_scene(
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/routers/support.py`
 
 ```python
-"""Endpoint penunjang — tinggal satu: `/api/capabilities`.
+"""Endpoint penunjang - tinggal satu: `/api/capabilities`.
 
 Sebelas endpoint lain (`/api/labels`, `/api/models/*`, `/api/events`,
 `/api/crash-report*`, `/api/queue/*`) dipindah ke
 `_archive/routers/support_full.py`: tidak satu pun pernah dipanggil aplikasi.
 Method kliennya ada di `ServerService`, lengkap dengan penanganan error, tapi
-tidak ada satu pun pemanggil — jadi tabel `telemetry_events`, `crash_reports`,
+tidak ada satu pun pemanggil - jadi tabel `telemetry_events`, `crash_reports`,
 `upload_queue`, `object_labels`, dan `model_manifest` tidak pernah menerima
 satu baris pun dari aplikasi.
 
@@ -3968,12 +3968,12 @@ async def capabilities(request: Request):
 
     Menentukan item mana yang `limited` / `disabled` di ModePickerSheet.
     Tanpa ini, satu-satunya cara mengetahui sebuah mode sedang mati adalah
-    masuk ke sana lalu gagal — dan untuk pengguna yang tidak melihat layar,
+    masuk ke sana lalu gagal - dan untuk pengguna yang tidak melihat layar,
     "masuk lalu gagal" berarti beberapa detik kebingungan di tempat yang salah.
 
     **Empat dari enam mode sekarang on-device penuh.** Deteksi Objek, Kenali
     Uang, Baca Teks, dan Navigasi berjalan sepenuhnya di ponsel, jadi
-    statusnya tidak lagi bergantung pada server ini sama sekali — dan
+    statusnya tidak lagi bergantung pada server ini sama sekali - dan
     melaporkannya `down` saat server bermasalah akan mengunci pengguna dari
     mode yang sebenarnya sehat.
     """
@@ -4974,7 +4974,7 @@ EXTRA_HEIGHTS_CM: dict[str, int] = {
 **Path**: `/home/asadel/kuliah/lomba/smstr6/guido/project/backend/services/find_object_service.py`
 
 ```python
-"""Mode Cari Objek — YOLOE open-vocabulary (prompt teks).
+"""Mode Cari Objek - YOLOE open-vocabulary (prompt teks).
 
 Kenapa YOLOE dan bukan YOLO closed-set biasa: target pencarian datang dari
 ucapan pengguna ("cari dompet", "cari tas merah"), jadi kelasnya tidak bisa
@@ -5207,7 +5207,7 @@ class FindObjectService:
     # ── Penyusun naskah suara ────────────────────────────────────────────
 
     def _compose_message(self, target_id: str, nearest: dict, total: int) -> str:
-        """Naskah CO-06 / CO-07 / CO-08 — instruksi fisik dan konkret."""
+        """Naskah CO-06 / CO-07 / CO-08 - instruksi fisik dan konkret."""
         dist = nearest["distance_meter"]
         arah = nearest["direction"]
 
@@ -5282,7 +5282,7 @@ class MoonDreamService:
     """Lazy-loaded Moondream2 service.
     
     Dibuat singleton lewat app.state.moondream_service di lifespan.
-    Model TIDAK dimuat saat startup (bobotnya ~2GB) — dimuat saat
+    Model TIDAK dimuat saat startup (bobotnya ~2GB) - dimuat saat
     permintaan pertama datang (warm-up ~5-10 detik, sekali saja).
 
     Menggunakan official `moondream` pip package (bukan transformers
@@ -5312,9 +5312,9 @@ class MoonDreamService:
         return self._device
 
     def _load_sync(self) -> bool:
-        """Muat model secara sinkron — dipanggil di thread pool dari _ensure_loaded.
+        """Muat model secara sinkron - dipanggil di thread pool dari _ensure_loaded.
 
-        Membutuhkan transformers>=4.40,<5.0 — moondream2 (vikhyatk/moondream2)
+        Membutuhkan transformers>=4.40,<5.0 - moondream2 (vikhyatk/moondream2)
         belum kompatibel dengan transformers 5.x (all_tied_weights_keys API change).
         """
         try:
@@ -5379,7 +5379,7 @@ class MoonDreamService:
             return None
 
     def _describe_sync(self, image_bytes: bytes, length: str) -> Optional[str]:
-        """Inferensi sinkron — dijalankan di thread pool."""
+        """Inferensi sinkron - dijalankan di thread pool."""
         try:
             pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
@@ -5706,7 +5706,7 @@ def get_turns(session_id: str, limit: int = 20) -> list[dict]:
 
 
 def expire_stale_sessions() -> int:
-    """AS-23 — riwayat lebih dari 15 menit dihapus, dan itu diumumkan app."""
+    """AS-23 - riwayat lebih dari 15 menit dihapus, dan itu diumumkan app."""
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=HISTORY_TTL_MINUTES)
     row = execute_returning(
         """
@@ -5807,7 +5807,7 @@ def get_capability_overrides() -> dict[str, dict]:
 
 ```python
 """
-conftest.py — Shared fixtures untuk semua test backend Guidio.
+conftest.py - Shared fixtures untuk semua test backend Guidio.
 
 Menyediakan:
   - `client`   : TestClient FastAPI (tanpa server nyata)
@@ -5835,7 +5835,7 @@ FIXTURES_DIR    = _LOCAL_FIXTURES if _LOCAL_FIXTURES.exists() else _APP_FIXTURES
 
 @pytest.fixture(scope="session")
 def client():
-    """TestClient FastAPI — tanpa server nyata, langsung hit ASGI app."""
+    """TestClient FastAPI - tanpa server nyata, langsung hit ASGI app."""
     from main import app
 
     with TestClient(app, raise_server_exceptions=True) as c:
@@ -5871,7 +5871,7 @@ def obj_image_tas() -> bytes:
 
 @pytest.fixture
 def obj_image_botol() -> bytes:
-    """Gambar botol minum di dapur (cari objek fixture 03 — model biasanya detect ini)."""
+    """Gambar botol minum di dapur (cari objek fixture 03 - model biasanya detect ini)."""
     path = FIXTURES_DIR / "object_find" / "test_03_botol_minum_dapur.png"
     if not path.exists():
         pytest.skip(f"Fixture tidak ada: {path}")
@@ -5886,10 +5886,10 @@ def obj_image_botol() -> bytes:
 
 ```python
 """
-test_cari_objek.py — Tes endpoint POST /api/cari-objek.
+test_cari_objek.py - Tes endpoint POST /api/cari-objek.
 
 Mensimulasikan Flutter mengirim frame kamera saat user berkata "cari dompet".
-Semua gambar diambil dari guidio_app/test/fixtures/object_find/ —
+Semua gambar diambil dari guidio_app/test/fixtures/object_find/ -
 byte-for-byte identik dengan yang dikirim kamera HP via multipart/form-data.
 """
 
@@ -5906,7 +5906,7 @@ def _post_cari(client, image_bytes: bytes, target: str, filename: str = "frame.p
 
 
 class TestCariObjekStruktur:
-    """Validasi struktur respons — tidak bergantung apakah objek ditemukan."""
+    """Validasi struktur respons - tidak bergantung apakah objek ditemukan."""
 
     def test_response_200(self, client, obj_image_botol):
         r = _post_cari(client, obj_image_botol, "botol")
@@ -5968,7 +5968,7 @@ class TestCariObjekInvalidInput:
 class TestCariObjekDeteksi:
     """
     Uji deteksi aktual dengan fixture gambar yang sudah diketahui isinya.
-    Lulus jika found=True ATAU reason in (not_in_frame, no_match) —
+    Lulus jika found=True ATAU reason in (not_in_frame, no_match) -
     objek mungkin tidak terdeteksi oleh YOLOE untuk sudut/pencahayaan tertentu.
     """
 
@@ -6007,10 +6007,10 @@ class TestCariObjekTargets:
 
 ```python
 """
-test_describe.py — Tes endpoint POST /api/describe (Moondream2 VLM).
+test_describe.py - Tes endpoint POST /api/describe (Moondream2 VLM).
 
 Mensimulasikan Flutter mengirim frame kamera saat user berkata "deskripsikan".
-Gambar diambil dari guidio_app/test/fixtures/navigation/ —
+Gambar diambil dari guidio_app/test/fixtures/navigation/ -
 byte-for-byte identik dengan yang dikirim kamera HP.
 
 Catatan: Moondream2 lazy-load (~5-10 detik pertama kali).
@@ -6030,7 +6030,7 @@ def _post_describe(client, image_bytes: bytes, filename: str = "frame.png"):
 
 
 class TestDescribeStruktur:
-    """Validasi struktur respons — tidak bergantung isi caption."""
+    """Validasi struktur respons - tidak bergantung isi caption."""
 
     def test_response_200(self, client, nav_image):
         r = _post_describe(client, nav_image)
@@ -6040,7 +6040,7 @@ class TestDescribeStruktur:
         """Response harus punya key 'description_en' (bukan 'deskripsi')."""
         body = _post_describe(client, nav_image).json()
         assert "description_en" in body, \
-            "Key 'description_en' tidak ada — pastikan bukan versi lama yang pakai 'deskripsi'"
+            "Key 'description_en' tidak ada - pastikan bukan versi lama yang pakai 'deskripsi'"
 
     def test_no_deskripsi_key(self, client, nav_image):
         """Key lama 'deskripsi' (Bahasa Indonesia) sudah dihapus."""
@@ -6052,7 +6052,7 @@ class TestDescribeStruktur:
         body = _post_describe(client, nav_image).json()
         desc = body.get("description_en", "")
         if not desc or body.get("error"):
-            pytest.skip("Moondream belum dimuat atau gagal — skip language check")
+            pytest.skip("Moondream belum dimuat atau gagal - skip language check")
         # Caption EN tidak mengandung kata-kata khas BI di awal
         bi_starters = ("sebuah", "ini adalah", "gambar menunjukkan", "terdapat")
         assert not any(desc.lower().startswith(s) for s in bi_starters), \
@@ -6124,10 +6124,10 @@ class TestDescribeKonten:
 
 ```python
 """
-test_health.py — Tes endpoint /health dan /api/capabilities.
+test_health.py - Tes endpoint /health dan /api/capabilities.
 
 Grup A dari VERIFIKASI_FITUR.md, versi pytest otomatis.
-Tidak membutuhkan database atau model hidup — semua dicek strukturnya saja.
+Tidak membutuhkan database atau model hidup - semua dicek strukturnya saja.
 """
 
 
@@ -6182,7 +6182,7 @@ class TestCapabilities:
             assert mode in caps, f"Mode '{mode}' tidak ada di capabilities"
 
     def test_on_device_modes_always_up(self, client):
-        """4 mode on-device harus selalu 'up' — tidak bergantung server."""
+        """4 mode on-device harus selalu 'up' - tidak bergantung server."""
         caps = client.get("/api/capabilities").json()["capabilities"]
         for mode in ("detection", "money", "read_text", "navigation"):
             assert caps[mode]["state"] == "up", \

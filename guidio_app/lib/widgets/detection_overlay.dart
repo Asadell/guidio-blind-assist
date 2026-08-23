@@ -10,13 +10,13 @@ import '../theme/app_colors.dart';
 /// ## Untuk siapa ini
 ///
 /// Pengguna utama aplikasi ini tunanetra dan tidak melihat kotaknya sama
-/// sekali — informasinya sampai lewat suara dan getar. Hamparan ini untuk
+/// sekali - informasinya sampai lewat suara dan getar. Hamparan ini untuk
 /// orang lain: pendamping awas, penguji lapangan, juri, dan pengembang yang
 /// perlu tahu apakah model benar-benar melihat yang seharusnya.
 ///
 /// Itu bukan alasan untuk menganggapnya hiasan. Tanpa cara melihat apa yang
 /// dideteksi model, satu-satunya cara memeriksa kesalahan adalah menebak dari
-/// kalimat yang terucap — dan kalau kotaknya meleset, tidak ada yang tahu
+/// kalimat yang terucap - dan kalau kotaknya meleset, tidak ada yang tahu
 /// sampai ada yang tersandung.
 ///
 /// ## Koordinat
@@ -139,7 +139,7 @@ class _DetectionPainter extends CustomPainter {
           ..color = color,
       );
 
-      // Sudut dipertegas untuk yang kritis — bentuk kurung siku terbaca
+      // Sudut dipertegas untuk yang kritis - bentuk kurung siku terbaca
       // lebih cepat daripada garis seragam saat layar penuh objek.
       if (critical) _drawCorners(canvas, rect, color);
 

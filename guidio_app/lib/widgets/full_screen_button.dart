@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// FullScreenButton (5.4) — tombol aksi tunggal yang sangat besar, 96 dp.
+/// FullScreenButton (5.4) - tombol aksi tunggal yang sangat besar, 96 dp.
 /// Dipakai untuk aksi utama satu-jari: jepret di Mode Baca Teks, izin di
 /// PermissionCard, dst.
 class FullScreenButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   final bool disabled;
-  /// Wajib diisi saat [disabled] — bagian 5.4: tombol disabled selalu
+  /// Wajib diisi saat [disabled] - bagian 5.4: tombol disabled selalu
   /// menyebut alasannya sebagai baris di bawah teks.
   final String? disabledReason;
   final IconData? icon;

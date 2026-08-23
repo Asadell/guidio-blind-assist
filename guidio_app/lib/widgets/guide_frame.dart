@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// GuideFrame (F11) — empat busur sudut yang mengencang saat objek makin
+/// GuideFrame (F11) - empat busur sudut yang mengencang saat objek makin
 /// pas, bukan persegi putus-putus statis (itu pola kamera QR dan tidak
 /// mengabarkan apa pun).
 enum FrameFit { empty, partial, fit, tooClose }

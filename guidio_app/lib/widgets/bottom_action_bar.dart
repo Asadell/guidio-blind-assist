@@ -11,9 +11,9 @@ import '../services/haptic_service.dart';
 import '../theme/index.dart';
 import 'mode_picker_sheet.dart';
 
-/// BottomActionBar (F3) — selalu ada, selalu di tempat yang sama, tidak
+/// BottomActionBar (F3) - selalu ada, selalu di tempat yang sama, tidak
 /// pernah menggulung. Tiga slot: Aksi Utama 48, Bicara 64, Pilih Mode 48.
-/// Saat mic aktif, dua tombol lain nonaktif — supaya tidak ada aksi
+/// Saat mic aktif, dua tombol lain nonaktif - supaya tidak ada aksi
 /// tabrakan sambil berjalan.
 ///
 /// ## Kontrak tombol kiri
@@ -22,7 +22,7 @@ import 'mode_picker_sheet.dart';
 /// punya "hal utama", ia mengulang hal penting terakhir yang diucapkan.**
 ///
 /// Bagian kedua yang membuat aturannya utuh: dengan itu tidak ada satu pun
-/// mode dengan tombol kiri mati, dan pengguna punya jaring pengaman — kalau
+/// mode dengan tombol kiri mati, dan pengguna punya jaring pengaman - kalau
 /// lupa tombol kiri melakukan apa di mode ini, paling buruk ia mengulang
 /// sesuatu. Tidak pernah merusak, tidak pernah hening.
 ///
@@ -31,9 +31,9 @@ import 'mode_picker_sheet.dart';
 /// | Deteksi Objek | "Hentikan" / "Lanjutkan"     | Toggle deteksi           |
 /// | Kenali Uang   | "Kenali Uang"                | 1 tap = 1 analisis       |
 /// | Baca Teks     | "Baca teks" → "Jeda bacaan"  | Kontekstual              |
-/// | Navigasi      | "Ulangi arahan"              | Baca ulang status zona   |
+/// | Navigasi      | "Matikan Suara" / "Nyalakan" | Bisu/nyala suara panduan |
 /// | Asisten Suara | "Ulangi jawaban"             | Baca ulang respons       |
-/// | Cari Objek    | "Kirim — cari [X]"           | Scan                     |
+/// | Cari Objek    | "Kirim - cari [X]"           | Scan                     |
 ///
 /// Aturan pendukung: label berupa kata kerja + objek maksimal 3 kata (TalkBack
 /// membacanya tiap fokus mendarat), tombol nonaktif tetap bersuara saat
@@ -42,7 +42,7 @@ import 'mode_picker_sheet.dart';
 /// [cameraLabel] sengaja **wajib**. Nilai bawaan lamanya "Ambil gambar" membuat
 /// dua mode (Navigasi dan Asisten) menampilkan tombol aktif yang dibacakan
 /// TalkBack sebagai "Ambil gambar, tombol" padahal menekannya tidak melakukan
-/// apa pun — label yang berbohong, dan jalan buntu yang hening.
+/// apa pun - label yang berbohong, dan jalan buntu yang hening.
 class BottomActionBar extends StatelessWidget {
   final VoidCallback? onCameraPressed;
   final VoidCallback? onMicPressed;
@@ -52,7 +52,7 @@ class BottomActionBar extends StatelessWidget {
   /// Alasan tombol kiri nonaktif, diucapkan saat ditekan.
   final String? cameraDisabledReason;
 
-  /// DO-24 — izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
+  /// DO-24 - izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
   final bool micEnabled;
   /// Saat mode aktif punya STT sendiri (mis. Cari Objek), timpa visual
   /// listening/processing bawaan `VoiceProvider` supaya tombol tetap sesuai
@@ -200,7 +200,7 @@ class _MicButton extends StatelessWidget {
                   return;
                 }
 
-                // Sudah di mode voice — perilaku bawaan
+                // Sudah di mode voice - perilaku bawaan
                 if (onTap != null) {
                   onTap!();
                 } else if (v.isListening) {
@@ -244,7 +244,7 @@ class _SquareButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
-  /// Alasan tombol nonaktif — diucapkan saat ditekan, bukan didiamkan.
+  /// Alasan tombol nonaktif - diucapkan saat ditekan, bukan didiamkan.
   final String? disabledReason;
 
   const _SquareButton({
@@ -258,7 +258,7 @@ class _SquareButton extends StatelessWidget {
   /// Menekan tombol nonaktif TIDAK boleh hening.
   ///
   /// Untuk pengguna yang tidak melihat layar, tombol yang diam saat ditekan
-  /// tidak bisa dibedakan dari aplikasi yang macet — dan satu-satunya cara
+  /// tidak bisa dibedakan dari aplikasi yang macet - dan satu-satunya cara
   /// menguji dugaannya adalah menekan lagi. Katakan alasannya, sekali, dengan
   /// getar pendek supaya jelas tekanannya terdaftar.
   void _explainDisabled() {

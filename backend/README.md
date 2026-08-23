@@ -1,22 +1,24 @@
 # Vinara Backend (FastAPI)
 
-Server untuk Vinara. Menangani pekerjaan yang tidak masuk akal dikerjakan di
-ponsel: membaca tulisan, mencari barang dari kalimat bebas, memahami perintah
-suara yang ambigu, dan membaca jalur trotoar.
+Server untuk Vinara. Menangani **dua** pekerjaan yang modelnya tidak muat di
+ponsel: mencari barang dari kalimat bebas, dan mendeskripsikan suasana dari
+satu foto.
 
-**Hal pertama yang perlu dipahami:** dua dari enam mode **tidak pernah
-memanggil server ini sama sekali**, yaitu Deteksi Objek dan Kenali Uang.
-Keduanya berjalan penuh di ponsel, jadi kalau Kenali Uang salah membaca
-nominal, backend sama sekali bukan tempat mencarinya. Yang relevan adalah
+**Hal pertama yang perlu dipahami:** empat dari enam mode **tidak pernah
+memanggil server ini sama sekali**. Deteksi Objek, Kenali Uang, Baca Teks, dan
+Navigasi berjalan penuh di ponsel. Kalau Kenali Uang salah membaca nominal,
+backend sama sekali bukan tempat mencarinya; yang relevan adalah
 `guidio_app/README.md` bagian 3 dan repo pelatihan
 `new_training/rupiah_vision_revised`.
-Itu keputusan sengaja, bukan kekurangan. Dan sekarang ditambah dua lagi:
-**intent parsing** dan **narasi deteksi** juga dikerjakan lokal di Flutter -
-tanpa server, tanpa LLM.
 
-> **Tidak ada LLM di backend ini.** `QwenService` dan `narasi.py` telah
-> dihapus. Narasi dikerjakan oleh `narration_engine.dart` di Flutter.
-> Intent parsing dikerjakan oleh `CommandParser` di Flutter.
+Itu keputusan sengaja, bukan kekurangan. Prinsipnya satu: kalau fiturnya sudah
+ada di ponsel, backend tidak menyediakannya lagi. Jalur ganda hanya menambah
+kode yang harus dijaga konsisten, dan menciptakan ketergantungan diam-diam pada
+laptop yang menyala di mode yang justru menyangkut keselamatan.
+
+> **Tidak ada LLM di backend ini.** `QwenService` dan `narasi.py` telah dihapus,
+> begitu juga `llama-cpp-python` dari `requirements.txt`. Narasi dan intent
+> parsing dikerjakan di Flutter, offline.
 
 ---
 
@@ -30,9 +32,9 @@ tanpa server, tanpa LLM.
 6. [Struktur folder](#6-struktur-folder)
 7. [Keterbatasan yang perlu diketahui](#7-keterbatasan-yang-perlu-diketahui)
 8. [Uji cepat](#8-uji-cepat)
-9. [Testing Backend (pytest)](#9-testing-backend-pytest)
-10. [Koneksi HP ke Backend Laptop](#10-koneksi-hp-ke-backend-laptop)
-11. [Ukuran Model dan Kebutuhan Storage](#11-ukuran-model-dan-kebutuhan-storage)
+9. [Testing backend (pytest)](#9-testing-backend-pytest)
+10. [Koneksi HP ke backend laptop](#10-koneksi-hp-ke-backend-laptop)
+11. [Ukuran model dan kebutuhan storage](#11-ukuran-model-dan-kebutuhan-storage)
 
 ---
 
@@ -40,19 +42,17 @@ tanpa server, tanpa LLM.
 
 ### Prasyarat
 
-**Tesseract**, mesin pembaca tulisan. Ini program sistem, bukan paket Python:
+**PostgreSQL** bersifat **opsional**. Ia dipakai untuk zona rawan dan override
+kemampuan (demo/perawatan). Kalau tidak ada, server tetap jalan penuh dan kedua
+fitur utamanya tidak terpengaruh sama sekali.
 
 ```bash
-sudo dnf install -y tesseract tesseract-langpack-ind tesseract-langpack-eng
+createdb -h localhost -U postgres vinara_dev   # hanya kalau dipakai
 ```
 
-Paket `tesseract-langpack-ind` penting - OCR dipanggil dengan bahasa `ind+eng`.
-
-**PostgreSQL** yang sedang berjalan, lalu buat basis datanya sekali saja:
-
-```bash
-createdb -h localhost -U postgres vinara_dev
-```
+> **Tesseract tidak lagi dibutuhkan.** Baca Teks sudah pindah ke ML Kit
+> on-device di ponsel dan berjalan penuh tanpa server. Kalau dokumen lama
+> menyuruh memasang `tesseract-langpack-ind`, abaikan.
 
 ### Langkah menjalankan
 
@@ -61,19 +61,26 @@ cd backend
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 
-cp .env.example .env  # isi kredensial PostgreSQL
+cp .env.example .env  # isi kredensial PostgreSQL bila dipakai
 
 venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Tabel basis data dibuat otomatis saat startup (aman diulang berkali-kali),
-lalu data rujukan diisi: 52 label objek, 20 intent suara beserta variannya,
-7 denominasi uang, dan manifest model.
+Log startup yang benar:
+
+```
+[FindObject] Service terdaftar (lazy-load model YOLOE).
+[Moondream2] Service terdaftar (lazy-load, belum dimuat).
+=== Vinara Backend siap ===
+```
+
+Tidak akan ada log `[Qwen]`, `[YOLO]` server, `[OCR]`, atau `[Tesseract]`.
+Kalau muncul, berarti ada berkas lama yang tertinggal.
 
 Dokumentasi endpoint interaktif: `http://localhost:8000/docs`
 
-**Kalau PostgreSQL mati, server tetap jalan.** Endpoint yang membutuhkan
-basis data membalas dengan pesan yang menyebutkan apa yang masih berfungsi.
+**Kalau PostgreSQL mati, server tetap jalan.** Kedua model utamanya tidak
+menyentuh basis data sama sekali.
 
 ---
 
@@ -81,14 +88,30 @@ basis data membalas dengan pesan yang menyebutkan apa yang masih berfungsi.
 
 | Fitur | Diproses di mana | Endpoint |
 |---|---|---|
-| Deteksi Objek | **Flutter** (TFLite on-device) | `WS /ws/detect`, `POST /api/detect` |
-| Kenali Uang | **Flutter** (TFLite on-device) | `POST /api/uang` (opsional) |
-| Intent parsing | **Flutter** (`CommandParser`, offline) | `POST /api/intent` (hanya fallback ambigu) |
-| Narasi deteksi | **Flutter** (`narration_engine.dart`, offline) | ~~`/api/narasi`~~ (dihapus) |
-| Baca Teks | Server | `POST /api/ocr` |
-| Deskripsi suasana | Server (Moondream2 VLM) | `POST /api/describe` |
-| Cari Objek | Server (YOLOE) | `POST /api/cari-objek` |
-| Navigasi jalur | Server, rintangan tetap di Flutter | `POST /api/navigasi` |
+| Deteksi Objek | **Flutter** (SSD MobileNet TFLite) | tidak ada |
+| Kenali Uang | **Flutter** (MobileNetV2 TFLite) | tidak ada |
+| Baca Teks | **Flutter** (Google ML Kit) | tidak ada |
+| Navigasi jalur | **Flutter** (PIDNet-S + YOLO11n TFLite) | tidak ada |
+| Intent parsing | **Flutter** (`CommandParser`, offline) | tidak ada |
+| Narasi deteksi | **Flutter** (`NarrationScheduler`, offline) | tidak ada |
+| Cari Objek | **Server** (YOLOE) | `POST /api/cari-objek` |
+| Deskripsi suasana | **Server** (Moondream2 VLM) | `POST /api/describe` |
+
+Router yang diarsipkan ke `_archive/routers/` beserta alasannya:
+
+| Berkas | Kenapa dibuang |
+|---|---|
+| `websocket.py`, `detect.py` | Deteksi rintangan sudah on-device (SSD MobileNet) |
+| `ocr.py` | Sudah on-device (ML Kit), dan tetap begitu |
+| `uang.py` | Sudah on-device (MobileNetV2 TFLite) |
+| `navigasi.py` | Sudah on-device (PIDNet-S + YOLO11n TFLite) |
+| `asisten.py`, `voice_router.py` | Intent parsing lokal (`CommandParser`), tanpa LLM |
+| `risk_zone.py` | Klien tidak pernah memanggilnya |
+| `support_full.py` | 11 endpoint penunjang yang tidak satu pun pernah dipanggil |
+
+Kalau kamu memanggil `/api/ocr`, `/api/uang`, `/api/navigasi`, `/api/detect`,
+`/api/narasi`, `/api/intent`, atau `/api/labels` dan mendapat **404**, itu
+benar. Lihat uji negatif di bagian 8.
 
 ### Cari Objek: kenapa memakai YOLOE
 
@@ -96,75 +119,102 @@ Model pengenalan benda biasa hanya bisa mengenali daftar benda yang sudah
 ditentukan saat pelatihan. Masalahnya, target pencarian datang dari ucapan
 pengguna dan bisa apa saja: "dompet", "kunci motor", "tas merah".
 
-YOLOE menerima **prompt teks bebas**, jadi bisa mencari benda yang tidak
-pernah diajarkan secara khusus. Nama barang Bahasa Indonesia diterjemahkan
-dulu ke Inggris memakai tabel `object_labels` ditambah kamus bawaan.
+YOLOE menerima **prompt teks bebas**, jadi bisa mencari benda yang tidak pernah
+diajarkan secara khusus. Nama barang Bahasa Indonesia diterjemahkan dulu ke
+Inggris memakai tabel bawaan.
 
-Model dimuat **saat permintaan pertama**, bukan saat startup. Panggilan
-pertama memakan sekitar 2 detik, sesudahnya cepat.
-
-### Navigasi: tiga zona jalur
-
-Gambar dari kamera dibagi menjadi tiga bagian (kiri, tengah, kanan), lalu
-masing-masing dinilai seberapa layak dilewati.
-
-Model utamanya PIDNet-S. Kalau berkas modelnya belum ada, server memakai
-**cadangan berbasis pengolahan citra**: permukaan yang bisa dijalani umumnya
-rata dan warnanya konsisten.
-
-> Mode Navigasi **tidak pernah dimatikan saat offline.** Deteksi rintangannya
-> berjalan di Flutter dan tetap hidup. Status terburuknya adalah `limited`.
+Model dimuat **saat permintaan pertama**, bukan saat startup. Panggilan pertama
+memakan sekitar 2 detik, sesudahnya cepat.
 
 ### Deskripsi suasana: Moondream2
 
-`POST /api/describe` mengembalikan `description_en` - caption Bahasa Inggris
-langsung dari Moondream2. Flutter membacakannya dengan TTS locale `en-US`
-tanpa terjemahan tambahan. Tidak ada LLM terjemahan di tengah alur ini.
+`POST /api/describe` mengembalikan `description_en`, caption Bahasa Inggris
+langsung dari Moondream2. **Flutter menerjemahkannya secara lokal** lewat
+`scene_translator.dart` sebelum dibacakan; kalau cakupan kamusnya terlalu
+rendah, kalimat Inggrisnya dibacakan apa adanya dengan penanda singkat lebih
+dulu. Tidak ada LLM penerjemah di alur ini, di sisi mana pun.
+
+### Kenapa gerbang kualitas gambar penting
+
+Kedua endpoint melewatkan gambar ke `services/image_gate.py` sebelum menyentuh
+model. Ini bukan sekadar menghemat komputasi.
+
+VLM **tidak pernah mengatakan "saya tidak bisa melihat"**. Dari foto gelap
+gulita pun Moondream2 menghasilkan deskripsi yang terdengar meyakinkan, seperti
+"a dimly lit room with furniture". Untuk pengguna tunanetra yang tidak bisa
+memverifikasi sendiri, deskripsi halusinasi jauh lebih berbahaya daripada
+penolakan yang jujur.
+
+Hal yang sama berlaku untuk Cari Objek: YOLOE membalas `found=false` untuk frame
+gelap gulita, dan dari telinga pengguna itu terdengar **sama persis** dengan
+"barangnya memang tidak ada di sini". Tindakan yang tepat berbeda total: yang
+satu perlu memutar badan, yang lain perlu menyalakan lampu. Karena itu balasan
+gerbang menyertakan `retry_suggested`, dan aplikasi memperlakukan keduanya
+berbeda.
 
 ---
 
 ## 3. Rujukan endpoint
 
-### Fitur utama
+Lima endpoint. Itu saja.
 
-#### `POST /api/ocr`
+### `POST /api/describe`
 
-Membaca tulisan dari gambar. Kirim JPEG mentah sebagai isi permintaan.
+Deskripsikan suasana kamera via Moondream2.
 
-```json
-{
-  "text": "Menu Warung Bu Sari\nAyam goreng 15000",
-  "lines": ["Menu Warung Bu Sari", "Ayam goreng 15000"],
-  "confidence": 0.96,
-  "word_count": 15,
-  "estimated_seconds": 6.9,
-  "estimated_spoken": "sekitar 7 detik",
-  "is_long": false,
-  "is_very_long": false
-}
+> **Nama field-nya `image`, bukan `file`.** Ini pernah menjadi bug nyata:
+> aplikasi mengirim dengan nama `file`, FastAPI membalas 422 untuk setiap
+> permintaan, dan kegagalannya ditelan lalu dilaporkan sebagai gangguan
+> jaringan. Fitur itu tidak pernah berhasil sekali pun sampai diperbaiki.
+
+```bash
+curl -X POST http://localhost:8000/api/describe \
+     -F "image=@foto.jpg" -F "length=short"
 ```
 
-#### `POST /api/describe`
-
-Deskripsikan suasana kamera via Moondream2. Kirim `file` (JPEG).
+Berhasil:
 
 ```json
 {
   "description_en": "A person walking on a sidewalk near a parked bicycle.",
   "model": "moondream2",
-  "length": "short"
+  "length": "short",
+  "message": ""
 }
 ```
 
-Flutter langsung membacakan `description_en` dengan TTS `en-US`.
+Ditolak gerbang kualitas:
 
-#### `POST /api/cari-objek`
+```json
+{
+  "ok": false,
+  "reason": "gambar_rusak",
+  "message": "Gambar tidak terbaca. Coba ambil ulang.",
+  "retry_suggested": true,
+  "description_en": ""
+}
+```
+
+`message` selalu Bahasa Indonesia dan selalu **instruktif**, karena itu
+instruksi untuk pengguna, bukan hasil model. `description_en` tetap Bahasa
+Inggris sesuai keputusan desain: penerjemahan dikerjakan di sisi Flutter.
+
+Parameter: `image` (wajib), `length` (`short` atau `normal`), `enhance`
+(bawaan `true`), `timeout` (bawaan 25 detik).
+
+### `POST /api/cari-objek`
 
 Kirim `target` (nama barang Bahasa Indonesia) dan `file` (gambar JPEG).
+
+```bash
+curl -X POST http://localhost:8000/api/cari-objek \
+     -F "target=dompet" -F "file=@foto.jpg"
+```
 
 ```json
 {
   "found": true,
+  "reason": "ok",
   "message": "dompet di kiri, sekitar satu meter.",
   "total_match": 1,
   "nearest": {
@@ -176,116 +226,111 @@ Kirim `target` (nama barang Bahasa Indonesia) dan `file` (gambar JPEG).
 }
 ```
 
-`GET /api/cari-objek/targets` mengembalikan daftar barang yang dikenali.
+**Semantik `reason` menentukan tindakan pengguna, jadi jangan disamakan:**
 
-#### `POST /api/navigasi`
+| `reason` | Artinya | Yang harus dilakukan aplikasi |
+|---|---|---|
+| `ok` | Ketemu | Bacakan arah dan jarak |
+| `not_in_frame` | Barangnya tidak terlihat di frame ini. **Bukan error** | Suruh pengguna memutar badan lalu kirim lagi |
+| `target_kosong` | Nama barang kosong setelah dibersihkan | Minta pengguna menyebutkan barangnya |
+| `model_unavailable` | Model YOLOE gagal dimuat | Katakan ini bukan salah kameranya |
+| `server_error` | Inferensi gagal di server | Katakan ini bukan salah kameranya |
+| apa pun dengan `retry_suggested: true` | Masalah kualitas gambar | Perbaiki kondisi foto, **jangan** suruh memutar badan |
 
-Kirim `file` (gambar JPEG), opsional `lat` dan `lng`.
+`GET /api/cari-objek/targets` mengembalikan daftar barang yang dikenali:
+
+```json
+{"total": 312, "targets": ["botol", "buku", "dompet", "..."]}
+```
+
+### `GET /health`
 
 ```json
 {
-  "ok": true,
-  "source": "heuristic",
-  "zones": {
-    "kiri":   {"status": "caution", "walkable_ratio": 0.466},
-    "tengah": {"status": "safe",    "walkable_ratio": 0.998},
-    "kanan":  {"status": "caution", "walkable_ratio": 0.469}
-  },
-  "recommended": "tengah",
-  "message": "Tetap di tengah."
+  "status": "ok",
+  "service": "Vinara Vision API",
+  "version": "3.0.0",
+  "uptime_seconds": 128.4,
+  "database": true,
+  "find_object": true,
+  "describe": false,
+  "server_time_ms": 0.21
 }
 ```
 
-#### `POST /api/intent`
+`describe: false` sebelum panggilan pertama itu **normal**: Moondream2 dimuat
+malas. Aplikasi memakai `server_time_ms` untuk membacakan waktu tempuh di layar
+Pengaturan.
 
-Memahami perintah suara yang **tidak dikenali** `CommandParser` lokal di
-Flutter. Server hanya dipanggil untuk dua kasus:
+### `GET /api/capabilities`
 
-- **Ambigu** - dua kemungkinan sama-sama masuk akal → server bertanya balik
-- **Tidak dikenali** - server menawarkan dua tebakan terdekat
-
-Urutan usahanya: cocokkan frasa persis (Lapis 1) → skor kemiripan kata
-(Lapis 2). **Tidak ada LLM** - Lapis 3 telah dihapus.
-
-```json
-POST {"text": "kenal kunci"}
-
-{
-  "resolved": false,
-  "reason": "ambiguous",
-  "message": "Saya dengar kenal kunci. Maksudmu cari kunci, atau kenali uang?"
-}
-```
-
-#### `POST /api/uang` (opsional)
-
-Jalur utama fitur ini ada di Flutter. Endpoint ini hanya untuk pembanding.
+Ditanyakan **sebelum** pengguna menekan tombol, bukan sesudah gagal. Tanpa ini,
+satu-satunya cara mengetahui sebuah mode sedang mati adalah masuk ke sana lalu
+gagal, dan untuk pengguna yang tidak melihat layar itu berarti beberapa detik
+kebingungan di tempat yang salah.
 
 ```json
 {
-  "detected": false,
-  "reason": "model_unavailable",
-  "message": "Pengenalan uang di server belum aktif. Mode Kenali Uang berjalan di perangkat tanpa internet."
+  "server_time": "2026-08-23T07:39:41+00:00",
+  "database": true,
+  "capabilities": {
+    "detection":   {"state": "up", "on_device": true,  "note": "..."},
+    "money":       {"state": "up", "on_device": true,  "note": "..."},
+    "read_text":   {"state": "up", "on_device": true,  "note": "..."},
+    "navigation":  {"state": "up", "on_device": true,  "note": "..."},
+    "assistant":   {"state": "limited", "on_device": false, "note": "..."},
+    "find_object": {"state": "up", "on_device": false, "note": "..."}
+  }
 }
 ```
 
-### Endpoint penunjang
-
-| Endpoint | Kegunaan |
-|---|---|
-| `GET /health` | Cek server hidup, melaporkan waktu tempuh |
-| `GET /api/capabilities` | Mode mana yang hidup, ditanyakan sebelum tombol ditekan |
-| `GET /api/labels` | Kamus nama benda dalam Bahasa Indonesia |
-| `GET /api/models/manifest` | Versi model yang ada di ponsel |
-| `POST /api/models/rescan` | Pindai folder `models/`, hitung sidik jari berkas |
-| `POST /api/events` | Telemetri alur pemakaian |
-| `GET /api/events/summary` | Ringkasan telemetri |
-| `POST /api/crash-report` | Laporan aplikasi berhenti mendadak |
-| `GET /api/crash-report/last-mode` | Mode terakhir sebelum berhenti |
-| `POST /api/queue/flush` | Kirim ulang gambar yang tertahan saat offline |
-| `GET /api/intent/catalog` | 20 perintah suara beserta variannya |
-| `POST /api/asisten/turn` | Simpan satu giliran percakapan |
-| `GET /api/asisten/history` | Ambil riwayat percakapan |
+Empat mode on-device **selalu** `up`. Melaporkannya `down` saat server
+bermasalah akan mengunci pengguna dari mode yang sebenarnya sehat.
 
 ---
 
 ## 4. Basis data
 
-Sembilan kelompok tabel di PostgreSQL. **Tanpa autentikasi** - identifikasi
-cukup memakai `device_id` anonim yang dibuat aplikasi sendiri.
+PostgreSQL bersifat **opsional** dan hanya dua kelompok tabel yang masih punya
+pemakai:
 
 | Tabel | Isi |
 |---|---|
 | `risk_zones` | Lokasi yang sering dilaporkan ada hambatan |
-| `object_labels` | Nama benda dalam Bahasa Indonesia, tinggi nyata, tingkat bahaya |
-| `voice_intents`, `intent_phrases` | 20 perintah suara dan variannya |
-| `model_manifest` | Versi model yang dipakai ponsel |
-| `telemetry_events` | Telemetri alur |
-| `crash_reports` | Laporan aplikasi berhenti mendadak |
-| `upload_queue` | Antrean unggah offline (kunci idempotensi wajib) |
-| `assistant_sessions`, `assistant_turns` | Riwayat percakapan |
-| `money_denominations` | Pecahan uang, kata terbilang, urutan kelas model |
 | `capability_overrides` | Paksa status fitur, untuk demo atau perawatan |
+
+Tabel lain di `db/schema.sql` (`telemetry_events`, `crash_reports`,
+`upload_queue`, `object_labels`, `model_manifest`, `assistant_sessions`,
+`voice_intents`) **tidak lagi punya endpoint aktif**. Method kliennya sempat
+ada di `ServerService`, lengkap dengan penanganan error, tapi tidak satu pun
+pernah dipanggil, jadi tabel-tabel itu tidak pernah menerima satu baris pun
+dari aplikasi. Skemanya dipertahankan kalau suatu saat telemetri benar-benar
+dipasang; endpoint-nya diarsipkan ke `_archive/routers/support_full.py`.
+
+Tanpa autentikasi. Identifikasi cukup memakai `device_id` anonim yang dibuat
+aplikasi sendiri.
 
 ---
 
 ## 5. Prinsip yang dipegang server ini
 
-**Server tidak menyaring deteksi.** Ia mengirim hasil mentah. Seluruh
-penyaringan ada di Flutter supaya hasil TFLite dan YOLO melewati aturan
-yang sama persis.
+**Server tidak menyaring deteksi.** Seluruh penyaringan ada di Flutter supaya
+tidak ada penyaringan ganda.
 
-**Tidak ada jalan buntu.** Setiap kegagalan membawa pesan yang menyebutkan
-apa yang masih berfungsi, lalu satu tindakan berikutnya.
+**Tidak ada jalan buntu.** Setiap kegagalan membawa pesan Bahasa Indonesia yang
+menyebutkan satu tindakan berikutnya, bukan sekadar melaporkan bahwa ia gagal.
+"Terlalu gelap, cari tempat yang lebih terang" memberi pengguna sesuatu untuk
+dikerjakan; "maaf, tidak bisa mendeskripsikan" hanya memberi tahu bahwa dia
+gagal, tanpa jalan keluar.
 
-**Tidak ada kegagalan yang menjatuhkan server.** Model gagal dimuat, basis
-data mati: semuanya dilaporkan lewat `/api/capabilities`, dan server tetap
-melayani sisanya.
+**Tidak ada kegagalan yang menjatuhkan server.** Model gagal dimuat, basis data
+mati: semuanya dilaporkan lewat `/api/capabilities`, dan server tetap melayani
+sisanya.
 
-**Jujur soal kemampuan.** Kalau segmentasi jalur sedang memakai cadangan
-sederhana, itu disebutkan di kolom `source`.
+**Menolak lebih baik daripada mengarang.** Lihat catatan gerbang kualitas di
+bagian 2.
 
-**Tidak ada LLM.** Semua teks natural - narasi deteksi dan resolusi intent -
+**Tidak ada LLM.** Semua teks natural, narasi deteksi maupun resolusi intent,
 dikerjakan di sisi Flutter, offline, tanpa latensi jaringan.
 
 ---
@@ -294,60 +339,53 @@ dikerjakan di sisi Flutter, offline, tanpa latensi jaringan.
 
 ```
 backend/
-├── main.py                  Titik masuk, memuat semua service saat startup
-├── .env                     Konfigurasi (tidak ikut ke git)
-├── .env.example             Contoh konfigurasi
+├── main.py                  Titik masuk, 3 router + /health
+├── requirements.txt         Dependensi (lihat catatan di dalamnya)
+├── .env / .env.example      Konfigurasi
 ├── db/
-│   ├── database.py          Koneksi PostgreSQL
+│   ├── database.py          Koneksi PostgreSQL, aman kalau DB mati
 │   ├── schema.sql           Definisi tabel
-│   └── seed.py              Data rujukan: label, intent, denominasi
+│   └── seed.py              Data rujukan
 ├── routers/
-│   ├── websocket.py         Deteksi aliran waktu nyata
-│   ├── detect.py            Deteksi sekali jalan
-│   ├── ocr.py               Baca teks
-│   ├── describe.py          Deskripsi suasana via kamera (Moondream2, output EN)
-│   ├── cari_objek.py        Pencarian barang dengan prompt teks
-│   ├── navigasi.py          Segmentasi jalur tiga zona
-│   ├── uang.py              Pengenalan uang (opsional, jalur utama on-device)
-│   ├── asisten.py           Perintah suara ambigu dan riwayat percakapan
-│   ├── voice_router.py      /api/route-intent legacy (keyword-only, tanpa LLM)
-│   ├── risk_zone.py         Zona rawan
-│   └── support.py           Kemampuan, label, manifest, telemetri, antrean
+│   ├── cari_objek.py        POST /api/cari-objek, GET /api/cari-objek/targets
+│   ├── describe.py          POST /api/describe (Moondream2, output EN)
+│   └── support.py           GET /api/capabilities
 ├── services/
-│   ├── yolo_service.py         Deteksi rintangan server
-│   ├── find_object_service.py  YOLOE prompt teks
-│   ├── segmentation_service.py PIDNet dan cadangan heuristik
-│   ├── ocr_service.py          Tesseract dan estimasi durasi baca
-│   ├── intent_service.py       Pencocokan frasa + similarity (Lapis 1 & 2)
-│   ├── uang_service.py         Pengenalan uang di server
-│   ├── risk_zone_service.py    Zona rawan
-│   ├── camera_health.py        Pemeriksaan kondisi kamera
-│   ├── moondream_service.py    Deskripsi scene via kamera (VLM, output EN)
-│   └── repository.py           Seluruh akses basis data
-└── utils/
-    └── image_utils.py       Bantuan konversi gambar
+│   ├── find_object_service.py   YOLOE prompt teks
+│   ├── moondream_service.py     Deskripsi suasana (VLM)
+│   ├── image_gate.py            Gerbang kualitas gambar
+│   ├── find_object_constants.py Kamus nama barang ID ke EN
+│   └── repository.py            Akses basis data
+├── utils/
+│   └── image_utils.py       Konversi dan koreksi eksposur
+├── tests/                   pytest, lihat bagian 9
+└── _archive/routers/        Router lama, fiturnya sudah pindah on-device
 ```
 
-> `narasi.py` dan `qwen_service.py` telah **dihapus**. Tidak ada file LLM
-> di folder ini.
+> Tidak ada berkas LLM di folder ini. `narasi.py` dan `qwen_service.py` telah
+> dihapus.
 
 ---
 
 ## 7. Keterbatasan yang perlu diketahui
 
-1. **Model PIDNet-S belum ada.** Navigasi memakai cadangan heuristik OpenCV
-   yang cukup untuk menguji seluruh tampilan. Letakkan
-   `models/pidnet_s_3zona.onnx` untuk mengaktifkan jalur model.
+1. **Moondream2 diunduh saat panggilan pertama** (~1,85 GB). Panggilan pertama
+   bisa memakan beberapa menit; sesudahnya dari cache.
 
-2. **Model uang di server memang tidak ada, dan itu disengaja.** Jalur utama
-   fitur ini di Flutter.
+2. **Moondream2 menjawab dalam Bahasa Inggris**, dan itu disengaja. Tidak ada
+   LLM penerjemah di backend. Penerjemahan dikerjakan lokal di Flutter.
 
-3. **Model uang di Flutter hanya mengenali 6 pecahan emisi 2016.** Rp1.000
-   belum dikenali.
+3. **Model uang di server memang tidak ada, dan itu disengaja.** Jalur satu
+   satunya ada di Flutter.
 
-4. **Berkas model besar tidak ikut ke git** (`yoloe-v8l-seg.pt`,
-   `yolo11l_float32.tflite`, dan berkas `.pt`/`.onnx` lainnya). Ultralytics
-   mengunduhnya otomatis saat pertama dipakai.
+4. **Berkas model besar tidak ikut ke git** (`yoloe-11s-seg.pt`, `yolo11n.pt`,
+   dan berkas `.pt`/`.onnx` lainnya). Ultralytics mengunduhnya otomatis saat
+   pertama dipakai.
+
+5. **Cari Objek adalah satu-satunya mode yang benar-benar mati saat server
+   tidak terjangkau.** Aplikasi menandainya `disabled` di lembar Pilih Mode dan
+   menyimpan target yang sudah disebutkan, supaya pencariannya bisa dilanjutkan
+   begitu koneksi kembali.
 
 ---
 
@@ -356,84 +394,66 @@ backend/
 ```bash
 B=http://localhost:8000
 
-curl -s $B/health
-curl -s $B/api/capabilities
-curl -s "$B/api/labels?lang=id"
-
-# Perintah ambigu: seharusnya bertanya balik, bukan menebak
-curl -s -X POST $B/api/intent -H 'Content-Type: application/json' \
-     -d '{"text":"kenal kunci"}'
-
-# Baca teks
-curl -s -X POST $B/api/ocr --data-binary "@foto.jpg" \
-     -H "Content-Type: application/octet-stream"
-
-# Deskripsi suasana (output English)
-curl -s -X POST $B/api/describe -F "file=@foto.jpg"
+curl -s $B/health | python3 -m json.tool
+curl -s $B/api/capabilities | python3 -m json.tool
+curl -s $B/api/cari-objek/targets | python3 -m json.tool | head -20
 
 # Cari barang (panggilan pertama memuat model, ~2 detik)
 curl -s -X POST $B/api/cari-objek -F "target=dompet" -F "file=@foto.jpg"
 
-# Jalur tiga zona
-curl -s -X POST $B/api/navigasi -F "file=@foto.jpg" -F "lat=0" -F "lng=0"
+# Deskripsi suasana. PERHATIKAN: field-nya "image", bukan "file"
+curl -s -X POST $B/api/describe -F "image=@foto.jpg" -F "length=short"
 ```
+
+### Uji negatif: endpoint yang HARUS 404
+
+Ini memastikan tidak ada jalur server ganda yang tertinggal untuk fitur yang
+sudah pindah on-device:
+
+```bash
+for p in /api/ocr /api/uang /api/navigasi /api/detect /api/narasi \
+         /api/intent /api/intent/catalog /api/labels; do
+  echo -n "$p -> "; curl -s -o /dev/null -w "%{http_code}\n" $B$p
+done
+```
+
+Semuanya harus **404** (atau 405). Kalau ada yang 200, berarti ada berkas lama
+yang tertinggal.
 
 ---
 
-## 9. Testing Backend (pytest)
+## 9. Testing backend (pytest)
 
-Suite pengujian otomatis untuk semua endpoint backend menggunakan `pytest` +
-`httpx` (via `TestClient` FastAPI - tidak perlu server menyala).
-
-### Instalasi
+Memakai `pytest` dan `httpx` lewat `TestClient` FastAPI, jadi server tidak
+perlu menyala.
 
 ```bash
 cd backend
 source venv/bin/activate
-pip install pytest pytest-asyncio httpx
-```
+pip install pytest pytest-asyncio
 
-### Menjalankan
-
-```bash
-# Semua test sekaligus
 python -m pytest tests/ -v
-
-# Per file
-python -m pytest tests/test_health.py -v
-python -m pytest tests/test_cari_objek.py -v
-python -m pytest tests/test_describe.py -v
-
-# Satu test spesifik
-python -m pytest tests/test_cari_objek.py::TestCariObjekInvalidInput -v
 ```
 
 ### Struktur test
 
 ```
 backend/tests/
-├── conftest.py              Shared fixtures (TestClient, gambar navigasi, gambar objek)
+├── conftest.py              Fixture bersama (TestClient, gambar navigasi, gambar objek)
 ├── fixtures/
 │   ├── navigation/          5 gambar hazard (got, lubang, tiang, motor+orang, tangga)
 │   └── object_find/         5 gambar benda (tas, kunci, botol, headphone, payung)
-├── test_health.py           GET /health + GET /api/capabilities  (12 test)
-├── test_cari_objek.py       POST /api/cari-objek + GET /targets  (14 test)
-└── test_describe.py         POST /api/describe (Moondream2 VLM)  (10 test)
+├── test_health.py           GET /health + GET /api/capabilities
+├── test_cari_objek.py       POST /api/cari-objek + GET /targets
+├── test_describe.py         POST /api/describe (Moondream2 VLM)
+└── test_hardening.py        Input rusak, ukuran ekstrem, field salah
 ```
-
-### Ringkasan cakupan
-
-| File | Skenario yang diuji |
-|---|---|
-| `test_health.py` | Status `ok`, semua field ada, uptime > 0, latensi < 500 ms, 6 mode capabilities, mode on-device selalu `up` |
-| `test_cari_objek.py` | Struktur respons, bytes kosong/rusak tidak crash, target tidak ada di frame, `/targets` endpoint |
-| `test_describe.py` | `description_en` ada, bukan Bahasa Indonesia, invalid image tidak 500, validasi caption motor+orang dan got terbuka |
 
 ### Catatan: simulasi kamera HP
 
-Semua gambar fixture dikirim ke backend sebagai `multipart/form-data` dengan
-`Content-Type: image/png` - **byte-for-byte identik** dengan yang dikirim
-Flutter saat user mengarahkan kamera. Backend tidak membedakan sumber gambar.
+Semua gambar fixture dikirim sebagai `multipart/form-data`, **byte-for-byte
+identik** dengan yang dikirim Flutter saat pengguna mengarahkan kamera. Backend
+tidak membedakan sumber gambar.
 
 ```
 Flutter (kamera) ──┐
@@ -443,9 +463,8 @@ tests/fixtures  ───┘         ↑ identik
 
 ### Peringatan: skip bukan lulus
 
-Empat test di bawah memang sengaja di-skip, dan itu wajar selama alasannya
-diketahui. Tapi jangan pernah membaca "N skipped" sebagai kabar baik secara
-otomatis.
+Beberapa test sengaja di-skip, dan itu wajar selama alasannya diketahui. Tapi
+jangan pernah membaca "N skipped" sebagai kabar baik secara otomatis.
 
 Pelajaran ini datang dari sisi mobile, bukan dari sini. Di `guidio_app`,
 seluruh uji inferensi model uang dan navigasi berstatus skip sejak awal karena
@@ -461,31 +480,17 @@ lingkungan itu, ketiadaannya adalah kegagalan, bukan skip. Lihat
 Untuk backend, dependensi yang sah untuk di-skip cuma satu: model Moondream
 yang belum warm.
 
-### Catatan: test Moondream otomatis skip
-
-Test di `TestDescribeKonten` (validasi isi caption) otomatis di-skip jika
-Moondream belum warm. Jalankan backend dulu lalu tunggu request pertama selesai
-sebelum menjalankan test tersebut, atau jalankan dengan backend menyala:
-
 ```bash
 # Terminal 1
 uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Terminal 2 - setelah backend siap
+# Terminal 2, setelah request pertama selesai
 python -m pytest tests/test_describe.py -v
 ```
 
-### Hasil terakhir (2026-08-20)
-
-```
-32 passed, 4 skipped - 44.80s
-```
-
-4 test di-skip adalah validasi isi caption Moondream (membutuhkan model warm).
-
 ---
 
-## 10. Koneksi HP ke Backend Laptop
+## 10. Koneksi HP ke backend laptop
 
 ### Cara paling mudah: WiFi satu jaringan
 
@@ -495,8 +500,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 ip addr show   # cari wlan0, contoh: 192.168.1.5
 ```
 
-Di HP: buka Guidio → ucapkan **"pengaturan"** → isi `192.168.1.5:8000` →
-**Uji Sambungan** → **Simpan**.
+Di HP: buka Guidio, tekan **Pilih Mode**, pilih **Pengaturan**, isi
+`192.168.1.5:8000`, tekan **Uji Sambungan**, lalu **Simpan**. Bisa juga lewat
+suara: ucapkan **"pengaturan"**.
 
 ### Cara alternatif: USB (ADB reverse)
 
@@ -514,36 +520,40 @@ Isi alamat server di Guidio: `localhost:8000`
 | Koneksi timeout | Firewall memblokir port 8000 | `sudo firewall-cmd --add-port=8000/tcp --permanent` |
 | HP dan laptop beda WiFi | Isolasi client jaringan kampus | Pakai metode USB |
 | IP laptop berubah | DHCP | Set IP statis atau pakai ADB reverse |
+| `/api/describe` balas 422 | Field dikirim sebagai `file` | Harus `image`, lihat bagian 3 |
 
 ---
 
-## 11. Ukuran Model dan Kebutuhan Storage
+## 11. Ukuran model dan kebutuhan storage
 
-| Kategori | Komponen | Ukuran | Eksekusi | Keterangan |
-|---|---|---|---|---|
-| **Mobile** | `ssd_mobilenet.tflite` | ~4.18 MB | On-Device CPU | Deteksi rintangan |
-| **Mobile** | `uang_rupiah.tflite` | ~24.92 MB | On-Device CPU | Klasifikasi uang |
-| **Backend VLM** | `vikhyatk/moondream2` | ~1.85 GB | Laptop GPU | Deskripsi suasana (FP16) |
-| **Backend Deteksi** | `yolo11n.pt` | ~5.5 MB | Laptop GPU | Deteksi server |
-| **Backend Cari Objek** | `yoloe-11s-seg.pt` | ~30 MB | Laptop GPU | Open-vocabulary |
-| **Dependensi Python** | PyTorch + CUDA | ~1.8 GB | Disk | Runtime CUDA |
-| **Dependensi Python** | Transformers, OpenCV, FastAPI | ~300 MB | Disk | Framework |
+Backend hanya memuat dua model. Sisanya ada di ponsel.
+
+| Komponen | Ukuran | Eksekusi | Keterangan |
+|---|---|---|---|
+| `vikhyatk/moondream2` | ~1,85 GB | Laptop GPU | Deskripsi suasana (FP16), unduh saat panggilan pertama |
+| `yoloe-11s-seg.pt` | ~30 MB | Laptop GPU | Cari Objek, open-vocabulary |
+| PyTorch + CUDA | ~1,8 GB | Disk | Runtime |
+| Ultralytics, Transformers, OpenCV, FastAPI | ~300 MB | Disk | Framework |
 
 ### Ringkasan
 
-- **Model di HP:** `~29.1 MB`
-- **Model Backend (download):** `~1.9 GB` *(Moondream ~1.85 GB + YOLO ~50 MB)*
-- **Virtualenv Python:** `~2.1 GB`
-- **Total:** `~4.0 GB`
+- **Download model:** `~1,9 GB`
+- **Virtualenv Python:** `~2,1 GB`
+- **Total:** `~4,0 GB`
+
+> Angka virtualenv ini **turun** setelah `llama-cpp-python` dibuang dari
+> `requirements.txt`. Paket itu tidak pernah diimpor satu berkas pun, tapi ia
+> dikompilasi dari sumber sehingga memperlambat instalasi berjam-jam dan sering
+> menggagalkannya sama sekali di mesin tanpa toolchain CUDA.
 
 ### Alokasi VRAM (RTX 3050 4 GB)
 
 ```
-Moondream2 FP16  ~1.2 GB
-YOLO/YOLOE       ~0.5 GB
+Moondream2 FP16  ~1,2 GB
+YOLOE            ~0,5 GB
 ─────────────────────────
-Total            ~1.7 GB  (dari 4 GB - aman)
+Total            ~1,7 GB  (dari 4 GB, aman)
 ```
 
-Tidak ada LLM. Tidak ada `llama-cpp-python`. VRAM yang tersisa (~2.3 GB)
-bebas untuk kebutuhan lain.
+Tidak ada LLM. Tidak ada `llama-cpp-python`. VRAM yang tersisa (~2,3 GB) bebas
+untuk kebutuhan lain.

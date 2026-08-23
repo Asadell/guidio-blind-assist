@@ -170,7 +170,7 @@ SharpnessResult _computeSharpness(_SharpnessRequest req) {
 //  Service
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// CameraCaptureService — memastikan foto yang dikirim ke backend sudah
+/// CameraCaptureService - memastikan foto yang dikirim ke backend sudah
 /// setajam yang bisa didapat dari perangkat ini.
 ///
 /// ## Kenapa ini lebih penting daripada sharpening di backend

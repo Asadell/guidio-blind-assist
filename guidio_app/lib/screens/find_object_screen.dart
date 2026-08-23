@@ -16,7 +16,7 @@ import '../services/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
-/// Mode Cari Objek — bagian 12 IMPLEMENTASI.md, 19 state (CO-01..CO-19).
+/// Mode Cari Objek - bagian 12 IMPLEMENTASI.md, 19 state (CO-01..CO-19).
 /// **Sepenuhnya di server** lewat `POST /api/cari-objek`; layar ini hanya
 /// memasok frame dan menggambar hasilnya. Karena itu ia benar-benar
 /// dinonaktifkan saat offline (CO-14), dengan targetnya disimpan.
@@ -65,14 +65,14 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     _stt.initialize().then((ok) {
       if (mounted) setState(() => _sttReady = ok);
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // Prinsip 6 "umumkan saat tiba" — sesudah layar terpasang.
+      // Prinsip 6 "umumkan saat tiba" - sesudah layar terpasang.
       context.read<AppModeProvider>().announceEntry(AppMode.findObject);
       final provider = context.read<FindObjectProvider>();
       provider.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
       provider.onDirectionHaptic = _fireDirectionHaptic;
-      // Server tidak menjawab sama saja tidak bisa mencari — periksa sebelum
+      // Server tidak menjawab sama saja tidak bisa mencari - periksa sebelum
       // memotret, bukan sesudah permintaannya gagal.
       provider.isOffline = () =>
           context.read<GlobalConditionsProvider>().isBackendDown;
@@ -94,19 +94,28 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             );
       };
       if (_hasCameraPermission) {
+        // Preset foto diminta DI SINI, bukan hanya di `_checkPermission`.
+        // Cabang di sana hanya jalan saat status izin BERUBAH, sementara
+        // `_hasCameraPermission` bernilai true sejak awal - jadi pada kasus
+        // paling umum (izin sudah lama diberikan) mode ini mengirim frame
+        // 640x480 ke YOLOE, dan barang kecil di kejauhan hilang di resolusi
+        // itu sebelum modelnya sempat menilai. Yang terdengar pengguna adalah
+        // "barangnya tidak ada", padahal barangnya ada.
         final cam = context.read<CameraProvider>();
+        await cam.initCamera(preset: CapturePreset.capture);
+        if (!mounted) return;
         cam.onFrameReady = (image) => _latestFrame = image;
         cam.startStream();
       }
     });
   }
 
-  /// Status koneksi frame sebelumnya — dipakai mendeteksi transisi
+  /// Status koneksi frame sebelumnya - dipakai mendeteksi transisi
   /// offline→online untuk menepati janji CO-14.
   bool _wasOffline = false;
 
   /// Frame terakhir dari stream kamera. Disimpan mentah dan baru dikodekan
-  /// saat benar-benar akan dikirim — mengodekan tiap frame kamera padahal
+  /// saat benar-benar akan dikirim - mengodekan tiap frame kamera padahal
   /// hanya sebagian kecil yang terkirim adalah pemborosan CPU dan baterai
   /// yang langsung terasa sebagai panas di tangan pengguna.
   CameraImage? _latestFrame;
@@ -127,7 +136,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   /// sekadar hemat kuota: YOLOE membalas `found=false` untuk frame gelap
   /// gulita, dan dari telinga pengguna itu terdengar sama persis dengan
   /// "barangnya memang tidak ada di sini". Tindakan yang tepat berbeda total
-  /// — yang satu perlu memutar badan, yang lain perlu menyalakan lampu.
+  /// - yang satu perlu memutar badan, yang lain perlu menyalakan lampu.
   Future<Uint8List?> _grabFrame() async {
     final frame = _latestFrame;
     if (frame == null) return null;
@@ -217,7 +226,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
 
   Future<void> _startListening() async {
     final offline = context.read<GlobalConditionsProvider>().isOffline;
-    if (offline) return; // CO-14 — mode benar-benar dinonaktifkan
+    if (offline) return; // CO-14 - mode benar-benar dinonaktifkan
     if (!_sttReady) return;
     setState(() => _debugOverride = null);
     final provider = context.read<FindObjectProvider>();
@@ -273,7 +282,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final topInset = media.padding.top;
     final bottomInset = media.padding.bottom;
 
-    // CO-14 — janji "saya coba lagi begitu internet kembali" hanya bernilai
+    // CO-14 - janji "saya coba lagi begitu internet kembali" hanya bernilai
     // kalau benar-benar ditepati tanpa pengguna menyebut ulang barangnya.
     if (_wasOffline && !offline && fo.savedTarget != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -316,7 +325,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
             ),
 
           if (!_hasCameraPermission || _debugOverride == _Debug.co15)
-            // CO-15 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // CO-15 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera',
@@ -342,7 +351,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
               cameraDisabledReason: fo.target == null
                   ? 'tekan tombol bicara lalu sebutkan barangnya'
                   : 'sedang memindai',
-              cameraLabel: fo.target != null ? 'Kirim — cari ${fo.target}' : 'Sebutkan barang dulu',
+              cameraLabel: fo.target != null ? 'Kirim - cari ${fo.target}' : 'Sebutkan barang dulu',
               onMicPressed: _startListening,
               listeningOverride: fo.state == FindObjectState.listening,
             ),
@@ -433,7 +442,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       case FindObjectState.tooDark:
         return [_bottomPanel(bottomInset, const CameraHealthToast(issue: CameraHealthIssue.dark))];
       case FindObjectState.offlineSaved:
-        // CO-14 — targetnya disimpan, dan itu dikatakan. Bukan "perintah
+        // CO-14 - targetnya disimpan, dan itu dikatakan. Bukan "perintah
         // gagal": perintahnya diterima, hanya pelaksanaannya yang menunggu.
         return [
           _bottomPanel(
@@ -453,7 +462,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final title = fo.matchCount > 1
         ? '${fo.matchCount} ${fo.target} terlihat, yang terdekat di ${fo.direction}'
         : '${fo.target} di ${fo.direction}';
-    // CO-08 — panduan bertahap: dekat sekali menyebut "ulurkan tangan".
+    // CO-08 - panduan bertahap: dekat sekali menyebut "ulurkan tangan".
     final description = fo.distanceMeter < 1 ? 'Sudah sangat dekat, ulurkan tangan' : null;
     return Stack(
       clipBehavior: Clip.none,
@@ -513,7 +522,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       case _Debug.co15:
         return [];
       case _Debug.co16:
-        return [_bottomPanel(bottomInset, const AlertCard(tier: AlertTier.positive, title: 'kunci di kiri', distanceMeter: 1.2, description: 'Senyap aktif — arah lewat getar: 1 ketuk kiri, 2 ketuk kanan'))];
+        return [_bottomPanel(bottomInset, const AlertCard(tier: AlertTier.positive, title: 'kunci di kiri', distanceMeter: 1.2, description: 'Senyap aktif - arah lewat getar: 1 ketuk kiri, 2 ketuk kanan'))];
       case _Debug.co17:
         return [_bottomPanel(bottomInset, const AlertCard(tier: AlertTier.positive, title: 'kunci di depan', distanceMeter: 1.2))];
       case _Debug.co18:
@@ -540,7 +549,7 @@ class _DebugSheet extends StatelessWidget {
           children: [
             Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                 decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-            Text('Debug — Mode Cari Objek', style: AppTypography.title()),
+            Text('Debug - Mode Cari Objek', style: AppTypography.title()),
             const SizedBox(height: AppSpacing.s2),
             Flexible(
               child: ListView(

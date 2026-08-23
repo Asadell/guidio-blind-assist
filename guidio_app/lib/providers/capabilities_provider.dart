@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 import '../services/server_service.dart';
 import 'app_mode_provider.dart';
 
-/// Kemampuan server per mode — `GET /api/capabilities`.
+/// Kemampuan server per mode - `GET /api/capabilities`.
 ///
 /// **Ditanyakan sebelum pengguna menekan apa pun.** Tanpa ini, satu-satunya
-/// cara mengetahui sebuah mode sedang mati adalah masuk ke sana lalu gagal —
+/// cara mengetahui sebuah mode sedang mati adalah masuk ke sana lalu gagal -
 /// dan untuk pengguna yang tidak melihat layar, "masuk lalu gagal" berarti
 /// beberapa detik kebingungan di tempat yang salah. Item sheet karena itu
 /// sudah menyebut alasannya sejak sebelum ditekan (bagian 16: "Item nonaktif
@@ -48,7 +48,7 @@ class CapabilitiesProvider extends ChangeNotifier {
     if (offline) {
       return mode.disabledWhenOffline ? CapState.down : CapState.limited;
     }
-    // Belum tahu — jangan menghalangi. Menebak "mati" akan mengunci pengguna
+    // Belum tahu - jangan menghalangi. Menebak "mati" akan mengunci pengguna
     // dari mode yang sebenarnya sehat hanya karena satu permintaan lambat.
     return _capOf(mode)?.state ?? CapState.up;
   }
@@ -91,7 +91,7 @@ class CapabilitiesProvider extends ChangeNotifier {
     try {
       final res = await ServerService.instance.capabilities();
       if (res == null) {
-        // Server tidak menjawab — seluruh mode yang butuh server dianggap mati.
+        // Server tidak menjawab - seluruh mode yang butuh server dianggap mati.
         _modes = {
           for (final m in AppMode.values)
             if (m.needsServer)

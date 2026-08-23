@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// CameraHealthToast (5.10) — pill gelap melayang, instruksi fisik dan
+/// CameraHealthToast (5.10) - pill gelap melayang, instruksi fisik dan
 /// konkret ("miringkan sedikit"), bukan abstrak. Tidak fokusable; live
 /// region polite.
 enum CameraHealthIssue { dark, blurry, covered, tilted }

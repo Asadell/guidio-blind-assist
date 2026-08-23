@@ -2,10 +2,10 @@ import 'package:vibration/vibration.dart';
 
 import '../providers/settings_provider.dart' show VibrationMode;
 
-/// HapticService — vibration feedback pendamping TTS.
+/// HapticService - vibration feedback pendamping TTS.
 ///
 /// Di lingkungan bising (pasar, jalan raya), haptic menjadi primary signal.
-/// Tidak perlu init() — vibration package sudah handle internally
+/// Tidak perlu init() - vibration package sudah handle internally
 /// jika device tidak punya vibrator (fail silent).
 ///
 /// Pola berdasarkan penelitian clock-based directional feedback:
@@ -37,19 +37,19 @@ class HapticService {
 
   // ── Tier peringatan rintangan ─────────────────────────────────────────────
 
-  /// Critical: orang/motor/mobil < 1.5m — triple pulse cepat.
+  /// Critical: orang/motor/mobil < 1.5m - triple pulse cepat.
   Future<void> critical() async {
     if (!_allowed(isDanger: true)) return;
     Vibration.vibrate(pattern: [0, 100, 50, 100, 50, 100]);
   }
 
-  /// Warning: objek < 3m — double pulse sedang.
+  /// Warning: objek < 3m - double pulse sedang.
   Future<void> warning() async {
     if (!_allowed(isDanger: true)) return;
     Vibration.vibrate(pattern: [0, 200, 100, 200]);
   }
 
-  /// Info: objek jauh/tidak berbahaya — single pulse pelan.
+  /// Info: objek jauh/tidak berbahaya - single pulse pelan.
   Future<void> info() async {
     if (!_allowed(isDanger: false)) return;
     Vibration.vibrate(pattern: [0, 300]);

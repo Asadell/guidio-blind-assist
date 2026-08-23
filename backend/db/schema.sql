@@ -1,9 +1,9 @@
--- Skema Vinara/Guidio — PostgreSQL.
+-- Skema Vinara/Guidio - PostgreSQL.
 -- Tanpa auth: semua identifikasi pakai device_id anonim yang di-generate app.
 -- Dijalankan otomatis (idempoten) saat startup oleh db/database.py.
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 1. Risk zone — dulu in-memory di risk_zone_service.py, sekarang persisten.
+-- 1. Risk zone - dulu in-memory di risk_zone_service.py, sekarang persisten.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS risk_zones (
     id           BIGSERIAL PRIMARY KEY,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS risk_zones (
 CREATE INDEX IF NOT EXISTS idx_risk_zones_latlng ON risk_zones (lat, lng);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 2. Kamus label objek — GET /api/labels?lang=id
+-- 2. Kamus label objek - GET /api/labels?lang=id
 --    Dipakai DO-19 (kelas tak dikenal) & DO-08 (nama meluap). Nama kelas
 --    mentah model tidak layak dibacakan TTS, jadi pemetaannya harus bisa
 --    diperbaiki dari server tanpa rilis ulang aplikasi.
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS object_labels (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 3. Perintah suara — POST /api/intent
+-- 3. Perintah suara - POST /api/intent
 --    20 intent baku bagian 14. CommandParser lokal tetap jalan lebih dulu;
 --    server hanya dipanggil saat lokal tidak match (AS-18 / AS-19).
 -- ─────────────────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS intent_phrases (
 CREATE INDEX IF NOT EXISTS idx_intent_phrases_phrase ON intent_phrases (phrase);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 4. Manifest model on-device — GET /api/models/manifest
+-- 4. Manifest model on-device - GET /api/models/manifest
 --    UG-18: emisi uang baru = update model, bukan update aplikasi.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS model_manifest (
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS model_manifest (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 5. Telemetri alur — POST /api/events
+-- 5. Telemetri alur - POST /api/events
 --    Bukan analitik pemasaran. Yang diukur target desain: jumlah gestur per
 --    alur, waktu buka sampai deteksi aktif, perintah suara tak dikenali.
 -- ─────────────────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_name_time ON telemetry_events (event_na
 CREATE INDEX IF NOT EXISTS idx_telemetry_device ON telemetry_events (device_id);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 6. Laporan crash — POST /api/crash-report (ER-06 "Kirim laporan")
+-- 6. Laporan crash - POST /api/crash-report (ER-06 "Kirim laporan")
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS crash_reports (
     id           BIGSERIAL PRIMARY KEY,
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS crash_reports (
 CREATE INDEX IF NOT EXISTS idx_crash_time ON crash_reports (received_at DESC);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 7. Antrean unggah offline — POST /api/queue/flush (BT-13)
+-- 7. Antrean unggah offline - POST /api/queue/flush (BT-13)
 --    idempotency_key mencegah dobel saat aplikasi mengirim ulang.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS upload_queue (
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS upload_queue (
 CREATE INDEX IF NOT EXISTS idx_queue_device_status ON upload_queue (device_id, status);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 8. Sesi Asisten Suara — AS-12 (giliran terbaru), AS-13 (riwayat diringkas),
+-- 8. Sesi Asisten Suara - AS-12 (giliran terbaru), AS-13 (riwayat diringkas),
 --    AS-23 (riwayat kedaluwarsa 15 menit).
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS assistant_sessions (
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS assistant_turns (
 CREATE INDEX IF NOT EXISTS idx_turns_session ON assistant_turns (session_id, created_at);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 9. Denominasi rupiah — data rujukan untuk Mode Kenali Uang.
+-- 9. Denominasi rupiah - data rujukan untuk Mode Kenali Uang.
 --    Klasifikasi nominalnya sendiri ON-DEVICE (TFLite), tabel ini dipakai
 --    untuk: manifest model, terbilang kata, dan validasi emisi yang didukung
 --    (UG-18 "uang asing / rusak" perlu tahu mana yang memang didukung).
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS money_denominations (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 10. Status kemampuan server — GET /api/capabilities
+-- 10. Status kemampuan server - GET /api/capabilities
 --     Aplikasi perlu tahu mode mana yang server-nya hidup SEBELUM pengguna
 --     menekan tombol (menentukan item limited/disabled di ModePickerSheet).
 --     Baris ini bisa di-override manual untuk demo/maintenance.

@@ -1,4 +1,4 @@
-"""Mode Kenali Uang — endpoint server OPSIONAL.
+"""Mode Kenali Uang - endpoint server OPSIONAL.
 
 Jalur utama fitur ini ON-DEVICE (.tflite MobileNetV3, klasifikasi 7
 denominasi), karena tiga alasan yang tidak bisa ditawar:
@@ -42,7 +42,7 @@ class UangService:
         if not os.path.exists(self.model_path):
             logger.warning(
                 f"Model uang '{self.model_path}' belum ada. "
-                "Endpoint /api/uang akan balas 'model_unavailable' — TIDAK menebak. "
+                "Endpoint /api/uang akan balas 'model_unavailable' - TIDAK menebak. "
                 "Jalur utama fitur ini tetap on-device (.tflite)."
             )
             return False
@@ -93,7 +93,7 @@ class UangService:
             inference_ms = (time.time() - t0) * 1000
 
             if confidence < self.threshold:
-                # UG-06 — ragu. Nominal TIDAK ditampilkan.
+                # UG-06 - ragu. Nominal TIDAK ditampilkan.
                 return {
                     "detected": False,
                     "reason": "low_confidence",

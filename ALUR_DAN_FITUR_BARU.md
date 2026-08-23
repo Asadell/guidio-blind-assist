@@ -1,4 +1,4 @@
-# Vinara (Guidio) — Alur & Fitur Baru (Di Luar IMPLEMENTASI.md & ALUR-DAN-TOMBOL.md)
+# Vinara (Guidio): Alur & Fitur Baru (Di Luar IMPLEMENTASI.md & ALUR-DAN-TOMBOL.md)
 
 Dokumen ini mendokumentasikan seluruh **alur baru, tombol baru, arsitektur baru, dan peningkatan fitur** yang telah diimplementasikan di kode saat ini, namun **belum ada atau telah berkembang melampaui** spesifikasi awal di `IMPLEMENTASI.md` dan `ALUR-DAN-TOMBOL.md`.
 
@@ -25,7 +25,7 @@ Dokumen ini mendokumentasikan seluruh **alur baru, tombol baru, arsitektur baru,
 | **Deskripsi Pemandangan Sekitar** | ❌ *Belum ada* (Hanya ada deteksi kotak YOLO dan OCR) | ✅ **Ada** via endpoint `/api/describe` (Moondream2 VLM + Qwen LLM) | **Fitur Baru Penuh** |
 | **Akses Asisten Suara** | ⚠️ Harus ganti mode penuh ke `VoiceScreen` (merusak/menutup mode aktif) | ✅ **Jarvis Global Mic**: Push `VoiceScreen(isOverlay: true)` tanpa menutup mode aktif | **Alur Baru** |
 | **Aksi Kontekstual (Senter/Kembali)** | ⚠️ Tersebar di `FullScreenButton` atau `StatusBanner` | ✅ **`ContextualActionSlot`**: Slot dedicated tepat di atas `BottomActionBar` | **Komponen & Zona Baru** |
-| **Model LLM Bahasa** | ☁️ Cloud API Claude Haiku (Anthropic) — butuh internet & API Key | 💻 **Qwen2.5-1.5B-Instruct GGUF** lokal di CPU/GPU (0 API Key, 100% offline) | **Arsitektur Baru** |
+| **Model LLM Bahasa** | ☁️ Cloud API Claude Haiku (Anthropic) - butuh internet & API Key | 💻 **Qwen2.5-1.5B-Instruct GGUF** lokal di CPU/GPU (0 API Key, 100% offline) | **Arsitektur Baru** |
 | **Konfigurasi Server** | ⚠️ Statis / Hardcoded `10.0.2.2:8000` | ✅ Pengaturan Dinamis + **Tombol "Uji Sambungan"** (Ping real-time) | **Fitur Baru** |
 | **Kamus Cari Objek** | ⚠️ Tercampur di dalam file service backend | ✅ Modular di `find_object_constants.py` (83+ benda rumah tangga) | **Refactor Arsitektur** |
 
@@ -116,7 +116,7 @@ Untuk mencegah tombol aksi menutupi kartu deteksi atau terselip di menu tersembu
 ├─────────────────────────────────────────────────────────────┤
 │  AlertCard / DetectionCard (Otomatis naik 80 dp)            │
 ├─────────────────────────────────────────────────────────────┤
-│  [!] Kondisi gelap — Nyalakan Senter                        │
+│  [!] Kondisi gelap - Nyalakan Senter                        │
 │  [ 💡 Nyalakan Senter ] ◄── ContextualActionSlot (56-80 dp)  │
 ├─────────────────────────────────────────────────────────────┤
 │  BottomActionBar: [ Ambil Foto ]   [ 🎙️ Mic ]   [ Mode ]    │

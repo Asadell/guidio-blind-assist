@@ -22,7 +22,7 @@ const List<(String, String)> _asDebugCatalog = [
   ('AS-25', 'Critical menyela jawaban'),
 ];
 
-/// Mode Asisten Suara — bagian 11 IMPLEMENTASI.md, 25 state (AS-01..AS-25).
+/// Mode Asisten Suara - bagian 11 IMPLEMENTASI.md, 25 state (AS-01..AS-25).
 /// [isOverlay] = true saat dimasukkan via Navigator push dari mode lain
 /// (fitur "Jarvis Global Mic"). Dalam mode overlay:
 /// - Tampil tombol ✕ (tutup) di pojok kanan atas.
@@ -57,7 +57,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       final voice = context.read<VoiceProvider>();
 
       if (voice.checkAndExpireHistory()) {
-        // AS-23 — riwayat kedaluwarsa, sudah dibersihkan oleh provider.
+        // AS-23 - riwayat kedaluwarsa, sudah dibersihkan oleh provider.
         context.read<TtsProvider>().speak('Percakapan tadi sudah saya hapus.', tier: SpeechTier.info);
       }
 
@@ -65,7 +65,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       voice.onOpenSettings = _openSettings;
       voice.onAllFeaturesFailed = () {};
 
-      // "lebih cepat" / "lebih pelan" — dulu keduanya punya bank kata lengkap
+      // "lebih cepat" / "lebih pelan" - dulu keduanya punya bank kata lengkap
       // tapi tidak ada yang menjalankannya.
       voice.onAdjustSpeechRate = (delta) async {
         final settings = context.read<SettingsProvider>();
@@ -75,7 +75,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       };
 
       // Sebagai MODE (bukan overlay), aksi utamanya adalah mengulang jawaban.
-      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa —
+      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa -
       // "jepret" saat mic terbuka harus menjalankan aksi mode aslinya.
       if (!widget.isOverlay) {
         voice.onPrimaryAction = _repeatLastAnswer;
@@ -142,13 +142,13 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     if (status.isGranted) setState(() => _hasMicPermission = true);
   }
 
-  /// `mode.settings` — Pengaturan layar penunjang, bukan mode. Mengembalikan
+  /// `mode.settings` - Pengaturan layar penunjang, bukan mode. Mengembalikan
   /// true hanya kalau halamannya benar-benar terdorong ke Navigator, supaya
   /// VoiceProvider tidak mengonfirmasi pembukaan yang tidak terjadi.
   Future<bool> _openSettings() async {
     if (!mounted) return false;
     // Rute sudah masuk tumpukan begitu `push` dipanggil; Future-nya baru
-    // selesai saat halaman DITUTUP, jadi ia sengaja tidak ditunggu — kalau
+    // selesai saat halaman DITUTUP, jadi ia sengaja tidak ditunggu - kalau
     // ditunggu, konfirmasinya baru terdengar setelah pengguna keluar lagi.
     unawaited(Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -156,13 +156,13 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     return true;
   }
 
-  /// Tombol kiri Mode Asisten Suara — baca ulang jawaban terakhir.
+  /// Tombol kiri Mode Asisten Suara - baca ulang jawaban terakhir.
   ///
   /// Rencana perbaikan menyarankan tombol ini dinonaktifkan dengan label jujur.
   /// Itu benar dan jujur, tapi menyisakan satu tombol mati dari enam mode dan
   /// membuat aturan tombol kiri punya pengecualian. "Ulangi jawaban" berguna
   /// nyata: pengguna yang tidak menangkap jawaban cukup menekan tombol yang
-  /// posisinya sudah ia hafal — tanpa bertanya ulang, dan tanpa memicu
+  /// posisinya sudah ia hafal - tanpa bertanya ulang, dan tanpa memicu
   /// panggilan Moondream2 kedua yang makan lima detik dan kuota.
   void _repeatLastAnswer() {
     final voice = context.read<VoiceProvider>();
@@ -183,7 +183,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     if (voice.isListening) {
       await voice.stopListening();
     } else if (voice.state == VoiceState.responded) {
-      // AS-20 — menekan lagi saat masih bicara: potong tanpa nada khusus.
+      // AS-20 - menekan lagi saat masih bicara: potong tanpa nada khusus.
       await voice.interruptAndListenAgain();
     } else {
       await voice.startListening();
@@ -206,7 +206,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             children: [
               Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
                   decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-              Text('Debug — Mode Asisten Suara', style: AppTypography.title()),
+              Text('Debug - Mode Asisten Suara', style: AppTypography.title()),
               const SizedBox(height: 4),
               Text('AS-01..04,06,08..12,14,15,17..20,22 tercapai lewat alur bicara nyata',
                   textAlign: TextAlign.center, style: AppTypography.caption()),
@@ -252,7 +252,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     final topInset = media.padding.top;
     final bottomInset = media.padding.bottom;
 
-    // AS-25 — Critical dari mode lain menyela jawaban yang sedang dibacakan.
+    // AS-25 - Critical dari mode lain menyela jawaban yang sedang dibacakan.
     if (voice.state == VoiceState.responded && det.detections.any((d) => d.isCritical) && !_hasCameraPermission == false) {
       final critical = det.detections.firstWhere((d) => d.isCritical);
       context.read<TtsProvider>().speak(critical.ttsMessage, tier: SpeechTier.critical);
@@ -293,7 +293,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             Positioned(top: topInset + 52, right: 24, child: const SpeakingIndicator()),
 
           if (!_hasMicPermission && _debugOverride == null)
-            // AS-02 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // AS-02 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.mic_none_rounded,
               title: 'Izin mikrofon',
@@ -318,9 +318,9 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             ),
           ),
 
-          // ContextualActionSlot "Kembali" — hanya saat overlay push.
+          // ContextualActionSlot "Kembali" - hanya saat overlay push.
           // Posisi konsisten dengan slot lampu di TuntunScreen (tepat di atas
-          // BottomActionBar) — pengguna terbiasa dengan lokasi yang sama.
+          // BottomActionBar) - pengguna terbiasa dengan lokasi yang sama.
           if (widget.isOverlay)
             Positioned(
               left: 0, right: 0,
@@ -426,7 +426,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
 
   Widget _historyTranscript(VoiceProvider voice) {
     if (_silentMode) {
-      // AS-21 — senyap: seluruh jawaban ditampilkan penuh.
+      // AS-21 - senyap: seluruh jawaban ditampilkan penuh.
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(color: AppColors.surfaceCard, borderRadius: AppRadius.card, boxShadow: AppElevation.card),

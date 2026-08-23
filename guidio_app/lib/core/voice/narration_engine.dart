@@ -1,6 +1,6 @@
 import 'dart:math';
 
-/// Narration Engine — Merangkai hasil deteksi YOLO menjadi narasi Bahasa Indonesia
+/// Narration Engine - Merangkai hasil deteksi YOLO menjadi narasi Bahasa Indonesia
 /// yang alami untuk dibacakan TTS. 100% offline, tanpa LLM.
 ///
 /// Menggantikan POST /api/narasi yang sebelumnya bergantung pada Qwen LLM di backend.
@@ -156,7 +156,7 @@ String mapDirectionPhrase(String direction) {
 // ── Sentence Builder ───────────────────────────────────────────────────────
 
 /// Data deteksi satu objek untuk narasi engine.
-/// Berbeda dari model [Detection] utama — ini versi ringan khusus narasi.
+/// Berbeda dari model [Detection] utama - ini versi ringan khusus narasi.
 class NarrationDetection {
   final String objectClass; // key dari cocoObjectDictionary, mis. "car"
   final double dist;        // jarak dalam meter
@@ -174,7 +174,7 @@ class NarrationDetection {
 final _random = Random();
 
 /// Merangkai daftar deteksi objek mentah menjadi satu kalimat narasi
-/// Bahasa Indonesia yang alami untuk dibacakan TTS — 100% tanpa LLM.
+/// Bahasa Indonesia yang alami untuk dibacakan TTS - 100% tanpa LLM.
 ///
 /// Menggantikan POST /api/narasi (backend Qwen).
 ///
@@ -186,7 +186,7 @@ String generateNaturalNarration(List<NarrationDetection> detections) {
     return 'Tidak ada objek yang terdeteksi di sekitarmu saat ini.';
   }
 
-  // Urutkan dari yang paling dekat — objek paling berbahaya disebut lebih dulu
+  // Urutkan dari yang paling dekat - objek paling berbahaya disebut lebih dulu
   final sorted = [...detections]..sort((a, b) => a.dist.compareTo(b.dist));
 
   // Batasi maksimal 3 objek utama supaya kalimat tidak terlalu panjang

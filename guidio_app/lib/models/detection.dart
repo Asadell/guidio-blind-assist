@@ -60,7 +60,7 @@ class Detection {
         dangerLevel:   json['danger_level'] as String? ?? 'info',
         bbox:          Map<String, int>.from(json['bbox'] as Map? ?? {}),
         inferenceMs:   (json['inference_ms'] ?? 0).toDouble(),
-        // isApproaching tidak dari JSON — hanya dari tracker lokal
+        // isApproaching tidak dari JSON - hanya dari tracker lokal
       );
 
   /// Buat salinan Detection dengan field tertentu diubah.
@@ -86,7 +86,7 @@ class Detection {
   ///
   /// Sengaja ternormalisasi, bukan piksel: yang menggambar tidak perlu tahu
   /// resolusi kamera, dan mengganti preset resolusi tidak menggeser satu pun
-  /// kotak. `null` kalau sumbernya tidak melaporkan ukuran bingkai — lebih
+  /// kotak. `null` kalau sumbernya tidak melaporkan ukuran bingkai - lebih
   /// baik tidak menggambar apa-apa daripada menggambar di tempat yang salah.
   ({double left, double top, double right, double bottom})? get normalizedBox {
     final fw = frameWidth;

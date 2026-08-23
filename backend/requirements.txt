@@ -1,27 +1,43 @@
+# Server
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
 python-multipart==0.0.12
-websockets==13.1
-ultralytics>=8.3.0
-opencv-python>=4.10.0
-numpy>=1.26.0
 python-dotenv==1.0.1
 loguru>=0.7.2
+
+# Cari Objek (YOLOE open-vocabulary) dan Deskripsi Suasana (Moondream2).
+# Dua fitur inilah satu-satunya alasan backend ini ada; sisanya on-device.
+ultralytics>=8.3.0
 torch>=2.1.0
 torchvision>=0.16.0
-onnxruntime>=1.19.0
-Pillow>=10.0.0
-httpx>=0.27.0
-
-# Local LLM — menggantikan Claude Haiku (anthropic) untuk narasi, terjemahan, intent.
-# Qwen2.5-1.5B-Instruct GGUF via llama-cpp-python dengan akselerasi CUDA.
-# Install dengan CUDA: CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
-llama-cpp-python>=0.3.0
-
-# Vision Language Model — scene description (bukan LLM teks biasa)
 transformers>=4.40.0
 
-# PostgreSQL (telemetri, crash report, antrean offline, kamus label,
-# manifest model, sesi asisten, risk zone)
+# Gerbang kualitas gambar + praproses sebelum masuk model
+opencv-python>=4.10.0
+numpy>=1.26.0
+Pillow>=10.0.0
+
+# PostgreSQL: zona rawan + override kemampuan untuk demo/perawatan
 sqlalchemy>=2.0
 psycopg[binary]>=3.2
+
+# Pengujian (pytest TestClient FastAPI membutuhkan httpx)
+httpx>=0.27.0
+
+# ── Yang DIHAPUS dari berkas ini, beserta alasannya ────────────────────────
+#
+# llama-cpp-python  Tidak diimpor satu berkas pun. Sisa dari era Qwen, yang
+#                   sudah dibuang sejak narasi dan intent pindah ke Flutter.
+#                   Membiarkannya bukan sekadar berat: paket ini dikompilasi
+#                   dari sumber, jadi ia memperlambat instalasi berjam-jam dan
+#                   sering menggagalkannya sama sekali di mesin tanpa toolchain
+#                   CUDA. Orang yang memasang repo ini pertama kali akan
+#                   menyimpulkan backend-nya rusak, padahal yang rusak hanya
+#                   dependensi yang tidak pernah dipakai.
+# onnxruntime       Tidak diimpor. Segmentasi jalur sudah pindah on-device
+#                   (PIDNet-S TFLite di Flutter).
+# websockets        Tidak diimpor. Router WebSocket deteksi sudah diarsipkan
+#                   sejak deteksi rintangan dikerjakan on-device.
+#
+# Tesseract / pytesseract tidak pernah ada di berkas ini lagi: Baca Teks
+# memakai ML Kit di ponsel dan berjalan penuh tanpa server.

@@ -9,7 +9,7 @@ import '../services/camera_capture_service.dart';
 import '../services/camera_health_service.dart';
 import '../services/tflite_service.dart';
 
-/// CameraProvider — kelola kamera, stream, dan capture.
+/// CameraProvider - kelola kamera, stream, dan capture.
 ///
 /// Fix dari doc 5 masalah 8 + 12:
 /// - Mutex _capturing untuk race condition
@@ -27,10 +27,10 @@ class CameraProvider extends ChangeNotifier {
   bool    _darkDismissed  = false; // true = jangan tampilkan tawaran lampu lagi
   bool    _isTorchOn      = false; // status flashlight
 
-  // Fix 2.1: Timer peringatan gelap berkala — ucap setiap 30 detik jika masih gelap
+  // Fix 2.1: Timer peringatan gelap berkala - ucap setiap 30 detik jika masih gelap
   Timer?   _darkWarningTimer;
 
-  /// Sejak kapan kondisi gelap berlangsung — dibaca layar/telemetri untuk
+  /// Sejak kapan kondisi gelap berlangsung - dibaca layar/telemetri untuk
   /// membedakan "baru saja gelap" dari "sudah lama tidak melihat apa-apa".
   DateTime? _darkSince;
   DateTime? get darkSince => _darkSince;
@@ -45,14 +45,14 @@ class CameraProvider extends ChangeNotifier {
   /// [isDark] && ![darkDismissed].
   bool get isDark         => _isDark;
 
-  /// True saat pengguna menekan "Lewati" — tawaran lampu tidak tampil,
+  /// True saat pengguna menekan "Lewati" - tawaran lampu tidak tampil,
   /// TAPI deteksi tetap berjalan (Fix 2.1).
   bool get darkDismissed  => _darkDismissed;
 
   /// True saat flashlight sedang menyala.
   bool get isTorchOn => _isTorchOn;
 
-  // Callback — dipanggil dari CameraProvider ketika frame siap
+  // Callback - dipanggil dari CameraProvider ketika frame siap
   // DetectionProvider/InferenceProvider yang subscribe
   Function(CameraImage)? onFrameReady;
 
@@ -78,7 +78,7 @@ class CameraProvider extends ChangeNotifier {
   ///
   /// Aman dipanggil berulang: kalau kamera sudah hidup pada preset yang sama,
   /// metode ini tidak melakukan apa-apa. Kalau presetnya BERBEDA, controller
-  /// dibuat ulang — itulah yang membuat satu kamera bisa melayani dua
+  /// dibuat ulang - itulah yang membuat satu kamera bisa melayani dua
   /// kebutuhan yang bertentangan.
   ///
   /// Kenapa dua preset, bukan satu:
@@ -86,7 +86,7 @@ class CameraProvider extends ChangeNotifier {
   /// - **Mode aliran** (deteksi, navigasi, kenali uang) menjalankan inferensi
   ///   pada SETIAP frame, sekitar delapan kali per detik. Di 1280x720 itu
   ///   tiga kali lebih banyak pixel per frame dibanding 640x480, dan di HP
-  ///   mid-low selisih itu terasa langsung sebagai frame yang terlewat — di
+  ///   mid-low selisih itu terasa langsung sebagai frame yang terlewat - di
   ///   mode yang justru menyangkut keselamatan.
   /// - **Mode foto** (baca teks, deskripsi suasana, cari objek) mengambil
   ///   satu gambar lalu berhenti. Di sini resolusi menentukan batas atas
@@ -104,7 +104,7 @@ class CameraProvider extends ChangeNotifier {
       return;
     }
 
-    // Request camera permission sebelum initialize — mencegah CameraAccessDenied
+    // Request camera permission sebelum initialize - mencegah CameraAccessDenied
     final status = await Permission.camera.request();
     if (!status.isGranted) {
       debugPrint('[CameraProvider] Camera permission denied: $status');
@@ -124,6 +124,17 @@ class CameraProvider extends ChangeNotifier {
       // Bongkar controller lama sebelum membangun yang baru. Stream harus
       // dihentikan lebih dulu: membuang controller yang masih mengalirkan
       // frame membuat callback menembak ke objek yang sudah tidak ada.
+      //
+      // `wasStreaming` dicatat supaya alirannya bisa DINYALAKAN LAGI di akhir.
+      // Sebelumnya tidak: siapa pun yang mengganti preset di tengah mode
+      // aliran - dan itu persis yang dilakukan "deskripsikan suasana" -
+      // meninggalkan kamera mati tanpa ada yang menyalakannya kembali.
+      // Layarnya tetap terlihat normal, `onFrameReady` tetap terpasang, tapi
+      // tidak ada satu frame pun yang datang lagi. Di Mode Deteksi itu berarti
+      // berhenti memperingatkan rintangan tanpa sepatah kata; di Mode Navigasi
+      // lebih buruk, karena frame terakhir membeku di `_latestFrame` dan
+      // panduan terus disusun dari pemandangan yang sudah lewat.
+      final wasStreaming = _streaming;
       final previous = _controller;
       if (previous != null) {
         if (_streaming) {
@@ -152,6 +163,11 @@ class CameraProvider extends ChangeNotifier {
       _initialized = true;
       _setError(false);
       notifyListeners();
+
+      // Nyalakan lagi aliran frame kalau tadi memang sedang mengalir.
+      // `onFrameReady` sengaja tidak disentuh - pelanggannya tetap yang sama,
+      // hanya controller di bawahnya yang berganti.
+      if (wasStreaming) startStream();
     } catch (e) {
       // Kamera gagal disiapkan = mode utama benar-benar buta. Kegagalan yang
       // ditelan diam-diam di sini akan tampil sebagai aplikasi yang terlihat
@@ -168,13 +184,25 @@ class CameraProvider extends ChangeNotifier {
     _streaming   = true;
     _frameCount  = 0;
 
-    _controller!.startImageStream((CameraImage image) {
+    // Kegagalan membuka aliran tidak boleh menguap sebagai error asinkron yang
+    // tidak tertangkap: `_streaming` harus dikembalikan ke false, kalau tidak
+    // setiap `startStream()` berikutnya berhenti di penjaga di atas dan
+    // kamera tidak akan pernah mengalir lagi selama aplikasi hidup.
+    _controller!.startImageStream(_onFrame).catchError((Object e) {
+      debugPrint('[CameraProvider] startImageStream error: $e');
+      _streaming = false;
+      _setError(true);
+    });
+  }
+
+  void _onFrame(CameraImage image) {
+    {
       // Skip frame jika sedang capture (race condition fix)
       if (_capturing) return;
 
       _frameCount++;
 
-      // [1] On-device brightness check setiap frame — O(100) sangat ringan
+      // [1] On-device brightness check setiap frame - O(100) sangat ringan
       final tooDark = _isTooDark(image);
       if (tooDark != _isDark) {
         _isDark = tooDark;
@@ -183,7 +211,7 @@ class CameraProvider extends ChangeNotifier {
           _darkSince = DateTime.now();
           _startDarkWarningTimer();
         } else {
-          // Kondisi terang kembali — reset semua
+          // Kondisi terang kembali - reset semua
           _cancelDarkWarningTimer();
           _darkDismissed = false;
           _darkSince = null;
@@ -191,7 +219,7 @@ class CameraProvider extends ChangeNotifier {
         // Notifikasi UI: ContextualActionSlot tampil/sembunyikan tawaran lampu
         notifyListeners();
       }
-      // Fix 2.1: JANGAN return di sini — inference tetap berjalan di kondisi gelap.
+      // Fix 2.1: JANGAN return di sini - inference tetap berjalan di kondisi gelap.
       // Pengguna perlu tahu ada rintangan meski gelap.
       // UI yang memutuskan apakah tawaran lampu tampil (isDark && !darkDismissed).
 
@@ -209,11 +237,11 @@ class CameraProvider extends ChangeNotifier {
             // Gunakan TtsQueue agar tunduk pada sistem 3-tier (Fix 1C)
             TtsQueue().speak(health.message, tier: SpeechTier.warning);
           }
-          // Sengaja TIDAK `return` — ini kelas bug yang sama dengan kondisi
+          // Sengaja TIDAK `return` - ini kelas bug yang sama dengan kondisi
           // gelap (Fix 2.1). Ponsel yang miring membuat estimasi jarak kurang
           // akurat, tapi objek di depan tetap terlihat. Menghentikan inference
           // berarti menukar "peringatan yang agak meleset" dengan "tidak ada
-          // peringatan sama sekali" — dan yang kedua jauh lebih berbahaya.
+          // peringatan sama sekali" - dan yang kedua jauh lebih berbahaya.
         } else if (_healthMessage != null) {
           _healthMessage = null;
           notifyListeners();
@@ -222,7 +250,7 @@ class CameraProvider extends ChangeNotifier {
 
       // [3] Callback ke DetectionProvider jika ada subscriber
       onFrameReady?.call(image);
-    });
+    }
   }
 
   /// Dismiss tawaran lampu tanpa mematikan deteksi (Fix 2.1).
@@ -232,15 +260,30 @@ class CameraProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void stopStream() {
+  /// Hentikan aliran frame. **Mengembalikan Future yang benar-benar selesai
+  /// saat alirannya berhenti**, bukan saat perintah berhentinya dikirim.
+  ///
+  /// Bedanya menentukan di [_capture]: `takePicture()` yang dipanggil sementara
+  /// aliran masih hidup gagal di sebagian perangkat Android. Versi sebelumnya
+  /// membuang Future ini, jadi pemotretan berpacu dengan penghentian aliran dan
+  /// kalah sesekali - persis kelas kegagalan sesekali yang paling sulit
+  /// ditelusuri karena tidak pernah muncul di emulator.
+  Future<void> stopStream() async {
     if (!_streaming || _controller == null) return;
-    _controller!.stopImageStream();
+    // Ditandai berhenti LEBIH DULU supaya `_onFrame` yang masih menyusul
+    // selama penghentian tidak lagi memicu apa pun.
     _streaming = false;
+    try {
+      await _controller!.stopImageStream();
+    } catch (e) {
+      debugPrint('[CameraProvider] stopImageStream error: $e');
+    }
     _cancelDarkWarningTimer();
     // Reset dark state saat stream berhenti
     if (_isDark) {
       _isDark = false;
       _darkDismissed = false;
+      _darkSince = null;
       notifyListeners();
     }
   }
@@ -293,7 +336,7 @@ class CameraProvider extends ChangeNotifier {
     }
   }
 
-  /// Toggle flashlight — nyala → mati, mati → nyala.
+  /// Toggle flashlight - nyala → mati, mati → nyala.
   Future<void> toggleTorch() => setTorch(!_isTorchOn);
 
   /// Ambil foto dan kembalikan **path berkas**, bukan byte-nya.
@@ -319,7 +362,7 @@ class CameraProvider extends ChangeNotifier {
     return bytes;
   }
 
-  /// Hasil penilaian foto terakhir — dibaca layar untuk menampilkan status
+  /// Hasil penilaian foto terakhir - dibaca layar untuk menampilkan status
   /// tanpa harus mengulang perhitungannya.
   CaptureResult? _lastCapture;
   CaptureResult? get lastCapture => _lastCapture;
@@ -343,7 +386,7 @@ class CameraProvider extends ChangeNotifier {
   /// itu cuma bisa diminta dari sini.
   ///
   /// [gateQuality] false berarti byte-nya tetap dikembalikan apa pun
-  /// hasilnya — dipakai jalur yang lebih suka mencoba daripada menolak.
+  /// hasilnya - dipakai jalur yang lebih suka mencoba daripada menolak.
   Future<CaptureResult> _capture({required bool gateQuality}) async {
     if (_capturing) throw Exception('Sedang capture, coba lagi');
     final controller = _controller;
@@ -354,7 +397,8 @@ class CameraProvider extends ChangeNotifier {
     _capturing = true;
     try {
       final wasStreaming = _streaming;
-      if (wasStreaming) stopStream();
+      // Ditunggu sampai benar-benar berhenti - lihat catatan di [stopStream].
+      if (wasStreaming) await stopStream();
 
       final result = await CameraCaptureService.instance.captureSharpest(
         controller,
@@ -420,11 +464,11 @@ class CameraProvider extends ChangeNotifier {
       }
     }
 
-    // Encode ke JPEG quality 70 — cukup untuk YOLO server, tidak terlalu besar
+    // Encode ke JPEG quality 70 - cukup untuk YOLO server, tidak terlalu besar
     return Uint8List.fromList(img.encodeJpg(rgbImage, quality: 70));
   }
 
-  /// On-device brightness check — sample 100 piksel dari plane Y (YUV420).
+  /// On-device brightness check - sample 100 piksel dari plane Y (YUV420).
   /// O(100) sangat ringan, aman dipanggil setiap frame.
   ///
   /// Fix dari doc 5 masalah 12.
@@ -433,11 +477,19 @@ class CameraProvider extends ChangeNotifier {
     final step   = yPlane.length ~/ 100;
     if (step <= 0) return false;
 
+    // Pembaginya adalah jumlah sampel yang BENAR-BENAR diambil, bukan 100.
+    // `step` dibulatkan ke bawah, jadi jumlah putaran hampir selalu sedikit
+    // lebih banyak dari 100 dan membagi dengan 100 menaikkan rata-ratanya -
+    // artinya frame yang sesungguhnya gelap bisa lolos dari ambang dan
+    // peringatan "terlalu gelap" tidak pernah muncul.
     int total = 0;
+    int samples = 0;
     for (int i = 0; i < yPlane.length; i += step) {
       total += yPlane[i] & 0xFF;
+      samples++;
     }
-    final avgBrightness = total / 100;
+    if (samples == 0) return false;
+    final avgBrightness = total / samples;
     return avgBrightness < 30; // < 30/255 = sangat gelap
   }
 
@@ -461,7 +513,7 @@ enum CapturePreset {
 
   /// Mode yang mengambil satu foto lalu berhenti. 1280x720 memberi cukup
   /// pixel untuk huruf kecil; lebih tinggi dari ini tidak menambah akurasi
-  /// tapi memperlambat setiap langkah sesudahnya — dekode, penilaian
+  /// tapi memperlambat setiap langkah sesudahnya - dekode, penilaian
   /// ketajaman, dan unggahan.
   capture(ResolutionPreset.high);
 

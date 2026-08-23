@@ -9,16 +9,16 @@ import 'package:http/http.dart' as http;
 /// selalu salah di salah satu sisi: terlalu pendek untuk OCR, terlalu panjang
 /// untuk health check yang seharusnya gagal cepat.
 enum ApiOp {
-  /// Health, capabilities, intent — pengguna menunggu jawabannya sekarang.
+  /// Health, capabilities, intent - pengguna menunggu jawabannya sekarang.
   interactive(Duration(seconds: 4)),
 
-  /// Satu frame ke server dan kembali — segmentasi jalur, cari objek.
+  /// Satu frame ke server dan kembali - segmentasi jalur, cari objek.
   frame(Duration(seconds: 8)),
 
-  /// OCR, unggah antrean — berat, pengguna sudah diberi tahu akan lama.
+  /// OCR, unggah antrean - berat, pengguna sudah diberi tahu akan lama.
   heavy(Duration(seconds: 20)),
 
-  /// Telemetri — tidak ada yang menunggu.
+  /// Telemetri - tidak ada yang menunggu.
   background(Duration(seconds: 5));
 
   final Duration timeout;
@@ -27,7 +27,7 @@ enum ApiOp {
 
 /// Dilempar saat server menjawab dengan status non-200. Dipisah dari kegagalan
 /// jaringan supaya pemanggil bisa membedakan "server hidup tapi menolak" dari
-/// "server tidak terjangkau" — dua kondisi itu punya naskah suara berbeda
+/// "server tidak terjangkau" - dua kondisi itu punya naskah suara berbeda
 /// (BT-14 "bukan karena gambarmu" vs ER-03 "server tidak bisa dihubungi").
 class ApiStatusException implements Exception {
   final int statusCode;
@@ -53,7 +53,7 @@ class ApiUnreachableException implements Exception {
 ///
 /// **Kenapa satu klien, bukan `http.post()` lepasan.** Fungsi tingkat atas
 /// `http.post()` membuat `Client` baru tiap panggilan lalu menutupnya. Artinya
-/// tiap permintaan membayar handshake TCP baru — di jaringan seluler itu
+/// tiap permintaan membayar handshake TCP baru - di jaringan seluler itu
 /// ratusan milidetik yang terbuang, tiap frame, tiap kali. Satu `Client` yang
 /// hidup selama aplikasi berjalan memakai ulang koneksi (keep-alive), dan itu
 /// penghematan latensi terbesar yang bisa didapat tanpa mengubah apa pun di
@@ -91,7 +91,7 @@ class ApiClient {
       () => _inner.get(_uri(path, query)),
       path: path,
       op: op,
-      // GET selalu idempoten — aman diulang.
+      // GET selalu idempoten - aman diulang.
       retries: retries,
     );
     return _decode(res, path);
@@ -124,7 +124,7 @@ class ApiClient {
   /// murah daripada multipart: tanpa boundary, tanpa header per bagian.
   ///
   /// **Gambarnya harus sudah diperkecil sebelum sampai di sini.** Lihat
-  /// `FrameCodec.encodeForUpload` — memperkecil di sisi klien adalah satu
+  /// `FrameCodec.encodeForUpload` - memperkecil di sisi klien adalah satu
   /// keputusan yang paling menentukan waktu unggah, jauh di atas pilihan
   /// protokol apa pun.
   Future<Map<String, dynamic>> postBytes(
@@ -142,14 +142,14 @@ class ApiClient {
       ),
       path: path,
       op: op,
-      // Unggah gambar tidak idempoten kecuali diberi kunci — jangan diulang
+      // Unggah gambar tidak idempoten kecuali diberi kunci - jangan diulang
       // diam-diam. Pengulangan yang benar lewat antrean (BT-13).
       retries: 0,
     );
     return _decode(res, path);
   }
 
-  /// Unggah multipart — gambar + field. Dipakai saat server butuh metadata
+  /// Unggah multipart - gambar + field. Dipakai saat server butuh metadata
   /// menyertai gambar (target pencarian, koordinat, kunci idempotensi).
   Future<Map<String, dynamic>> postMultipart(
     String path, {
@@ -203,7 +203,7 @@ class ApiClient {
       try {
         final res = await run().timeout(op.timeout);
 
-        // 5xx layak diulang (server sedang pulih); 4xx tidak — permintaannya
+        // 5xx layak diulang (server sedang pulih); 4xx tidak - permintaannya
         // sendiri yang salah, mengulang hanya membuang waktu pengguna.
         if (res.statusCode >= 500 && attempt < retries) {
           lastError = ApiStatusException(res.statusCode, path);
@@ -238,7 +238,7 @@ class ApiClient {
 /// (Navigasi, Cari Objek).
 ///
 /// **Aturan: frame terbaru menang, frame lama dibuang.** Kalau server lambat,
-/// mengantrekan frame justru berbahaya — pengguna akan mendengar arahan untuk
+/// mengantrekan frame justru berbahaya - pengguna akan mendengar arahan untuk
 /// pemandangan yang sudah lewat beberapa detik lalu, sementara ia sudah
 /// berjalan maju. Untuk aplikasi yang menuntun orang berjalan, arahan basi
 /// lebih buruk daripada tidak ada arahan.
@@ -256,7 +256,7 @@ class FramePacer {
 
   int _dropped = 0;
 
-  /// Berapa frame dibuang sejak terakhir dibaca — berguna untuk menurunkan
+  /// Berapa frame dibuang sejak terakhir dibaca - berguna untuk menurunkan
   /// laju kamera saat server konsisten tidak mengejar (NV-13, NV-24).
   int takeDroppedCount() {
     final n = _dropped;

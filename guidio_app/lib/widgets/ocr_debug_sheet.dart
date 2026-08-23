@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../mock/ocr_mock_data.dart';
 import '../theme/index.dart';
 
-/// OcrDebugSheet — bottom sheet QA khusus Mode Baca Teks: daftar 22 state
+/// OcrDebugSheet - bottom sheet QA khusus Mode Baca Teks: daftar 22 state
 /// BT-01..BT-22 (bagian 8). Memilih satu item memaksa tampilan lokal
-/// `ocr_screen.dart` ke kondisi itu (data mock) sampai dibatalkan — dibuka
+/// `ocr_screen.dart` ke kondisi itu (data mock) sampai dibatalkan - dibuka
 /// lewat ketuk 5× pada [ModeBadge] (`onDebugActivate`).
 Future<void> showOcrDebugSheet(
   BuildContext context, {
@@ -68,7 +68,7 @@ class _OcrDebugSheetContent extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Debug — Mode Baca Teks', style: AppTypography.title()),
+                    child: Text('Debug - Mode Baca Teks', style: AppTypography.title()),
                   ),
                   if (activeId != null)
                     GestureDetector(

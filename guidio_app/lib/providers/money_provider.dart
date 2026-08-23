@@ -8,19 +8,19 @@ import '../core/speech/tts_queue.dart' show SpeechTier;
 import '../services/money_tflite_service.dart';
 import '../widgets/nominal_card.dart' show terbilangRupiah;
 
-/// State machine Mode Kenali Uang — bagian 9 IMPLEMENTASI.md
+/// State machine Mode Kenali Uang - bagian 9 IMPLEMENTASI.md
 /// (UG-01..UG-12, UG-18). Sepenuhnya on-device.
 ///
 /// **Tidak ada akumulasi sesi.** Mode ini menjawab satu pertanyaan saja:
 /// "lembar yang sedang saya hadapkan ke kamera ini nominalnya berapa?"
-/// Tombol kiri mengumumkan nominal frame saat itu, lalu selesai — tidak ada
+/// Tombol kiri mengumumkan nominal frame saat itu, lalu selesai - tidak ada
 /// total berjalan, tidak ada rincian lembar, tidak ada kartu "total direset".
 /// Penjumlahan otomatis justru berbahaya di sini: pengguna tunanetra tidak
 /// bisa melihat lembar mana yang sudah terhitung, jadi satu lembar yang
 /// ter-scan dua kali menghasilkan total yang salah tanpa satu pun tanda.
 ///
 /// **Jalur mock hanya hidup di build debug.** Simulasi Timer-nya memanggil
-/// `_enterDetected(_kDenoms[_rand.nextInt(...)])` — yaitu **mengucapkan
+/// `_enterDetected(_kDenoms[_rand.nextInt(...)])` - yaitu **mengucapkan
 /// nominal acak dengan nada yakin**. Di rilis, jalur itu bisa tercapai hanya
 /// karena model gagal dimuat, dan pengguna tunanetra tidak punya cara
 /// membedakannya dari hasil sungguhan. Salah menyebut nominal berarti
@@ -28,7 +28,7 @@ import '../widgets/nominal_card.dart' show terbilangRupiah;
 /// kalimat jujur: fiturnya tidak tersedia. Titik.
 ///
 /// UG-13 (offline banner), UG-14 (izin kamera), UG-15 (senyap/TTS mati), dan
-/// UG-16 (font scale 200%) sengaja TIDAK dimodelkan di sini — itu murni
+/// UG-16 (font scale 200%) sengaja TIDAK dimodelkan di sini - itu murni
 /// keputusan lapisan UI (screen membaca GlobalConditionsProvider / izin
 /// sistem / MediaQuery langsung).
 enum MoneyState {
@@ -46,7 +46,7 @@ enum MoneyState {
   foreign,     // UG-18
 }
 
-/// Pola getar bagian 3.6 — `positive` (2×25ms) untuk bingkai pas,
+/// Pola getar bagian 3.6 - `positive` (2×25ms) untuk bingkai pas,
 /// `moneyAck` (3×40ms) khusus UG-15 (dipicu dari layar, bukan dari sini).
 enum MoneyHaptic { positive }
 
@@ -76,7 +76,7 @@ class MoneyProvider extends ChangeNotifier {
 
   bool get busy => _state == MoneyState.processing;
 
-  /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan
+  /// Callback keluar - screen yang mengubahnya jadi suara/getar sungguhan
   /// lewat TtsProvider/Vibration, supaya provider ini tetap tidak bergantung
   /// pada BuildContext (pola sama dengan `CameraProvider.onFrameReady`).
   void Function(String text, SpeechTier tier)? onSpeak;
@@ -103,11 +103,11 @@ class MoneyProvider extends ChangeNotifier {
   /// menjadi konstanta, jadi di rilis seluruh cabang mock ikut tereliminasi.
   static bool get _mockAllowed => kDebugMode;
 
-  /// True kalau model tidak tersedia DAN mock tidak boleh jalan — layar
+  /// True kalau model tidak tersedia DAN mock tidak boleh jalan - layar
   /// memakai ini untuk menonaktifkan tombol dengan alasan yang jujur.
   bool get isUnavailable => !_useRealModel && !_mockAllowed;
 
-  /// Masuk mode (UG-01) — mulai siklus otomatis dari awal.
+  /// Masuk mode (UG-01) - mulai siklus otomatis dari awal.
   void start() {
     if (_running) return;
     _running = true;
@@ -130,14 +130,14 @@ class MoneyProvider extends ChangeNotifier {
     );
   }
 
-  /// Keluar mode — hentikan semua timer, jangan bicara lagi.
+  /// Keluar mode - hentikan semua timer, jangan bicara lagi.
   void pause() {
     _running = false;
     _stepTimer?.cancel();
     _hintRotateTimer?.cancel();
   }
 
-  /// Dipanggil dari tombol kamera BottomActionBar — "paksa deteksi ulang".
+  /// Dipanggil dari tombol kamera BottomActionBar - "paksa deteksi ulang".
   void forceRedetect() {
     if (!_running) return;
     _stepTimer?.cancel();
@@ -173,7 +173,7 @@ class MoneyProvider extends ChangeNotifier {
   DateTime _lastInference = DateTime.fromMillisecondsSinceEpoch(0);
   int _consecutiveMiss = 0;
 
-  /// Hasil buffer terbaru dari model — diperbarui tiap frame, dipakai saat
+  /// Hasil buffer terbaru dari model - diperbarui tiap frame, dipakai saat
   /// snapAndAnnounce() dipanggil. Tidak pernah auto-diumumkan.
   MoneyResult? _latestResult;
 
@@ -181,7 +181,7 @@ class MoneyProvider extends ChangeNotifier {
   /// gunanya berjalan tiap frame: pengguna butuh waktu memposisikan uang.
   static const _inferenceInterval = Duration(milliseconds: 600);
 
-  /// Coba muat model on-device. Mengembalikan false kalau file belum ada —
+  /// Coba muat model on-device. Mengembalikan false kalau file belum ada -
   /// pemanggil lalu membiarkan siklus mock yang jalan.
   Future<bool> enableRealModel() async {
     final ok = await MoneyTFLiteService.instance.load();
@@ -194,7 +194,7 @@ class MoneyProvider extends ChangeNotifier {
     return ok;
   }
 
-  /// Umpan frame kamera. Aman dipanggil tiap frame — di-throttle sendiri.
+  /// Umpan frame kamera. Aman dipanggil tiap frame - di-throttle sendiri.
   Future<void> submitFrame(CameraImage image) async {
     if (!_useRealModel || !_running || _inferring) return;
     if (DateTime.now().difference(_lastInference) < _inferenceInterval) return;
@@ -212,7 +212,7 @@ class MoneyProvider extends ChangeNotifier {
   void _applyRealResult(MoneyResult result) {
     if (!_running) return;
 
-    // Selalu perbarui buffer — snapAndAnnounce() akan membaca ini saat user
+    // Selalu perbarui buffer - snapAndAnnounce() akan membaca ini saat user
     // menekan tombol, sehingga hasilnya selalu mencerminkan apa yang kamera
     // lihat saat itu tanpa delay inferensi tambahan.
     _latestResult = result;
@@ -220,7 +220,7 @@ class MoneyProvider extends ChangeNotifier {
     if (result.detected && result.valueIdr != null) {
       _consecutiveMiss = 0;
       // Update visual state ke "fit" (bingkai hijau) agar user tahu
-      // kamera sudah melihat uang dan siap di-snap — tapi TIDAK bicara.
+      // kamera sudah melihat uang dan siap di-snap - tapi TIDAK bicara.
       if (_state != MoneyState.fit && _state != MoneyState.detected) {
         _set(MoneyState.fit);
       }
@@ -229,7 +229,7 @@ class MoneyProvider extends ChangeNotifier {
 
     switch (result.failure) {
       case MoneyFailure.lowConfidence:
-        // UG-06 — ragu. Tampilkan bingkai + indikator tapi tidak bicara
+        // UG-06 - ragu. Tampilkan bingkai + indikator tapi tidak bicara
         // secara otomatis; pesan muncul saat user snap.
         _consecutiveMiss = 0;
         if (_state != MoneyState.uncertain) {
@@ -241,7 +241,7 @@ class MoneyProvider extends ChangeNotifier {
         _fallbackWhenModelMissing();
       case MoneyFailure.error:
       case null:
-        // UG-08 — tidak ada kandidat: pill instruksi berputar tiap 5 detik.
+        // UG-08 - tidak ada kandidat: pill instruksi berputar tiap 5 detik.
         _consecutiveMiss++;
         if (_consecutiveMiss >= 8 && _state != MoneyState.noCandidate) {
           _set(MoneyState.noCandidate);
@@ -250,7 +250,7 @@ class MoneyProvider extends ChangeNotifier {
     }
   }
 
-  /// Dipanggil saat user menekan tombol kiri — umumkan hasil buffer terbaru.
+  /// Dipanggil saat user menekan tombol kiri - umumkan hasil buffer terbaru.
   ///
   /// Tidak ada delay inferensi: model sudah berjalan di background tiap 600ms,
   /// jadi _latestResult selalu segar. User mendapat jawaban instan.
@@ -266,7 +266,7 @@ class MoneyProvider extends ChangeNotifier {
 
     final result = _latestResult;
     if (result == null || !result.detected || result.valueIdr == null) {
-      // Tidak ada uang di frame saat ini — beri tahu user.
+      // Tidak ada uang di frame saat ini - beri tahu user.
       final msg = (result?.failure == MoneyFailure.lowConfidence)
           ? 'Belum yakin, dekatkan sedikit dan tahan diam.'
           : 'Tidak ada uang terdeteksi. Arahkan kamera ke uang.';
@@ -274,7 +274,7 @@ class MoneyProvider extends ChangeNotifier {
       return;
     }
 
-    // Ada uang — masuk ke alur deteksi normal (session tracking + TTS).
+    // Ada uang - masuk ke alur deteksi normal (session tracking + TTS).
     _enterDetected(result.valueIdr!);
   }
 
@@ -419,7 +419,7 @@ class MoneyProvider extends ChangeNotifier {
   // -------------------------------------------------------------- detected
 
   /// Satu lembar, satu jawaban. Menekan tombol lagi pada lembar yang sama
-  /// hanya mengulang nominal yang sama — tidak pernah menambah apa pun.
+  /// hanya mengulang nominal yang sama - tidak pernah menambah apa pun.
   void _enterDetected(int amount) {
     _lastAmount = amount;
     _set(MoneyState.detected);

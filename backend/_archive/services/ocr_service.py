@@ -9,7 +9,7 @@ try:
     TESSERACT_AVAILABLE = True
 except ImportError:
     TESSERACT_AVAILABLE = False
-    logger.warning("pytesseract / Pillow tidak tersedia — OCR tidak aktif")
+    logger.warning("pytesseract / Pillow tidak tersedia - OCR tidak aktif")
 
 
 class OCRService:
@@ -87,7 +87,7 @@ class OCRService:
 
     @staticmethod
     def _duration_words(seconds: float) -> str:
-        """Durasi dalam kata, bukan angka desimal — aturan penulisan copy."""
+        """Durasi dalam kata, bukan angka desimal - aturan penulisan copy."""
         if seconds <= 0:
             return "kurang dari satu detik"
         if seconds < 60:

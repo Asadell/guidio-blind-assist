@@ -1,6 +1,6 @@
 import '../../theme/app_spacing.dart';
 
-/// Kontrak layout dan zona — bagian 4 IMPLEMENTASI.md.
+/// Kontrak layout dan zona - bagian 4 IMPLEMENTASI.md.
 /// Tidak ada elemen yang boleh menimpa elemen lain. Kalau dua elemen minta
 /// ruang sama, yang prioritasnya lebih rendah digeser atau diperingkas.
 abstract final class ZoneHeights {
@@ -13,10 +13,10 @@ abstract final class ZoneHeights {
   static const safeBottom = 24.0;
   static const alertCardMax = 2;
 
-  /// `zone/page-action` — 96 dp tombol + 24 dp safe area. Zona untuk aksi
+  /// `zone/page-action` - 96 dp tombol + 24 dp safe area. Zona untuk aksi
   /// utama layar penunjang (Onboarding, Izin, Pengaturan) yang tidak punya
   /// BottomActionBar. **Tidak pernah hadir bersamaan dengan
-  /// [bottomActionBar]** — sebuah layar punya salah satu, tidak pernah
+  /// [bottomActionBar]** - sebuah layar punya salah satu, tidak pernah
   /// keduanya. Itu yang menjaga aturan "geser, bukan tumpuk".
   static const pageAction = 120.0;
   static const pageActionPrimary = 96.0;
@@ -26,7 +26,7 @@ abstract final class ZoneHeights {
   static const pageActionGap = 8.0;
 }
 
-/// Posisi baku (bagian 4, "Posisi baku") — offset relatif terhadap top-left
+/// Posisi baku (bagian 4, "Posisi baku") - offset relatif terhadap top-left
 /// frame, sebelum ditambah safe-area inset perangkat nyata.
 abstract final class ZonePositions {
   static const modeBadgeY = 40.0;
@@ -37,7 +37,7 @@ abstract final class ZonePositions {
   static const fullScreenButtonBottom = 132.0;
 }
 
-/// Turunkan top-offset ModeBadge / chip sekunder saat StatusBanner hadir —
+/// Turunkan top-offset ModeBadge / chip sekunder saat StatusBanner hadir -
 /// aturan tabrakan "Chip target + ModeBadge" & posisi baku di atas.
 double modeBadgeTopOffset({required bool hasBanner}) =>
     hasBanner ? ZonePositions.modeBadgeYWithBanner : ZonePositions.modeBadgeY;

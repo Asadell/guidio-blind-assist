@@ -6,7 +6,7 @@ import 'package:image/image.dart' as img;
 
 /// Benchmark pipeline frame Mode Navigasi, sekaligus penjaga regresi.
 ///
-/// Angka absolutnya tidak berarti banyak — mesin ini bukan HP target. Yang
+/// Angka absolutnya tidak berarti banyak - mesin ini bukan HP target. Yang
 /// dijaga adalah PERBANDINGANNYA: jalur satu-lintasan harus tetap jauh lebih
 /// murah daripada jalur lama yang membangun gambar antara dan `List`
 /// bersarang. Kalau seseorang mengembalikan pola lama, tes ini merah sebelum
@@ -134,8 +134,8 @@ void main() {
     // ignore: avoid_print
     print('\n  Percepatan: ${(lama / baru).toStringAsFixed(1)}x\n');
 
-    // Ambangnya sengaja LONGGAR. Yang dijaga bukan angka persisnya — mesin
-    // uji bisa sedang sibuk — tapi bahwa pola lama tidak kembali. Selisih
+    // Ambangnya sengaja LONGGAR. Yang dijaga bukan angka persisnya - mesin
+    // uji bisa sedang sibuk - tapi bahwa pola lama tidak kembali. Selisih
     // terukurnya belasan kali lipat, jadi 3x masih jauh dari batas.
     expect(baru * 3, lessThan(lama),
         reason: 'jalur satu lintasan harus tetap jauh lebih murah; kalau '

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// Terbilang rupiah — "angka rupiah selalu dibacakan penuh dalam kata, tidak
+/// Terbilang rupiah - "angka rupiah selalu dibacakan penuh dalam kata, tidak
 /// pernah 'seratus rb'" (bagian 9 & 17). Dipakai NominalCard dan naskah TTS.
 String terbilangRupiah(int amount) {
   if (amount == 0) return 'nol rupiah';
@@ -49,13 +49,13 @@ String formatRupiah(int amount) {
   return 'Rp$buf';
 }
 
-/// NominalCard (5.13) — khusus Mode Kenali Uang. Satu-satunya tempat
+/// NominalCard (5.13) - khusus Mode Kenali Uang. Satu-satunya tempat
 /// `display` 56sp dipakai. Nominal WAJIB dua bentuk (angka + kata), dan
-/// tidak pernah ditampilkan saat keyakinan rendah — pemanggil bertanggung
+/// tidak pernah ditampilkan saat keyakinan rendah - pemanggil bertanggung
 /// jawab tidak me-render kartu ini pada kondisi itu.
 ///
 /// Kartu ini hanya menampilkan **satu nominal**: lembar yang sedang dihadapi
-/// kamera. Tidak ada rincian lembar dan tidak ada total berjalan — mode ini
+/// kamera. Tidak ada rincian lembar dan tidak ada total berjalan - mode ini
 /// tidak menjumlahkan apa pun.
 class NominalCard extends StatelessWidget {
   final int amount;

@@ -1,8 +1,8 @@
 """
-test_describe.py — Tes endpoint POST /api/describe (Moondream2 VLM).
+test_describe.py - Tes endpoint POST /api/describe (Moondream2 VLM).
 
 Mensimulasikan Flutter mengirim frame kamera saat user berkata "deskripsikan".
-Gambar diambil dari guidio_app/test/fixtures/navigation/ —
+Gambar diambil dari guidio_app/test/fixtures/navigation/ -
 byte-for-byte identik dengan yang dikirim kamera HP.
 
 Catatan: Moondream2 lazy-load (~5-10 detik pertama kali).
@@ -22,7 +22,7 @@ def _post_describe(client, image_bytes: bytes, filename: str = "frame.png"):
 
 
 class TestDescribeStruktur:
-    """Validasi struktur respons — tidak bergantung isi caption."""
+    """Validasi struktur respons - tidak bergantung isi caption."""
 
     def test_response_200(self, client, nav_image):
         r = _post_describe(client, nav_image)
@@ -32,7 +32,7 @@ class TestDescribeStruktur:
         """Response harus punya key 'description_en' (bukan 'deskripsi')."""
         body = _post_describe(client, nav_image).json()
         assert "description_en" in body, \
-            "Key 'description_en' tidak ada — pastikan bukan versi lama yang pakai 'deskripsi'"
+            "Key 'description_en' tidak ada - pastikan bukan versi lama yang pakai 'deskripsi'"
 
     def test_no_deskripsi_key(self, client, nav_image):
         """Key lama 'deskripsi' (Bahasa Indonesia) sudah dihapus."""
@@ -44,7 +44,7 @@ class TestDescribeStruktur:
         body = _post_describe(client, nav_image).json()
         desc = body.get("description_en", "")
         if not desc or body.get("error"):
-            pytest.skip("Moondream belum dimuat atau gagal — skip language check")
+            pytest.skip("Moondream belum dimuat atau gagal - skip language check")
         # Caption EN tidak mengandung kata-kata khas BI di awal
         bi_starters = ("sebuah", "ini adalah", "gambar menunjukkan", "terdapat")
         assert not any(desc.lower().startswith(s) for s in bi_starters), \

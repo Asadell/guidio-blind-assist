@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 import '../models/detection.dart';
 import '../providers/settings_provider.dart' show Verbosity;
 
-/// Filter pipeline — dipanggil oleh BOTH TFLite dan Server result.
+/// Filter pipeline - dipanggil oleh BOTH TFLite dan Server result.
 /// Satu instance, state persist selama sesi aktif.
 ///
 /// Fix dari doc 5 masalah 5:
 /// - Streak hanya di-increment SETELAH lolos distance + confidence filter
 /// - Cooldown berbeda per tier (Netra AI: critical=2s, warning=3s, info=5s)
 ///
-/// Fix temuan 2B — kunci cooldown dan streak adalah **identitas objek**
+/// Fix temuan 2B - kunci cooldown dan streak adalah **identitas objek**
 /// ([Detection.filterKey], berasal dari `trackId` SORT), bukan lagi `labelEn`.
 /// Dengan kunci label, dua orang di frame yang sama dianggap satu objek:
 /// orang yang jauh diumumkan lebih dulu, lalu orang yang dekat dan sedang
@@ -25,7 +25,7 @@ class DetectionFilter {
   static const int    _streakRequired = 2;
   static const double _minConfidence  = 0.5;  // SSD lebih noisy, threshold lebih tinggi dari YOLO
 
-  /// PG-06 "Ambang jarak peringatan" (1–5 m) — objek lebih jauh dari ini tidak
+  /// PG-06 "Ambang jarak peringatan" (1–5 m) - objek lebih jauh dari ini tidak
   /// diumumkan. Diisi `SettingsProvider`; dulu nilainya konstanta 10 m dan
   /// slider di Pengaturan tidak berpengaruh sama sekali.
   ///
@@ -34,7 +34,7 @@ class DetectionFilter {
   /// koridor ramai berarti bicara terus-menerus.
   double _maxDistance = 10.0;
 
-  /// PG-05 "Tingkat kecerewetan" — menentukan berapa banyak yang diumumkan
+  /// PG-05 "Tingkat kecerewetan" - menentukan berapa banyak yang diumumkan
   /// sekaligus, bukan hanya panjang kalimatnya.
   Verbosity _verbosity = Verbosity.sedang;
 
@@ -99,7 +99,7 @@ class DetectionFilter {
       return a.distanceMeter.compareTo(b.distanceMeter);
     });
 
-    // [8] Berapa banyak yang boleh bicara sekaligus — PG-05. Batas atas tetap
+    // [8] Berapa banyak yang boleh bicara sekaligus - PG-05. Batas atas tetap
     // 2 (Cognitive Load Theory, dan kontrak zona hanya menampung 2 kartu);
     // "ringkas" memangkasnya jadi satu supaya hanya yang paling mendesak
     // terdengar.
@@ -116,7 +116,7 @@ class DetectionFilter {
     return approved.take(maxPerCycle).toList();
   }
 
-  /// Buang catatan cooldown yang jauh lebih lama dari cooldown terpanjang —
+  /// Buang catatan cooldown yang jauh lebih lama dari cooldown terpanjang -
   /// objek itu sudah pasti tidak akan tertahan lagi.
   void _pruneAnnounced() {
     final cutoff = DateTime.now().subtract(const Duration(seconds: 30));
@@ -130,7 +130,7 @@ class DetectionFilter {
       };
 
   /// Cooldown berbeda per tier, dipotong 50% jika objek sedang mendekat.
-  /// Ref: Netra AI paper — critical=2s, warning=3s, info=5s sebagai base.
+  /// Ref: Netra AI paper - critical=2s, warning=3s, info=5s sebagai base.
   Duration _cooldownFor(Detection det) {
     final base = switch (det.dangerLevel) {
       'critical' => const Duration(seconds: 2),
@@ -138,7 +138,7 @@ class DetectionFilter {
       _          => const Duration(seconds: 5),
     };
 
-    // PG-05 — kecerewetan menggeser jeda antar pengumuman. Critical TIDAK
+    // PG-05 - kecerewetan menggeser jeda antar pengumuman. Critical TIDAK
     // ikut digeser: seberapa pun pengguna ingin sepi, peringatan bahaya
     // tidak boleh ditahan lebih lama.
     final scaled = det.dangerLevel == 'critical'

@@ -4,14 +4,19 @@ Aplikasi Flutter untuk Android. Inilah bagian yang dipegang pengguna, dan
 bagian yang paling menentukan apakah sistem ini benar-benar bisa dipakai
 orang yang tidak melihat layar.
 
-Empat hal ini berjalan penuh di dalam ponsel **tanpa internet sama sekali**:
+Enam hal ini berjalan penuh di dalam ponsel **tanpa internet sama sekali**:
 
 | Fitur | File |
 |---|---|
 | Peringatan rintangan | `services/tflite_service.dart` |
 | Pengenalan uang | `services/money_tflite_service.dart` |
+| Baca teks (ML Kit) | `services/ocr_service.dart` |
+| Navigasi jalur 3 zona (tiga model) | `services/pidnet_service.dart`, `services/yolo_navigasi_service.dart`, `services/tflite_service.dart` |
 | Intent parsing (20 mode + aksi) | `core/voice/command_parser.dart` |
-| Narasi deteksi (kamus 80 objek COCO) | `core/voice/narration_engine.dart` |
+| Penjadwalan dan penyusunan narasi | `core/voice/narration_scheduler.dart` |
+
+Hanya dua hal yang butuh server: **Cari Objek** (YOLOE) dan **deskripsi
+suasana** (Moondream2). Sisanya tidak pernah memanggil backend sama sekali.
 
 ---
 
@@ -19,9 +24,9 @@ Empat hal ini berjalan penuh di dalam ponsel **tanpa internet sama sekali**:
 
 1. [Cara kerja singkat](#1-cara-kerja-singkat)
 2. [Enam mode dan layarnya](#2-enam-mode-dan-layarnya)
-3. [Dua model AI di dalam ponsel](#3-dua-model-ai-di-dalam-ponsel)
+3. [Empat model AI di dalam ponsel](#3-empat-model-ai-di-dalam-ponsel)
 4. [Intent parsing lokal: CommandParser](#4-intent-parsing-lokal-commandparser)
-5. [Narasi lokal: narration_engine](#5-narasi-lokal-narration_engine)
+5. [Narasi lokal](#5-narasi-lokal)
 6. [Sistem desain: token dan komponen](#6-sistem-desain-token-dan-komponen)
 7. [Aturan tata letak yang mengikat](#7-aturan-tata-letak-yang-mengikat)
 8. [Antrean suara bertingkat](#8-antrean-suara-bertingkat)
@@ -50,15 +55,23 @@ Model SSD MobileNet mengenali benda dan posisinya
 Perkiraan jarak, arah (kiri, depan, kanan), dan tingkat bahaya
         │
         ▼
-Penyaring: buang yang terlalu jauh, buang yang cuma muncul sekilas,
-jangan ulangi benda yang sama terlalu sering
+ObjectTracker (SORT): identitas stabil per objek, jarak dihaluskan
         │
         ▼
-generateNaturalNarration() → kalimat Bahasa Indonesia tanpa LLM
+DetectionFilter: buang yang terlalu jauh, buang yang cuma muncul sekilas,
+jangan ulangi objek yang sama terlalu sering
         │
         ▼
-Suara + getar ke pengguna
+NarrationScheduler: kapan bicara, dan berapa banyak yang muat
+dalam satu ucapan (beranggaran kata, tanpa LLM)
+        │
+        ▼
+TtsQueue bertingkat → suara + getar ke pengguna
 ```
+
+Tiga lapis terakhir tugasnya sengaja dipisah: tracker memutuskan **objek mana
+ini**, filter memutuskan **apa** yang layak diucapkan, scheduler memutuskan
+**kapan** dan **dalam bentuk apa**.
 
 ### Aturan penyaring
 
@@ -75,38 +88,142 @@ Suara + getar ke pengguna
 
 ## 2. Enam mode dan layarnya
 
-Aplikasi terbuka langsung ke Mode Deteksi Objek yang sudah aktif. Tidak ada
-layar beranda - setiap layar perantara berarti penundaan sebelum pengguna
-mendapat informasi keselamatan.
+Aplikasi terbuka langsung ke Mode Deteksi Objek. Tidak ada layar beranda,
+karena setiap layar perantara berarti penundaan sebelum pengguna mendapat
+informasi keselamatan.
 
 | Mode | Berkas layar | Butuh internet? |
 |---|---|---|
 | Deteksi Objek | `screens/tuntun_screen.dart` | Tidak |
 | Kenali Uang | `screens/money_screen.dart` | Tidak |
-| Baca Teks | `screens/ocr_screen.dart` | Ya |
-| Navigasi | `screens/navigasi_screen.dart` | Sebagian |
-| Asisten Suara | `screens/voice_screen.dart` | Ya |
-| Cari Objek | `screens/find_object_screen.dart` | Ya |
+| Baca Teks | `screens/ocr_screen.dart` | Tidak, ML Kit on-device |
+| Navigasi | `screens/navigasi_screen.dart` | Tidak, tiga model on-device |
+| Asisten Suara | `screens/voice_screen.dart` | Sebagian, hanya deskripsi suasana |
+| Cari Objek | `screens/find_object_screen.dart` | Ya, satu-satunya yang mati offline |
 
 Berpindah mode ada dua jalan: mengucapkan namanya (satu langkah), atau lewat
 tombol Pilih Mode di kanan bawah (dua langkah).
 
+### Deteksi rintangan mulai dalam keadaan MATI
+
+Mode Deteksi Objek terbuka, tetapi pengawasannya belum menyala. Pengguna harus
+menekan tombol kiri bawah lebih dulu.
+
+Saat aplikasi baru dibuka, ponsel biasanya masih di tangan yang turun, di dalam
+saku, atau menghadap tanah. Peringatan pertama dari posisi itu hampir selalu
+keliru, dan peringatan keliru dari alat bantu jalan lebih merusak daripada
+diam: sekali pengguna belajar aplikasinya sering salah, peringatan yang benar
+ikut diabaikan.
+
+Konsekuensinya ditangani, bukan diabaikan. Keadaan mati **diucapkan** saat
+masuk mode, dan diingatkan ulang tiap 30 detik disertai getar. Aplikasi yang
+dijeda tidak bisa dibedakan dari aplikasi yang aktif tapi kebetulan tidak
+melihat apa pun, jadi diam bukan pilihan.
+
+### Kontrak tombol kiri, berbeda tiap mode
+
+| Mode | Label tombol kiri | Aksi |
+|---|---|---|
+| Deteksi Objek | `Hentikan` / `Lanjutkan` | Nyala dan mati deteksi |
+| Navigasi | `Matikan Suara` / `Nyalakan Suara` | Bisu dan nyala **suara** panduan, bukan modenya |
+| Kenali Uang | `Kenali Uang` | Satu tekan sama dengan satu analisis |
+| Baca Teks | `Baca teks` ke `Jeda bacaan` ke `Lanjutkan bacaan` | Kontekstual |
+| Asisten Suara | `Ulangi jawaban` | Bacakan ulang jawaban terakhir |
+| Cari Objek | `Kirim, cari [barang]` | Kirim frame ke server |
+
+Perintah suara **"jepret"** menjalankan persis apa yang dilakukan tombol kiri
+di mode yang sedang aktif. Satu model mental, dua cara memicunya.
+
+Tombol kiri yang nonaktif **tetap bersuara** saat ditekan, menyebutkan
+alasannya. Untuk pengguna yang tidak melihat layar, tombol yang diam saat
+ditekan tidak bisa dibedakan dari aplikasi yang macet, dan satu-satunya cara
+menguji dugaannya adalah menekan lagi.
+
 ---
 
-## 3. Dua model AI di dalam ponsel
+## 3. Empat model AI di dalam ponsel
+
+Daftar aset di `pubspec.yaml` menyebut model **satu per satu**, bukan seluruh
+direktori. Ini disengaja: `- assets/models/` akan ikut membundel semua yang
+kebetulan ada di folder itu, termasuk berkas percobaan yang tidak pernah dimuat
+kode. Untuk pengguna dengan kuota terbatas, itu ratusan megabyte yang dibayar
+tanpa satu pun manfaat.
+
+| Berkas | Ukuran | Dipakai oleh |
+|---|---|---|
+| `ssd_mobilenet.tflite` | ~4,0 MB | Deteksi rintangan |
+| `rupiah_classifier_fp16.tflite` | ~4,6 MB | Kenali Uang, 7 pecahan |
+| `pidnet_s_3zona.tflite` | ~2,5 MB | Segmentasi jalur 3 zona |
+| `yolo11n_navigasi.tflite` | ~10,1 MB | Rintangan navigasi, 6 kelas |
+| **Total di APK** | **~21,2 MB** | ditambah `labelmap.txt` |
+
+> Baca Teks tidak punya berkas model di daftar ini: Google ML Kit membawa
+> mesinnya sendiri lewat Play Services.
+
+### Berkas yang ADA di folder tapi sengaja tidak dibundel
+
+| Berkas | Kenapa tidak ikut |
+|---|---|
+| `yolo11n.tflite` | Bentuk inputnya NCHW `[1,3,640,640]`, sementara `YoloNavigasiService` menyusun NHWC `[1,640,640,3]`. Interpreter menolaknya dan deteksi rintangan mengembalikan daftar kosong **pada setiap frame tanpa tanda apa pun** |
+| `pidnet_s_3zona_fp16.tflite` | Tensor masukannya FLOAT16 sementara seluruh pipeline menghasilkan FLOAT32, jadi ia tidak akan pernah bisa dipakai. Dulu ia dicoba lebih dulu dan hanya dilewati kalau berkasnya hilang, sehingga segmentasi jalur gagal di setiap frame tanpa satu pun tanda di layar |
+| `uang_rupiah.tflite`, `rupiah_classifier_int8.tflite` | Arsip model uang lama |
+| `yoloe_find.onnx`, `pidnet_s*.onnx` | Sisa percobaan, tidak dimuat kode mana pun |
+
+Dua baris pertama tabel itu adalah kelas kegagalan yang sama, dan keduanya
+pernah terjadi: model salah bentuk **tidak melempar error**, ia cuma
+mengembalikan hasil kosong selamanya. `PidnetService.tryLoad` sekarang
+membuktikan tiap varian dengan inferensi percobaan sebelum menerimanya.
 
 ### Model deteksi rintangan
 
 | Hal | Nilai |
 |---|---|
 | Berkas | `assets/models/ssd_mobilenet.tflite` |
-| Ukuran | sekitar 4 MB |
 | Ukuran masukan | 300 x 300 piksel |
 | Kecepatan | sekitar 30 milidetik per gambar |
-| Dijalankan di | thread terpisah, supaya layar tidak macet |
+| Laju | `FramePacer` 120 ms, sekitar 8 fps |
+| Dijalankan di | `IsolateInterpreter`, supaya layar tidak macet |
 
-> `yolo11l_float32.tflite` dan `yolo11n.tflite` di folder yang sama **tidak
-> dipakai** - hanya sisa percobaan. Yang dimuat adalah `ssd_mobilenet.tflite`.
+### Mode Navigasi memakai TIGA model, bukan dua
+
+| Lapis | Model | Yang hanya bisa dilihat lapis ini |
+|---|---|---|
+| Jalur | PIDNet-S | Zona kiri, tengah, kanan; permukaan layak jalan |
+| Bahaya jalanan | YOLO11n custom | `lubang`, `got_terbuka`, `tangga` |
+| Benda umum | SSD MobileNet COCO | `orang`, `motor`, mobil, sepeda, anjing, perabot jalan |
+
+Ketiganya jalan paralel dari **satu frame yang sama**. Frame yang sama itu
+syarat, bukan penghematan: kalau salah satunya terlambat satu frame, pengguna
+bisa mendengar "jalur tengah aman" bersamaan dengan "ada motor di depan" dari
+pemandangan yang sudah lewat.
+
+Lapis COCO **tidak ikut menentukan** `_modelsReady`. Kalau SSD gagal dimuat,
+panduan jalur dan enam kelas custom tetap jalan penuh. Menjatuhkan seluruh mode
+karena lapisan tambahan gagal berarti menukar fungsi yang masih sehat dengan
+layar mati.
+
+Hanya 15 dari 80 kelas COCO yang lolos saringan `kCocoNavRelevant`, dan hanya
+benda yang bisa menghalangi atau membahayakan langkah. Menyebut "botol" atau
+"ponsel" saat pengguna menyeberang bukan cuma tidak berguna: ia menunda kalimat
+yang menyangkut keselamatan.
+
+Aturan penggabungan ada di `nav_obstacle_merger.dart` dan diuji di
+`test/nav_obstacle_merger_test.dart`: benda yang sama tidak disebut dua kali,
+tapi motor yang terparkir di atas got terbuka tetap disebut sebagai dua bahaya
+karena kelasnya tidak berpadanan.
+
+### Model navigasi
+
+| Hal | Nilai |
+|---|---|
+| Segmentasi | PIDNet-S, 3 zona (kiri, tengah, kanan) |
+| Rintangan | YOLO11n, 6 kelas: lubang, got_terbuka, tangga, orang, motor, tiang |
+| Laju | Timer 500 ms ditahan `FramePacer` 700 ms, efektif sekitar 1,4 fps |
+| Ambang | `lubang` dan `got_terbuka` 5%; kelas lain 30% |
+
+Kalau YOLO tidak mendeteksi apa pun, PIDNet-S tetap jadi lapis pengaman lewat
+penurunan rasio area walkable. Lihat bagian 14 soal seberapa sering itu yang
+benar-benar terjadi.
 
 ### Model pengenalan uang
 
@@ -217,6 +334,51 @@ terbaca Rp1.000 dengan keyakinan 0%. Karena itu tensor dikirim sebagai view
 Jenis kegagalan seperti ini yang membuat suite uji wajib punya assertion keras,
 bukan `if (detected) { ... }`.
 
+### Ponsel lama: kamera berkabut dan prosesor yang tidak mengejar
+
+Dua hal ini digarap terpisah karena penyebabnya berbeda.
+
+**Kamera berkabut.** Lensa yang tergores dan berdebu menyebarkan cahaya di
+dalamnya lalu mengangkat titik hitam. Terukur pada Samsung A30s lima tahun di
+repo ini: p2 naik dari 9 ke 50, rentang dinamis turun dari 220 ke 145-171.
+Tidak ada piksel yang benar-benar hitam, dan tepi objek yang dipakai detektor
+jadi tipis.
+
+`luma_contrast.dart` mengembalikan titik hitam ke nol, **hanya pada frame yang
+terukur berkabut**. Gerbangnya yang jadi fiturnya: enhancement tanpa syarat
+justru menurunkan akurasi pada citra yang sudah jernih. Diverifikasi di repo
+ini, lima foto kamera sehat semuanya dilewati dan skor deteksi tidak berubah
+sama sekali.
+
+Dipakai di dua tempat sekaligus, `nav_frame_converter.dart` dan
+`tflite_service.dart`, supaya ketiga model navigasi melihat frame yang identik.
+Diuji di `test/luma_contrast_test.dart`.
+
+> Peregangan linier, bukan CLAHE. CLAHE butuh histogram per ubin dan buffer
+> tambahan tiap frame; konversi di sini sudah berupa pemetaan indeks satu
+> lintasan tanpa gambar antara, dan biaya membongkarnya mendarat persis di
+> ponsel lama yang jadi sasarannya.
+
+**Prosesor yang tidak mengejar.** Tiga model per frame di ponsel lama bisa
+berkali lipat lebih lambat. Yang berbahaya bukan lambatnya, melainkan diamnya:
+arahan tetap diucapkan dengan nada yakin dari pemandangan beberapa detik lalu,
+sementara pengguna sudah melangkah melewatinya.
+
+`device_pace_watch.dart` bertindak berurutan dari yang paling tidak mengganggu:
+ukur rata-rata bergerak, matikan lapis COCO di atas 1200 ms, baru beri tahu
+pengguna di atas 2500 ms. Yang dikorbankan COCO, bukan PIDNet atau YOLO, karena
+hanya COCO yang menambah cakupan tanpa menopang mode ini.
+
+Efek sampingnya menutup kebutuhan sensor termal: saat ponsel panas dan
+prosesornya diturunkan, durasi siklus naik dan mekanisme yang sama bekerja.
+Diuji di `test/device_pace_watch_test.dart`.
+
+> **Catatan yang belum digarap:** di Mode Navigasi tiga interpreter jalan
+> paralel dengan `threads = 4 + 4 + 2`, sepuluh thread di atas prosesor yang
+> mungkin cuma punya dua inti kuat. Pengawas di atas meredam gejalanya, tapi
+> penyetelan thread-nya sendiri belum disentuh karena `TFLiteService` dipakai
+> bersama Mode Deteksi Objek yang justru butuh empat thread.
+
 ### Kesiapan Play Store (.aab)
 
 | Syarat | Status |
@@ -265,22 +427,63 @@ Setiap intent memiliki varian ucapan yang mencakup:
 - Dialek daerah: Jawa, Sunda, Betawi, Minang, Batak, Makassar
 - Typo dan variasi STT yang umum
 
-Server (`POST /api/intent`) hanya dipanggil saat parser lokal benar-benar
-tidak bisa menentukan - biasanya kasus ambigu yang perlu konfirmasi pengguna.
+**Tidak ada jalur server sama sekali.** `POST /api/intent` sudah dihapus dari
+backend; kalau parser lokal tidak bisa menentukan, ia menawarkan dua tebakan
+terdekat langsung dari perangkat ("Saya dengar ... Maksudmu A, atau B?").
+
+Tebakan itu hanya boleh diambil dari `suggestableIntents`, yaitu intent yang
+**benar-benar punya handler**. Sebelumnya seluruh isi kamus bisa disarankan,
+termasuk intent tanpa handler, sehingga aplikasi bisa bertanya "Maksudmu
+jeda?", pengguna menjawab "jeda", dan jawabannya "Perintah itu belum saya
+kenali di mode ini". Lingkaran buntu yang diciptakan aplikasi sendiri, dan
+pengguna tunanetra tidak punya layar untuk keluar darinya.
+
+### Urutan lapis menentukan, bukan sekadar rapi
+
+Frasa multi-kata diperiksa **sebelum** kata tunggal, dan yang terpanjang lebih
+dulu. Di sinilah "stop navigasi" menemukan `actionStopWalking` sebelum kata
+"stop" sempat membawanya ke `actionGoBack`. Versi lama memakai `contains`
+mentah dan menelusuri kamus mengikuti urutan deklarasi, sehingga "stop
+navigasi" justru **mengeluarkan pengguna dari Mode Navigasi**.
+
+Pola cari-objek dinamis juga sengaja diletakkan sebelum kata tunggal: "cari
+uang yang jatuh" harus berarti mencari benda, bukan membuka Mode Kenali Uang
+hanya karena kata "uang" muncul di dalamnya.
 
 ---
 
-## 5. Narasi lokal: narration_engine
+## 5. Narasi lokal
 
-`lib/core/voice/narration_engine.dart`
+**100% offline, tanpa LLM, tanpa server.** Menggantikan `POST /api/narasi` yang
+sebelumnya bergantung pada Qwen di backend.
 
-Mengubah daftar objek hasil deteksi YOLO menjadi kalimat Bahasa Indonesia
-yang alami. **100% offline, tanpa LLM, tanpa server.**
+Ada **dua** berkas di sini, dan hanya satu yang benar-benar dipakai jalur
+deteksi realtime.
 
-Menggantikan `POST /api/narasi` yang sebelumnya bergantung pada Qwen di
-backend.
+### 5a. `narration_scheduler.dart` (yang aktif)
 
-### API
+Inilah yang dipanggil `DetectionProvider`. Ia memutuskan **kapan** bicara dan
+**berapa banyak yang muat** dalam satu ucapan.
+
+Keduanya tidak bisa dipisah: scheduler punya **anggaran kata**, dan anggaran
+itulah yang menjaga satu ucapan tetap sekitar empat detik. Tanpanya, momen mode
+baru menyala jadi masalah: saat itu setiap objek adalah objek baru, tidak satu
+pun punya catatan cooldown, jadi semuanya lolos sekaligus. Enam objek berarti
+enam narasi dalam waktu kurang dari satu detik, dan narasi yang kalah rebutan
+hilang tanpa jejak tanpa pengguna pernah tahu.
+
+### 5b. `narration_engine.dart` (ada, tapi TIDAK dipanggil)
+
+Berkas ini masih di repo dan gaya naratifnya enak didengar. Ia **sengaja tidak
+dihapus**, tapi juga tidak dipakai jalur deteksi realtime: satu klausanya saja
+sudah menghabiskan hampir seluruh anggaran kata scheduler.
+
+Gaya itu cocok untuk narasi **yang diminta** pengguna, saat ia sudah siap
+mendengarkan; bukan untuk aliran deteksi yang datang tanpa diminta delapan kali
+per detik. Kalau suatu saat ada tombol "ceritakan sekitarku", di sanalah
+tempatnya.
+
+### API `narration_engine`
 
 ```dart
 final narasi = generateNaturalNarration([
@@ -304,16 +507,34 @@ final narasi = generateNaturalNarration([
 Urutan objek: yang paling dekat disebut lebih dulu - objek paling berbahaya
 mendapat prioritas.
 
-### Deskripsi suasana (Moondream2)
+### 5c. Deskripsi suasana: `scene_translator.dart`
 
-Untuk `POST /api/describe`, backend mengembalikan `description_en` - caption
-Bahasa Inggris dari Moondream2. Flutter membacakannya dengan:
+`POST /api/describe` mengembalikan `description_en`, caption Bahasa Inggris
+dari Moondream2. **Flutter menerjemahkannya secara lokal** sebelum dibacakan.
 
 ```dart
-// services/tts_service.dart
-await ttsService.speakEnglish(descriptionEn);
-// Otomatis ganti locale ke en-US, lalu kembali ke id-ID
+final translated = translateSceneCaption(description);
+if (translated.isUsable) {
+  await TTSService.instance.speak(translated.indonesian!);   // id-ID
+} else {
+  await TTSService.instance.speak('Dalam bahasa Inggris.');  // penanda
+  await TTSService.instance.speakEnglish(description);       // en-US, lalu balik id-ID
+}
 ```
+
+Penerjemahnya kamus ditambah aturan urutan kata: 0 ms, offline, tanpa LLM.
+Prinsip yang sama yang membuat `narration_scheduler` dan `CommandParser`
+menggantikan Qwen. Menambahkan LLM penerjemah akan mengembalikan tepat tiga
+masalah yang sudah dibuang: lambat, bisa berhalusinasi, dan butuh server.
+
+Kalau cakupan kamusnya terlalu rendah, penerjemah **menyerah** dan kalimat
+Inggrisnya dibacakan, didahului satu penanda singkat supaya pengguna tahu
+bahasanya berganti dan tidak menyangka aplikasinya rusak. Bahasa Indonesia yang
+kacau lebih buruk daripada Bahasa Inggris yang benar.
+
+Versi lama membacakan hasilnya langsung dalam Bahasa Inggris tanpa penerjemahan
+sama sekali, yang menuntut kemampuan Inggris lisan yang tidak bisa diasumsikan
+pada pengguna tunanetra di pasar dan warung Indonesia.
 
 ---
 
@@ -340,14 +561,23 @@ Warna tidak pernah menjadi satu-satunya penanda. Setiap tingkat bahaya punya
 | Informasi | persegi membulat | "Info" |
 | Aman | lingkaran | "Aman" |
 
-### 16 komponen
+### Komponen
 
 Berada di `lib/widgets/`:
 
 `ModeBadge`, `AlertCard`, `BottomActionBar`, `FullScreenButton`,
 `ModePickerSheet`, `VoiceOrb`, `StatusBanner`, `ZoneIndicator`,
 `ResultPanel`, `CameraHealthToast`, `GuideFrame`, `ChatBubble`,
-`NominalCard`, `TargetChip`, `SpeakingIndicator`, `PermissionCard`.
+`NominalCard`, `TargetChip`, `SpeakingIndicator`, `PermissionCard`,
+`CameraStage`, `DetectionOverlay`, `SegmentationOverlay`, `DetectionCard`,
+`DistancePill`, `TierIcon`, `ContextualActionSlot`, `PageActionZone`,
+`OcrLongResultPanel`, `OcrDebugSheet`.
+
+`CameraStage` layak disebut khusus: preview kamera dan hamparannya wajib
+berbagi persegi yang sama persis. `CameraPreview` menjaga rasio kamera dan
+tidak benar-benar mengisi layar, jadi hamparan yang dipasang dengan
+`Positioned.fill` akan memetakan koordinatnya ke area yang lebih besar daripada
+gambarnya, dan setiap kotak deteksi meleset dari objeknya.
 
 ---
 
@@ -366,7 +596,17 @@ menimpa elemen lain.**
 | Bar tombol bawah | 112 dp | **Tetap**, tidak boleh tertutup apa pun |
 
 Tiga tombol bawah tidak pernah berubah posisi, jumlah, maupun urutannya:
-Ambil gambar di kiri, Bicara di tengah, Pilih mode di kanan.
+**aksi utama mode** di kiri, **Bicara** di tengah, **Pilih mode** di kanan.
+Urutan fokus 7-8-9 dipasang eksplisit lewat `OrdinalSortKey`, supaya reposisi
+tombol di layar lain tidak pernah menggeser urutan ketiganya. Kekekalan itu
+satu-satunya peta yang dimiliki pengguna.
+
+Yang berubah hanyalah **label** tombol kiri, mengikuti mode yang aktif (lihat
+tabel kontrak tombol kiri di bagian 2). Labelnya wajib kata kerja ditambah
+objek, maksimal tiga kata, karena TalkBack membacanya tiap fokus mendarat.
+
+Saat mic sedang mendengarkan, dua tombol samping dinonaktifkan supaya tidak ada
+aksi yang bertabrakan sambil berjalan.
 
 ---
 
@@ -409,11 +649,17 @@ Aplikasi ini harus bisa dipakai dengan layar mati total:
 - **Live region** dipakai untuk teks yang berubah sendiri.
 - Hanya empat hal yang boleh memotong pembacaan: peringatan bahaya, zona
   jalur berbahaya, nominal uang, dan kegagalan izin.
-- **Label menyebut aksi, bukan alat**: "Ambil gambar", bukan "Kamera".
+- **Label menyebut aksi, bukan alat**: "Kenali Uang", bukan "Kamera".
 - **Label tidak menyebut lokasi layar**: tidak ada "tombol di kanan bawah".
-- Tombol nonaktif **menyebutkan alasannya**: "Baca teks, tidak tersedia, butuh
-  internet".
+- Tombol nonaktif **menyebutkan alasannya**, dan bersuara saat ditekan:
+  "Kirim, cari barang, tidak tersedia, tekan tombol bicara lalu sebutkan
+  barangnya".
 - Elemen dekoratif disembunyikan dari pembaca layar.
+- **Tidak pernah mengonfirmasi sesuatu yang tidak terjadi.** Perpindahan mode
+  memindahkan state lebih dulu; kata "Baik." dititipkan sebagai prefiks
+  pengumuman kedatangan, jadi ia baru terdengar setelah layar tujuan
+  benar-benar terpasang. Kalau perpindahannya dibatalkan, yang diucapkan adalah
+  keadaan sebenarnya ("Tetap di mode Navigasi"), bukan konfirmasi.
 
 ### Ukuran huruf 200 persen
 
@@ -431,25 +677,39 @@ lib/
 │   ├── layout/               Ukuran zona dan aturan pergeseran
 │   ├── speech/               Antrean suara bertingkat (TtsQueue)
 │   ├── state/                Penggabungan kondisi global jadi satu banner
+│   ├── net/                  ApiClient, FramePacer
 │   └── voice/
-│       ├── intents.dart          Enum VoiceIntent (20 intent baku)
-│       ├── command_parser.dart   Fuzzy matching offline, 4 lapis
-│       ├── narration_engine.dart Narasi deteksi lokal, kamus 80 objek COCO
-│       └── object_label_map.dart Kamus label objek tambahan
+│       ├── intents.dart              Enum VoiceIntent (20 intent baku)
+│       ├── command_parser.dart       Pencocokan ucapan offline, berlapis
+│       ├── narration_scheduler.dart  Kapan bicara + anggaran kata (AKTIF)
+│       ├── narration_engine.dart     Narasi bergaya panjang (tidak dipanggil)
+│       └── scene_translator.dart     Terjemah caption Moondream ke Indonesia
 ├── theme/                    Warna, tipografi, jarak, tema
-├── widgets/                  16 komponen sistem desain
+├── widgets/                  Komponen sistem desain
 ├── providers/                State per mode, pengaturan, kondisi global
 ├── services/
-│   ├── tflite_service.dart       Deteksi rintangan on-device
-│   ├── money_tflite_service.dart Pengenalan uang on-device
-│   ├── server_service.dart       Semua panggilan ke backend
-│   ├── tts_service.dart          Mesin suara (speakEnglish untuk deskripsi)
+│   ├── tflite_service.dart       Deteksi rintangan on-device (SSD MobileNet)
+│   ├── money_tflite_service.dart Pengenalan uang on-device (MobileNetV2)
+│   ├── pidnet_service.dart       Segmentasi jalur 3 zona on-device
+│   ├── yolo_navigasi_service.dart Rintangan navigasi on-device (YOLO11n custom)
+│   ├── nav_obstacle_merger.dart  Saring COCO + gabung tanpa sebutan ganda
+│   ├── device_pace_watch.dart    Turunkan beban saat ponsel tidak mengejar
+│   ├── luma_contrast.dart        Perbaikan kontras selektif kamera lama
+│   ├── nav_frame_converter.dart  Satu lintasan isolate untuk kedua tensor nav
+│   ├── ocr_service.dart          Baca teks on-device (ML Kit)
+│   ├── camera_capture_service.dart Kunci fokus, pilih frame tertajam, tolak buram
+│   ├── camera_health_service.dart  Orientasi dan guncangan dari accelerometer
+│   ├── server_service.dart       Dua panggilan backend yang tersisa
+│   ├── tts_service.dart          Mesin suara, ucapan diserialkan
 │   ├── detection_filter.dart     Penyaring anti banjir suara
-│   ├── object_tracker.dart       Pelacak SORT
+│   ├── object_tracker.dart       Pelacak SORT, penghalus jarak
 │   └── haptic_service.dart       Pola getar
 ├── screens/                  6 mode + splash, panduan, izin, pengaturan
 └── mock/                     Data tiruan untuk panel debug
 ```
+
+> `object_label_map.dart` sudah **dihapus**. Ia tidak pernah punya satu pun
+> import aktif.
 
 ---
 
@@ -460,9 +720,18 @@ flutter pub get
 flutter run
 ```
 
-Aplikasi tetap jalan tanpa backend. Deteksi rintangan, pengenalan uang,
-intent parsing, dan narasi deteksi berfungsi penuh; mode lain akan menyebut
-sendiri keterbatasannya.
+Aplikasi tetap jalan tanpa backend. Empat dari enam mode berfungsi **penuh**
+tanpa internet: Deteksi Objek, Kenali Uang, Baca Teks, dan Navigasi. Begitu
+juga intent parsing dan narasi deteksi. Uji dengan WiFi dan data seluler
+dimatikan total untuk membuktikannya.
+
+Yang benar-benar mati offline hanya **Cari Objek**. Deskripsi suasana di Mode
+Asisten Suara juga butuh server, tapi perintah dan perpindahan mode di mode itu
+tetap jalan.
+
+Panduan uji manual langkah demi langkah, lengkap dengan apa yang harus
+diucapkan dan apa yang seharusnya terdengar, ada di
+[`../VERIFIKASI_FITUR.md`](../VERIFIKASI_FITUR.md).
 
 Alamat server bawaan adalah `10.0.2.2:8000` (emulator Android). **Untuk HP
 fisik**, ubah lewat layar Pengaturan: ucapkan "pengaturan" atau ketuk Pilih
@@ -483,11 +752,21 @@ Mode → Pengaturan.
 
 - Penyaring deteksi **hanya** boleh ada di Flutter, jangan ditambahkan di
   server, supaya tidak terjadi penyaringan ganda.
-- Model TFLite **wajib** dijalankan di thread terpisah.
-- Peringatan bahaya **selalu** memotong suara lain.
+- Model TFLite **wajib** dijalankan lewat `IsolateInterpreter`.
+- Peringatan bahaya **selalu** memotong suara lain, **kecuali** peringatan
+  bahaya lain yang belum selesai diucapkan.
 - Pelacak SORT harus direset saat berganti mode.
-- TTS default `id-ID`; deskripsi Moondream dibacakan dengan `speakEnglish()`
-  yang sementara ganti locale ke `en-US`.
+- TTS default `id-ID`. `speakEnglish()` mengganti locale sementara lalu
+  mengembalikannya di blok `finally`, jadi kegagalan di tengah tidak
+  meninggalkan aplikasi berbicara Inggris selamanya.
+- **Mengganti preset kamera akan membangun ulang controller.** `initCamera`
+  menyalakan kembali aliran frame kalau sebelumnya mengalir. Jangan menghapus
+  perilaku itu: tanpanya, apa pun yang mengganti preset di tengah mode aliran
+  akan meninggalkan kamera mati tanpa ada yang menyalakannya lagi, dan Mode
+  Deteksi berhenti memperingatkan rintangan tanpa sepatah kata.
+- **Mode foto wajib meminta presetnya di `initState`**, bukan hanya saat status
+  izin berubah. Cabang perubahan izin tidak pernah jalan kalau izinnya sudah
+  lama diberikan, dan modenya akan memotret pada 640x480.
 
 ---
 
@@ -629,7 +908,42 @@ hal yang salah.
 flutter test                                  # semua
 flutter test test/command_parser_test.dart    # parsing perintah suara, tanpa model
 flutter test test/model_inference_test.dart   # inferensi YOLO navigasi
+flutter test test/nav_obstacle_merger_test.dart  # gabung YOLO custom + COCO
+flutter test test/device_pace_watch_test.dart    # penurunan beban di ponsel lama
+flutter test test/luma_contrast_test.dart        # gerbang perbaikan kontras
 ```
+
+Tiga berkas terakhir menguji **kelas murni tanpa model**, mengikuti pola
+`assessScene`: logika yang menentukan apakah pengguna diberi tahu bahwa
+panduannya tertinggal, atau apakah sebuah bahaya disebut dua kali, tidak boleh
+cuma dibuktikan lewat uji lapangan.
+
+### C. Pipeline visual: `test/run_corridor_test.py`
+
+Di luar folder ini, di root repo, ada runner Python yang menjalankan **ketiga
+model sekaligus** pada gambar diam lalu menghasilkan gambar ter-anotasi:
+segmentasi jalur, kotak rintangan bertanda sumber (`[YOLO]` atau `[COCO]`),
+status tiga zona, dan kalimat arahan yang benar-benar akan diucapkan.
+
+```bash
+test/.venv/bin/python test/run_corridor_test.py                    # koridor indoor
+test/.venv/bin/python test/run_corridor_test.py \
+    --src project/guidio_app/test/fixtures/navigation \
+    --out test/navigation/results_fixtures --summary summary_fixtures.txt
+```
+
+Konstantanya sengaja disalin dari sisi Dart, bukan dikira-kira, dan berkasnya
+menyebutkan dari mana tiap angka berasal. Kalau salah satu berubah di Dart,
+berkas itu ikut berubah; kalau tidak, yang diuji di sana bukan lagi yang
+berjalan di ponsel.
+
+Opsi yang berguna untuk menyelidiki:
+
+| Opsi | Gunanya |
+|---|---|
+| `--enhance off\|auto\|always` | Ukur dampak perbaikan kontras kamera lama |
+| `--resize stretch\|letterbox` | Bandingkan cara memasang bingkai ke tensor |
+| `--yolo <berkas>` | Bandingkan model YOLO kandidat |
 
 `test/model_inference_test.dart` sekarang **hanya** menguji navigasi. Kelompok
 uangnya dihapus karena dua cacat yang membuatnya tidak bisa merah:
@@ -651,7 +965,7 @@ model menyamar jadi kegagalan parser.
 ### Hasil terakhir
 
 ```
-79 passed, 3 skipped, 10 failed
+151 passed, 3 skipped, 10 failed
 ```
 
 Sepuluh yang merah, semuanya nyata dan bukan masalah infrastruktur:
@@ -666,7 +980,7 @@ Ia sudah ada sejak lama dan tersembunyi di balik skip.
 
 ---
 
-### C. Python visual test - lihat gambar hasilnya
+### D. Python visual test lama (per model, bukan pipeline)
 
 Menghasilkan gambar ter-anotasi seperti di `test/navigation/results_mobile_tflite/`.
 Berguna untuk memeriksa secara visual apakah bounding box dan klasifikasi masuk akal.

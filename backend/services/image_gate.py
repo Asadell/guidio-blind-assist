@@ -29,7 +29,7 @@ punya tingkat ketegasan berbeda, karena kebutuhannya memang berbeda:
 Profil "ocr" DIPERTAHANKAN meski tidak ada endpoint OCR di server. Mode
 Baca Teks berjalan on-device lewat ML Kit, tapi profil ini tetap jadi
 rujukan angka saat menyetel gerbang ketajaman di sisi Flutter
-(`CameraCaptureService`) — supaya kedua sisi mengukur hal yang sama
+(`CameraCaptureService`) - supaya kedua sisi mengukur hal yang sama
 dengan ambang yang sengaja dijaga sejajar, bukan menyimpang diam-diam.
 """
 
@@ -73,7 +73,7 @@ class GateResult:
             # ulang, termasuk gambar rusak dan gambar kosong: keduanya
             # menandakan pengambilan atau pengunggahan yang gagal, bukan
             # dunia yang memang tidak berisi apa-apa. Yang membedakannya
-            # dari `not_in_frame` justru inilah — di sana yang perlu berubah
+            # dari `not_in_frame` justru inilah - di sana yang perlu berubah
             # adalah arah kamera, di sini kondisi pengambilannya.
             "retry_suggested": self.reason in (
                 "sangat_buram", "terlalu_gelap", "terlalu_silau",
@@ -128,7 +128,7 @@ PROFILES = {
 # ═══════════════════════════════════════════════════════════════════════════════
 #
 # Dua batas berbeda, dan keduanya perlu. Yang satu menjaga memori saat berkas
-# masuk, yang lain menjaga memori saat berkas DIBUKA — dan berkas kecil bisa
+# masuk, yang lain menjaga memori saat berkas DIBUKA - dan berkas kecil bisa
 # membengkak besar setelah dibuka.
 
 # Ukuran berkas terbesar yang diterima.
@@ -143,7 +143,7 @@ MAX_UPLOAD_BYTES = 16 * 1024 * 1024
 # Ini yang menahan "decode bomb": berkas PNG beberapa ratus kilobyte bisa
 # berisi kanvas 30.000 x 30.000 yang, begitu didekode ke BGR 8-bit, menjadi
 # sekitar 2,7 GB di memori. Servernya mati sebelum sempat menilai apa pun,
-# dan yang mati bukan cuma permintaan itu — seluruh proses ikut jatuh,
+# dan yang mati bukan cuma permintaan itu - seluruh proses ikut jatuh,
 # termasuk untuk pengguna lain yang sedang menyeberang jalan.
 #
 # `cv2.imdecode` mengalokasikan buffer lebih dulu, jadi pemeriksaannya harus

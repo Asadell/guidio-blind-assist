@@ -37,7 +37,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
 
             // `proguard-rules.pro` HARUS didaftarkan eksplisit. Tanpa baris ini
-            // berkasnya ada tapi tidak pernah dibaca R8 — dan build release
+            // berkasnya ada tapi tidak pernah dibaca R8 - dan build release
             // gagal total karena ML Kit merujuk pengenal aksara Cina, Jepang,
             // Korea, dan Devanagari yang tidak ikut sebagai dependensi.
             isMinifyEnabled = true

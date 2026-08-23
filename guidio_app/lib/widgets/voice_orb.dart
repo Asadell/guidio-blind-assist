@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/index.dart';
 
-/// VoiceOrb (F6) — setiap state punya bentuk/isi berbeda, bukan cuma warna.
+/// VoiceOrb (F6) - setiap state punya bentuk/isi berbeda, bukan cuma warna.
 enum VoiceOrbState { idle, listening, processing, success, failure, disabled }
 
 class VoiceOrb extends StatelessWidget {

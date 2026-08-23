@@ -12,7 +12,7 @@ import kotlin.math.atan2
  * Menyediakan intrinsik lensa kamera belakang ke sisi Dart.
  *
  * Estimasi jarak Vinara memakai rumus pinhole: `jarak = tinggi_asli × fokus_px
- * / tinggi_kotak_px`. Selama ini `fokus_px` adalah konstanta 615 — angka
+ * / tinggi_kotak_px`. Selama ini `fokus_px` adalah konstanta 615 - angka
  * rata-rata yang benar untuk *tidak satu pun* perangkat tertentu. Padahal
  * Android sudah menyimpan angka aslinya: panjang fokus dalam milimeter dan
  * ukuran fisik sensor. Dari keduanya, sudut pandang bisa dihitung persis, dan
@@ -43,7 +43,7 @@ class MainActivity : FlutterActivity() {
 
     /**
      * Sudut pandang kamera belakang, atau null kalau perangkat tidak
-     * melaporkannya. Sisi Dart memperlakukan null sebagai "pakai bawaan" —
+     * melaporkannya. Sisi Dart memperlakukan null sebagai "pakai bawaan" -
      * kegagalan di sini tidak boleh mematikan deteksi.
      */
     private fun readBackLensInfo(): Map<String, Any>? {

@@ -1,9 +1,9 @@
 """
-test_hardening.py — Tes untuk masukan yang aneh-aneh.
+test_hardening.py - Tes untuk masukan yang aneh-aneh.
 
 Semua tes di sini menirukan apa yang dilakukan penguji yang iseng, klien yang
 rusak, atau pengguna yang salah pencet. Yang diperiksa bukan "apakah hasilnya
-benar" — untuk masukan seperti ini tidak ada hasil yang benar — tapi apakah
+benar" - untuk masukan seperti ini tidak ada hasil yang benar - tapi apakah
 server tetap berdiri, tetap menjawab 200, dan tetap memberi pengguna kalimat
 yang bisa ditindaklanjuti.
 
@@ -11,7 +11,7 @@ KENAPA SELALU 200, BUKAN 4xx
 
 Klien Flutter membacakan `message` lewat TTS. Balasan 4xx tanpa badan yang
 terstruktur berakhir sebagai pengecualian jaringan di sisi aplikasi, dan yang
-didengar pengguna cuma "gagal menghubungi server" — padahal yang salah adalah
+didengar pengguna cuma "gagal menghubungi server" - padahal yang salah adalah
 fotonya, dan itu bisa dia perbaiki sendiri kalau diberi tahu.
 """
 
@@ -80,7 +80,7 @@ class TestDecodeBomb:
         if len(payload) > MAX_UPLOAD_BYTES:
             pytest.skip(
                 "PNG uji melebihi batas unggahan, jadi tertahan lapis pertama "
-                "— jalur itu sudah diuji terpisah"
+                "- jalur itu sudah diuji terpisah"
             )
 
         r = _post_cari(client, payload, "dompet")

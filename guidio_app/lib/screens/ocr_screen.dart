@@ -16,7 +16,7 @@ import '../widgets/index.dart';
 import '../widgets/ocr_debug_sheet.dart';
 import '../widgets/ocr_long_result_panel.dart';
 
-/// Mode Baca Teks — bagian 8 IMPLEMENTASI.md, 22 state (BT-01..BT-22).
+/// Mode Baca Teks - bagian 8 IMPLEMENTASI.md, 22 state (BT-01..BT-22).
 /// Alur nyata (jepret → ServerService.readText → TTS) tetap dipakai untuk
 /// state dasar; state yang butuh data server yang belum ada (dua bahasa,
 /// sebagian gagal, sangat panjang) dicapai lewat panel debug (lib/mock/
@@ -39,7 +39,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
   int _elapsedSeconds = 0;
   _FailKind _fail = _FailKind.none;
   // BT-10 (terbaca sebagian) tidak bisa dipicu dari server nyata saat ini
-  // (ServerService.readText tidak mengembalikan status per-blok) — dicapai
+  // (ServerService.readText tidak mengembalikan status per-blok) - dicapai
   // lewat panel debug saja (lihat _resolveBanner / _renderDebug 'BT-10').
   static const _partialRead = false;
 
@@ -59,16 +59,31 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkPermission();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // Prinsip 6 "umumkan saat tiba" — diucapkan di sini, sesudah layarnya
+      // Prinsip 6 "umumkan saat tiba" - diucapkan di sini, sesudah layarnya
       // benar-benar terpasang, bukan oleh pemanggil setMode.
       context.read<AppModeProvider>().announceEntry(AppMode.ocr);
-      if (_hasCameraPermission) context.read<CameraProvider>().startStream();
+      if (_hasCameraPermission) {
+        // Preset foto diminta DI SINI, bukan hanya di `_checkPermission`.
+        //
+        // `_checkPermission` hanya menyiapkan kamera saat status izinnya
+        // BERUBAH, dan `_hasCameraPermission` bernilai true sejak awal - jadi
+        // pada kasus yang paling umum (izin sudah diberikan sejak lama)
+        // cabang itu tidak pernah jalan, dan mode ini memotret pada preset
+        // `realtime` 640x480 warisan mode sebelumnya. Untuk huruf kecil,
+        // resolusi itu menghapus informasinya sebelum ML Kit sempat melihat:
+        // sekurus apa pun fotonya, teksnya memang tidak akan terbaca, dan
+        // kegagalannya terlihat seperti masalah cahaya.
+        final cam = context.read<CameraProvider>();
+        await cam.initCamera(preset: CapturePreset.capture);
+        if (!mounted) return;
+        cam.startStream();
+      }
 
       // Kontrak tombol kiri + perintah suara. `playPause` / `playResume` /
       // `actionReplay` punya bank kata lengkap sejak awal tapi tidak pernah
-      // punya handler — di mode inilah ketiganya paling masuk akal.
+      // punya handler - di mode inilah ketiganya paling masuk akal.
       final voice = context.read<VoiceProvider>();
       voice.onPrimaryAction = () => (_speaking || _paused) ? _togglePause() : _scan();
       voice.primaryActionLabel = () =>
@@ -85,7 +100,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         return true;
       };
     });
-    // BT-20 — cek kedaluwarsa tiap 30 detik.
+    // BT-20 - cek kedaluwarsa tiap 30 detik.
     _expiryTicker = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -144,7 +159,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     // Tidak ada lagi penghalang offline di sini. Pengenalan teks berjalan
     // sepenuhnya di perangkat lewat ML Kit, jadi BT-02 ("butuh internet")
     // tidak berlaku: melarang jepret saat offline berarti mematikan fitur
-    // yang sebenarnya masih hidup — kesalahan yang sama seperti mematikan
+    // yang sebenarnya masih hidup - kesalahan yang sama seperti mematikan
     // Mode Navigasi offline.
 
     final cameraProvider = context.read<CameraProvider>();
@@ -191,7 +206,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       setState(() => _scanning = false);
 
       if (result.isEmpty) {
-        // BT-11 — instruksi jarak konkret, bukan "tidak ada teks".
+        // BT-11 - instruksi jarak konkret, bukan "tidak ada teks".
         setState(() => _fail = _FailKind.zeroText);
         await context.read<TtsProvider>().speak(
               'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal, pastikan tulisan rata di tengah.',
@@ -202,7 +217,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
 
       setState(() {
         // ML Kit sudah memisahkan teks per blok tata letak, jadi heading
-        // ResultPanel/long jadi nyata — bukan satu blok "Hasil baca" untuk
+        // ResultPanel/long jadi nyata - bukan satu blok "Hasil baca" untuk
         // seluruh halaman seperti waktu OCR dikerjakan server.
         _blocks = [
           for (final b in result.blocks)
@@ -211,7 +226,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         _completedAt = null;
       });
 
-      // BT-08 — kalau bacaannya panjang, sebut durasinya SEBELUM mulai,
+      // BT-08 - kalau bacaannya panjang, sebut durasinya SEBELUM mulai,
       // supaya pengguna sempat memilih ringkasan.
       final secs = result.estimatedDuration.inSeconds;
       if (secs > 90) {
@@ -270,7 +285,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     final fullText = flat.join(' ');
     unawaited(_animateActiveSentence(flat.length));
     // Warning, bukan Info: pembacaan ini diminta pengguna secara eksplisit dan
-    // bisa berlangsung menit-menitan — membiarkannya dibuang sebagai "Info
+    // bisa berlangsung menit-menitan - membiarkannya dibuang sebagai "Info
     // basi" karena antre 2 detik akan membatalkan permintaan yang disengaja.
     // Tetap bisa dipotong pengguna lewat tombol "Jeda bacaan".
     if (!mounted) return;
@@ -404,7 +419,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             ),
 
           if (!_hasCameraPermission)
-            // BT-17 — kartu di zona konten, tombolnya di slot kartu bawah.
+            // BT-17 - kartu di zona konten, tombolnya di slot kartu bawah.
             PermissionPrompt(
               icon: Icons.camera_alt_outlined,
               title: 'Izin kamera',

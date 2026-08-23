@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/tts_service.dart';
 import '../theme/index.dart';
 
-/// SP-01 — Splash. Logo tampil, narasi TTS mulai di milidetik pertama,
+/// SP-01 - Splash. Logo tampil, narasi TTS mulai di milidetik pertama,
 /// durasi maksimum 900 ms sebelum lanjut ke langkah berikutnya.
 class SplashScreen extends StatefulWidget {
   final VoidCallback onDone;

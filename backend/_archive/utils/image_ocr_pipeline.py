@@ -1,7 +1,7 @@
 """
 _archive/utils/image_ocr_pipeline.py
 ====================================
-Pipeline enhancement AGRESIF untuk OCR — DIARSIPKAN, tidak diimpor
+Pipeline enhancement AGRESIF untuk OCR - DIARSIPKAN, tidak diimpor
 kode mana pun.
 
 OCR berjalan sepenuhnya on-device lewat ML Kit dan tidak punya jalur
@@ -10,8 +10,8 @@ backend. Disimpan sebagai rujukan, bukan sebagai kode hidup.
 
 KENAPA MASIH DISIMPAN
 ---------------------
-Teknik di sini — deskew, koreksi perspektif empat titik, dan binarisasi
-Sauvola — tetap relevan kalau nanti input ML Kit perlu diperbaiki di
+Teknik di sini - deskew, koreksi perspektif empat titik, dan binarisasi
+Sauvola - tetap relevan kalau nanti input ML Kit perlu diperbaiki di
 sisi Flutter. Yang berpindah nanti adalah ALGORITMANYA ke Dart, bukan
 berkas ini; ini cuma implementasi rujukan yang sudah terbukti jalan.
 

@@ -14,7 +14,7 @@ import '../widgets/zone_indicator.dart' show ZoneStatus;
 ///
 /// PIDNet selalu mengeluarkan jawaban. Diarahkan ke tembok polos, langit,
 /// langit-langit kamar, atau bagian dalam saku, dia tetap memberi label ke
-/// setiap piksel — dan sebagian besarnya bisa jatuh ke "walkable". Dari sana
+/// setiap piksel - dan sebagian besarnya bisa jatuh ke "walkable". Dari sana
 /// rasio zona terbaca "tengah 100% layak jalan" dan aplikasi mengucapkan
 /// "Jalur aman, jalan lurus" untuk foto langit-langit.
 ///
@@ -28,14 +28,14 @@ enum SceneDoubt {
   none,
 
   /// Hampir seluruh frame satu kelas. Tembok, langit, aspal polos tanpa tepi,
-  /// atau lensa tertutup — bukan pemandangan berjalan yang punya struktur.
+  /// atau lensa tertutup - bukan pemandangan berjalan yang punya struktur.
   degenerate,
 
   /// Ada jalur terdeteksi, tapi TIDAK di bagian bawah frame.
   ///
   /// Pada pemandangan berjalan yang benar, permukaan tepat di depan kaki
   /// selalu ada di pita bawah. Kalau pita bawah kosong sementara bagian atas
-  /// penuh "walkable", kamera kemungkinan menghadap ke atas — dan jalur yang
+  /// penuh "walkable", kamera kemungkinan menghadap ke atas - dan jalur yang
   /// "ditemukan" itu bukan yang akan diinjak.
   notGrounded,
 }
@@ -62,7 +62,7 @@ class ZoneAnalysis {
   /// (non-walkable / walkable / hazard).
   ///
   /// Inilah yang digambar sebagai hamparan jalur di layar. Sebelumnya mask
-  /// dihitung penuh lalu dibuang begitu rasio zonanya selesai dihitung —
+  /// dihitung penuh lalu dibuang begitu rasio zonanya selesai dihitung -
   /// pekerjaan terberat di pipeline ini dikerjakan lalu hasilnya tidak
   /// dipakai untuk apa pun selain tiga angka.
   ///
@@ -98,7 +98,7 @@ class ZoneAnalysis {
     this.maskHeight = 0,
   });
 
-  /// Pesan TTS sederhana berdasarkan zona — sama dengan yang dipakai backend.
+  /// Pesan TTS sederhana berdasarkan zona - sama dengan yang dipakai backend.
   String get ttsMessage {
     // Rintangan akan ditangani lapisan atas (NavigationProvider).
     // Di sini hanya beri arahan zona jalur.
@@ -134,7 +134,7 @@ const int _pidnetW = 640;
 
 // Kelas output: 0=non-walkable, 1=walkable/trotoar, 2=hazard
 // Urutannya dari `SEG_NON_WALKABLE, SEG_WALKABLE, SEG_HAZARD = 0, 1, 2`
-// di `src/pidnet/dataset.py` repo training — jangan diubah tanpa mengubah
+// di `src/pidnet/dataset.py` repo training - jangan diubah tanpa mengubah
 // training-nya juga.
 // Hanya kelas 1 (walkable) yang dihitung untuk rasio zona.
 const int _classWalkable = 1;
@@ -167,7 +167,7 @@ const double _groundBandMinWalk = 0.10;
 
 /// Nilai apakah sebuah mask masuk akal sebagai pemandangan berjalan.
 ///
-/// Dua pemeriksaan, keduanya dari mask yang SUDAH dihitung — jadi tidak ada
+/// Dua pemeriksaan, keduanya dari mask yang SUDAH dihitung - jadi tidak ada
 /// inferensi tambahan, biayanya satu lintasan atas array yang sama.
 ///
 /// Sengaja TIDAK memakai model kedua atau klasifikasi pemandangan. Yang
@@ -195,14 +195,14 @@ SceneDoubt assessScene(List<int> mask, int width, int height) {
   //
   // Frame yang hampir seluruhnya walkable adalah satu-satunya bentuk yang
   // berbahaya: dia menghasilkan "tiga zona aman" lalu "Jalur aman, jalan
-  // lurus" — lampu hijau untuk melangkah, dari langit-langit kamar atau
+  // lurus" - lampu hijau untuk melangkah, dari langit-langit kamar atau
   // lensa yang tertutup telapak tangan.
   //
   // Frame yang hampir seluruhnya NON-walkable atau hazard tidak perlu
   // dijaga di sini, karena keduanya sudah gagal ke arah yang aman: status
   // zonanya jadi `danger` dan pengguna mendengar "Berhenti dulu, tidak ada
   // jalur aman". Menandainya "tidak terbaca" justru menukar pesan yang benar
-  // dengan permintaan membetulkan kamera — dan pengguna yang sebenarnya
+  // dengan permintaan membetulkan kamera - dan pengguna yang sebenarnya
   // sedang berdiri menghadap tembok akan sibuk mengatur ponsel alih-alih
   // memutar badan.
   if (nWalk / total >= _degenerateRatio) return SceneDoubt.degenerate;
@@ -210,7 +210,7 @@ SceneDoubt assessScene(List<int> mask, int width, int height) {
   // ── 2. Jalur yang tidak menyentuh tanah ──
   //
   // Hanya diperiksa kalau memang ADA jalur yang terdeteksi. Frame tanpa jalur
-  // sama sekali bukan kasus meragukan — itu jawaban yang sah ("tidak ada jalur
+  // sama sekali bukan kasus meragukan - itu jawaban yang sah ("tidak ada jalur
   // aman") dan sudah ditangani status zona.
   if (nWalk > 0) {
     final bandStart = height - (height * _groundBandFrac).round();
@@ -235,7 +235,7 @@ SceneDoubt assessScene(List<int> mask, int width, int height) {
 ///
 /// Mask penuh 640x384 berisi 245 ribu piksel. Menyalinnya utuh ke UI delapan
 /// kali per detik memindahkan 2 MB per detik untuk hamparan tembus pandang
-/// yang toh diperhalus saat digambar — pemborosan yang langsung terasa
+/// yang toh diperhalus saat digambar - pemborosan yang langsung terasa
 /// sebagai panas di tangan pengguna.
 ///
 /// 160x96 (seperdelapan belas jumlah piksel) sudah lebih dari cukup: yang
@@ -251,7 +251,7 @@ const double _threshCaution = 0.30; // ≥30% walkable → HATI-HATI, sisanya BA
 // dengan rotasi dan penskalaan, dalam satu lintasan di isolate.
 
 // ─────────────────────────────────────────────────────────────
-// PidnetService — segmentasi jalur 3 zona on-device
+// PidnetService - segmentasi jalur 3 zona on-device
 // ─────────────────────────────────────────────────────────────
 class PidnetService {
   static final PidnetService instance = PidnetService._();
@@ -261,8 +261,8 @@ class PidnetService {
   bool _loaded = false;
   bool get isLoaded => _loaded;
 
-  // Input shape: [1, 384, 640, 3] (BHWC — TFLite default)
-  // Atau [1, 3, 384, 640] (BCHW — jika model tidak di-transpose saat export)
+  // Input shape: [1, 384, 640, 3] (BHWC - TFLite default)
+  // Atau [1, 3, 384, 640] (BCHW - jika model tidak di-transpose saat export)
   // Akan dideteksi otomatis saat load.
   bool _isBHWC = true;
 
@@ -281,20 +281,20 @@ class PidnetService {
   ///
   /// Versi sebelumnya memilih FP16 lebih dulu dan hanya jatuh ke FP32 kalau
   /// BERKASNYA gagal dibaca. Padahal `pidnet_s_3zona_fp16.tflite` punya tensor
-  /// masukan bertipe FLOAT16, sementara pipeline mengirim FLOAT32 — dan
+  /// masukan bertipe FLOAT16, sementara pipeline mengirim FLOAT32 - dan
   /// `tflite_flutter` menyalin byte tanpa memeriksa tipe.
   ///
   /// Akibatnya berkasnya termuat dengan mulus, `tryLoad()` melaporkan sukses,
   /// lalu SETIAP panggilan `analyze()` melempar di dalam interpreter. Blok
   /// `catch` menelannya, `analyze` mengembalikan null, dan mode navigasi
-  /// berjalan tanpa segmentasi jalur sama sekali — tanpa satu pun tanda di
+  /// berjalan tanpa segmentasi jalur sama sekali - tanpa satu pun tanda di
   /// layar bahwa ada yang salah.
   ///
   /// Sekarang tiap kandidat dijalankan sekali dengan tensor percobaan sebelum
   /// diterima. Satu inferensi saat muat jauh lebih murah daripada mode
   /// keselamatan yang diam-diam mati.
   Future<bool> tryLoad() async {
-    // Urutannya masih FP16 dulu — kalau memang jalan di perangkat ini, dia
+    // Urutannya masih FP16 dulu - kalau memang jalan di perangkat ini, dia
     // lebih kecil dan lebih cepat. Yang berubah: sekarang harus membuktikannya.
     const kandidat = [
       'assets/models/pidnet_s_3zona_fp16.tflite',
@@ -316,7 +316,7 @@ class PidnetService {
       final bd = await rootBundle.load(aset);
       final modelBytes = bd.buffer.asUint8List();
 
-      // GPU delegate — coba aktifkan di Android; jika gagal, CPU saja
+      // GPU delegate - coba aktifkan di Android; jika gagal, CPU saja
       InterpreterOptions options;
       try {
         if (Platform.isAndroid) {
@@ -358,7 +358,7 @@ class PidnetService {
     } catch (e) {
       // Varian ini tidak bisa dipakai di perangkat ini. Interpreter-nya
       // ditutup supaya tidak menyisakan memori native yang tidak akan
-      // dipakai — penting di HP 4 GB, di mana dua interpreter menganggur
+      // dipakai - penting di HP 4 GB, di mana dua interpreter menganggur
       // sudah terasa.
       try {
         interpreter?.close();
@@ -381,7 +381,7 @@ class PidnetService {
   ///
   /// [input] adalah tensor datar dari [NavFrameConverter.prepare]. Preprocessing
   /// sengaja TIDAK dilakukan di sini lagi: dulu metode ini menerima RGB mentah
-  /// lalu memutar, menskalakan, dan membangun `List` bersarang di isolate UI —
+  /// lalu memutar, menskalakan, dan membangun `List` bersarang di isolate UI -
   /// sekitar 57 ms per frame ditambah 245.760 objek List kecil. Sekarang
   /// semuanya sudah selesai di isolate sebelum sampai ke sini.
   ///
@@ -400,7 +400,7 @@ class PidnetService {
       // Buffer keluaran datar, dipakai ulang antar frame.
       //
       // Versi sebelumnya mengalokasikan `List.filled(737.280, 0.0)` lalu
-      // memanggil `.reshape()` untuk membuat struktur bersarang — ratusan ribu
+      // memanggil `.reshape()` untuk membuat struktur bersarang - ratusan ribu
       // double ter-boxing yang langsung jadi sampah tiap frame, lalu dibaca
       // kembali lewat pencarian `List` dinamis ber-cast satu per satu.
       //
@@ -456,7 +456,7 @@ class PidnetService {
     final mask = List<int>.filled(n, 0);
 
     if (_isBHWC) {
-      // [H][W][3] — tiga kelas satu piksel berdampingan.
+      // [H][W][3] - tiga kelas satu piksel berdampingan.
       for (var i = 0; i < n; i++) {
         final o = i * 3;
         final c0 = out[o], c1 = out[o + 1], c2 = out[o + 2];
@@ -467,7 +467,7 @@ class PidnetService {
         mask[i] = best;
       }
     } else {
-      // [3][H][W] — tiap kelas satu bidang penuh.
+      // [3][H][W] - tiap kelas satu bidang penuh.
       for (var i = 0; i < n; i++) {
         final c0 = out[i], c1 = out[n + i], c2 = out[n * 2 + i];
         var best = 0;
@@ -485,7 +485,7 @@ class PidnetService {
   ///
   /// Bedanya penting untuk hazard. Lubang sering cuma menempati 1-3% piksel,
   /// jadi kalau tiap sel keluaran hanya membaca satu piksel sumber, hazard
-  /// yang tipis punya peluang besar terlewat sama sekali — dan yang hilang
+  /// yang tipis punya peluang besar terlewat sama sekali - dan yang hilang
   /// justru satu-satunya kelas yang wajib terlihat.
   ///
   /// Modus per blok mempertahankannya, dengan pengecualian yang disengaja:
@@ -584,7 +584,7 @@ class PidnetService {
     } else if (rStatus != ZoneStatus.danger) {
       recommended = 2;
     } else {
-      // Semua bahaya — pilih yang paling tinggi rasionya
+      // Semua bahaya - pilih yang paling tinggi rasionya
       if (lRatio >= cRatio && lRatio >= rRatio) {
         recommended = 0;
       } else if (rRatio >= cRatio) {

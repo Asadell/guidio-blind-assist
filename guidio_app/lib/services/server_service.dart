@@ -14,10 +14,10 @@ const String kDefaultServerHost = '10.0.2.2:8000';
 /// memang tidak ada di perangkat: YOLOE (Cari Objek), Moondream2 (Deskripsi
 /// Suasana), dan segmentasi jalur sebagai cadangan PIDNet on-device.
 ///
-/// Dua belas method lain — `detectOnce`, `routeIntent`, `resolveIntent`,
+/// Dua belas method lain - `detectOnce`, `routeIntent`, `resolveIntent`,
 /// `cariObjekTargets`, `health`, `sendEvents`, `sendCrashReport`,
 /// `lastModeBeforeCrash`, `flushQueue`, `labels`, `modelManifest`,
-/// `checkRiskZone` — dihapus karena tidak punya satu pun pemanggil. Endpoint
+/// `checkRiskZone` - dihapus karena tidak punya satu pun pemanggil. Endpoint
 /// backend-nya ikut diarsipkan.
 class ServerService {
   static final ServerService instance = ServerService._();
@@ -25,7 +25,7 @@ class ServerService {
 
   /// Alamat server aktif (PG-08). Dulu ini konstanta hardcoded, jadi
   /// pengaturan "Alamat server" tersimpan ke disk tapi **tidak berpengaruh
-  /// sama sekali** — aplikasi mengatakan "tersimpan" untuk perubahan yang
+  /// sama sekali** - aplikasi mengatakan "tersimpan" untuk perubahan yang
   /// tidak pernah terjadi. Itu pelanggaran bagian 4.1 yang sama seperti
   /// konfirmasi ganti mode palsu, hanya di tempat berbeda.
   ///
@@ -43,7 +43,7 @@ class ServerService {
     _host = next;
   }
 
-  /// Satu klien HTTP untuk seluruh aplikasi — koneksi dipakai ulang
+  /// Satu klien HTTP untuk seluruh aplikasi - koneksi dipakai ulang
   /// (keep-alive) alih-alih handshake baru tiap permintaan. Lihat
   /// [ApiClient] untuk alasan lengkapnya.
   late final ApiClient _api = ApiClient()..hostProvider = (() => _host);
@@ -53,7 +53,7 @@ class ServerService {
   //
   // `WS /ws/detect`, `POST /api/detect`, dan `POST /api/narasi` dihapus.
   // Deteksi rintangan sepenuhnya on-device (SSD MobileNet TFLite) dan
-  // narasinya dirangkai `narration_engine.dart` — keduanya sudah ada di
+  // narasinya dirangkai `narration_engine.dart` - keduanya sudah ada di
   // perangkat, jadi jalur server hanya menggandakan kode di mode paling
   // kritis keselamatan sambil menambahkan ketergantungan diam-diam pada
   // laptop yang menyala.
@@ -61,11 +61,11 @@ class ServerService {
 
   /// Kirim satu frame ke backend YOLOE untuk mencari [target].
   ///
-  /// Backend YOLOE open-vocabulary (300+ barang Bahasa Indonesia) — jauh lebih
+  /// Backend YOLOE open-vocabulary (300+ barang Bahasa Indonesia) - jauh lebih
   /// fleksibel dari on-device ONNX 80 kelas. Melempar exception saat gagal.
   ///
   /// `found: false` dengan reason `not_in_frame` adalah kondisi NORMAL (CO-10)
-  /// — pengguna cukup arahkan kamera ke tempat lain lalu tekan kirim lagi.
+  /// - pengguna cukup arahkan kamera ke tempat lain lalu tekan kirim lagi.
   Future<Map<String, dynamic>> cariObjek(Uint8List jpegBytes, String target) =>
       _api.postMultipart(
         '/api/cari-objek',
@@ -76,26 +76,22 @@ class ServerService {
         op: ApiOp.frame,
       );
 
-  /// Daftar barang yang dikenali — dipakai CO-12 untuk menawarkan
+  /// Daftar barang yang dikenali - dipakai CO-12 untuk menawarkan
   /// barang lain saat target tidak dikenal.
   Future<List<String>> cariObjekTargets() async {
     final json = await _api.getJson('/api/cari-objek/targets');
     return (json['targets'] as List).cast<String>();
   }
 
-  // ── Mode Navigasi (segmentasi jalur 3 zona) ─────────────────────────────
-
-  Future<Map<String, dynamic>> segmentasiJalur(
-    Uint8List jpegBytes, {
-    double lat = 0,
-    double lng = 0,
-  }) =>
-      _api.postMultipart(
-        '/api/navigasi',
-        bytes: jpegBytes,
-        fields: {'lat': '$lat', 'lng': '$lng'},
-        op: ApiOp.frame,
-      );
+  // ── Mode Navigasi: TIDAK ADA jalur server ───────────────────────────────
+  //
+  // `segmentasiJalur()` yang memanggil `POST /api/navigasi` dihapus. Router
+  // itu sudah tidak didaftarkan di `backend/main.py` sejak navigasi dipindah
+  // on-device, dan `NavigationProvider` tidak pernah memanggilnya. Yang
+  // tertinggal hanyalah method yang TERLIHAT seperti cadangan server padahal
+  // ujungnya cuma 404 - dan pesan errornya akan menyalahkan jaringan untuk
+  // endpoint yang memang sengaja tidak disediakan.
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── Kemampuan server ────────────────────────────────────────────────────
 
@@ -110,12 +106,12 @@ class ServerService {
     }
   }
 
-  /// Health check ke alamat tertentu **tanpa mengubah alamat aktif** — dipakai
+  /// Health check ke alamat tertentu **tanpa mengubah alamat aktif** - dipakai
   /// PG-08b untuk menguji kandidat sebelum disimpan. Memisahkan "menguji" dari
   /// "memakai" itulah yang membuat PG-08e mungkin: uji boleh gagal tanpa
   /// merusak sambungan yang sedang bekerja.
   Future<Map<String, dynamic>?> healthAt(String host, {Duration? timeout}) async {
-    // Klien sementara dengan host tetap — tidak menyentuh alamat aktif.
+    // Klien sementara dengan host tetap - tidak menyentuh alamat aktif.
     final probe = ApiClient()..hostProvider = (() => host);
     final sw = Stopwatch()..start();
     try {
@@ -148,6 +144,13 @@ class ServerService {
       final result = await _api.postMultipart(
         '/api/describe',
         bytes: jpegBytes,
+        // Backend mendeklarasikan parameternya `image`, bukan `file`
+        // (`routers/describe.py`). Memakai nilai bawaan `postMultipart`
+        // membuat FastAPI membalas 422 untuk SETIAP permintaan - dan
+        // kegagalannya ditelan `catch` di bawah lalu dilaporkan sebagai
+        // `network_error`, sehingga pengguna mendengar aplikasi menyalahkan
+        // jaringan yang sebenarnya sehat.
+        fileField: 'image',
         filename: 'scene.jpg',
         fields: {},
         op: ApiOp.heavy,

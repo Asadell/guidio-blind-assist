@@ -1,4 +1,4 @@
-"""Resolusi perintah suara sisi server — POST /api/intent.
+"""Resolusi perintah suara sisi server - POST /api/intent.
 
 CommandParser lokal di Flutter menangani 20 intent baku tanpa internet
 (0 ms, tetap jalan offline). Server hanya dipanggil saat lokal TIDAK match,
@@ -7,7 +7,7 @@ untuk dua kasus yang memang butuh pemahaman bahasa:
   - AS-19 "ambigu"         → pertanyaan pilihan dua
 
 Urutan usaha: cocokkan frasa persis → skor kemiripan kata.
-LLM (Qwen Lapis 3) DIHAPUS — tidak ada LLM di backend.
+LLM (Qwen Lapis 3) DIHAPUS - tidak ada LLM di backend.
 """
 
 import re
@@ -128,7 +128,7 @@ class IntentService:
 
     @staticmethod
     def compose_suggestion(heard: str, candidates: list[dict]) -> str:
-        """AS-18 / AS-19 — sebut yang didengar, lalu tawarkan dua pilihan."""
+        """AS-18 / AS-19 - sebut yang didengar, lalu tawarkan dua pilihan."""
         if len(candidates) >= 2:
             return (
                 f"Saya dengar {heard}. "

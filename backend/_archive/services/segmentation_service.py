@@ -1,7 +1,7 @@
-"""Mode Navigasi — segmentasi jalur jadi 3 zona (kiri / tengah / kanan).
+"""Mode Navigasi - segmentasi jalur jadi 3 zona (kiri / tengah / kanan).
 
 Model utama: PIDNet-S ONNX (three-branch, ada cabang khusus boundary, jadi
-tepi trotoar presisi — penting karena overlay zona dipakai terus-menerus).
+tepi trotoar presisi - penting karena overlay zona dipakai terus-menerus).
 Kalau file model belum ada, service memakai fallback heuristik OpenCV yang
 tetap menghasilkan tiga zona berbeda dari isi gambar sungguhan, sehingga
 seluruh state NV-03..NV-09 di aplikasi bisa diuji tanpa menunggu model.
@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 from loguru import logger
 
-# Status zona — cocok dengan enum ZoneStatus di Flutter.
+# Status zona: cocok dengan enum ZoneStatus di Flutter.
 SAFE = "safe"
 CAUTION = "caution"
 DANGER = "danger"
@@ -40,12 +40,12 @@ class SegmentationService:
         self.source = "heuristic"
 
     def load(self) -> bool:
-        """Muat PIDNet ONNX bila ada. Tidak adanya model BUKAN kegagalan —
+        """Muat PIDNet ONNX bila ada. Tidak adanya model BUKAN kegagalan -
         fallback heuristik tetap melayani, dan itu dilaporkan apa adanya
         lewat field `source` supaya tidak ada klaim palsu ke pengguna."""
         if not os.path.exists(self.model_path):
             logger.warning(
-                f"Model segmentasi '{self.model_path}' belum ada — "
+                f"Model segmentasi '{self.model_path}' belum ada - "
                 "Mode Navigasi pakai fallback heuristik OpenCV."
             )
             self.source = "heuristic"
@@ -64,7 +64,7 @@ class SegmentationService:
             logger.success(f"Model segmentasi dimuat: {self.model_path}")
             return True
         except Exception as e:
-            logger.error(f"Segmentasi gagal dimuat: {e} — pakai fallback heuristik")
+            logger.error(f"Segmentasi gagal dimuat: {e} - pakai fallback heuristik")
             self.source = "heuristic"
             return False
 
@@ -143,7 +143,7 @@ class SegmentationService:
         """Perkiraan jalur layak-injak dari keseragaman permukaan.
 
         Dasarnya: permukaan yang bisa dijalani (trotoar, aspal, lantai)
-        cenderung RATA — sedikit tepi, warna konsisten. Rintangan, rumput,
+        cenderung RATA - sedikit tepi, warna konsisten. Rintangan, rumput,
         tangga, dan jalur kendaraan memecah keseragaman itu.
 
         Bukan pengganti segmentasi sungguhan, tapi memberi keluaran yang

@@ -14,7 +14,7 @@ import '../services/haptic_service.dart';
 import '../services/object_tracker.dart';
 import '../services/tflite_service.dart';
 
-/// DetectionProvider — Mode Deteksi Objek, sepenuhnya on-device.
+/// DetectionProvider - Mode Deteksi Objek, sepenuhnya on-device.
 ///
 /// **Jalur server dihapus.** Sebelumnya ada dua jalur (TFLite dan WebSocket
 /// `/ws/detect`) yang dipilih dari `InferenceProvider.realtimeEngine`. Itu
@@ -35,7 +35,7 @@ class DetectionProvider extends ChangeNotifier {
   /// diucapkan, scheduler memutuskan KAPAN dan DALAM BENTUK APA.
   ///
   /// Keduanya dibutuhkan. Filter bekerja baik di kondisi mapan, tapi tidak
-  /// menangani momen mode baru menyala — saat itu setiap objek adalah objek
+  /// menangani momen mode baru menyala - saat itu setiap objek adalah objek
   /// baru, tidak satu pun punya catatan cooldown, jadi semuanya lolos
   /// sekaligus. Enam objek berarti enam narasi dalam waktu kurang dari satu
   /// detik, dan yang terjadi berikutnya bukan cuma tumpang tindih: narasi
@@ -47,11 +47,11 @@ class DetectionProvider extends ChangeNotifier {
   /// Tanpa ini, callback kamera (~30 fps) memicu inferensi yang menumpuk tak
   /// terbatas: tiap frame tertunda memegang buffer sendiri, memori naik, dan
   /// peringatan yang akhirnya terdengar menggambarkan dunia beberapa detik
-  /// lalu. 120 ms ≈ 8 fps — dengan `streakRequired = 2`, objek baru terucap
+  /// lalu. 120 ms ≈ 8 fps - dengan `streakRequired = 2`, objek baru terucap
   /// sekitar 250 ms setelah masuk frame, masih di bawah target 500 ms.
   final _pacer = FramePacer(minInterval: const Duration(milliseconds: 120));
 
-  /// PG-05 / PG-06 — diteruskan dari SettingsProvider setiap kali pengaturan
+  /// PG-05 / PG-06 - diteruskan dari SettingsProvider setiap kali pengaturan
   /// berubah, supaya slider dan segmented benar-benar mengubah perilaku
   /// deteksi alih-alih hanya tersimpan ke disk.
   void applySettings({required double maxDistanceM, required Verbosity verbosity}) {
@@ -65,7 +65,7 @@ class DetectionProvider extends ChangeNotifier {
   List<Detection> get detections => _detections;
 
   /// True kalau model on-device tidak bisa dipakai. Layar wajib mengatakannya
-  /// — mode ini tidak punya cadangan lain, jadi diam berarti membiarkan orang
+  /// - mode ini tidak punya cadangan lain, jadi diam berarti membiarkan orang
   /// berjalan menyangka dirinya dijaga.
   bool get isUnavailable => !TFLiteService.instance.isLoaded;
 
@@ -119,7 +119,7 @@ class DetectionProvider extends ChangeNotifier {
         }
         // Scheduler tetap ditengok. Jendela pengelompokan yang sudah berisi
         // sesuatu harus bisa keluar walau frame ini kosong; kalau tidak,
-        // ringkasan menggantung sampai ada deteksi berikutnya — dan kalau
+        // ringkasan menggantung sampai ada deteksi berikutnya - dan kalau
         // pengguna sudah berpaling, deteksi berikutnya mungkin tidak pernah
         // datang, jadi yang sudah terlanjur dikumpulkan hilang begitu saja.
         final decision = _scheduler.process(const []);
@@ -137,7 +137,7 @@ class DetectionProvider extends ChangeNotifier {
       // Tracker memberi identitas stabil per objek. Pemetaannya per-indeks,
       // bukan per-label: dengan dua orang di frame, versi lama mengambil track
       // pertama berlabel "person" untuk keduanya, sehingga status "mendekat"
-      // milik orang jauh bisa menempel ke orang dekat — dan status itulah yang
+      // milik orang jauh bisa menempel ke orang dekat - dan status itulah yang
       // memotong cooldown 50%.
       if (!_realtimeActive) return;
 
@@ -155,7 +155,7 @@ class DetectionProvider extends ChangeNotifier {
           // sendiri; tanpa penghalusan, objek diam terucap "dua meter… satu
           // meter… dua meter" dan pengguna tidak punya cara tahu mana yang
           // benar. Nilai mentah tetap dipakai untuk klasifikasi tier di
-          // TFLiteService — yang dihaluskan hanya yang diucapkan.
+          // TFLiteService - yang dihaluskan hanya yang diucapkan.
           distanceMeter: track?.smoothedDistance,
         ));
       }
@@ -186,7 +186,7 @@ class DetectionProvider extends ChangeNotifier {
 
     if (filtered.isEmpty) return;
 
-    // Getar mendampingi suara — di pasar dan jalan raya, getar sering jadi
+    // Getar mendampingi suara - di pasar dan jalan raya, getar sering jadi
     // sinyal utama.
     //
     // Sengaja TIDAK diikat ke `decision.shouldSpeak`. Getar sampai ke
@@ -215,7 +215,7 @@ class DetectionProvider extends ChangeNotifier {
   // pengguna, di mana dia sudah siap mendengarkan; bukan untuk aliran
   // deteksi yang datang tanpa diminta delapan kali per detik.
   //
-  // Mesin narasi itu sendiri sengaja TIDAK dihapus — lihat catatan di
+  // Mesin narasi itu sendiri sengaja TIDAK dihapus - lihat catatan di
   // README soal ke mana sebaiknya dia disambungkan.
 
   @override

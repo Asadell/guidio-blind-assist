@@ -8,22 +8,22 @@ import '../core/speech/tts_queue.dart' show SpeechTier;
 
 /// State machine Mode Cari Objek.
 ///
-/// **Trigger-based via backend YOLOE** — pengguna tekan tombol kiri,
+/// **Trigger-based via backend YOLOE** - pengguna tekan tombol kiri,
 /// satu foto dikirim ke POST /api/cari-objek, hasilnya diucapkan via TTS.
 /// Backend menggunakan YOLOE open-vocabulary (300+ barang Bahasa Indonesia).
 ///
 /// Berbeda dari versi on-device sebelumnya yang berjalan real-time (loop
-/// 350 ms), versi ini hanya berjalan sekali per tap — lebih hemat baterai
+/// 350 ms), versi ini hanya berjalan sekali per tap - lebih hemat baterai
 /// dan bisa mendeteksi jauh lebih banyak jenis barang.
 ///
 /// CO-15 (izin kamera), CO-16 (senyap), CO-17 (font scale 200%) sengaja TIDAK
-/// dimodelkan di sini — itu murni keputusan lapisan UI.
+/// dimodelkan di sini - itu murni keputusan lapisan UI.
 enum FindObjectState {
   idle,            // CO-01
   listening,       // CO-02
   unclear,         // CO-03
-  targetActive,    // CO-04 — target aktif, menunggu tombol kiri ditekan
-  scanning,        // CO-05 — sedang mengirim ke backend
+  targetActive,    // CO-04 - target aktif, menunggu tombol kiri ditekan
+  scanning,        // CO-05 - sedang mengirim ke backend
   found,           // CO-06 / CO-07 (lihat matchCount)
   lostFromView,    // CO-09
   notFoundInFrame, // CO-10
@@ -41,7 +41,7 @@ class FindObjectProvider extends ChangeNotifier {
   String? _target;
   String? get target => _target;
 
-  /// CO-14 — target yang disimpan saat offline, dipakai lagi begitu pulih.
+  /// CO-14 - target yang disimpan saat offline, dipakai lagi begitu pulih.
   String? _savedTarget;
   String? get savedTarget => _savedTarget;
 
@@ -63,14 +63,14 @@ class FindObjectProvider extends ChangeNotifier {
       _serverMessage.isEmpty ? 'Memindai sekitar…' : _serverMessage;
   String get notFoundMessage => scanMessage;
 
-  /// True saat sedang menunggu respons backend — tombol kiri di-disable.
+  /// True saat sedang menunggu respons backend - tombol kiri di-disable.
   bool _isScanning = false;
   bool get isScanning => _isScanning;
 
   final List<String> _knownTargets = const [];
   List<String> get knownTargets => _knownTargets;
 
-  /// Callback keluar — screen yang mengubahnya jadi suara/getar sungguhan.
+  /// Callback keluar - screen yang mengubahnya jadi suara/getar sungguhan.
   void Function(String text, SpeechTier tier)? onSpeak;
   void Function(String direction)? onDirectionHaptic;
 
@@ -84,12 +84,12 @@ class FindObjectProvider extends ChangeNotifier {
   /// satu-satunya sebab yang terpikir waktu itu. Setelah frame dinilai
   /// ketajamannya, sebab yang mungkin bertambah: buram karena tangan
   /// bergerak, atau silau karena menghadap cahaya. Ketiganya butuh tindakan
-  /// yang berbeda dari pengguna, jadi ketiganya harus terdengar berbeda —
+  /// yang berbeda dari pengguna, jadi ketiganya harus terdengar berbeda -
   /// menyuruh menyalakan lampu saat masalahnya tangan bergetar hanya
   /// membuang tenaga orang yang sedang mencari barangnya.
   String? Function()? frameRejectReason;
 
-  /// Dibaca sebelum mengirim — CO-14 menuntut mode ini benar-benar berhenti
+  /// Dibaca sebelum mengirim - CO-14 menuntut mode ini benar-benar berhenti
   /// saat offline, bukan mencoba lalu gagal berkali-kali.
   bool Function()? isOffline;
 
@@ -109,7 +109,7 @@ class FindObjectProvider extends ChangeNotifier {
     _stepTimer = Timer(Duration(milliseconds: ms), cb);
   }
 
-  /// Tidak dipakai lagi — dipertahankan agar tidak merusak layar yang masih
+  /// Tidak dipakai lagi - dipertahankan agar tidak merusak layar yang masih
   /// memanggil ini.
   Future<void> loadKnownTargets() async {
     // no-op
@@ -168,7 +168,7 @@ class FindObjectProvider extends ChangeNotifier {
     final target = _target;
     if (target == null || _isScanning) return;
 
-    // CO-14 — benar-benar berhenti saat offline
+    // CO-14 - benar-benar berhenti saat offline
     final offline = isOffline?.call() ?? false;
     if (offline) {
       _savedTarget = target;
@@ -206,7 +206,7 @@ class FindObjectProvider extends ChangeNotifier {
       _isScanning = false;
       _set(FindObjectState.serverError);
       // Warning, bukan Critical. Tier Critical dicadangkan untuk bahaya fisik
-      // dan tidak bisa dipotong pengguna — kegagalan jaringan tidak pernah
+      // dan tidak bisa dipotong pengguna - kegagalan jaringan tidak pernah
       // setara dengan motor yang melaju ke arahmu.
       _speak(
         'Gagal menghubungi server. Periksa koneksi dan coba lagi.',
@@ -222,7 +222,16 @@ class FindObjectProvider extends ChangeNotifier {
     if (!found) {
       final reason = res['reason'] as String? ?? 'not_in_frame';
 
-      if (reason == 'model_unavailable') {
+      // `server_error` ikut di sini, bukan jatuh ke cabang "tidak ketemu".
+      //
+      // Backend mengembalikannya saat inferensinya sendiri gagal, dan
+      // sebelumnya ia lolos ke bawah: statenya jadi `notFoundInFrame` (kartu
+      // Info "Mencari …") dan `_notFoundCount` ikut naik, sehingga empat
+      // kegagalan server berturut-turut memicu tawaran CO-11 "pindah ruangan,
+      // atau sebutkan barang lain". Pengguna disuruh berjalan ke ruangan lain
+      // untuk masalah yang sepenuhnya ada di server, dan barang yang dicarinya
+      // mungkin ada tepat di depannya.
+      if (reason == 'model_unavailable' || reason == 'server_error') {
         _set(FindObjectState.serverError);
         _speak(
           _serverMessage.isNotEmpty
@@ -238,7 +247,7 @@ class FindObjectProvider extends ChangeNotifier {
       // sama. Kalau server menyarankan foto ulang, menyuruh pengguna memutar
       // badan justru membuang tenaganya: yang perlu diperbaiki adalah kondisi
       // pengambilan gambar, bukan arah kamera. Karena itu penghitung
-      // `_notFoundCount` juga TIDAK dinaikkan di sini — percobaan yang
+      // `_notFoundCount` juga TIDAK dinaikkan di sini - percobaan yang
       // gagal karena fotonya tidak terbaca bukan bukti barangnya tidak ada,
       // dan menghitungnya akan memicu tawaran menyerah CO-11 terlalu cepat.
       //
@@ -257,7 +266,7 @@ class FindObjectProvider extends ChangeNotifier {
 
       _notFoundCount++;
       if (_notFoundCount >= 4) {
-        // CO-11 — setelah 4 kali tidak ketemu, tawarkan jalan keluar
+        // CO-11 - setelah 4 kali tidak ketemu, tawarkan jalan keluar
         _set(FindObjectState.longNotFound);
         _speak(
           'Belum ketemu di sini. Pindah posisi, lalu tekan kirim lagi. '

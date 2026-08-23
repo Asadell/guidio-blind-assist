@@ -1,10 +1,10 @@
-"""Endpoint penunjang — tinggal satu: `/api/capabilities`.
+"""Endpoint penunjang - tinggal satu: `/api/capabilities`.
 
 Sebelas endpoint lain (`/api/labels`, `/api/models/*`, `/api/events`,
 `/api/crash-report*`, `/api/queue/*`) dipindah ke
 `_archive/routers/support_full.py`: tidak satu pun pernah dipanggil aplikasi.
 Method kliennya ada di `ServerService`, lengkap dengan penanganan error, tapi
-tidak ada satu pun pemanggil — jadi tabel `telemetry_events`, `crash_reports`,
+tidak ada satu pun pemanggil - jadi tabel `telemetry_events`, `crash_reports`,
 `upload_queue`, `object_labels`, dan `model_manifest` tidak pernah menerima
 satu baris pun dari aplikasi.
 
@@ -29,12 +29,12 @@ async def capabilities(request: Request):
 
     Menentukan item mana yang `limited` / `disabled` di ModePickerSheet.
     Tanpa ini, satu-satunya cara mengetahui sebuah mode sedang mati adalah
-    masuk ke sana lalu gagal — dan untuk pengguna yang tidak melihat layar,
+    masuk ke sana lalu gagal - dan untuk pengguna yang tidak melihat layar,
     "masuk lalu gagal" berarti beberapa detik kebingungan di tempat yang salah.
 
     **Empat dari enam mode sekarang on-device penuh.** Deteksi Objek, Kenali
     Uang, Baca Teks, dan Navigasi berjalan sepenuhnya di ponsel, jadi
-    statusnya tidak lagi bergantung pada server ini sama sekali — dan
+    statusnya tidak lagi bergantung pada server ini sama sekali - dan
     melaporkannya `down` saat server bermasalah akan mengunci pengguna dari
     mode yang sebenarnya sehat.
     """

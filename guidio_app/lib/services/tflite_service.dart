@@ -6,8 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/detection.dart';
 import 'camera_intrinsics.dart';
+import 'luma_contrast.dart';
 
-// Label Bahasa Indonesia — kunci adalah label Inggris dari labelmap.txt
+// Label Bahasa Indonesia - kunci adalah label Inggris dari labelmap.txt
 const Map<String, String> _labelId = {
   // Orang
   'person':         'orang',
@@ -215,7 +216,7 @@ class TFLiteService {
   // Model bytes disimpan agar bisa dikirim ke isolate
   Uint8List? _modelBytes;
 
-  // Tilt correction — sudut kemiringan kamera dari accelerometer (radian)
+  // Tilt correction - sudut kemiringan kamera dari accelerometer (radian)
   double _lastTiltAngle = 0.0;
 
   /// Dipanggil CameraProvider setiap 30 frame saat orientasi di-check.
@@ -265,7 +266,7 @@ class TFLiteService {
   /// YUV→RGB dengan `setPixelRgb()` per piksel, lalu `copyResize`, lalu
   /// `copyRotate`, lalu membangun `List<List<List<List<num>>>>` berisi
   /// 270.000 angka ter-boxing. Hanya interpreter-nya yang ada di isolate;
-  /// bagian yang jauh lebih mahal justru menghalangi thread UI — dan karena
+  /// bagian yang jauh lebih mahal justru menghalangi thread UI - dan karena
   /// TTS dijadwalkan dari thread yang sama, suaralah yang ikut tersendat.
   Future<List<Detection>> runInference(CameraImage image) async {
     if (!_loaded || _isolateInterpreter == null) return [];
@@ -280,10 +281,10 @@ class TFLiteService {
     }
 
     // SSD MobileNet output 4 tensor terpisah:
-    //   tensor[0]: locations [1][10][4]   — [ymin, xmin, ymax, xmax] normalized
-    //   tensor[1]: classes   [1][10]      — class index (float)
-    //   tensor[2]: scores    [1][10]      — confidence score
-    //   tensor[3]: count     [1]          — jumlah deteksi valid
+    //   tensor[0]: locations [1][10][4]   - [ymin, xmin, ymax, xmax] normalized
+    //   tensor[1]: classes   [1][10]      - class index (float)
+    //   tensor[2]: scores    [1][10]      - confidence score
+    //   tensor[3]: count     [1]          - jumlah deteksi valid
     final outputLocations = List.generate(1, (_) => List.generate(10, (_) => List.filled(4, 0.0)));
     final outputClasses   = List.generate(1, (_) => List.filled(10, 0.0));
     final outputScores    = List.generate(1, (_) => List.filled(10, 0.0));
@@ -314,7 +315,7 @@ class TFLiteService {
   ///   classes[i]   = class index (float, bukan int)
   ///   scores[i]    = confidence score
   ///
-  /// NMS sudah dilakukan di dalam model — tidak perlu NMS manual.
+  /// NMS sudah dilakukan di dalam model - tidak perlu NMS manual.
   List<Detection> _postProcess(
     List<List<double>> locations, // [10][4]: ymin, xmin, ymax, xmax
     List<double> classes,
@@ -323,7 +324,7 @@ class TFLiteService {
   ) {
     const double confThreshold = 0.5;
     // Fokus per-perangkat, dihitung ulang dari lebar frame yang benar-benar
-    // dipakai — bukan konstanta yang mengasumsikan satu lensa untuk semua HP.
+    // dipakai - bukan konstanta yang mengasumsikan satu lensa untuk semua HP.
     final focalPx = CameraIntrinsics.instance.focalPxForUprightFrame(geo.srcW);
     final List<Detection> results = [];
 
@@ -334,7 +335,7 @@ class TFLiteService {
       if (classIdx < 0 || classIdx >= _labels.length) continue;
 
       final labelEn = _labels[classIdx];
-      // Skip entry '???' di labelmap — bukan kelas valid
+      // Skip entry '???' di labelmap - bukan kelas valid
       if (labelEn == '???') continue;
 
       final labelId = _labelId[labelEn] ?? labelEn;
@@ -347,7 +348,7 @@ class TFLiteService {
 
       // Koordinat piksel di ruang **bingkai tegak**. Karena crop-nya persegi
       // dan skalanya seragam, tinggi kotak di sini sebanding lurus dengan
-      // tinggi objek sebenarnya — syarat yang tidak dipenuhi versi lama, yang
+      // tinggi objek sebenarnya - syarat yang tidak dipenuhi versi lama, yang
       // meregangkan 640×480 menjadi 300×300 (rasio berubah) lalu memutarnya,
       // sehingga "tinggi" kotak sebenarnya mengukur lebar objek.
       final x1 = (geo.offsetX + xmin * geo.cropSide).round();
@@ -475,7 +476,7 @@ class _FrameGeometry {
   }
 }
 
-/// Argumen preprocessing — semua sudah berupa data biasa supaya bisa dikirim
+/// Argumen preprocessing - semua sudah berupa data biasa supaya bisa dikirim
 /// ke isolate lewat [compute].
 class _SsdPrepArgs {
   final Uint8List yPlane, uPlane, vPlane;
@@ -512,13 +513,23 @@ class _SsdPrepArgs {
 
 /// YUV420 → RGB langsung ke grid 300×300, dalam satu lintasan, di isolate.
 ///
-/// Rotasi 90° dan crop persegi dilakukan lewat pemetaan indeks — tidak ada
+/// Rotasi 90° dan crop persegi dilakukan lewat pemetaan indeks - tidak ada
 /// gambar antara yang dialokasikan, dan piksel yang disentuh hanya 90.000
 /// alih-alih 307.200. Hasilnya buffer datar `Uint8List` yang disalin apa
 /// adanya ke tensor uint8 (`ByteConversionUtils` memakai jalur cepat untuk
 /// `Uint8List`), jadi tidak ada 270.000 angka ter-boxing seperti sebelumnya.
 Uint8List _prepareSsdInput(_SsdPrepArgs a) {
   final out = Uint8List(_inputSize * _inputSize * 3);
+  // Perbaikan kontras selektif, sama persis dengan yang dipakai jalur navigasi.
+  //
+  // Diterapkan di sini juga, bukan cuma di `nav_frame_converter.dart`, karena
+  // dua alasan. Pertama, di Mode Navigasi model ini menerima `CameraImage`
+  // mentah lewat jalurnya sendiri; tanpa ini, PIDNet dan YOLO akan melihat
+  // frame yang diperbaiki sementara lapis COCO melihat yang berkabut, dan
+  // ketiganya berhenti menggambarkan gambar yang sama. Kedua, Mode Deteksi
+  // Objek memakai jalur ini juga - dan di sana perbaikannya justru paling
+  // terasa, karena model COCO cukup sehat untuk memanfaatkannya.
+  final stretch = measureLumaStretch(a.yPlane);
   final yLen = a.yPlane.length;
   final uLen = a.uPlane.length;
   final vLen = a.vPlane.length;
@@ -541,9 +552,19 @@ Uint8List _prepareSsdInput(_SsdPrepArgs a) {
       final uVal = (uvIdx >= 0 && uvIdx < uLen ? a.uPlane[uvIdx] : 128) - 128;
       final vVal = (uvIdx >= 0 && uvIdx < vLen ? a.vPlane[uvIdx] : 128) - 128;
 
-      out[o++] = (yVal + 1.402 * vVal).clamp(0, 255).toInt();
-      out[o++] = (yVal - 0.344136 * uVal - 0.714136 * vVal).clamp(0, 255).toInt();
-      out[o++] = (yVal + 1.772 * uVal).clamp(0, 255).toInt();
+      final r = yVal + 1.402 * vVal;
+      final g = yVal - 0.344136 * uVal - 0.714136 * vVal;
+      final b = yVal + 1.772 * uVal;
+
+      if (stretch == null) {
+        out[o++] = r.clamp(0, 255).toInt();
+        out[o++] = g.clamp(0, 255).toInt();
+        out[o++] = b.clamp(0, 255).toInt();
+      } else {
+        out[o++] = ((r - stretch.lo) * stretch.gain).clamp(0, 255).toInt();
+        out[o++] = ((g - stretch.lo) * stretch.gain).clamp(0, 255).toInt();
+        out[o++] = ((b - stretch.lo) * stretch.gain).clamp(0, 255).toInt();
+      }
     }
   }
   return out;

@@ -1,10 +1,10 @@
-"""Mode Kenali Uang — endpoint server OPSIONAL.
+"""Mode Kenali Uang - endpoint server OPSIONAL.
 
 Jalur utama fitur ini ada di perangkat (.tflite MobileNetV2, 6 kelas emisi
 2016) dan TIDAK pernah memanggil endpoint ini. Yang di sini hanya cadangan
 untuk pembanding akurasi dan pengujian dari alat lain (curl/Postman).
 
-Kalau model server belum ada, balasannya jujur `model_unavailable` — tidak
+Kalau model server belum ada, balasannya jujur `model_unavailable` - tidak
 pernah menebak nominal.
 """
 

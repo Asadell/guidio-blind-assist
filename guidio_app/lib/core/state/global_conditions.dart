@@ -8,7 +8,7 @@ import '../../widgets/tier_icon.dart' show AlertTier;
 
 /// Satu kondisi global aktif (offline, baterai kritis, penyimpanan penuh,
 /// ponsel panas). Storage dan thermal tidak punya sensor resmi yang murah di
-/// Flutter — keduanya dipicu manual lewat [setStorageLow] / [setDeviceHot]
+/// Flutter - keduanya dipicu manual lewat [setStorageLow] / [setDeviceHot]
 /// (mis. dari panel debug atau pengukuran kasar), sesuai bagian 2 dokumen:
 /// "boleh dipalsukan" untuk hal yang bukan inti keselamatan.
 class _Condition {
@@ -18,7 +18,7 @@ class _Condition {
   const _Condition(this.id, this.tier, this.label);
 }
 
-/// Hasil StatusBanner setelah kondisi digabung — bagian 5.7 & 13.
+/// Hasil StatusBanner setelah kondisi digabung - bagian 5.7 & 13.
 class MergedBanner {
   final AlertTier tier;
   final String message;
@@ -27,7 +27,7 @@ class MergedBanner {
   const MergedBanner({required this.tier, required this.message, this.sub, this.actionLabel});
 }
 
-/// GlobalConditions — penggabungan StatusBanner sesuai bagian 4 & 13.
+/// GlobalConditions - penggabungan StatusBanner sesuai bagian 4 & 13.
 /// Maksimum SATU banner di layar. 1 kondisi → pesan+sub. 2 kondisi →
 /// digabung satu kalimat. 3+ kondisi → dua disebut, sisanya "dan N masalah
 /// lain" + aksi "Lihat semua".
@@ -50,7 +50,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
   /// Ini kasus paling umum saat demo: ponsel tersambung WiFi sementara laptop
   /// backend mati, IP-nya berubah, atau firewall menutup port. Kondisi lama
   /// hanya membaca `ConnectivityResult.none`, jadi keadaan ini **tidak pernah
-  /// terdeteksi** — ModePickerSheet menampilkan semua mode sehat, lalu Cari
+  /// terdeteksi** - ModePickerSheet menampilkan semua mode sehat, lalu Cari
   /// Objek gagal saat ditekan.
   bool get isServerUnreachable => _serverUnreachable;
 
@@ -61,7 +61,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
   int? get batteryPercent => _batteryPercent;
 
   /// Ambang dokumen: <10%. Versi kode lama memakai <15% **dan** tier Critical,
-  /// sehingga banner baterai bisa menyingkirkan banner kamera error — padahal
+  /// sehingga banner baterai bisa menyingkirkan banner kamera error - padahal
   /// kamera error jauh lebih menentukan keselamatan.
   bool get isBatteryCritical => (_batteryPercent ?? 100) < 10;
   bool get isStorageLow => _storageLow;
@@ -122,7 +122,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (_) {
-      // Platform tanpa dukungan battery_plus (mis. desktop web debug) — abaikan.
+      // Platform tanpa dukungan battery_plus (mis. desktop web debug) - abaikan.
     }
   }
 
@@ -144,7 +144,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
         if (_cameraError)
           const _Condition('camera', AlertTier.critical, 'Kamera bermasalah'),
         if (_offline) const _Condition('offline', AlertTier.warning, 'Tanpa internet'),
-        // Dibedakan dari offline: tindakan pengguna berikutnya berbeda —
+        // Dibedakan dari offline: tindakan pengguna berikutnya berbeda -
         // menyalakan data seluler, atau memeriksa server.
         if (!_offline && _serverUnreachable)
           const _Condition('server', AlertTier.info, 'Server tidak terhubung'),
@@ -155,7 +155,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
       ];
 
   /// null = tidak ada banner. Urutan penyebutan: baterai/critical dulu, baru
-  /// yang lain — "sebut yang masih hidup dulu, baru yang mati" (bagian 17)
+  /// yang lain - "sebut yang masih hidup dulu, baru yang mati" (bagian 17)
   /// diterjemahkan di layar mode masing-masing; di sini tier tertinggi yang
   /// menentukan urutan tampil.
   MergedBanner? get merged {

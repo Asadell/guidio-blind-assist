@@ -9,11 +9,11 @@ import '../widgets/index.dart';
 import 'onboarding_screen.dart';
 import 'server_address_screen.dart';
 
-/// PG-01..PG-11 — delapan pengaturan, urutan baku (bagian 13).
+/// PG-01..PG-11 - delapan pengaturan, urutan baku (bagian 13).
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  /// PG-11 — penyimpanan penuh. Kartu error tetap di atas karena perannya
+  /// PG-11 - penyimpanan penuh. Kartu error tetap di atas karena perannya
   /// memberi tahu, tapi aksinya **diulang di dasar layar**: aksi yang hanya
   /// ada di kartu atas memaksa pengguna low vision menjangkau zona merah.
   Future<void> _manageStorage() async {
@@ -129,7 +129,7 @@ class SettingsScreen extends StatelessWidget {
               child: const Text('Mulai panduan'),
             ),
           ),
-          // PG-08 — halaman kontrol sendiri, bukan kontrol inline. Aksinya
+          // PG-08 - halaman kontrol sendiri, bukan kontrol inline. Aksinya
           // ("Uji koneksi" / "Simpan alamat") butuh `zone/page-action`, dan
           // zona itu tidak bisa hadir di tengah daftar.
           _SettingsRow(
@@ -145,10 +145,10 @@ class SettingsScreen extends StatelessWidget {
         ],
       );
 
-    // PG-11 — selama penyimpanan penuh, aksinya diulang di `zone/page-action`
+    // PG-11 - selama penyimpanan penuh, aksinya diulang di `zone/page-action`
     // supaya terjangkau tanpa menggulung dan tanpa menjangkau kartu di atas.
     // Di luar kondisi itu Pengaturan tidak punya aksi halaman, jadi tidak ada
-    // zona aksi sama sekali — daftar boleh memenuhi layar.
+    // zona aksi sama sekali - daftar boleh memenuhi layar.
     if (storageLow) {
       return PageActionScaffold(
         backgroundColor: AppColors.surfaceMuted,
@@ -186,7 +186,7 @@ class SettingsScreen extends StatelessWidget {
       };
 }
 
-/// PG-11 — kartu error penyimpanan penuh. Tetap di atas: perannya memberi
+/// PG-11 - kartu error penyimpanan penuh. Tetap di atas: perannya memberi
 /// tahu, dan pemberitahuan harus terbaca lebih dulu. Aksinya diulang di
 /// `zone/page-action` oleh [SettingsScreen], bukan hanya ada di sini.
 class _StorageFullCard extends StatelessWidget {
