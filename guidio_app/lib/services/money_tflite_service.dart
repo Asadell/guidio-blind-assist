@@ -64,6 +64,40 @@ class MoneyTFLiteService {
   /// alat bantu uang.
   static const double confidenceThreshold = 0.85;
 
+  // ── Gerbang kedua: MARGIN ke juara dua ──────────────────────────────────
+  //
+  // Keyakinan sendirian ternyata gerbang yang salah untuk model ini, dan
+  // datanya ada di `test/money_pipeline_test.dart`:
+  //
+  //     fixture   benar?  keyakinan   margin
+  //     5rb          ya       90,6%     87,6
+  //     10rb         ya       82,0%     71,0
+  //     20rb         ya       64,7%     55,2
+  //     5000       TIDAK      42,6%     23,1
+  //     10000      TIDAK      35,6%      2,2
+  //
+  // Keyakinan memisahkan dengan buruk: `10rb` yang BENAR dan unggul 71 poin
+  // atas juara dua tetap ditolak, sementara `5000` yang SALAH cuma 42 poin di
+  // bawah gerbang. Margin memisahkan bersih di angka 40: ketiga jawaban benar
+  // punya margin di atas 55, kedua jawaban salah di bawah 24.
+  //
+  // Sebabnya softmax model ini tidak terkalibrasi - probabilitasnya rendah di
+  // semua kelas sekaligus. Yang tetap bisa dipercaya adalah SELISIHNYA: model
+  // yang benar-benar mengenali satu pecahan meninggalkan juara dua jauh di
+  // belakang, model yang menebak meninggalkannya berdempetan.
+  //
+  // Menurunkan `confidenceThreshold` saja akan meloloskan `5000` yang salah,
+  // dan menyebut nominal keliru kepada orang yang tidak bisa memeriksanya
+  // sendiri berarti kerugian uang nyata. Dua gerbang ini menaikkan yang lolos
+  // dari 1 dari 5 menjadi 3 dari 5 TANPA satu pun jawaban salah ikut lolos.
+
+  /// Selisih minimum antara juara satu dan juara dua.
+  static const double marginThreshold = 0.40;
+
+  /// Keyakinan minimum yang tetap wajib dipenuhi walau marginnya lebar.
+  /// Menjaga kasus "semua kelas rendah tapi satu kebetulan menonjol".
+  static const double marginPathMinConfidence = 0.55;
+
   /// Urutan kelas sesuai `idx_to_class` di
   /// `assets/models/rupiah_class_info.json`, yang ikut diturunkan bersama
   /// model - sudah dicocokkan indeks per indeks, **jangan diubah**.
@@ -201,12 +235,24 @@ class MoneyTFLiteService {
     }
     final confidence = probs[bestIndex];
 
+    // Margin ke juara dua. Lihat catatan panjang di [marginThreshold].
+    var runnerUp = 0.0;
+    for (var i = 0; i < probs.length; i++) {
+      if (i != bestIndex && probs[i] > runnerUp) runnerUp = probs[i];
+    }
+    final margin = confidence - runnerUp;
+
+    final passesConfidence = confidence >= confidenceThreshold;
+    final passesMargin =
+        margin >= marginThreshold && confidence >= marginPathMinConfidence;
+
     // UG-06 - ragu: nominal TIDAK ditampilkan, hanya instruksi perbaikan.
-    if (confidence < confidenceThreshold) {
+    if (!passesConfidence && !passesMargin) {
       return MoneyResult.uncertain(
         confidence,
         topValueIdr: classValues[bestIndex],
         probabilities: List.unmodifiable(probs),
+        margin: margin,
       );
     }
     return MoneyResult.detected(
@@ -242,6 +288,9 @@ class MoneyResult {
   /// bekerja dari model yang sedang menebak di antara 7 kelas.
   final List<double>? probabilities;
 
+  /// Selisih probabilitas juara satu ke juara dua. Null kalau tidak dihitung.
+  final double? margin;
+
   const MoneyResult.detected({
     required int this.valueIdr,
     required this.confidence,
@@ -249,12 +298,22 @@ class MoneyResult {
   })  : detected = true,
         failure = null,
         message = null,
+        margin = null,
         topValueIdr = valueIdr;
 
+  /// Ragu, dengan [margin] ke juara dua supaya lapisan atas bisa memilih
+  /// instruksi yang tepat.
+  ///
+  /// Bedanya nyata bagi pengguna: margin sempit berarti model bimbang antara
+  /// dua pecahan dan yang dibutuhkan adalah sudut atau cahaya yang berbeda;
+  /// keyakinan rendah merata berarti yang terlihat mungkin bukan uang sama
+  /// sekali. Menyuruh "dekatkan dan tahan diam" untuk kedua-duanya membuat
+  /// pengguna mengulang gerakan yang sama sampai menyerah.
   const MoneyResult.uncertain(
     this.confidence, {
     this.topValueIdr,
     this.probabilities,
+    this.margin,
   })  : detected = false,
         valueIdr = null,
         failure = MoneyFailure.lowConfidence,
@@ -266,6 +325,7 @@ class MoneyResult {
         confidence = 0,
         topValueIdr = null,
         probabilities = null,
+        margin = null,
         failure = MoneyFailure.modelUnavailable,
         message = 'Model pengenalan uang belum siap.';
 
@@ -275,6 +335,7 @@ class MoneyResult {
         confidence = 0,
         topValueIdr = null,
         probabilities = null,
+        margin = null,
         failure = MoneyFailure.error;
 }
 

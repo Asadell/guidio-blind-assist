@@ -347,7 +347,19 @@ void main() {
                 '  Distribusi: ${r.distribution}');
       });
 
-      test('${fx.label} → keyakinan harus tembus ambang produksi', () async {
+      // Yang diuji: apakah nominalnya BENAR-BENAR sampai ke pengguna.
+      //
+      // Sebelumnya tes ini membandingkan `confidence` mentah dengan
+      // `confidenceThreshold`. Itu berhenti mengukur produksi begitu gerbang
+      // kedua berbasis margin ditambahkan: `10rb` dan `20rb` sekarang lolos
+      // lewat margin, diucapkan ke pengguna, tapi tesnya tetap merah karena
+      // keyakinannya di bawah 0,85.
+      //
+      // Tes yang mengukur ambang, bukan hasil, akan memaksa orang berikutnya
+      // memilih antara melonggarkan gerbang atau mengabaikan tesnya. Yang
+      // benar adalah menguji `detected`, karena itulah yang menentukan apakah
+      // mode ini berfungsi bagi penggunanya.
+      test('${fx.label} → nominalnya benar-benar diucapkan ke pengguna', () async {
         if (!modelLoaded) {
           markTestSkipped('Model TFLite tidak termuat.');
           return;
@@ -357,11 +369,14 @@ void main() {
         final r = _Reading(
             fx, await svc.classifyCameraImage(_toCameraImage(decoded)));
 
-        expect(r.result.confidence,
-            greaterThanOrEqualTo(MoneyTFLiteService.confidenceThreshold),
-            reason: '${fx.label}: keyakinan hanya '
-                '${(r.result.confidence * 100).toStringAsFixed(1)}% '
-                '(ambang ${(MoneyTFLiteService.confidenceThreshold * 100).toStringAsFixed(0)}%, '
+        final margin = r.result.margin;
+        expect(r.result.detected, isTrue,
+            reason: '${fx.label}: keyakinan '
+                '${(r.result.confidence * 100).toStringAsFixed(1)}%'
+                '${margin == null ? "" : ", margin ${(margin * 100).toStringAsFixed(1)} poin"} '
+                '(gerbang: keyakinan >= ${(MoneyTFLiteService.confidenceThreshold * 100).toStringAsFixed(0)}% '
+                'ATAU margin >= ${(MoneyTFLiteService.marginThreshold * 100).toStringAsFixed(0)} poin '
+                'dengan keyakinan >= ${(MoneyTFLiteService.marginPathMinConfidence * 100).toStringAsFixed(0)}%; '
                 'chance level ${(_chance * 100).toStringAsFixed(1)}%). '
                 'Aplikasi akan bilang "belum yakin" dan tidak pernah '
                 'menyebutkan nominal - mode Kenali Uang praktis tidak berfungsi.\n'

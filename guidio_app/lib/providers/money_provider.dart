@@ -266,16 +266,54 @@ class MoneyProvider extends ChangeNotifier {
 
     final result = _latestResult;
     if (result == null || !result.detected || result.valueIdr == null) {
-      // Tidak ada uang di frame saat ini - beri tahu user.
-      final msg = (result?.failure == MoneyFailure.lowConfidence)
-          ? 'Belum yakin, dekatkan sedikit dan tahan diam.'
-          : 'Tidak ada uang terdeteksi. Arahkan kamera ke uang.';
-      _speak(msg, tier: SpeechTier.warning);
+      _speak(_uncertainAdvice(result), tier: SpeechTier.warning);
       return;
     }
 
     // Ada uang - masuk ke alur deteksi normal (session tracking + TTS).
     _enterDetected(result.valueIdr!);
+  }
+
+  /// Instruksi saat nominal tidak bisa dipastikan.
+  ///
+  /// Dibedakan menurut BENTUK keraguannya, bukan satu kalimat untuk semua.
+  /// Kalimat tunggal "belum yakin, dekatkan dan tahan diam" adalah keluhan
+  /// nyata dari uji lapangan: pengguna mengulang gerakan yang sama berkali
+  /// kali karena aplikasi tidak pernah memberi tahu apa yang sebenarnya salah.
+  ///
+  /// Tiga bentuk yang bisa dibedakan dari keluaran model:
+  ///
+  /// - **Margin sempit, keyakinan lumayan.** Model bimbang antara dua pecahan
+  ///   yang mirip. Mengulang dari sudut yang sama tidak akan menolong; yang
+  ///   dibutuhkan sudut atau cahaya yang berbeda.
+  /// - **Keyakinan rendah merata.** Yang terlihat mungkin bukan uang.
+  /// - **Belum ada hasil sama sekali.** Kamera baru menyala atau menghadap
+  ///   ke tempat lain.
+  String _uncertainAdvice(MoneyResult? result) {
+    if (result == null) {
+      return 'Belum ada yang terbaca. Arahkan kamera ke uang, lalu tekan lagi.';
+    }
+    if (result.failure == MoneyFailure.modelUnavailable) {
+      return 'Pengenalan uang tidak tersedia saat ini.';
+    }
+    if (result.failure != MoneyFailure.lowConfidence) {
+      return 'Tidak ada uang yang terlihat. Arahkan kamera ke uang, '
+          'lalu tekan lagi.';
+    }
+
+    final margin = result.margin;
+    if (margin != null && margin < 0.15) {
+      // Dua pecahan berdempetan. Ini yang paling sering terjadi pada lembar
+      // yang terlipat atau tertutup bayangan.
+      return 'Masih tertukar antara dua pecahan. Bentangkan uangnya, '
+          'lalu coba dari sudut yang sedikit berbeda.';
+    }
+    if (result.confidence < 0.35) {
+      return 'Yang terlihat sepertinya bukan uang. Pastikan seluruh lembar '
+          'masuk bingkai.';
+    }
+    return 'Hampir terbaca. Tahan diam sebentar, pastikan tidak ada bayangan '
+        'di atas uangnya.';
   }
 
   void _startHintRotation() {
