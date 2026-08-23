@@ -34,9 +34,15 @@ class OcrDebugEntry {
 }
 
 /// Katalog lengkap 22 state, urut sesuai bagian 8 dokumen.
+// BT-02 (idle offline) dan BT-14 (gagal server) dihapus dari katalog.
+//
+// Keduanya memodelkan kondisi yang tidak mungkin lagi terjadi: pengenalan teks
+// berjalan sepenuhnya di perangkat lewat ML Kit, jadi tidak ada jaringan yang
+// bisa memutus dan tidak ada server yang bisa gagal. Menyimpan tombol debug
+// yang memaksa state mustahil hanya membuat penguji melaporkan "bug" yang
+// sebenarnya adalah simulasinya sendiri.
 const List<OcrDebugEntry> ocrDebugCatalog = [
   OcrDebugEntry('BT-01', 'Idle', 'Tombol utama aktif, busur panduan'),
-  OcrDebugEntry('BT-02', 'Idle offline', 'Tombol utama nonaktif + Baca judul saja'),
   OcrDebugEntry('BT-03', 'Menjepret', 'Kilat + getar + pill "Gambar diambil"'),
   OcrDebugEntry('BT-04', 'Memproses', 'Panel loading, tinggi dipesan penuh'),
   OcrDebugEntry('BT-05', 'Mendekati timeout', 'Banner + hitungan mono + Batalkan'),
@@ -49,7 +55,6 @@ const List<OcrDebugEntry> ocrDebugCatalog = [
   OcrDebugEntry('BT-12a', 'Dijeda', 'Kalimat aktif ditandai, tombol jadi Lanjut'),
   OcrDebugEntry('BT-12b', 'Selesai dibacakan', 'Eyebrow Aman, disimpan 15 menit'),
   OcrDebugEntry('BT-13', 'Gagal offline', 'Panel warning, gambar masuk antrean'),
-  OcrDebugEntry('BT-14', 'Gagal server', 'Banner critical, bukan karena gambarmu'),
   OcrDebugEntry('BT-15', 'Gagal timeout', 'Panel gagal, foto tetap tersimpan'),
   OcrDebugEntry('BT-16', 'Lanjut ke Asisten', 'Pindah mode dengan pill konteks'),
   OcrDebugEntry('BT-17', 'Izin kamera belum ada', 'PermissionCard'),
