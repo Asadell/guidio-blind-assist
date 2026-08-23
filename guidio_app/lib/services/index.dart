@@ -8,4 +8,5 @@ export 'camera_capture_service.dart';
 export 'haptic_service.dart';
 export 'pidnet_service.dart';
 export 'yolo_navigasi_service.dart';
+export 'yolo_nav_int8_service.dart';
 export 'nav_frame_converter.dart';

@@ -12,6 +12,7 @@ import '../services/device_pace_watch.dart';
 import '../services/nav_obstacle_merger.dart';
 import '../services/pidnet_service.dart';
 import '../services/tflite_service.dart';
+import '../services/yolo_nav_int8_service.dart';
 import '../services/yolo_navigasi_service.dart';
 import '../widgets/segmentation_overlay.dart' show maskToImage;
 import '../widgets/zone_indicator.dart' show ZoneStatus;
@@ -267,7 +268,14 @@ class NavigationProvider extends ChangeNotifier {
   bool _cocoReady = false;
   bool get cocoReady => _cocoReady;
 
-  /// Muat PIDNet + YOLO + SSD MobileNet COCO secara paralel di background.
+  /// True kalau lapis keempat (YOLO INT8, yolo11n.tflite) ikut hidup.
+  ///
+  /// Model ini terbukti lebih kuat mendeteksi `tiang` dibanding model FP16
+  /// utama. Bersifat optional: jika gagal dimuat mode tetap aktif penuh.
+  bool _int8Ready = false;
+  bool get int8Ready => _int8Ready;
+
+  /// Muat PIDNet + YOLO FP16 + YOLO INT8 + SSD MobileNet COCO secara paralel.
   Future<void> _loadOnDeviceModels() async {
     _modelsLoading = true;
     debugPrint('[Nav] Memuat model on-device...');
@@ -282,17 +290,21 @@ class NavigationProvider extends ChangeNotifier {
       TFLiteService.instance.isLoaded
           ? Future.value(true)
           : TFLiteService.instance.tryLoad(),
+      // Lapis keempat: YOLO INT8 (yolo11n.tflite). Terbukti lebih akurat
+      // untuk `tiang` dibanding model FP16. Optional - gagal muat tidak
+      // menjatuhkan mode.
+      YoloNavInt8Service.instance.tryLoad(),
     ]);
 
     _modelsLoading = false;
 
-    // Lapis ketiga sengaja TIDAK ikut menentukan `_modelsReady`.
+    // Lapis ketiga dan keempat sengaja TIDAK ikut menentukan `_modelsReady`.
     //
-    // Ia menambah cakupan, bukan menopang mode ini. Kalau SSD gagal dimuat,
-    // panduan jalur dan enam kelas bahaya custom tetap berjalan penuh, dan
-    // menjatuhkan seluruh mode karena lapisan tambahan gagal akan menukar
-    // fungsi yang masih sehat dengan layar mati.
+    // Keduanya menambah cakupan, bukan menopang mode ini. Kalau SSD atau
+    // YOLO INT8 gagal dimuat, panduan jalur dan enam kelas bahaya custom
+    // tetap berjalan penuh.
     _cocoReady = results[2];
+    _int8Ready  = results[3];
     _modelsReady = results[0] && results[1];
 
     if (!_modelsReady) {
@@ -309,8 +321,9 @@ class NavigationProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint('[Nav] Model on-device siap. PIDNet + YOLO'
-        '${_cocoReady ? " + SSD COCO" : " (SSD COCO tidak tersedia)"} aktif.');
+    debugPrint('[Nav] Model on-device siap. PIDNet + YOLO FP16'
+        '${_int8Ready ? " + YOLO INT8" : ""}'
+        '${_cocoReady ? " + SSD COCO" : ""} aktif.');
     _speak('Panduan jalur aktif.', tier: SpeechTier.info);
     notifyListeners();
     _startLoop();
@@ -394,8 +407,18 @@ class NavigationProvider extends ChangeNotifier {
           tensors.uprightWidth,
           tensors.uprightHeight,
         ),
-        if (_cocoReady && !_pace.cocoDropped)
+        if (_cocoReady)
           TFLiteService.instance.runInference(frame)
+        else
+          Future.value(const <Detection>[]),
+        // Lapis keempat: YOLO INT8 memakai tensor NHWC yang sama dengan
+        // model FP16 (ditranspose ke NCHW di dalam service).
+        if (_int8Ready)
+          YoloNavInt8Service.instance.detect(
+            tensors.yolo,
+            tensors.uprightWidth,
+            tensors.uprightHeight,
+          )
         else
           Future.value(const <Detection>[]),
       ]);
@@ -403,13 +426,15 @@ class NavigationProvider extends ChangeNotifier {
       final zoneAnalysis = results[0] as ZoneAnalysis?;
       final custom       = results[1] as List<Detection>;
       final coco         = results[2] as List<Detection>;
+      final int8         = results[3] as List<Detection>;
 
       if (zoneAnalysis == null) return;
 
-      // Digabung SEBELUM masuk ke penyusun arahan, supaya aturan prioritas
-      // yang sudah ada (critical dulu, lalu warning, baru arahan zona) berlaku
-      // untuk kedua sumber tanpa perlu diduplikasi.
-      final obstacles = mergeNavObstacles(custom, coco);
+      // Gabung semua sumber: custom FP16 + YOLO INT8 + COCO.
+      // YOLO INT8 digabung dulu ke custom (label setara, IoU-dedup),
+      // baru hasilnya digabung dengan COCO.
+      final customPlusInt8 = mergeNavObstacles(custom, int8);
+      final obstacles      = mergeNavObstacles(customPlusInt8, coco);
 
       _consecutiveFailures = 0;
       _applyOnDeviceResult(zoneAnalysis, obstacles);
