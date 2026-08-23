@@ -50,20 +50,22 @@ void showModePickerSheet(BuildContext context) {
 
 /// Mode yang muncul sebagai pilihan di lembar ini.
 ///
-/// **Asisten Suara sengaja TIDAK ikut.** Ia sudah punya pintu masuk yang jauh
-/// lebih cepat dan selalu ada di tempat yang sama: tombol Bicara di tengah bar
-/// bawah, satu ketukan dari mode mana pun. Menampilkannya lagi di sini berarti
-/// dua jalan menuju hal yang sama, dan yang lewat lembar ini justru dua langkah
-/// lebih panjang.
+/// Keenam-enamnya ikut, termasuk Deskripsi Suasana.
 ///
-/// Modenya sendiri tidak dihapus: `AppMode.voice` tetap ada, tetap bisa dicapai
-/// lewat perintah suara ("asisten", "tanya"), dan tetap jadi tujuan `goBack`.
-/// Yang dihapus cuma barisnya di daftar pilihan.
+/// Ia sempat dikeluarkan dengan alasan tombol Bicara di tengah sudah jadi
+/// pintu masuknya. Alasan itu tidak berlaku lagi setelah tombol Bicara dan
+/// mode ini dipisah perannya: mic mengurus perintah suara, sedangkan tombol
+/// kiri di mode ini mengirim foto ke VLM. Dua hal yang berbeda, jadi modenya
+/// perlu pintu masuk sendiri.
+///
+/// Urutannya mengikuti seberapa sering dipakai sambil berjalan, bukan urutan
+/// deklarasi enum.
 const List<AppMode> _pickableModes = [
   AppMode.tuntun,
   AppMode.navigasi,
   AppMode.money,
   AppMode.ocr,
+  AppMode.voice,
   AppMode.findObject,
 ];
 

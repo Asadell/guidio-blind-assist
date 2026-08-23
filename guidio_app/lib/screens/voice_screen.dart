@@ -86,12 +86,17 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
         return next;
       };
 
-      // Sebagai MODE (bukan overlay), aksi utamanya adalah mengulang jawaban.
-      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa -
+      // Sebagai MODE (bukan overlay), aksi utamanya mendeskripsikan suasana -
+      // sama persis dengan tombol kiri, mengikuti kontrak "jepret lewat suara
+      // = menekan tombol kiri".
+      //
+      // Sebagai OVERLAY, handler mode di bawahnya sengaja TIDAK ditimpa:
       // "jepret" saat mic terbuka harus menjalankan aksi mode aslinya.
       if (!widget.isOverlay) {
-        voice.onPrimaryAction = _repeatLastAnswer;
-        voice.primaryActionLabel = () => 'mengulang jawaban';
+        voice.onPrimaryAction = _describeScene;
+        voice.primaryActionLabel = () => 'mendeskripsikan suasana';
+        // "ulangi" tetap mengulang jawaban. Perintah itu punya arti sendiri
+        // yang tidak tergantikan tombol mana pun.
         voice.onRepeatLast = _repeatLastAnswer;
       }
 
@@ -324,38 +329,44 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
 
           Positioned(
             left: 0, right: 0, bottom: 0,
+            // Tombol kiri di mode ini = KIRIM foto ke VLM.
+            //
+            // Inilah hal utama mode ini, jadi ia yang menempati tombol kiri,
+            // sesuai kontrak "tombol kiri melakukan hal utama mode ini".
+            // Deskripsi TIDAK berjalan otomatis saat masuk mode: tiap
+            // panggilan mengunggah satu foto sekitar pengguna dan membangunkan
+            // Moondream2, dan itu tidak boleh terjadi hanya karena seseorang
+            // salah membuka mode.
+            //
+            // Slot "Kembali" yang dulu menumpang di atas bar tetap tidak
+            // dikembalikan: ia menggeser posisi tombol kiri dan tengah,
+            // padahal kekekalan posisi tiga tombol itu satu-satunya peta yang
+            // dimiliki pengguna yang tidak melihat layar. Keluar dari mode ini
+            // lewat tombol Pilih mode di kanan, sama seperti mode lain.
             child: BottomActionBar(
-              cameraLabel: 'Ulangi jawaban',
-              onCameraPressed: _repeatLastAnswer,
-              cameraEnabled: voice.response.isNotEmpty,
-              cameraDisabledReason: 'belum ada jawaban',
+              cameraLabel: 'Deskripsikan',
+              cameraIcon: Icons.image_search_rounded,
+              onCameraPressed: _describeScene,
+              cameraEnabled: !voice.isProcessing,
+              cameraDisabledReason: 'sedang memproses',
               onMicPressed: _onMicPressed,
               micEnabled: _hasMicPermission,
               listeningOverride: voice.isListening,
               processingOverride: voice.isProcessing,
             ),
           ),
-
-          // ContextualActionSlot "Kembali" - hanya saat overlay push.
-          // Posisi konsisten dengan slot lampu di TuntunScreen (tepat di atas
-          // BottomActionBar) - pengguna terbiasa dengan lokasi yang sama.
-          if (widget.isOverlay)
-            Positioned(
-              left: 0, right: 0,
-              bottom: bottomInset + AppSizes.bottomActionBarHeight,
-              child: ContextualActionSlot(
-                primaryLabel: 'Kembali',
-                primaryIcon: Icons.arrow_back_rounded,
-                onPrimary: () async {
-                  final nav = Navigator.of(context);
-                  context.read<TtsProvider>().speak('Kembali.', tier: SpeechTier.info);
-                  nav.pop();
-                },
-              ),
-            ),
         ],
       ),
     );
+  }
+
+  /// Kirim foto sekarang ke VLM di server, lalu bacakan hasilnya.
+  ///
+  /// Sama persis dengan perintah suara "deskripsikan", mengikuti kontrak
+  /// "jepret lewat suara = menekan tombol kiri". Satu jalur, dua cara
+  /// memicunya, jadi keduanya tidak pernah berbeda perilaku.
+  void _describeScene() {
+    context.read<VoiceProvider>().describeSceneNow();
   }
 
   Widget? _resolveBanner(GlobalConditionsProvider global) {
@@ -452,9 +463,25 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       );
     }
 
+    // HANYA giliran terakhir yang ditampilkan.
+    //
+    // Transkrip berjalan adalah pola dari aplikasi obrolan, dan di sini ia
+    // salah tempat. Pengguna aplikasi ini tidak sedang membaca percakapan; ia
+    // baru saja mengucapkan satu perintah dan ingin tahu satu hal: apa yang
+    // ditangkap, dan apa jawabannya. Menumpuk enam giliran sebelumnya
+    // membuat yang paling baru terdorong ke bawah, dan untuk pengguna low
+    // vision yang memakai ukuran teks besar, jawaban yang barusan justru
+    // yang pertama keluar layar.
+    //
+    // Riwayat di provider TIDAK dihapus: `checkAndExpireHistory` dan perintah
+    // "ulangi" masih memakainya. Yang berubah cuma berapa banyak yang
+    // digambar.
     final history = voice.history;
-    final recent = history.length > 8 ? history.sublist(history.length - 6) : history;
-    final summarizedCount = history.length - recent.length;
+    if (history.isEmpty) return const SizedBox.shrink();
+
+    final lastUser = history.lastWhere((t) => t.isUser, orElse: () => history.last);
+    final lastReply = history.lastWhere((t) => !t.isUser, orElse: () => history.last);
+    final replyIsNewer = history.lastIndexOf(lastReply) > history.lastIndexOf(lastUser);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -463,19 +490,21 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (summarizedCount > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.s3),
-              child: Text('$summarizedCount giliran sebelumnya diringkas. Ucapkan "ulangi" untuk dengar lagi.',
-                  style: AppTypography.caption()),
-            ),
           ChatTranscript(
             turns: [
-              for (var i = 0; i < recent.length; i++)
+              // Ucapan pengguna tetap ditampilkan, karena itu satu-satunya
+              // cara ia memeriksa apakah suaranya tertangkap dengan benar.
+              // Kalau yang terdengar meleset, di sinilah kelihatannya.
+              ChatBubble(
+                speaker: ChatSpeaker.user,
+                text: lastUser.text,
+                isLatest: false,
+              ),
+              if (replyIsNewer)
                 ChatBubble(
-                  speaker: recent[i].isUser ? ChatSpeaker.user : ChatSpeaker.vinara,
-                  text: recent[i].text,
-                  isLatest: i == recent.length - 1 && !recent[i].isUser,
+                  speaker: ChatSpeaker.vinara,
+                  text: lastReply.text,
+                  isLatest: true,
                 ),
             ],
           ),
@@ -526,8 +555,9 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
   }
 
   Widget _bubblePanel(double bottomInset, Widget child) {
-    // Geser ke atas jika overlay: ContextualActionSlot 'Kembali' ada di bawah.
-    final slotExtra = widget.isOverlay ? ContextualActionSlot.slotHeight : 0.0;
+    // Slot 'Kembali' sudah dihapus, jadi tidak ada lagi yang menumpang di atas
+    // BottomActionBar dan tidak ada yang perlu digeser.
+    const slotExtra = 0.0;
     return Positioned(
       left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
       bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2 + slotExtra,
