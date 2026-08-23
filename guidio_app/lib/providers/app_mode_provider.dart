@@ -48,7 +48,17 @@ extension AppModeLabel on AppMode {
         AppMode.tuntun     => false, // SSD MobileNet TFLite, sepenuhnya on-device
         AppMode.money      => false, // MobileNetV2 TFLite, sepenuhnya on-device
         AppMode.ocr        => false, // ML Kit on-device - jalan penuh offline
-        AppMode.navigasi   => true,  // PIDNet on-device jadi jalur utama; server hanya cadangan
+        // Navigasi TIDAK butuh server sama sekali. Tiga model TFLite berjalan
+        // di ponsel: PIDNet-S, YOLO11n custom, dan SSD MobileNet COCO.
+        //
+        // Nilai ini pernah `true` dengan alasan "server hanya cadangan",
+        // padahal cadangan itu sudah dihapus: `navigasi.router` tidak lagi
+        // didaftarkan di backend, dan `segmentasiJalur()` sudah dibuang dari
+        // ServerService. Yang tersisa cuma akibatnya di layar - lembar Pilih
+        // Mode menandai Navigasi "Tanpa internet: sebagian fitur mati" untuk
+        // mode yang sebenarnya berjalan penuh tanpa jaringan, lalu pengguna
+        // yang percaya berhenti memakainya justru saat ia paling dibutuhkan.
+        AppMode.navigasi   => false,
         AppMode.voice      => true,  // butuh server untuk describe; intent parsing lokal, tanpa LLM
         AppMode.findObject => true,  // YOLOE open-vocab hanya ada di server
       };

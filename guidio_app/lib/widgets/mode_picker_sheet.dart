@@ -26,10 +26,46 @@ void showModePickerSheet(BuildContext context) {
     backgroundColor: AppColors.surfaceMuted,
     barrierColor: AppColors.scrimDim,
     shape: const RoundedRectangleBorder(borderRadius: AppRadius.sheetTop),
-    constraints: const BoxConstraints(maxHeight: 620),
-    builder: (_) => const _ModePickerSheet(),
+    // Tinggi mengikuti isinya, bukan dipatok 620 px.
+    //
+    // Angka tetap itu memaksa gulir walau isinya sebenarnya muat, dan menggulir
+    // adalah gerakan yang paling mahal di aplikasi ini: pengguna sedang berdiri,
+    // satu tangan memegang tongkat, dan daftar mode justru yang paling sering
+    // dibuka. `isScrollControlled` melepas batas setengah layar bawaan
+    // Flutter sehingga lembar boleh setinggi isinya.
+    //
+    // Batas 92% tinggi layar tetap ada, dan gulir tetap tersedia, TAPI hanya
+    // sebagai katup pengaman. Aplikasi ini mendukung ukuran teks 200%, dan di
+    // skala itu isinya memang tidak mungkin muat: yang harus dihindari adalah
+    // meluap (garis kuning hitam dan tombol yang terpotong), bukan menggulir.
+    isScrollControlled: true,
+    builder: (ctx) => ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(ctx).size.height * 0.92,
+      ),
+      child: const _ModePickerSheet(),
+    ),
   );
 }
+
+/// Mode yang muncul sebagai pilihan di lembar ini.
+///
+/// **Asisten Suara sengaja TIDAK ikut.** Ia sudah punya pintu masuk yang jauh
+/// lebih cepat dan selalu ada di tempat yang sama: tombol Bicara di tengah bar
+/// bawah, satu ketukan dari mode mana pun. Menampilkannya lagi di sini berarti
+/// dua jalan menuju hal yang sama, dan yang lewat lembar ini justru dua langkah
+/// lebih panjang.
+///
+/// Modenya sendiri tidak dihapus: `AppMode.voice` tetap ada, tetap bisa dicapai
+/// lewat perintah suara ("asisten", "tanya"), dan tetap jadi tujuan `goBack`.
+/// Yang dihapus cuma barisnya di daftar pilihan.
+const List<AppMode> _pickableModes = [
+  AppMode.tuntun,
+  AppMode.navigasi,
+  AppMode.money,
+  AppMode.ocr,
+  AppMode.findObject,
+];
 
 class _ModePickerSheet extends StatelessWidget {
   const _ModePickerSheet();
@@ -92,10 +128,14 @@ class _ModePickerSheet extends StatelessWidget {
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
-                itemCount: AppMode.values.length,
+                // Menggulir hanya saat isinya memang tidak muat. Di ukuran teks
+                // normal seluruh daftar tampil sekaligus; di 200% barulah ini
+                // bekerja, dan itu jauh lebih baik daripada meluap.
+                physics: const ClampingScrollPhysics(),
+                itemCount: _pickableModes.length,
                 separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s2),
                 itemBuilder: (_, i) {
-                  final mode = AppMode.values[i];
+                  final mode = _pickableModes[i];
                   // Status ditentukan jaringan DAN jawaban server, ditanyakan
                   // sebelum sheet dibuka - bukan ditebak dari koneksi saja.
                   final state = caps.stateOf(mode, offline: offline);
