@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../core/layout/zone_contract.dart';
 import '../providers/index.dart';
+import '../services/haptic_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 import 'settings_screen.dart';
@@ -63,6 +64,17 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
 
       voice.onSpeak = (text) => context.read<TtsProvider>().speak(text, tier: SpeechTier.info);
       voice.onOpenSettings = _openSettings;
+
+      // Batas sesi harus TERASA, bukan cuma terlihat.
+      //
+      // Ikon mikrofon yang berubah warna tidak berarti apa-apa bagi pengguna
+      // yang tidak melihat layar. Tanpa penanda fisik, satu-satunya cara tahu
+      // sesinya sudah tertutup adalah menunggu jawaban - dan kalau jawabannya
+      // tidak kunjung datang, tidak ada cara membedakan "masih mendengarkan"
+      // dari "sudah menyerah". Dua pola sengaja dibedakan supaya mulai dan
+      // berhenti tidak tertukar.
+      voice.onListeningStarted = HapticService.instance.info;
+      voice.onListeningEnded = HapticService.instance.warning;
       voice.onAllFeaturesFailed = () {};
 
       // "lebih cepat" / "lebih pelan" - dulu keduanya punya bank kata lengkap
@@ -108,6 +120,8 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     _expiryCheckTimer?.cancel();
     final voice = context.read<VoiceProvider>();
     voice.onSpeak = null;
+    voice.onListeningStarted = null;
+    voice.onListeningEnded = null;
     voice.onOpenSettings = null;
     voice.onAllFeaturesFailed = null;
     voice.onAdjustSpeechRate = null;
@@ -290,7 +304,11 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
           ),
 
           if (voice.state == VoiceState.responded && !_silentMode)
-            Positioned(top: topInset + 52, right: 24, child: const SpeakingIndicator()),
+            Positioned(
+              top: topInset + modeBadgeTopOffset(hasBanner: hasBanner),
+              right: AppSpacing.screenMargin,
+              child: const SpeakingIndicator(),
+            ),
 
           if (!_hasMicPermission && _debugOverride == null)
             // AS-02 - kartu di zona konten, tombolnya di slot kartu bawah.

@@ -120,12 +120,84 @@ class VoiceProvider extends ChangeNotifier {
   /// Pengaturan kecepatan bicara - dipasang layar dari SettingsProvider.
   Future<double> Function(double delta)? onAdjustSpeechRate;
 
+  /// Apakah mesin pengenal suara benar-benar siap dipakai.
+  ///
+  /// `initialize()` mengembalikan false kalau izin mikrofon ditolak atau tidak
+  /// ada mesin STT di perangkat. Sebelumnya nilainya dibuang, jadi `listen()`
+  /// berikutnya diam-diam tidak melakukan apa-apa: tidak ada status, tidak ada
+  /// hasil, tidak ada error. Untuk pengguna yang tidak melihat layar, itu
+  /// tombol yang ditekan lalu dunia hening.
+  bool _sttAvailable = false;
+  bool get sttAvailable => _sttAvailable;
+
+  /// Sebab kegagalan terakhir dari mesin STT, apa adanya. Dipakai untuk
+  /// membedakan "tidak terdengar apa pun" dari "mikrofonnya sedang dipakai".
+  String _lastSttError = '';
+
   Future<void> init() async {
-    await _stt.initialize(
+    _sttAvailable = await _stt.initialize(
       onStatus: _onSttStatus,
-      onError: (_) => _setState(VoiceState.noSpeech),
+      onError: (e) {
+        _lastSttError = e.errorMsg;
+        debugPrint('[STT] error: ${e.errorMsg} (permanent: ${e.permanent})');
+      },
     );
+    if (!_sttAvailable) {
+      debugPrint('[STT] initialize() gagal: mesin atau izin tidak tersedia.');
+      return;
+    }
+    await _resolveLocale();
   }
+
+  /// Locale yang benar-benar akan dipakai `listen()`.
+  ///
+  /// `null` berarti serahkan ke bawaan perangkat.
+  String? _localeId;
+
+  /// Pilih locale Bahasa Indonesia yang BENAR-BENAR terpasang.
+  ///
+  /// Sebelumnya `'id_ID'` dipatok begitu saja. Dokumentasi paketnya menyuruh
+  /// mengambil `localeId` dari daftar `locales()` milik perangkat, dan
+  /// alasannya nyata: tiap pabrikan menuliskannya berbeda. Ada yang memberi
+  /// `id-ID` dengan tanda hubung, ada yang `in_ID` karena Android memakai kode
+  /// lama untuk Bahasa Indonesia (`in`, bukan `id`, warisan ISO 639 sebelum
+  /// 1989 yang masih dipakai Java sampai hari ini).
+  ///
+  /// Locale yang tidak dikenali membuat mesin diam-diam jatuh ke bahasa
+  /// bawaan perangkat. Untuk pengguna yang bicara Bahasa Indonesia ke mesin
+  /// yang mendengarkan dalam Bahasa Inggris, hasilnya kata acak yang tidak
+  /// pernah cocok dengan satu pun frasa di `CommandParser` - dan yang
+  /// disalahkan biasanya parsernya.
+  Future<void> _resolveLocale() async {
+    try {
+      final locales = await _stt.locales();
+      for (final want in const ['id_ID', 'id-ID', 'in_ID', 'in-ID', 'id', 'in']) {
+        final hit = locales.where((l) => l.localeId == want);
+        if (hit.isNotEmpty) {
+          _localeId = hit.first.localeId;
+          debugPrint('[STT] locale dipakai: $_localeId (${hit.first.name})');
+          return;
+        }
+      }
+      // Cocokkan longgar sebagai jaring terakhir sebelum menyerah.
+      final loose = locales.where((l) =>
+          l.localeId.toLowerCase().startsWith('id') ||
+          l.localeId.toLowerCase().startsWith('in_') ||
+          l.name.toLowerCase().contains('indonesia'));
+      if (loose.isNotEmpty) {
+        _localeId = loose.first.localeId;
+        debugPrint('[STT] locale dipakai (cocok longgar): $_localeId');
+        return;
+      }
+      debugPrint('[STT] Bahasa Indonesia tidak terpasang, pakai bawaan '
+          'perangkat. Tersedia: ${locales.map((l) => l.localeId).take(8).toList()}');
+    } catch (e) {
+      debugPrint('[STT] gagal membaca daftar locale: $e');
+    }
+  }
+
+  /// True kalau perangkat memang punya Bahasa Indonesia untuk pengenalan suara.
+  bool get hasIndonesianLocale => _localeId != null;
 
   /// AS-23 - riwayat kedaluwarsa setelah 15 menit tanpa aktivitas.
   bool checkAndExpireHistory() {
@@ -148,8 +220,22 @@ class VoiceProvider extends ChangeNotifier {
         _state != VoiceState.allFailed) {
       return;
     }
+    // Mesin tidak siap: katakan, jangan diam. `listen()` pada mesin yang gagal
+    // diinisialisasi tidak melakukan apa-apa dan tidak melaporkan apa-apa.
+    if (!_sttAvailable) {
+      _setState(VoiceState.allFailed);
+      await _respond(
+        'Pengenalan suara tidak tersedia di perangkat ini. '
+        'Gunakan tombol Pilih mode untuk berpindah.',
+        save: false,
+      );
+      return;
+    }
+
     _lastText = '';
+    _lastSttError = '';
     _setState(VoiceState.listening);
+    onListeningStarted?.call();
 
     await _stt.listen(
       onResult: (result) {
@@ -157,32 +243,108 @@ class VoiceProvider extends ChangeNotifier {
         notifyListeners();
       },
       listenOptions: SpeechListenOptions(
-        // 5 detik memotong kalimat yang wajar-wajar saja ("tolong bacakan
-        // tulisan yang ada di depan saya"), dan potongannya lalu gagal
-        // dikenali - pengguna menyimpulkan parsernya bodoh, padahal ia tidak
-        // pernah mendengar kalimat utuhnya. `pauseFor` yang menutup rekaman:
-        // 2 detik hening berarti pengguna sudah selesai bicara.
-        listenFor: const Duration(seconds: 10),
-        pauseFor: const Duration(seconds: 2),
-        localeId: 'id_ID',
-        cancelOnError: true,
+        localeId: _localeId,
+        // `cancelOnError` dimatikan. Android melempar galat sementara yang
+        // wajar di tengah sesi (mis. `error_speech_timeout` saat pengguna
+        // masih menarik napas), dan membatalkan sesi karenanya berarti
+        // memotong orang yang baru mau bicara.
+        cancelOnError: false,
+        // 15 detik, naik dari 10. Batas ini hanya jaring pengaman; yang
+        // sebenarnya menutup rekaman adalah `pauseFor`.
+        listenFor: const Duration(seconds: 15),
+        // 3 detik hening, naik dari 2.
+        //
+        // Dua detik terlalu ketat untuk sasaran aplikasi ini. Pengguna
+        // tunanetra yang sedang berjalan sambil memegang tongkat, dan pengguna
+        // lanjut usia, hampir selalu butuh jeda sebelum mulai bicara. Jeda itu
+        // terbaca sebagai "sudah selesai", sesinya ditutup sebelum sepatah kata
+        // pun keluar, dan yang terdengar adalah "belum terdengar apa pun" untuk
+        // orang yang sebenarnya baru mau membuka mulut.
+        pauseFor: const Duration(seconds: 3),
       ),
     );
   }
+
+  /// Ditandai layar untuk memberi penanda mulai dan berhenti mendengarkan.
+  ///
+  /// Untuk pengguna yang tidak melihat layar, ikon mikrofon yang berubah warna
+  /// tidak berarti apa-apa. Batas sesi harus terasa: getar saat mulai, getar
+  /// berbeda saat berhenti. Tanpa itu, satu-satunya cara tahu sesi sudah
+  /// tertutup adalah mendengar jawabannya, dan kalau jawabannya tidak pernah
+  /// datang, pengguna tidak punya cara membedakan "masih mendengarkan" dari
+  /// "sudah menyerah".
+  void Function()? onListeningStarted;
+  void Function()? onListeningEnded;
 
   Future<void> stopListening() async {
     if (!_stt.isListening) return;
     await _stt.stop();
   }
 
+  /// Hanya `done` yang menutup sesi. **Bukan** `notListening`.
+  ///
+  /// Ini penyebab keluhan "sudah ngomong tapi langsung bilang belum terdengar
+  /// apa pun", dan letaknya ada di dalam paketnya sendiri
+  /// (`speech_to_text/lib/speech_to_text.dart`, `_onNotifyStatus`):
+  ///
+  /// - `notListening` diteruskan APA ADANYA, dipancarkan begitu mikrofon
+  ///   berhenti merekam. Mesin pengenal masih memproses audionya saat ini.
+  /// - `done` sengaja DITAHAN paketnya sampai hasil akhirnya siap:
+  ///   `case doneStatus: if (_latestResultType == ResultType.partial) return;`
+  ///
+  /// Versi sebelumnya menerima keduanya, jadi `notListening` yang datang lebih
+  /// dulu selalu menang. Saat itu `_lastText` masih kosong karena hasil
+  /// akhirnya belum tiba, dan aplikasi langsung menyimpulkan tidak ada yang
+  /// bicara. Hasil yang sebenarnya tiba sepersekian detik kemudian, ke state
+  /// yang sudah terlanjur menyerah.
+  ///
+  /// Itu juga menjelaskan "kadang bisa kadang tidak": kalau kebetulan ada
+  /// hasil parsial yang sudah masuk sebelum mikrofon berhenti, teksnya ada dan
+  /// semuanya bekerja. Kalau tidak, gagal. Yang menentukan cuma perlombaan.
   void _onSttStatus(String status) {
-    if (status == 'done' || status == 'notListening') {
-      if (_lastText.trim().isNotEmpty) {
-        _processText(_lastText);
-      } else {
-        _setState(VoiceState.noSpeech);
-      }
+    if (status != 'done') return;
+    onListeningEnded?.call();
+
+    if (_lastText.trim().isNotEmpty) {
+      _processText(_lastText);
+      return;
     }
+    _handleNothingHeard();
+  }
+
+  /// Tidak ada teks yang terkumpul. Sebutkan sebabnya, jangan menyamakan
+  /// semuanya jadi "belum terdengar apa pun".
+  ///
+  /// Android membedakan galatnya, dan tindakan penggunanya berbeda-beda:
+  /// mikrofon yang sedang dipakai aplikasi lain tidak akan membaik dengan
+  /// bicara lebih keras, dan izin yang dicabut tidak akan membaik dengan
+  /// mengulang sama sekali.
+  void _handleNothingHeard() {
+    final err = _lastSttError;
+    final (message, state) = switch (err) {
+      'error_busy' || 'error_client' => (
+          'Mikrofon sedang dipakai aplikasi lain. Tutup aplikasi itu, lalu coba lagi.',
+          VoiceState.allFailed,
+        ),
+      'error_insufficient_permissions' => (
+          'Izin mikrofon belum diberikan. Buka Pengaturan untuk mengizinkannya.',
+          VoiceState.allFailed,
+        ),
+      'error_network' || 'error_network_timeout' => (
+          'Pengenalan suara butuh internet di perangkat ini, dan sambungannya '
+              'sedang tidak ada. Gunakan tombol Pilih mode untuk berpindah.',
+          VoiceState.allFailed,
+        ),
+      // `error_no_match` dan `error_speech_timeout` memang berarti tidak ada
+      // yang terdengar. Kalimatnya dibuat instruktif, bukan sekadar laporan.
+      _ => (
+          'Saya belum menangkap suaranya. Tekan tombol bicara lalu ucapkan '
+              'lagi, agak dekat ke ponsel.',
+          VoiceState.noSpeech,
+        ),
+    };
+    _setState(state);
+    _respond(message, save: false);
   }
 
   Future<void> _processText(String text) async {
