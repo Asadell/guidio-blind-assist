@@ -466,8 +466,8 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
 
           if (_speaking && !warmingUp)
             Positioned(
-              top: topInset + 52,
-              right: 24,
+              top: topInset + modeBadgeTopOffset(hasBanner: hasBanner),
+              right: AppSpacing.screenMargin,
               child: SpeakingIndicator(silent: _silentMode),
             ),
 

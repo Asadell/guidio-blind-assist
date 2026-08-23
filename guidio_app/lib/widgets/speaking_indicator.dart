@@ -31,17 +31,17 @@ class _SpeakingIndicatorState extends State<SpeakingIndicator> with SingleTicker
       liveRegion: true,
       label: label,
       child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: const BoxDecoration(color: AppColors.scrimText, borderRadius: AppRadius.pillShape),
+        height: AppSizes.modeBadgeHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: const BoxDecoration(color: AppColors.pillBg, borderRadius: AppRadius.pillShape),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             widget.silent
-                ? const Icon(Icons.volume_off_rounded, size: 14, color: AppColors.onDark)
+                ? const Icon(Icons.volume_off_rounded, size: 18, color: AppColors.onDark)
                 : _Bars(controller: _controller),
-            const SizedBox(width: 6),
-            Text(label, style: AppTypography.caption(color: AppColors.onDark).copyWith(fontSize: 13)),
+            const SizedBox(width: 8),
+            Text(label, style: AppTypography.label(color: AppColors.onDark)),
           ],
         ),
       ),

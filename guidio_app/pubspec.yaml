@@ -26,7 +26,10 @@ dependencies:
   speech_to_text: ^7.0.0
 
   # WebSocket ke server
-  web_socket_channel: ^3.0.1
+  # web_socket_channel DIHAPUS. Nol pemakaian di seluruh lib/ dan test/;
+  # sisa dari era deteksi lewat `WS /ws/detect`, yang sudah dibuang sejak
+  # deteksi rintangan dipindah on-device. Dependensi yang tidak dipakai tetap
+  # ikut resolusi versi dan tetap harus diaudit saat rilis.
 
   # HTTP untuk REST (OCR, single-shot detect, narasi)
   http: ^1.2.1
