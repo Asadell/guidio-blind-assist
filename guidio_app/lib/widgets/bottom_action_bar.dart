@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:vibration/vibration.dart';
 
 import '../core/speech/tts_queue.dart';
 import '../providers/index.dart';
-import '../screens/voice_screen.dart';
 import '../services/haptic_service.dart';
 import '../theme/index.dart';
 import 'mode_picker_sheet.dart';
@@ -15,6 +12,40 @@ import 'mode_picker_sheet.dart';
 /// pernah menggulung. Tiga slot: Aksi Utama 48, Bicara 64, Pilih Mode 48.
 /// Saat mic aktif, dua tombol lain nonaktif - supaya tidak ada aksi
 /// tabrakan sambil berjalan.
+///
+/// ## Kontrak tombol tengah: tekan-tahan, seperti walkie-talkie
+///
+/// **Tahan = mendengarkan. Lepas = jalankan.** Tidak ada layar yang berganti,
+/// tidak ada popup, tidak ada konfirmasi.
+///
+/// Sebelumnya tombol ini mendorong `VoiceScreen` sebagai overlay layar penuh
+/// lebih dulu, lalu baru mulai mendengarkan setelah overlay itu ditutup. Untuk
+/// satu perintah dua kata seperti "kenali uang", itu berarti satu transisi
+/// layar, satu layar penuh yang menutupi mode yang sedang dipakai, dan satu
+/// pengumuman TalkBack tentang layar baru - semuanya sebelum mikrofon menyala.
+///
+/// Yang membuat pola ini bisa dipercaya justru batasnya, bukan kecepatannya:
+/// selama jari menempel, mikrofon menyala; begitu diangkat, mati. Pengguna
+/// tidak pernah perlu menebak apakah aplikasi masih merekam - jarinya sendiri
+/// yang menjawab.
+///
+/// | Peristiwa                    | Yang terjadi                            |
+/// |------------------------------|-----------------------------------------|
+/// | Tahan >= 500 ms              | Getar, mikrofon menyala, TTS dipotong   |
+/// | Bicara sambil menahan        | Teks parsial muncul di atas tombol      |
+/// | Lepas                        | Getar, mikrofon mati, perintah dijalankan |
+/// | Lepas < 500 ms               | Tidak merekam; "Tahan tombolnya, lalu bicara." |
+/// | Menahan lewat 10 detik       | Audio dibuang; "Waktu habis, silakan coba lagi." |
+///
+/// ### Kenapa TalkBack dapat jalur sendiri
+///
+/// Tekan-tahan satu jari adalah gestur yang sudah dimiliki screen reader:
+/// dengan TalkBack aktif, sentuhan pertama memindahkan fokus dan tidak pernah
+/// sampai ke widget sebagai `onLongPressStart`. Jadi saat
+/// `MediaQuery.accessibleNavigation` menyala, tombol ini kembali menjadi
+/// saklar: ketuk untuk mulai, ketuk lagi untuk berhenti - memakai sesi tap
+/// sekali `VoiceProvider` yang menutup dirinya sendiri setelah 3 detik hening,
+/// sehingga pengguna tidak wajib mengetuk kedua kali.
 ///
 /// ## Kontrak tombol kiri
 ///
@@ -45,7 +76,6 @@ import 'mode_picker_sheet.dart';
 /// apa pun - label yang berbohong, dan jalan buntu yang hening.
 class BottomActionBar extends StatelessWidget {
   final VoidCallback? onCameraPressed;
-  final VoidCallback? onMicPressed;
   final bool cameraEnabled;
   final String cameraLabel;
 
@@ -62,6 +92,18 @@ class BottomActionBar extends StatelessWidget {
 
   /// DO-24 - izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
   final bool micEnabled;
+
+  /// Mode dengan STT sendiri (Cari Objek) menimpa kedua sisi tekan-tahan.
+  ///
+  /// Sengaja **berpasangan**: satu tanpa yang lain berarti sesi yang dibuka
+  /// tidak pernah ditutup, atau sebaliknya. Kalau keduanya null, tombol ini
+  /// memakai jalur bawaan `VoiceProvider`.
+  final Future<void> Function()? onMicHoldStart;
+  final Future<void> Function()? onMicHoldEnd;
+
+  /// Teks parsial yang sedang didengar, untuk mode yang memakai STT sendiri.
+  /// Kalau null, pill teks membaca `VoiceProvider.lastText`.
+  final String? liveTranscriptOverride;
   /// Saat mode aktif punya STT sendiri (mis. Cari Objek), timpa visual
   /// listening/processing bawaan `VoiceProvider` supaya tombol tetap sesuai
   /// dengan apa yang sesungguhnya sedang berjalan.
@@ -73,13 +115,19 @@ class BottomActionBar extends StatelessWidget {
     required this.cameraLabel,
     this.cameraIcon = Icons.camera_alt_outlined,
     this.onCameraPressed,
-    this.onMicPressed,
     this.cameraEnabled = true,
     this.cameraDisabledReason,
     this.micEnabled = true,
+    this.onMicHoldStart,
+    this.onMicHoldEnd,
+    this.liveTranscriptOverride,
     this.listeningOverride,
     this.processingOverride,
-  });
+  }) : assert(
+          (onMicHoldStart == null) == (onMicHoldEnd == null),
+          'onMicHoldStart dan onMicHoldEnd harus dipasang berpasangan: '
+          'sesi yang dibuka satu sisi hanya bisa ditutup sisi lainnya.',
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +136,29 @@ class BottomActionBar extends StatelessWidget {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final sideButtonsEnabled = cameraEnabled && !listening;
 
+    // Bar-nya tetap setinggi semula; pill tumbuh KE ATAS di luar tinggi itu.
+    // Semua layar menaruh bar ini di `Positioned(bottom: 0)` tanpa tinggi
+    // tetap, jadi Column yang membungkusnya memanjang ke atas dan tidak satu
+    // piksel pun dari ketiga tombol bergeser saat pill muncul - posisi tombol
+    // adalah satu-satunya peta yang dihafal pengguna.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _LiveTranscriptPill(
+          text: liveTranscriptOverride ?? voice.lastText,
+          visible: listening,
+        ),
+        _bar(context, bottomInset, sideButtonsEnabled, listening),
+      ],
+    );
+  }
+
+  Widget _bar(
+    BuildContext context,
+    double bottomInset,
+    bool sideButtonsEnabled,
+    bool listening,
+  ) {
     return Container(
       height: AppSizes.bottomActionBarHeight + bottomInset,
       padding: EdgeInsets.fromLTRB(AppSpacing.s8, AppSpacing.s3, AppSpacing.s8, bottomInset),
@@ -121,8 +192,9 @@ class BottomActionBar extends StatelessWidget {
           Semantics(
             sortKey: const OrdinalSortKey(8),
             child: _MicButton(
-              onTap: onMicPressed,
               enabled: micEnabled,
+              onHoldStart: onMicHoldStart,
+              onHoldEnd: onMicHoldEnd,
               listeningOverride: listeningOverride,
               processingOverride: processingOverride,
             ),
@@ -142,17 +214,122 @@ class BottomActionBar extends StatelessWidget {
   }
 }
 
-class _MicButton extends StatelessWidget {
-  final VoidCallback? onTap;
+/// Tombol Bicara - tekan-tahan.
+///
+/// Stateful karena denyut cincinnya butuh ticker, dan karena tombol ini harus
+/// mengingat satu hal yang tidak ada di provider mana pun: apakah sesi yang
+/// sekarang berjalan dimulai oleh JARI INI. Tanpa ingatan itu, pelepasan jari
+/// setelah sesi ditutup batas waktu akan menutup sesi yang sudah tidak ada.
+class _MicButton extends StatefulWidget {
   final bool enabled;
+  final Future<void> Function()? onHoldStart;
+  final Future<void> Function()? onHoldEnd;
   final bool? listeningOverride;
   final bool? processingOverride;
-  const _MicButton({this.onTap, this.enabled = true, this.listeningOverride, this.processingOverride});
+
+  const _MicButton({
+    this.enabled = true,
+    this.onHoldStart,
+    this.onHoldEnd,
+    this.listeningOverride,
+    this.processingOverride,
+  });
+
+  @override
+  State<_MicButton> createState() => _MicButtonState();
+}
+
+class _MicButtonState extends State<_MicButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  /// Sesi yang sedang berjalan dimulai oleh tekanan jari yang belum diangkat.
+  bool _holding = false;
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  void _syncPulse(bool listening) {
+    if (listening && !_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    } else if (!listening && _pulse.isAnimating) {
+      _pulse.stop();
+      _pulse.value = 0;
+    }
+  }
+
+  // ── Jalur tekan-tahan ─────────────────────────────────────────────────────
+
+  /// Ambang 500 ms tidak diukur di sini. `onLongPressStart` dipanggil framework
+  /// tepat saat `kLongPressTimeout` terlewati, jadi menahan lebih singkat dari
+  /// itu tidak akan pernah sampai ke fungsi ini - dan tidak ada timer kedua
+  /// yang bisa berselisih dengan timer framework.
+  Future<void> _onHoldStart() async {
+    setState(() => _holding = true);
+    final custom = widget.onHoldStart;
+    if (custom != null) {
+      await custom();
+      return;
+    }
+    await context.read<VoiceProvider>().startHoldToTalk();
+  }
+
+  Future<void> _onHoldEnd() async {
+    if (!_holding) return;
+    setState(() => _holding = false);
+    final custom = widget.onHoldEnd;
+    if (custom != null) {
+      await custom();
+      return;
+    }
+    if (!mounted) return;
+    await context.read<VoiceProvider>().finishHoldToTalk();
+  }
+
+  /// Ditahan terlalu singkat. Tidak merekam, tapi juga tidak hening.
+  void _onTooShort() {
+    // Mode dengan STT sendiri tidak punya jalur penjelasan di providernya,
+    // jadi kalimatnya diucapkan langsung lewat antrean yang sama.
+    if (widget.onHoldStart != null) {
+      HapticService.instance.info();
+      TtsQueue().speak('Tahan tombolnya, lalu bicara.', tier: SpeechTier.info);
+      return;
+    }
+    context.read<VoiceProvider>().explainHoldRequired();
+  }
+
+  /// Jalur cadangan TalkBack: saklar, bukan tahan.
+  Future<void> _toggleForScreenReader(bool listening) async {
+    final voice = context.read<VoiceProvider>();
+    final customStart = widget.onHoldStart;
+    if (listening) {
+      final customEnd = widget.onHoldEnd;
+      if (customEnd != null) {
+        await customEnd();
+      } else {
+        await voice.stopListening();
+      }
+      return;
+    }
+    if (customStart != null) {
+      await customStart();
+      return;
+    }
+    // Sesi tap sekali, bukan sesi tahan: ia menutup dirinya sendiri setelah
+    // 3 detik hening, jadi pengguna tidak WAJIB mengetuk kedua kali untuk
+    // mematikan mikrofon.
+    await voice.startListening();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final voice = context.watch<VoiceProvider>();
-    if (!enabled) {
+    if (!widget.enabled) {
       return Semantics(
         button: true,
         label: 'Bicara, tidak tersedia, izin mikrofon belum diberikan',
@@ -166,68 +343,83 @@ class _MicButton extends StatelessWidget {
         ),
       );
     }
-    final listening = listeningOverride ?? voice.isListening;
-    final processing = processingOverride ?? voice.isProcessing;
 
+    final voice = context.watch<VoiceProvider>();
+    final listening = widget.listeningOverride ?? voice.isListening;
+    final processing = widget.processingOverride ?? voice.isProcessing;
+    final screenReader = MediaQuery.of(context).accessibleNavigation;
+    _syncPulse(listening);
+
+    // Label TalkBack menyebut cara memicunya, karena caranya berbeda dari
+    // tombol lain di bar ini dan tidak ada isyarat visual yang menjelaskannya.
     final semanticLabel = processing
         ? 'Bicara, sedang memproses'
         : listening
-            ? 'Berhenti bicara'
-            : 'Bicara';
+            ? screenReader
+                ? 'Berhenti mendengarkan'
+                : 'Sedang mendengarkan, lepaskan untuk mengirim'
+            : screenReader
+                ? 'Bicara, ketuk untuk mulai mendengarkan'
+                : 'Bicara, tahan lalu ucapkan perintah';
+
+    final button = _circle(listening: listening, processing: processing);
+
+    if (screenReader) {
+      return Semantics(
+        button: true,
+        label: semanticLabel,
+        onTap: processing ? null : () => _toggleForScreenReader(listening),
+        child: GestureDetector(
+          onTap: processing ? null : () => _toggleForScreenReader(listening),
+          child: button,
+        ),
+      );
+    }
 
     return Semantics(
       button: true,
       label: semanticLabel,
       child: GestureDetector(
-        onTap: processing
-            ? null
-            : () async {
-                HapticFeedback.mediumImpact();
-                final v = context.read<VoiceProvider>();
-                final appMode = context.read<AppModeProvider>();
-                final hasVib = await Vibration.hasVibrator();
-                if (hasVib) Vibration.vibrate(duration: 100);
+        // `onTap` di sini HANYA berarti "diangkat sebelum 500 ms". Begitu
+        // ambangnya terlewat, framework beralih ke pengenal tekan-tahan dan
+        // `onTap` tidak lagi dipanggil, jadi keduanya tidak pernah bertabrakan.
+        onTap: processing ? null : _onTooShort,
+        onLongPressStart: processing ? null : (_) => _onHoldStart(),
+        // Ketiganya menutup sesi. `onLongPressEnd` untuk jari yang diangkat,
+        // `onLongPressCancel` untuk gestur yang direbut widget lain, dan
+        // `onLongPressMoveUpdate` sengaja TIDAK dipakai: menggeser jari keluar
+        // tombol sambil bicara adalah hal yang wajar bagi pengguna yang tidak
+        // melihat layar, dan itu tidak boleh memotong rekamannya.
+        onLongPressEnd: processing ? null : (_) => _onHoldEnd(),
+        onLongPressCancel: processing ? null : _onHoldEnd,
+        child: button,
+      ),
+    );
+  }
 
-                // Jika bukan di mode voice, push VoiceScreen sebagai overlay
-                // (fitur "Jarvis Global Mic") alih-alih langsung ke onTap.
-                if (appMode.mode != AppMode.voice) {
-                  if (context.mounted) {
-                    await Navigator.of(context).push(
-                      PageRouteBuilder(
-                        opaque: false,
-                        barrierDismissible: false,
-                        pageBuilder: (_, __, ___) =>
-                            const VoiceScreen(isOverlay: true),
-                        transitionsBuilder: (_, anim, __, child) =>
-                            FadeTransition(opacity: anim, child: child),
-                        transitionDuration: const Duration(milliseconds: 250),
-                      ),
-                    );
-                    // Setelah pop, mulai listen segera
-                    if (!v.isListening) v.startListening();
-                  }
-                  return;
-                }
-
-                // Sudah di mode voice - perilaku bawaan
-                if (onTap != null) {
-                  onTap!();
-                } else if (v.isListening) {
-                  v.stopListening();
-                } else {
-                  v.startListening();
-                }
-              },
-        child: Container(
+  Widget _circle({required bool listening, required bool processing}) {
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, _) {
+        // Cincin denyut: 8 -> 14 px. Tetap di dalam jarak antar tombol supaya
+        // tidak pernah menutupi dua tombol di sisinya.
+        final spread = 8 + (_pulse.value * 6);
+        return Container(
           width: AppSizes.micButton,
           height: AppSizes.micButton,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: processing ? AppColors.actionTint : AppColors.actionFill,
+            color: processing
+                ? AppColors.actionTint
+                : listening
+                    // Merah saat merekam - sama dengan titik rekam di
+                    // _EngineCard dan indikator rekaman di mana pun.
+                    ? AppColors.criticalFill
+                    : AppColors.actionFill,
             boxShadow: listening
                 ? [
-                    BoxShadow(color: AppColors.actionFill.withValues(alpha: .18), blurRadius: 0, spreadRadius: 8),
-                    BoxShadow(color: AppColors.actionFill.withValues(alpha: .10), blurRadius: 0, spreadRadius: 16),
+                    BoxShadow(color: AppColors.criticalFill.withValues(alpha: .20), blurRadius: 0, spreadRadius: spread),
+                    BoxShadow(color: AppColors.criticalFill.withValues(alpha: .10), blurRadius: 0, spreadRadius: spread * 2),
                   ]
                 : [
                     BoxShadow(color: AppColors.actionFill.withValues(alpha: .36), blurRadius: 12, offset: const Offset(0, 4)),
@@ -239,9 +431,60 @@ class _MicButton extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.actionLabel),
                 )
               : ExcludeSemantics(
-              child: Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: AppColors.onDark, size: 30),
-            ),
-        ),
+                  child: Icon(listening ? Icons.mic : Icons.mic_none_rounded, color: AppColors.onDark, size: 30),
+                ),
+        );
+      },
+    );
+  }
+}
+
+/// Pill teks yang sedang didengar, duduk di atas tombol Bicara.
+///
+/// `ExcludeSemantics` dipasang dengan sengaja. Teks parsial berubah beberapa
+/// kali per detik, dan setiap perubahan pada node semantik yang hidup akan
+/// memotong ucapan TalkBack yang sedang berjalan - termasuk jawaban Vinara
+/// sendiri. Pengguna yang tidak melihat layar sudah mendapat isi perintahnya
+/// lewat jawaban lisan; yang ini murni untuk mata.
+class _LiveTranscriptPill extends StatelessWidget {
+  final String text;
+  final bool visible;
+
+  const _LiveTranscriptPill({required this.text, required this.visible});
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = text.trim();
+    return ExcludeSemantics(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: !visible
+            ? const SizedBox(width: double.infinity)
+            : Padding(
+                key: const ValueKey('pill'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.s6,
+                  vertical: AppSpacing.s2,
+                ),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s4,
+                    vertical: AppSpacing.s2,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: AppColors.pillBg,
+                    borderRadius: AppRadius.pillShape,
+                  ),
+                  child: Text(
+                    shown.isEmpty ? 'Mendengarkan…' : '$shown…',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.body(color: AppColors.onDark),
+                  ),
+                ),
+              ),
       ),
     );
   }

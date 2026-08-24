@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 
 import '../core/layout/zone_contract.dart';
 import '../providers/index.dart';
-import '../services/haptic_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 import 'settings_screen.dart';
@@ -65,16 +64,9 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
       voice.onSpeak = (text) => context.read<TtsProvider>().speak(text, tier: SpeechTier.info);
       voice.onOpenSettings = _openSettings;
 
-      // Batas sesi harus TERASA, bukan cuma terlihat.
-      //
-      // Ikon mikrofon yang berubah warna tidak berarti apa-apa bagi pengguna
-      // yang tidak melihat layar. Tanpa penanda fisik, satu-satunya cara tahu
-      // sesinya sudah tertutup adalah menunggu jawaban - dan kalau jawabannya
-      // tidak kunjung datang, tidak ada cara membedakan "masih mendengarkan"
-      // dari "sudah menyerah". Dua pola sengaja dibedakan supaya mulai dan
-      // berhenti tidak tertukar.
-      voice.onListeningStarted = HapticService.instance.info;
-      voice.onListeningEnded = HapticService.instance.warning;
+      // Getar batas sesi (mulai & berhenti) sudah dipegang VoiceProvider
+      // sendiri. Sebelumnya dipasang di sini, dan akibatnya menahan tombol
+      // Bicara dari lima mode lain tidak menghasilkan getar apa pun.
       voice.onAllFeaturesFailed = () {};
 
       // "lebih cepat" / "lebih pelan" - dulu keduanya punya bank kata lengkap
@@ -125,8 +117,6 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     _expiryCheckTimer?.cancel();
     final voice = context.read<VoiceProvider>();
     voice.onSpeak = null;
-    voice.onListeningStarted = null;
-    voice.onListeningEnded = null;
     voice.onOpenSettings = null;
     voice.onAllFeaturesFailed = null;
     voice.onAdjustSpeechRate = null;
@@ -196,18 +186,11 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     context.read<TtsProvider>().speak(answer, tier: SpeechTier.info);
   }
 
-  Future<void> _onMicPressed() async {
-    final voice = context.read<VoiceProvider>();
-    setState(() => _debugOverride = null);
-    if (voice.isListening) {
-      await voice.stopListening();
-    } else if (voice.state == VoiceState.responded) {
-      // AS-20 - menekan lagi saat masih bicara: potong tanpa nada khusus.
-      await voice.interruptAndListenAgain();
-    } else {
-      await voice.startListening();
-    }
-  }
+  // `_onMicPressed` dihapus. Tombol Bicara sekarang tekan-tahan, dan ketiga
+  // cabangnya sudah dijawab di tempat lain: menahan saat mikrofon sudah menyala
+  // tidak mungkin terjadi (satu jari, satu sesi), dan AS-20 - memotong Vinara
+  // yang masih bicara - dijalankan `startHoldToTalk()` yang menghentikan TTS
+  // sebelum membuka sesi, untuk SEMUA mode, bukan cuma layar ini.
 
   void _openDebugSheet() {
     showModalBottomSheet(
@@ -349,7 +332,6 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
               onCameraPressed: _describeScene,
               cameraEnabled: !voice.isProcessing,
               cameraDisabledReason: 'sedang memproses',
-              onMicPressed: _onMicPressed,
               micEnabled: _hasMicPermission,
               listeningOverride: voice.isListening,
               processingOverride: voice.isProcessing,

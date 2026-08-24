@@ -121,6 +121,18 @@ class FindObjectProvider extends ChangeNotifier {
     _set(FindObjectState.listening);
   }
 
+  /// Kembali ke diam tanpa berkata apa-apa.
+  ///
+  /// Dipakai saat sesi dengar dibatalkan dari luar - misalnya batas tahan
+  /// tercapai - di mana layar sudah mengucapkan sebabnya sendiri. Tanpa ini
+  /// satu-satunya jalan keluar dari [FindObjectState.listening] adalah
+  /// menyetorkan teks, dan sesi yang dibatalkan tidak punya teks untuk
+  /// disetorkan: statusnya akan tinggal di "mendengarkan" selamanya.
+  void backToIdle() {
+    _stepTimer?.cancel();
+    _set(FindObjectState.idle);
+  }
+
   void submitHeardText(String heardText, {String? parsedTarget}) {
     final t = (parsedTarget ?? heardText).trim();
     if (t.isEmpty) {

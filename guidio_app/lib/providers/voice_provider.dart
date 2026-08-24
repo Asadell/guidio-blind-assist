@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import '../core/speech/tts_queue.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
 import '../providers/find_object_provider.dart';
+import '../services/haptic_service.dart';
 import '../services/server_service.dart';
 import '../services/tts_service.dart';
 
@@ -219,7 +223,13 @@ class VoiceProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<void> startListening() async {
+  /// Sesi tap sekali: yang menutupnya adalah hening, bukan jari.
+  ///
+  /// Dipakai jalur cadangan TalkBack, yang tidak bisa memakai tekan-tahan
+  /// karena gestur satu jarinya sudah dipakai screen reader.
+  Future<void> startListening() => _beginListening(hold: false);
+
+  Future<void> _beginListening({required bool hold}) async {
     if (_state != VoiceState.idle &&
         _state != VoiceState.responded &&
         _state != VoiceState.unrecognized &&
@@ -243,8 +253,18 @@ class VoiceProvider extends ChangeNotifier {
 
     _lastText = '';
     _lastSttError = '';
+    _sessionIsHold = hold;
     _setState(VoiceState.listening);
-    onListeningStarted?.call();
+    // Satu-satunya pemilik getar batas sesi. Sebelumnya ini callback yang
+    // hanya dipasang VoiceScreen, jadi di lima mode lain menahan tombol tidak
+    // menghasilkan getar apa pun - dan getar itulah satu-satunya cara pengguna
+    // yang tidak melihat layar tahu mikrofonnya sudah menyala.
+    HapticService.instance.info();
+
+    if (hold) {
+      _holdCapTimer?.cancel();
+      _holdCapTimer = Timer(kHoldToTalkMaxHold, _onHoldCapReached);
+    }
 
     await _stt.listen(
       onResult: (result) {
@@ -264,9 +284,18 @@ class VoiceProvider extends ChangeNotifier {
         // apa pun yang terakhir tertangkap - hasilnya justru lebih ngawur
         // daripada mengakui tidak ada yang terdengar.
         cancelOnError: true,
-        // 15 detik, naik dari 10. Batas ini hanya jaring pengaman; yang
-        // sebenarnya menutup rekaman adalah `pauseFor`.
-        listenFor: const Duration(seconds: 15),
+        // Sesi tekan-tahan sengaja diberi batas MELEBIHI [kHoldToTalkMaxHold],
+        // supaya yang memotongnya selalu [_holdCapTimer] - bukan paketnya.
+        // Bedanya nyata: timer itu MEMBUANG audionya lalu mengatakan waktunya
+        // habis, sementara `listenFor` menutup sesi dengan mengirim hasil
+        // separuh, yang lalu diproses seolah-olah itu perintah utuh. Perintah
+        // separuh yang dijalankan lebih buruk daripada perintah yang gagal.
+        //
+        // 15 detik untuk sesi tap sekali; batas itu hanya jaring pengaman,
+        // yang sebenarnya menutup rekaman adalah `pauseFor`.
+        listenFor: hold
+            ? kHoldToTalkMaxHold + kHoldToTalkGrace
+            : const Duration(seconds: 15),
         // 3 detik hening, naik dari 2.
         //
         // Dua detik terlalu ketat untuk sasaran aplikasi ini. Pengguna
@@ -275,21 +304,119 @@ class VoiceProvider extends ChangeNotifier {
         // terbaca sebagai "sudah selesai", sesinya ditutup sebelum sepatah kata
         // pun keluar, dan yang terdengar adalah "belum terdengar apa pun" untuk
         // orang yang sebenarnya baru mau membuka mulut.
-        pauseFor: const Duration(seconds: 3),
+        //
+        // Di sesi tekan-tahan nilainya ikut dipanjangkan dengan alasan
+        // berbeda: yang menutup sesi adalah jari yang diangkat. Pengguna yang
+        // berhenti sejenak mengumpulkan kata sambil tetap menahan tombol tidak
+        // boleh diputus di tengah kalimat.
+        pauseFor: hold
+            ? kHoldToTalkMaxHold + kHoldToTalkGrace
+            : const Duration(seconds: 3),
       ),
     );
   }
 
-  /// Ditandai layar untuk memberi penanda mulai dan berhenti mendengarkan.
+  // ── Tekan-tahan untuk bicara ───────────────────────────────────────────────
+  //
+  // Sesi tekan-tahan berbeda dari sesi tap sekali di satu hal yang menentukan
+  // segalanya: **batas sesinya ditentukan jari, bukan hening.** Semua yang di
+  // bawah ini turun dari kalimat itu.
+
+  /// Jenis sesi yang sedang/terakhir berjalan.
   ///
-  /// Untuk pengguna yang tidak melihat layar, ikon mikrofon yang berubah warna
-  /// tidak berarti apa-apa. Batas sesi harus terasa: getar saat mulai, getar
-  /// berbeda saat berhenti. Tanpa itu, satu-satunya cara tahu sesi sudah
-  /// tertutup adalah mendengar jawabannya, dan kalau jawabannya tidak pernah
-  /// datang, pengguna tidak punya cara membedakan "masih mendengarkan" dari
-  /// "sudah menyerah".
-  void Function()? onListeningStarted;
-  void Function()? onListeningEnded;
+  /// Dipakai untuk menentukan siapa yang memberi getar penutup: di sesi
+  /// tekan-tahan getarnya harus jatuh saat jari diangkat, bukan saat
+  /// pengenalan selesai beberapa ratus milidetik kemudian.
+  bool _sessionIsHold = false;
+  bool get isHoldSession => _sessionIsHold;
+
+  Timer? _holdCapTimer;
+
+  /// True dari jari menempel sampai sesi tekan-tahan benar-benar ditutup.
+  bool _holdActive = false;
+  bool get isHoldActive => _holdActive;
+
+  /// Sesi ini sudah dipotong batas waktu. Pelepasan jari sesudahnya tidak
+  /// boleh memproses apa pun lagi - jawabannya sudah diberikan timer.
+  bool _holdTimedOut = false;
+
+  /// Tombol Bicara mulai ditahan.
+  ///
+  /// TTS yang sedang berjalan dipotong seketika. Pengguna yang menahan tombol
+  /// sudah memutuskan untuk bicara; memaksanya menunggu Vinara selesai bicara
+  /// dulu berarti separuh perintahnya jatuh ke mikrofon yang belum menyala.
+  Future<void> startHoldToTalk() async {
+    _holdActive = true;
+    _holdTimedOut = false;
+    await TTSService.instance.stop();
+    await _beginListening(hold: true);
+    // Sesi tidak jadi dibuka - mesin belum siap, atau state belum
+    // mengizinkan. Jangan tinggalkan tanda tahan yang menyala, karena
+    // pelepasan jari sesudahnya akan menutup sesi yang tidak pernah ada.
+    if (_state != VoiceState.listening) _holdActive = false;
+  }
+
+  /// Jari diangkat. Tutup mikrofon, lalu proses apa yang tertangkap.
+  Future<void> finishHoldToTalk() async {
+    _holdCapTimer?.cancel();
+    _holdCapTimer = null;
+    if (!_holdActive) return;
+    _holdActive = false;
+
+    if (_holdTimedOut) {
+      _holdTimedOut = false;
+      return;
+    }
+
+    // Getar penutup jatuh DI SINI, bukan saat status `done` tiba. Untuk
+    // pengguna yang tidak melihat layar, getar itu adalah jawaban atas
+    // "apakah pelepasan jariku terdaftar?" - dan pertanyaan itu muncul saat
+    // jari diangkat, bukan setengah detik kemudian setelah pengenalan selesai.
+    HapticService.instance.warning();
+
+    // Mesin sudah menutup sesinya sendiri (galat permanen, misalnya mikrofon
+    // dipakai aplikasi lain). Alurnya sudah berjalan; jangan ditumpuk.
+    if (!_stt.isListening) return;
+
+    // `stop()`, bukan `cancel()`: stop meminta hasil akhir, cancel
+    // membuangnya. Hasil akhir itulah perintah penggunanya.
+    await _stt.stop();
+  }
+
+  /// Batas tahan tercapai - tombol tertekan di dalam tas, atau jari lupa
+  /// diangkat. Buang audionya dan katakan apa yang terjadi.
+  ///
+  /// `cancel()` dipilih dengan sengaja: ia tidak menghasilkan hasil akhir,
+  /// jadi `_onSttStatus` tidak akan ikut menjawab dan menimpa pesan ini.
+  Future<void> _onHoldCapReached() async {
+    if (!_holdActive || _state != VoiceState.listening) return;
+    _holdTimedOut = true;
+    await _stt.cancel();
+    HapticService.instance.warning();
+    _setState(VoiceState.noSpeech);
+    await _respond('Waktu habis, silakan coba lagi.', save: false);
+  }
+
+  /// Ditahan terlalu singkat untuk dianggap tekan-tahan.
+  ///
+  /// Tidak merekam apa pun, tapi juga TIDAK diam: tombol yang ditekan lalu
+  /// hening tidak bisa dibedakan dari aplikasi yang macet oleh pengguna yang
+  /// tidak melihat layar, dan satu-satunya cara mengujinya adalah menekan lagi.
+  Future<void> explainHoldRequired() async {
+    HapticService.instance.info();
+    await TtsQueue().speak(
+      'Tahan tombolnya, lalu bicara.',
+      tier: SpeechTier.info,
+    );
+  }
+
+  // Penanda batas sesi (getar mulai & getar berhenti) dulu berupa dua callback
+  // yang HANYA dipasang VoiceScreen. Sejak tombol mic bekerja langsung dari
+  // semua mode tanpa membuka VoiceScreen, callback itu tinggal null di lima
+  // mode lain: menahan tombol tidak menghasilkan getar apa pun, padahal getar
+  // itulah satu-satunya cara pengguna yang tidak melihat layar tahu mikrofonnya
+  // menyala. Sekarang provider ini yang memegangnya, satu pemilik untuk semua
+  // mode, lewat HapticService yang menghormati pengaturan "Getar".
 
   Future<void> stopListening() async {
     if (!_stt.isListening) return;
@@ -318,7 +445,12 @@ class VoiceProvider extends ChangeNotifier {
   /// semuanya bekerja. Kalau tidak, gagal. Yang menentukan cuma perlombaan.
   void _onSttStatus(String status) {
     if (status != 'done') return;
-    onListeningEnded?.call();
+    _holdCapTimer?.cancel();
+    _holdCapTimer = null;
+    // Sesi tekan-tahan sudah bergetar saat jari diangkat. Bergetar lagi di
+    // sini berarti dua getar untuk satu peristiwa, dan pengguna kehilangan
+    // arti keduanya.
+    if (!_sessionIsHold) HapticService.instance.warning();
 
     if (_lastText.trim().isNotEmpty) {
       _processText(_lastText);
@@ -796,7 +928,13 @@ class VoiceProvider extends ChangeNotifier {
     if (onSpeak != null) {
       onSpeak!(message);
     } else {
-      await TTSService.instance.speak(message);
+      // Cadangan ini dulu menembak langsung ke mesin TTS, melewati antrean.
+      // `onSpeak` hanya dipasang VoiceScreen, jadi sejak mic bekerja dari
+      // semua mode, jalur inilah yang dipakai Mode Deteksi dan Navigasi -
+      // tempat narasi rintangan sedang berjalan. Dua sumber suara yang tidak
+      // saling tahu berarti jawaban Vinara dan peringatan "ada orang di depan"
+      // saling menimpa. Lewat antrean, keduanya bergiliran.
+      await TtsQueue().speak(message, tier: SpeechTier.info);
     }
   }
 
@@ -833,10 +971,32 @@ class VoiceProvider extends ChangeNotifier {
     onAllFeaturesFailed = null;
     onAdjustSpeechRate = null;
     clearModeHandlers();
+    _holdCapTimer?.cancel();
     _stt.cancel();
     super.dispose();
   }
 }
+
+/// Durasi minimum jari menempel sebelum mikrofon menyala.
+///
+/// Nilainya sengaja disamakan dengan `kLongPressTimeout` Flutter (500 ms),
+/// karena yang benar-benar mengukurnya adalah pengenal gestur tekan-tahan
+/// milik framework, bukan kode ini. Dua angka yang berbeda untuk satu ambang
+/// yang sama hanya akan berselisih tanpa ada yang menyadarinya.
+const Duration kHoldToTalkMinPress = Duration(milliseconds: 500);
+
+/// Batas atas satu sesi tekan-tahan.
+///
+/// Ini bukan soal panjang perintah - frasa terpanjang di [CommandParser] cuma
+/// tiga kata. Ini soal tombol yang tertekan tanpa sengaja di dalam tas atau
+/// saku: tanpa batas, mikrofonnya menyala sampai baterainya habis.
+const Duration kHoldToTalkMaxHold = Duration(seconds: 10);
+
+/// Kelonggaran di atas [kHoldToTalkMaxHold] untuk `listenFor`/`pauseFor`.
+///
+/// Gunanya memastikan timer aplikasi selalu yang memotong sesi lebih dulu,
+/// bukan batas internal paketnya.
+const Duration kHoldToTalkGrace = Duration(seconds: 2);
 
 /// Kode locale Bahasa Indonesia bawaan, dipakai kalau daftar perangkat tidak
 /// bisa dibaca atau tidak memuat satu pun varian Indonesia.

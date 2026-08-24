@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -168,6 +169,8 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _holdCapTimer?.cancel();
+    _finalWaitTimer?.cancel();
     _stt.cancel();
     final provider = context.read<FindObjectProvider>();
     provider.onSpeak = null;
@@ -224,28 +227,104 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     }
   }
 
-  Future<void> _startListening() async {
+  // ── Tekan-tahan, memakai STT milik layar ini ──────────────────────────────
+  //
+  // Mode ini tidak bisa ikut jalur `VoiceProvider`: yang diucapkan pengguna di
+  // sini adalah NAMA BARANG bebas ("kunci motor", "dompet cokelat"), bukan
+  // salah satu frasa di bank kata. Jadi sesinya tetap milik layar ini, tapi
+  // batas sesinya kini sama persis dengan mode lain - jari yang menutup, bukan
+  // hening - supaya tombol yang sama tidak berperilaku berbeda tergantung mode.
+
+  /// Teks parsial untuk pill di atas tombol.
+  String _heardPartial = '';
+
+  /// Hasil akhir sudah tiba dan sudah disetorkan ke provider.
+  bool _gotFinalResult = false;
+
+  /// Batas atas satu sesi tahan, sepadan dengan [kHoldToTalkMaxHold].
+  Timer? _holdCapTimer;
+
+  /// Jaring pengaman kalau hasil akhir tidak pernah datang setelah `stop()`.
+  Timer? _finalWaitTimer;
+
+  Future<void> _onMicHoldStart() async {
     final offline = context.read<GlobalConditionsProvider>().isOffline;
     if (offline) return; // CO-14 - mode benar-benar dinonaktifkan
     if (!_sttReady) return;
-    setState(() => _debugOverride = null);
+
+    HapticService.instance.info();
+    _gotFinalResult = false;
+    setState(() {
+      _debugOverride = null;
+      _heardPartial = '';
+    });
     final provider = context.read<FindObjectProvider>();
     provider.startListening();
+
+    _holdCapTimer?.cancel();
+    _holdCapTimer = Timer(kHoldToTalkMaxHold, _onHoldCapReached);
+
     await _stt.listen(
       onResult: (result) {
+        if (!mounted) return;
+        setState(() => _heardPartial = result.recognizedWords);
         if (!result.finalResult) return;
-        final command = CommandParser.parse(result.recognizedWords);
-        final target = command.intent == VoiceIntent.findObjectTarget
-            ? command.argument
-            : result.recognizedWords;
-        provider.submitHeardText(result.recognizedWords, parsedTarget: target);
+        _gotFinalResult = true;
+        _submitHeard(result.recognizedWords);
       },
       listenOptions: SpeechListenOptions(
-        listenFor: const Duration(seconds: 5),
         localeId: 'id_ID',
         cancelOnError: true,
+        // Sengaja melebihi batas tahan, supaya yang memotong sesi selalu
+        // [_holdCapTimer] - satu penjelasan untuk satu peristiwa.
+        listenFor: kHoldToTalkMaxHold + kHoldToTalkGrace,
+        pauseFor: kHoldToTalkMaxHold + kHoldToTalkGrace,
       ),
     );
+  }
+
+  Future<void> _onMicHoldEnd() async {
+    _holdCapTimer?.cancel();
+    _holdCapTimer = null;
+    HapticService.instance.warning();
+    if (_stt.isListening) await _stt.stop();
+
+    // `stop()` meminta hasil akhir, tapi tidak menjaminnya: kalau tidak ada
+    // satu kata pun tertangkap, tidak ada apa pun yang datang - dan provider
+    // tinggal di FindObjectState.listening selamanya, dengan pill yang terus
+    // menyala dan tombol Kirim yang tetap mati. Untuk pengguna yang tidak
+    // melihat layar itu jalan buntu yang hening.
+    _finalWaitTimer?.cancel();
+    _finalWaitTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted || _gotFinalResult) return;
+      setState(() => _heardPartial = '');
+      // String kosong sengaja: provider menjawabnya dengan "Cari apa?" lalu
+      // kembali ke idle.
+      context.read<FindObjectProvider>().submitHeardText('');
+    });
+  }
+
+  Future<void> _onHoldCapReached() async {
+    if (!mounted) return;
+    await _stt.cancel();
+    HapticService.instance.warning();
+    if (!mounted) return;
+    setState(() => _heardPartial = '');
+    context.read<TtsProvider>().speak(
+          'Waktu habis, silakan coba lagi.',
+          tier: SpeechTier.info,
+        );
+    context.read<FindObjectProvider>().backToIdle();
+  }
+
+  void _submitHeard(String heard) {
+    _finalWaitTimer?.cancel();
+    final command = CommandParser.parse(heard);
+    final target = command.intent == VoiceIntent.findObjectTarget
+        ? command.argument
+        : heard;
+    if (mounted) setState(() => _heardPartial = '');
+    context.read<FindObjectProvider>().submitHeardText(heard, parsedTarget: target);
   }
 
   /// Dipanggil saat tombol kiri (📷 / "Kirim") ditekan.
@@ -349,10 +428,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
                   : null,
               cameraEnabled: fo.target != null && !fo.isScanning && _debugOverride == null,
               cameraDisabledReason: fo.target == null
-                  ? 'tekan tombol bicara lalu sebutkan barangnya'
+                  ? 'tahan tombol bicara lalu sebutkan barangnya'
                   : 'sedang memindai',
               cameraLabel: fo.target != null ? 'Kirim - cari ${fo.target}' : 'Sebutkan barang dulu',
-              onMicPressed: _startListening,
+              onMicHoldStart: _onMicHoldStart,
+              onMicHoldEnd: _onMicHoldEnd,
+              liveTranscriptOverride: _heardPartial,
               listeningOverride: fo.state == FindObjectState.listening,
             ),
           ),
