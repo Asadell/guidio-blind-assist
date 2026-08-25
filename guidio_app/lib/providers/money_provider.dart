@@ -309,8 +309,7 @@ class MoneyProvider extends ChangeNotifier {
           'lalu coba dari sudut yang sedikit berbeda.';
     }
     if (result.confidence < 0.35) {
-      return 'Yang terlihat sepertinya bukan uang. Pastikan seluruh lembar '
-          'masuk bingkai.';
+      return 'Belum pasti ini uang. Objek yang terlihat sepertinya bukan uang rupiah.';
     }
     return 'Hampir terbaca. Tahan diam sebentar, pastikan tidak ada bayangan '
         'di atas uangnya.';

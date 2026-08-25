@@ -98,6 +98,7 @@ flutter:
     - assets/models/ssd_mobilenet.tflite        # TFLiteService - deteksi rintangan
     - assets/models/labelmap.txt                # TFLiteService - label COCO
     - assets/models/rupiah_classifier_fp16.tflite  # MoneyTFLiteService - 7 pecahan
+    - assets/models/rupiah_classifier_int8.tflite
     #
     # uang_rupiah.tflite dan rupiah_classifier_int8.tflite (dua model lama)
     # sengaja TIDAK dibundel lagi: sudah digantikan
