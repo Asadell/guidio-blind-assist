@@ -9,6 +9,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:vibration/vibration.dart';
 
 import '../core/layout/zone_contract.dart';
+import '../core/speech/tts_queue.dart';
 import '../core/net/frame_codec.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
@@ -172,6 +173,10 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     _holdCapTimer?.cancel();
     _finalWaitTimer?.cancel();
     _stt.cancel();
+    // Layar yang ditinggalkan di tengah sesi tahan tidak akan pernah menutup
+    // gerbang suaranya sendiri, dan mode berikutnya akan diam tanpa sebab
+    // sampai penjaga waktu bertindak.
+    TtsQueue.instance.endVoiceSession();
     final provider = context.read<FindObjectProvider>();
     provider.onSpeak = null;
     provider.onDirectionHaptic = null;
@@ -227,13 +232,22 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     }
   }
 
-  // ── Tekan-tahan, memakai STT milik layar ini ──────────────────────────────
+  // ── Tombol "Sebutkan barang": tekan-tahan, STT milik layar ini ───────────
   //
   // Mode ini tidak bisa ikut jalur `VoiceProvider`: yang diucapkan pengguna di
   // sini adalah NAMA BARANG bebas ("kunci motor", "dompet cokelat"), bukan
-  // salah satu frasa di bank kata. Jadi sesinya tetap milik layar ini, tapi
-  // batas sesinya kini sama persis dengan mode lain - jari yang menutup, bukan
-  // hening - supaya tombol yang sama tidak berperilaku berbeda tergantung mode.
+  // salah satu frasa di bank kata.
+  //
+  // Sesinya tetap milik layar ini, TAPI ia tidak lagi membajak tombol tengah.
+  // Dulu begitu, dan harganya baru terlihat saat dipakai: di mode inilah
+  // pengguna paling mungkin ingin menyerah dan pindah ke mode lain - barangnya
+  // tidak ketemu juga, tangannya penuh, matanya tidak bisa mencari tombol
+  // Pilih mode - dan justru di sini satu-satunya jalan pindah lewat suara
+  // ditutup.
+  //
+  // Sekarang: tombol tengah = perintah suara (sama seperti lima mode lain),
+  // tombol lebar di atas bar = nama barang. Gestur keduanya identik karena
+  // sama-sama memakai `HoldToTalkGesture`.
 
   /// Teks parsial untuk pill di atas tombol.
   String _heardPartial = '';
@@ -258,7 +272,21 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       _debugOverride = null;
       _heardPartial = '';
     });
+
+    // Provider diambil SEBELUM `await` di bawah. Sesudah await, widget ini
+    // bisa saja sudah dilepas dan `context`-nya tidak lagi sah.
     final provider = context.read<FindObjectProvider>();
+
+    // Bungkam mode SEBELUM mikrofon dibuka, persis seperti jalur
+    // `VoiceProvider`. Sesi ini memakai mesin pengenal yang berbeda, tapi
+    // mikrofonnya sama dan masalahnya sama: petunjuk mode yang terucap saat
+    // pengguna menyebut "kunci motor" ikut terekam sebagai bagian namanya.
+    await TtsQueue.instance.beginVoiceSession();
+    if (!mounted) {
+      TtsQueue.instance.endVoiceSession();
+      return;
+    }
+
     provider.startListening();
 
     _holdCapTimer?.cancel();
@@ -289,6 +317,14 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     HapticService.instance.warning();
     if (_stt.isListening) await _stt.stop();
 
+    // Gerbang dilepas begitu mikrofon tertutup, bukan setelah hasilnya tiba.
+    //
+    // Jawaban mode ini ("Baik, mencari dompet.") bersumber `mode`, bukan
+    // `assistant` - kalau gerbang masih tertutup saat jawaban itu berangkat,
+    // ia akan dibuang tanpa jejak dan pengguna menyebut barangnya ke ruang
+    // hampa. Risiko kontaminasi mikrofon sudah nol di titik ini.
+    TtsQueue.instance.endVoiceSession();
+
     // `stop()` meminta hasil akhir, tapi tidak menjaminnya: kalau tidak ada
     // satu kata pun tertangkap, tidak ada apa pun yang datang - dan provider
     // tinggal di FindObjectState.listening selamanya, dengan pill yang terus
@@ -307,6 +343,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   Future<void> _onHoldCapReached() async {
     if (!mounted) return;
     await _stt.cancel();
+    TtsQueue.instance.endVoiceSession();
     HapticService.instance.warning();
     if (!mounted) return;
     setState(() => _heardPartial = '');
@@ -315,6 +352,28 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
           tier: SpeechTier.info,
         );
     context.read<FindObjectProvider>().backToIdle();
+  }
+
+  /// Tombol "Sebutkan barang" ditekan, bukan ditahan - atau ditekan saat mati.
+  ///
+  /// Selalu bersuara. Tombol yang ditekan lalu hening tidak bisa dibedakan
+  /// dari aplikasi yang macet oleh pengguna yang tidak melihat layar.
+  void _explainSpeakButton() {
+    HapticService.instance.info();
+    final reason = _speakButtonDisabledReason;
+    TtsQueue.instance.speak(
+      reason == null
+          ? 'Tahan tombolnya, lalu sebutkan barangnya.'
+          : 'Sebutkan barang, tidak tersedia. $reason.',
+      tier: SpeechTier.info,
+      source: SpeechSource.assistant,
+    );
+  }
+
+  /// Null berarti tombol "Sebutkan barang" hidup.
+  String? get _speakButtonDisabledReason {
+    if (!_sttReady) return 'pengenalan suara belum siap di ponsel ini';
+    return null;
   }
 
   void _submitHeard(String heard) {
@@ -377,6 +436,31 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final hasBanner = banner != null;
     final hasTarget = _debugOverride == null && fo.target != null && fo.state != FindObjectState.idle;
 
+    // Tombol "Sebutkan barang" ikut hilang bersama kontennya: saat izin kamera
+    // belum ada, atau saat mode ini benar-benar dimatikan karena offline.
+    // Tombol yang hidup di layar yang modenya mati adalah janji yang tidak
+    // bisa ditepati.
+    final showSpeakButton = _hasCameraPermission &&
+        _debugOverride != _Debug.co15 &&
+        !disabledOffline;
+
+    // Slot lampu, ditumpuk DI ATAS tombol "Sebutkan barang".
+    //
+    // Urutannya dipilih supaya tombol yang paling sering dipakai tetap paling
+    // dekat ke ibu jari: mencari barang adalah pekerjaan mode ini, menyalakan
+    // lampu cuma persiapannya. Slot lampu juga datang dan pergi mengikuti
+    // cahaya, sedangkan tombol Sebutkan barang selalu ada - menaruh yang
+    // berubah-ubah di bawah akan menggeser yang tetap.
+    final showTorchSlot = TorchSlot.visible(
+          cam,
+          hasCameraPermission: _hasCameraPermission,
+        ) &&
+        !disabledOffline &&
+        _debugOverride != _Debug.co15;
+
+    final slotStack = (showSpeakButton ? HoldToTalkButton.slotHeight : 0.0) +
+        (showTorchSlot ? TorchSlot.slotHeight : 0.0);
+
     return Scaffold(
       backgroundColor: AppColors.cameraVoid,
       body: Stack(
@@ -415,7 +499,46 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
           else if (disabledOffline)
             const SizedBox.shrink()
           else
-            ..._buildContent(context, fo, bottomInset),
+            // Konten digeser ke atas setinggi tombol "Sebutkan barang".
+            // Slot itu duduk di antara konten dan bar, dan kartu hasil
+            // pencarian yang tertutup tombol sama saja dengan tidak ada.
+            ..._buildContent(context, fo, bottomInset + slotStack),
+
+          if (showTorchSlot)
+            Positioned(
+              left: 0, right: 0,
+              bottom: bottomInset +
+                  AppSizes.bottomActionBarHeight +
+                  (showSpeakButton ? HoldToTalkButton.slotHeight : 0.0),
+              child: TorchSlot(
+                cam: cam,
+                dismissMessage:
+                    'Baik, lampu tidak dinyalakan. Cari Objek tetap berjalan.',
+              ),
+            ),
+
+          // Tombol "Sebutkan barang" - tekan-tahan, memakai STT layar ini.
+          //
+          // Bentuknya sengaja sama dengan tombol izin kamera dan mikrofon di
+          // layar pembuka: satu blok selebar layar, 96 dp, tidak mungkin
+          // meleset dijangkau satu tangan sambil memegang tongkat.
+          if (showSpeakButton)
+            Positioned(
+              left: AppSpacing.screenMargin,
+              right: AppSpacing.screenMargin,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s3,
+              child: HoldToTalkButton(
+                label: fo.target == null ? 'Sebutkan barang' : 'Ganti barang',
+                listeningLabel: 'Mendengarkan…',
+                icon: Icons.record_voice_over_outlined,
+                liveTranscript: _heardPartial,
+                listening: fo.state == FindObjectState.listening,
+                onHoldStart: _speakButtonDisabledReason == null ? _onMicHoldStart : null,
+                onHoldEnd: _speakButtonDisabledReason == null ? _onMicHoldEnd : null,
+                disabledReason: _speakButtonDisabledReason,
+                onTooShort: _explainSpeakButton,
+              ),
+            ),
 
           Positioned(
             left: 0, right: 0, bottom: 0,
@@ -428,13 +551,11 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
                   : null,
               cameraEnabled: fo.target != null && !fo.isScanning && _debugOverride == null,
               cameraDisabledReason: fo.target == null
-                  ? 'tahan tombol bicara lalu sebutkan barangnya'
+                  ? 'tahan tombol Sebutkan barang di atas'
                   : 'sedang memindai',
               cameraLabel: fo.target != null ? 'Kirim - cari ${fo.target}' : 'Sebutkan barang dulu',
-              onMicHoldStart: _onMicHoldStart,
-              onMicHoldEnd: _onMicHoldEnd,
-              liveTranscriptOverride: _heardPartial,
-              listeningOverride: fo.state == FindObjectState.listening,
+              // Tombol tengah TIDAK ditimpa lagi. Di mode ini pun ia berarti
+              // perintah suara, sama seperti lima mode lain.
             ),
           ),
         ],

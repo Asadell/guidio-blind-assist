@@ -6,6 +6,7 @@ import '../core/speech/tts_queue.dart';
 import '../providers/index.dart';
 import '../services/haptic_service.dart';
 import '../theme/index.dart';
+import 'hold_to_talk.dart';
 import 'mode_picker_sheet.dart';
 
 /// BottomActionBar (F3) - selalu ada, selalu di tempat yang sama, tidak
@@ -17,6 +18,18 @@ import 'mode_picker_sheet.dart';
 ///
 /// **Tahan = mendengarkan. Lepas = jalankan.** Tidak ada layar yang berganti,
 /// tidak ada popup, tidak ada konfirmasi.
+///
+/// **Artinya SAMA PERSIS di keenam mode: perintah suara.** Tidak ada mode yang
+/// boleh membajaknya untuk keperluan sendiri. Mode Cari Objek dulu memakainya
+/// untuk menampung nama barang, dan akibatnya satu-satunya cara berpindah mode
+/// lewat suara justru hilang di mode yang paling mungkin membuat pengguna
+/// ingin pindah. Kebutuhan khusus mode punya tempatnya sendiri sekarang:
+/// `HoldToTalkButton`, selebar layar, tepat di atas bar ini.
+///
+/// Ini bukan soal kerapian. Pengguna yang tidak melihat layar tidak bisa
+/// memeriksa tombol mana yang sedang berarti apa; yang dia punya cuma posisi
+/// dan hafalan. Satu tombol yang berubah arti di satu mode merusak hafalan itu
+/// untuk keenam-enamnya.
 ///
 /// Sebelumnya tombol ini mendorong `VoiceScreen` sebagai overlay layar penuh
 /// lebih dulu, lalu baru mulai mendengarkan setelah overlay itu ditutup. Untuk
@@ -31,11 +44,24 @@ import 'mode_picker_sheet.dart';
 ///
 /// | Peristiwa                    | Yang terjadi                            |
 /// |------------------------------|-----------------------------------------|
-/// | Tahan >= 500 ms              | Getar, mikrofon menyala, TTS dipotong   |
+/// | Tahan >= 500 ms              | Getar, mikrofon menyala, TTS dipotong, **mode dibungkam** |
 /// | Bicara sambil menahan        | Teks parsial muncul di atas tombol      |
 /// | Lepas                        | Getar, mikrofon mati, perintah dijalankan |
 /// | Lepas < 500 ms               | Tidak merekam; "Tahan tombolnya, lalu bicara." |
 /// | Menahan lewat 10 detik       | Audio dibuang; "Waktu habis, silakan coba lagi." |
+///
+/// ### Mode yang sedang berjalan ikut dibungkam
+///
+/// Menahan tombol ini menutup gerbang suara di `TtsQueue`: narasi rintangan,
+/// arahan jalur, dan petunjuk mode berhenti sampai jawaban asisten selesai.
+/// Dua alasan, dan keduanya menentukan apakah perintahnya sampai:
+///
+/// 1. Suara aplikasi masuk ke mikrofonnya sendiri, dan mesin pengenal
+///    menerima dua suara sekaligus.
+/// 2. Orang tidak bisa menyusun kalimat sambil mendengarkan kalimat lain.
+///
+/// **Peringatan bahaya tetap menembus.** Lubang di depan kaki tidak menunggu
+/// sampai pengguna selesai bicara. Rinciannya di `TtsQueue.beginVoiceSession`.
 ///
 /// ### Kenapa TalkBack dapat jalur sendiri
 ///
@@ -93,22 +119,18 @@ class BottomActionBar extends StatelessWidget {
   /// DO-24 - izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
   final bool micEnabled;
 
-  /// Mode dengan STT sendiri (Cari Objek) menimpa kedua sisi tekan-tahan.
-  ///
-  /// Sengaja **berpasangan**: satu tanpa yang lain berarti sesi yang dibuka
-  /// tidak pernah ditutup, atau sebaliknya. Kalau keduanya null, tombol ini
-  /// memakai jalur bawaan `VoiceProvider`.
-  final Future<void> Function()? onMicHoldStart;
-  final Future<void> Function()? onMicHoldEnd;
-
-  /// Teks parsial yang sedang didengar, untuk mode yang memakai STT sendiri.
-  /// Kalau null, pill teks membaca `VoiceProvider.lastText`.
-  final String? liveTranscriptOverride;
-  /// Saat mode aktif punya STT sendiri (mis. Cari Objek), timpa visual
-  /// listening/processing bawaan `VoiceProvider` supaya tombol tetap sesuai
-  /// dengan apa yang sesungguhnya sedang berjalan.
-  final bool? listeningOverride;
-  final bool? processingOverride;
+  // Penimpa mik per-mode (`onMicHoldStart`, `onMicHoldEnd`,
+  // `liveTranscriptOverride`, `listeningOverride`, `processingOverride`)
+  // SUDAH DIHAPUS. Lihat catatan kontrak tombol tengah di atas.
+  //
+  // Satu-satunya pemakainya adalah Mode Cari Objek, yang membajak tombol ini
+  // untuk menampung nama barang. Akibatnya satu-satunya cara berpindah mode
+  // lewat suara justru hilang di mode yang paling mungkin membuat pengguna
+  // ingin pindah - saat barangnya tidak ketemu juga, sementara tangannya
+  // penuh dan matanya tidak bisa mencari tombol Pilih mode.
+  //
+  // Nama barang sekarang punya tombolnya sendiri, `HoldToTalkButton`, yang
+  // duduk di atas bar ini.
 
   const BottomActionBar({
     super.key,
@@ -118,21 +140,12 @@ class BottomActionBar extends StatelessWidget {
     this.cameraEnabled = true,
     this.cameraDisabledReason,
     this.micEnabled = true,
-    this.onMicHoldStart,
-    this.onMicHoldEnd,
-    this.liveTranscriptOverride,
-    this.listeningOverride,
-    this.processingOverride,
-  }) : assert(
-          (onMicHoldStart == null) == (onMicHoldEnd == null),
-          'onMicHoldStart dan onMicHoldEnd harus dipasang berpasangan: '
-          'sesi yang dibuka satu sisi hanya bisa ditutup sisi lainnya.',
-        );
+  });
 
   @override
   Widget build(BuildContext context) {
     final voice = context.watch<VoiceProvider>();
-    final listening = listeningOverride ?? voice.isListening;
+    final listening = voice.isListening;
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final sideButtonsEnabled = cameraEnabled && !listening;
 
@@ -144,10 +157,7 @@ class BottomActionBar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _LiveTranscriptPill(
-          text: liveTranscriptOverride ?? voice.lastText,
-          visible: listening,
-        ),
+        _LiveTranscriptPill(text: voice.lastText, visible: listening),
         _bar(context, bottomInset, sideButtonsEnabled, listening),
       ],
     );
@@ -191,13 +201,7 @@ class BottomActionBar extends StatelessWidget {
           ),
           Semantics(
             sortKey: const OrdinalSortKey(8),
-            child: _MicButton(
-              enabled: micEnabled,
-              onHoldStart: onMicHoldStart,
-              onHoldEnd: onMicHoldEnd,
-              listeningOverride: listeningOverride,
-              processingOverride: processingOverride,
-            ),
+            child: _MicButton(enabled: micEnabled),
           ),
           Semantics(
             sortKey: const OrdinalSortKey(9),
@@ -222,18 +226,8 @@ class BottomActionBar extends StatelessWidget {
 /// setelah sesi ditutup batas waktu akan menutup sesi yang sudah tidak ada.
 class _MicButton extends StatefulWidget {
   final bool enabled;
-  final Future<void> Function()? onHoldStart;
-  final Future<void> Function()? onHoldEnd;
-  final bool? listeningOverride;
-  final bool? processingOverride;
 
-  const _MicButton({
-    this.enabled = true,
-    this.onHoldStart,
-    this.onHoldEnd,
-    this.listeningOverride,
-    this.processingOverride,
-  });
+  const _MicButton({this.enabled = true});
 
   @override
   State<_MicButton> createState() => _MicButtonState();
@@ -245,9 +239,6 @@ class _MicButtonState extends State<_MicButton>
     vsync: this,
     duration: const Duration(milliseconds: 900),
   );
-
-  /// Sesi yang sedang berjalan dimulai oleh tekanan jari yang belum diangkat.
-  bool _holding = false;
 
   @override
   void dispose() {
@@ -264,68 +255,12 @@ class _MicButtonState extends State<_MicButton>
     }
   }
 
-  // ── Jalur tekan-tahan ─────────────────────────────────────────────────────
-
-  /// Ambang 500 ms tidak diukur di sini. `onLongPressStart` dipanggil framework
-  /// tepat saat `kLongPressTimeout` terlewati, jadi menahan lebih singkat dari
-  /// itu tidak akan pernah sampai ke fungsi ini - dan tidak ada timer kedua
-  /// yang bisa berselisih dengan timer framework.
-  Future<void> _onHoldStart() async {
-    setState(() => _holding = true);
-    final custom = widget.onHoldStart;
-    if (custom != null) {
-      await custom();
-      return;
-    }
-    await context.read<VoiceProvider>().startHoldToTalk();
-  }
-
-  Future<void> _onHoldEnd() async {
-    if (!_holding) return;
-    setState(() => _holding = false);
-    final custom = widget.onHoldEnd;
-    if (custom != null) {
-      await custom();
-      return;
-    }
-    if (!mounted) return;
-    await context.read<VoiceProvider>().finishHoldToTalk();
-  }
-
-  /// Ditahan terlalu singkat. Tidak merekam, tapi juga tidak hening.
-  void _onTooShort() {
-    // Mode dengan STT sendiri tidak punya jalur penjelasan di providernya,
-    // jadi kalimatnya diucapkan langsung lewat antrean yang sama.
-    if (widget.onHoldStart != null) {
-      HapticService.instance.info();
-      TtsQueue().speak('Tahan tombolnya, lalu bicara.', tier: SpeechTier.info);
-      return;
-    }
-    context.read<VoiceProvider>().explainHoldRequired();
-  }
-
-  /// Jalur cadangan TalkBack: saklar, bukan tahan.
-  Future<void> _toggleForScreenReader(bool listening) async {
-    final voice = context.read<VoiceProvider>();
-    final customStart = widget.onHoldStart;
-    if (listening) {
-      final customEnd = widget.onHoldEnd;
-      if (customEnd != null) {
-        await customEnd();
-      } else {
-        await voice.stopListening();
-      }
-      return;
-    }
-    if (customStart != null) {
-      await customStart();
-      return;
-    }
-    // Sesi tap sekali, bukan sesi tahan: ia menutup dirinya sendiri setelah
-    // 3 detik hening, jadi pengguna tidak WAJIB mengetuk kedua kali untuk
-    // mematikan mikrofon.
-    await voice.startListening();
-  }
+  // Gestur tekan-tahan tidak lagi ditulis di sini. Ia pindah ke
+  // `HoldToTalkGesture`, dan dibagi dengan `HoldToTalkButton` di atas bar.
+  // Menyalin logikanya ke dua tempat berarti dua tombol yang sama-sama
+  // berarti "bicara" bisa menyimpang dalam satu detail tanpa ada yang
+  // menyadarinya - dan yang runtuh bukan salah satunya, melainkan
+  // kepercayaan pengguna pada keduanya.
 
   @override
   Widget build(BuildContext context) {
@@ -345,8 +280,8 @@ class _MicButtonState extends State<_MicButton>
     }
 
     final voice = context.watch<VoiceProvider>();
-    final listening = widget.listeningOverride ?? voice.isListening;
-    final processing = widget.processingOverride ?? voice.isProcessing;
+    final listening = voice.isListening;
+    final processing = voice.isProcessing;
     final screenReader = MediaQuery.of(context).accessibleNavigation;
     _syncPulse(listening);
 
@@ -362,38 +297,19 @@ class _MicButtonState extends State<_MicButton>
                 ? 'Bicara, ketuk untuk mulai mendengarkan'
                 : 'Bicara, tahan lalu ucapkan perintah';
 
-    final button = _circle(listening: listening, processing: processing);
-
-    if (screenReader) {
-      return Semantics(
-        button: true,
-        label: semanticLabel,
-        onTap: processing ? null : () => _toggleForScreenReader(listening),
-        child: GestureDetector(
-          onTap: processing ? null : () => _toggleForScreenReader(listening),
-          child: button,
-        ),
-      );
-    }
-
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: GestureDetector(
-        // `onTap` di sini HANYA berarti "diangkat sebelum 500 ms". Begitu
-        // ambangnya terlewat, framework beralih ke pengenal tekan-tahan dan
-        // `onTap` tidak lagi dipanggil, jadi keduanya tidak pernah bertabrakan.
-        onTap: processing ? null : _onTooShort,
-        onLongPressStart: processing ? null : (_) => _onHoldStart(),
-        // Ketiganya menutup sesi. `onLongPressEnd` untuk jari yang diangkat,
-        // `onLongPressCancel` untuk gestur yang direbut widget lain, dan
-        // `onLongPressMoveUpdate` sengaja TIDAK dipakai: menggeser jari keluar
-        // tombol sambil bicara adalah hal yang wajar bagi pengguna yang tidak
-        // melihat layar, dan itu tidak boleh memotong rekamannya.
-        onLongPressEnd: processing ? null : (_) => _onHoldEnd(),
-        onLongPressCancel: processing ? null : _onHoldEnd,
-        child: button,
-      ),
+    return HoldToTalkGesture(
+      listening: listening,
+      processing: processing,
+      semanticLabel: semanticLabel,
+      onHoldStart: () => context.read<VoiceProvider>().startHoldToTalk(),
+      onHoldEnd: () => context.read<VoiceProvider>().finishHoldToTalk(),
+      onTooShort: () => context.read<VoiceProvider>().explainHoldRequired(),
+      // Jalur TalkBack memakai sesi tap sekali, bukan sesi tahan: ia menutup
+      // dirinya sendiri setelah 3 detik hening, jadi pengguna tidak WAJIB
+      // mengetuk kedua kali untuk mematikan mikrofon.
+      onScreenReaderStart: () => context.read<VoiceProvider>().startListening(),
+      onScreenReaderStop: () => context.read<VoiceProvider>().stopListening(),
+      child: _circle(listening: listening, processing: processing),
     );
   }
 

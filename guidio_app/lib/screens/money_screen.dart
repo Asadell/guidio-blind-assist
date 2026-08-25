@@ -245,10 +245,19 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     final offline = context.watch<GlobalConditionsProvider>().isOffline;
     final media = MediaQuery.of(context);
     final topInset = media.padding.top;
-    final bottomInset = media.padding.bottom;
+    final rawBottomInset = media.padding.bottom;
 
     final showPermissionCard =
         _debugOverride == MoneyDebugState.ug14 || (_debugOverride == null && !_hasCameraPermission);
+
+    // Slot lampu: nominal uang tidak terbaca sama sekali di ruang gelap, jadi
+    // mode ini termasuk yang lampunya menentukan berhasil atau tidak.
+    final showTorchSlot =
+        TorchSlot.visible(cam, hasCameraPermission: _hasCameraPermission);
+    // Semua kartu dan panel di layar ini berpatokan pada `bottomInset`, jadi
+    // menambahkan tinggi slot di satu tempat menggeser semuanya sekaligus.
+    final bottomInset =
+        rawBottomInset + (showTorchSlot ? TorchSlot.slotHeight : 0);
 
     final showOfflineBanner = _debugOverride == MoneyDebugState.ug13 ||
         (_debugOverride == null && offline && !_offlineBannerShownOnce);
@@ -403,6 +412,17 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
                 ),
               ),
           ],
+
+          if (showTorchSlot)
+            Positioned(
+              left: 0, right: 0,
+              bottom: rawBottomInset + AppSizes.bottomActionBarHeight,
+              child: TorchSlot(
+                cam: cam,
+                dismissMessage:
+                    'Baik, lampu tidak dinyalakan. Kenali Uang tetap berjalan.',
+              ),
+            ),
 
           // z60 - BottomActionBar, selalu ada, selalu di tempat yang sama.
           // Tombol kiri = "Kenali Uang": snap frame saat ini, umumkan hasilnya.

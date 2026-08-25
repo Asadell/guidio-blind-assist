@@ -136,7 +136,17 @@ class AppModeProvider extends ChangeNotifier {
     // Lewat antrean, tier Warning: pengumuman "di mana saya sekarang" tidak
     // boleh dibuang sebagai Info basi, tapi juga tidak boleh menahan
     // peringatan bahaya yang datang saat mode baru terpasang.
-    await TtsQueue().speak(announcement, tier: SpeechTier.warning);
+    //
+    // Sumbernya ASISTEN, bukan mode. Kalimat inilah jawaban atas perintah
+    // "pindah ke navigasi" yang barusan diucapkan pengguna; membungkamnya
+    // bersama narasi mode berarti perpindahan mode terjadi tanpa satu pun
+    // tanda bahwa perintahnya sampai. Ia juga tetap terdengar saat mode
+    // dipilih lewat lembar Pilih Mode, di mana tidak ada gerbang sama sekali.
+    await TtsQueue().speak(
+      announcement,
+      tier: SpeechTier.warning,
+      source: SpeechSource.assistant,
+    );
   }
 
   /// NV-18 - satu-satunya konfirmasi wajib di seluruh app: keluar dari Mode

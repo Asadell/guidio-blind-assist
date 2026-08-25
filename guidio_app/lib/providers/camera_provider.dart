@@ -164,6 +164,28 @@ class CameraProvider extends ChangeNotifier {
       _setError(false);
       notifyListeners();
 
+      // Senter ikut dipulihkan, karena controller baru selalu lahir dengan
+      // lampu MATI.
+      //
+      // Tanpa ini, `_isTorchOn` bertahan `true` sementara lampunya sudah
+      // padam - dan tidak ada satu pun yang memberi tahu. Jalurnya bukan
+      // teoretis: "deskripsikan suasana" mengganti preset di tengah mode
+      // aliran, jadi pengguna yang menyalakan lampu di ruang gelap lalu
+      // meminta deskripsi akan menemukan lampunya mati, tombolnya masih
+      // bertuliskan "Matikan Lampu", dan menekannya tidak mengubah apa pun.
+      //
+      // Kalau pemulihannya gagal, statusnya diturunkan supaya layar dan
+      // lampu tidak saling membantah.
+      if (_isTorchOn) {
+        _isTorchOn = false;
+        final restored = await setTorch(true);
+        if (!restored) {
+          debugPrint('[CameraProvider] senter tidak bisa dipulihkan setelah '
+              'kamera dibangun ulang');
+          notifyListeners();
+        }
+      }
+
       // Nyalakan lagi aliran frame kalau tadi memang sedang mengalir.
       // `onFrameReady` sengaja tidak disentuh - pelanggannya tetap yang sama,
       // hanya controller di bawahnya yang berganti.
@@ -175,6 +197,10 @@ class CameraProvider extends ChangeNotifier {
       debugPrint('[CameraProvider] initCamera error: $e');
       _initialized = false;
       _activePreset = null;
+      // Controller lamanya sudah dibuang, jadi lampunya pasti padam. Status
+      // yang tertinggal menyala akan membuat tombol menawarkan "Matikan
+      // Lampu" untuk lampu yang sudah mati.
+      _isTorchOn = false;
       _setError(true);
     }
   }
@@ -325,19 +351,37 @@ class CameraProvider extends ChangeNotifier {
 
   /// Nyalakan atau matikan flashlight secara eksplisit.
   /// Aman dipanggil saat stream berjalan maupun tidak.
-  Future<void> setTorch(bool on) async {
-    if (_controller == null || !_initialized) return;
+  ///
+  /// Mengembalikan **false kalau lampunya tidak jadi berubah**, dan itu yang
+  /// paling penting dari fungsi ini.
+  ///
+  /// Sebelumnya ia `void`, dan kedua jalur gagalnya - kamera belum siap, dan
+  /// `setFlashMode` melempar - berakhir diam-diam. Pemanggilnya tetap
+  /// mengucapkan "Lampu dinyalakan." karena tidak punya cara tahu bahwa
+  /// tidak ada yang menyala. Untuk pengguna tunanetra itu bukan pesan yang
+  /// kurang tepat, melainkan pesan yang **berbohong** tentang satu-satunya
+  /// hal yang tidak bisa dia periksa sendiri: apakah sekitarnya sudah terang.
+  Future<bool> setTorch(bool on) async {
+    if (_controller == null || !_initialized) {
+      debugPrint('[CameraProvider] setTorch($on) diabaikan: kamera belum siap');
+      return false;
+    }
     try {
       await _controller!.setFlashMode(on ? FlashMode.torch : FlashMode.off);
       _isTorchOn = on;
       notifyListeners();
+      return true;
     } catch (e) {
+      // Sebagian perangkat menolak `torch` saat aliran frame berjalan, dan
+      // sebagian lagi tidak punya lampu sama sekali. Apa pun sebabnya,
+      // status yang dicatat harus tetap sama dengan lampu yang sebenarnya.
       debugPrint('[CameraProvider] setTorch($on) error: $e');
+      return false;
     }
   }
 
   /// Toggle flashlight - nyala → mati, mati → nyala.
-  Future<void> toggleTorch() => setTorch(!_isTorchOn);
+  Future<bool> toggleTorch() => setTorch(!_isTorchOn);
 
   /// Ambil foto dan kembalikan **path berkas**, bukan byte-nya.
   ///

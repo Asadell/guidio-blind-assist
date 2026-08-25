@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/speech/tts_queue.dart';
 
-export '../core/speech/tts_queue.dart' show SpeechTier;
+export '../core/speech/tts_queue.dart' show SpeechTier, SpeechSource;
 
 /// TtsProvider - pembungkus [TtsQueue] tier-based (bagian 15). Dipakai
 /// screen/mode baru lewat `context.read<TtsProvider>().speak(msg, tier: ...)`
@@ -14,9 +14,16 @@ class TtsProvider extends ChangeNotifier {
   bool get isActive => _queue.isSpeaking;
   SpeechTier? get speakingTier => _queue.speakingTier;
 
-  Future<void> speak(String message, {SpeechTier tier = SpeechTier.info}) async {
+  /// [source] menentukan apakah ucapan ini ikut dibungkam saat pengguna
+  /// sedang menahan tombol Bicara. Bawaannya [SpeechSource.mode] - lihat
+  /// alasan pemilihan bawaan itu di `SpeechSource`.
+  Future<void> speak(
+    String message, {
+    SpeechTier tier = SpeechTier.info,
+    SpeechSource source = SpeechSource.mode,
+  }) async {
     notifyListeners();
-    await _queue.speak(message, tier: tier);
+    await _queue.speak(message, tier: tier, source: source);
     notifyListeners();
   }
 

@@ -403,7 +403,20 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     final storageLow = context.watch<GlobalConditionsProvider>().isStorageLow;
     final media = MediaQuery.of(context);
     final topInset = media.padding.top;
-    final bottomInset = media.padding.bottom;
+    final rawBottomInset = media.padding.bottom;
+
+    // Slot lampu: inilah mode yang paling sering dipakai di tempat kurang
+    // cahaya - label obat di kamar, struk di dalam tas, papan nama di lorong.
+    // ML Kit tidak mengarang teks dari foto gelap, ia cuma tidak menemukan
+    // apa-apa, dan pengguna tidak punya cara tahu bahwa yang kurang adalah
+    // cahayanya.
+    final showTorchSlot =
+        TorchSlot.visible(cam, hasCameraPermission: _hasCameraPermission);
+    // Seluruh konten layar ini berpatokan pada `bottomInset`, jadi satu
+    // penambahan di sini menggeser tombol "Baca teks" dan panel hasilnya
+    // sekaligus.
+    final bottomInset =
+        rawBottomInset + (showTorchSlot ? TorchSlot.slotHeight : 0);
 
     final banner = _resolveBanner(storageLow);
     final hasBanner = banner != null;
@@ -445,6 +458,17 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             )
           else
             ..._buildContentZone(context, bottomInset),
+
+          if (showTorchSlot)
+            Positioned(
+              left: 0, right: 0,
+              bottom: rawBottomInset + AppSizes.bottomActionBarHeight,
+              child: TorchSlot(
+                cam: cam,
+                dismissMessage:
+                    'Baik, lampu tidak dinyalakan. Baca Teks tetap bisa dipakai.',
+              ),
+            ),
 
           Positioned(
             left: 0, right: 0, bottom: 0,

@@ -61,7 +61,13 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
         context.read<TtsProvider>().speak('Percakapan tadi sudah saya hapus.', tier: SpeechTier.info);
       }
 
-      voice.onSpeak = (text) => context.read<TtsProvider>().speak(text, tier: SpeechTier.info);
+      // Sumbernya ASISTEN: jawaban atas perintah pengguna tidak boleh ikut
+      // terbungkam gerbang suara yang dibuka tombol Bicara.
+      voice.onSpeak = (text) => context.read<TtsProvider>().speak(
+            text,
+            tier: SpeechTier.info,
+            source: SpeechSource.assistant,
+          );
       voice.onOpenSettings = _openSettings;
 
       // Getar batas sesi (mulai & berhenti) sudah dipegang VoiceProvider
@@ -333,8 +339,10 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
               cameraEnabled: !voice.isProcessing,
               cameraDisabledReason: 'sedang memproses',
               micEnabled: _hasMicPermission,
-              listeningOverride: voice.isListening,
-              processingOverride: voice.isProcessing,
+              // Tidak ada lagi penimpa listening/processing: tombol Bicara
+              // membaca `VoiceProvider` sendiri, dan di layar inilah sumbernya
+              // sama persis. Menyalurkan nilai yang sama lewat dua jalur cuma
+              // menambah tempat untuk berselisih.
             ),
           ),
         ],

@@ -12,10 +12,35 @@ import '../../services/tts_service.dart';
 /// ```
 enum SpeechTier { info, warning, critical }
 
+/// Siapa yang menghasilkan ucapan ini.
+///
+/// Bukan hiasan: ini yang menentukan apa yang dibungkam saat pengguna sedang
+/// menahan tombol Bicara. Tanpa pembedaan ini, satu-satunya cara membungkam
+/// narasi mode adalah membungkam semuanya - termasuk jawaban atas perintah
+/// yang barusan diucapkan pengguna, yang justru satu-satunya hal yang ingin
+/// dia dengar saat itu.
+enum SpeechSource {
+  /// Dihasilkan mode yang sedang berjalan: narasi rintangan, arahan jalur,
+  /// petunjuk bingkai uang, hasil pembacaan teks.
+  ///
+  /// **Ini bawaannya.** Sengaja: pemanggil yang lupa menyebutkan sumbernya
+  /// akan ikut dibungkam saat mikrofon terbuka. Lupa membungkam sesuatu itu
+  /// merusak pengenalan suara; lupa meloloskan sesuatu cuma membuatnya
+  /// tertunda beberapa detik. Yang kedua jauh lebih murah.
+  mode,
+
+  /// Jawaban asisten atas perintah pengguna, termasuk pengumuman mode.
+  ///
+  /// Tidak pernah dibungkam gerbang suara - kalau ini ikut dibungkam,
+  /// menahan tombol Bicara berarti berbicara ke ruang hampa.
+  assistant,
+}
+
 /// Satu item di antrean.
 class _QueuedSpeech {
   final String message;
   final SpeechTier tier;
+  final SpeechSource source;
   final DateTime queuedAt;
   final int sequence;
   final Duration maxAge;
@@ -29,6 +54,7 @@ class _QueuedSpeech {
   _QueuedSpeech({
     required this.message,
     required this.tier,
+    required this.source,
     required this.sequence,
     required this.maxAge,
     this.interruptible = true,
@@ -114,6 +140,7 @@ class TtsQueue {
   final _recentDedup = HashMap<String, DateTime>();
 
   SpeechTier? _speakingTier;
+  SpeechSource? _speakingSource;
   bool _currentInterruptible = true;
   bool _draining = false;
   int _drainGeneration = 0;
@@ -125,6 +152,136 @@ class TtsQueue {
 
   SpeechTier? get speakingTier => _speakingTier;
   bool get isSpeaking => _speakingTier != null || _draining;
+
+  // ── Gerbang sesi suara ───────────────────────────────────────────────
+  //
+  // Saat pengguna menahan tombol Bicara, mode yang sedang berjalan harus
+  // DIAM. Ini bukan soal kenyamanan:
+  //
+  // 1. Suara aplikasi masuk ke mikrofonnya sendiri. Narasi "ada orang di
+  //    depan" yang terucap saat pengguna berkata "kenali uang" membuat
+  //    mesin pengenal menerima dua suara sekaligus, dan yang keluar adalah
+  //    kata yang tidak cocok dengan satu pun frasa CommandParser.
+  // 2. Orang tidak bisa menyusun kalimat sambil mendengarkan kalimat lain.
+  //    Pengguna yang sedang mengingat nama mode tujuan akan kehilangan
+  //    kata-katanya begitu ada suara lain masuk.
+  //
+  // Gerbang ini punya dua fase, dan keduanya perlu:
+  //
+  //   `_gateHeld`     - mikrofon terbuka atau perintah sedang diproses.
+  //   `_gateDraining` - perintahnya selesai, tapi JAWABANNYA belum habis
+  //                     diucapkan. Tanpa fase ini, arahan jalur bertier
+  //                     Warning akan memotong jawaban bertier Info tepat
+  //                     setelah gerbang lepas, dan pengguna kehilangan
+  //                     konfirmasi atas perintah yang barusan dia ucapkan.
+
+  bool _gateHeld = false;
+  bool _gateDraining = false;
+  Timer? _gateWatchdog;
+
+  /// Batas hidup gerbang, apa pun yang terjadi.
+  ///
+  /// Jaring pengaman, bukan pengatur waktu normal. Kalau ada satu jalur yang
+  /// lupa memanggil [endVoiceSession] - galat yang tidak dilempar, layar yang
+  /// di-dispose di tengah sesi - aplikasi akan bisu **selamanya** bagi orang
+  /// yang seluruh antarmukanya adalah suara. Itu kegagalan yang jauh lebih
+  /// buruk daripada narasi yang lolos beberapa detik terlalu cepat.
+  ///
+  /// 30 detik = 10 detik batas tahan + waktu proses + jawaban terpanjang,
+  /// dengan kelonggaran.
+  Duration gateMaxLife = const Duration(seconds: 30);
+
+  /// True selama narasi mode sedang ditahan.
+  bool get voiceGateClosed => _gateHeld || _gateDraining;
+
+  /// Pengguna mulai bicara ke asisten: bungkam mode yang sedang berjalan.
+  ///
+  /// Ucapan yang sedang berjalan ikut dipotong, karena pengguna yang menahan
+  /// tombol sudah memutuskan untuk bicara. Satu-satunya yang dibiarkan
+  /// selesai adalah peringatan bahaya yang tidak bisa dipotong - kalimat
+  /// "awas lubang" yang terpenggal di tengah lebih buruk daripada tidak ada.
+  Future<void> beginVoiceSession() async {
+    _gateHeld = true;
+    _gateDraining = false;
+    _gateWatchdog?.cancel();
+    _gateWatchdog = Timer(gateMaxLife, _releaseGate);
+
+    // Buang antrean milik mode. Narasi yang disusun SEBELUM pengguna menekan
+    // tombol sudah basi begitu dia mulai bicara.
+    _pending.removeWhere((q) =>
+        q.source == SpeechSource.mode && q.tier != SpeechTier.critical);
+
+    if (_speakingTier == SpeechTier.critical && !_currentInterruptible) return;
+
+    _drainGeneration++;
+    await TTSService.instance.stop();
+    _lastUtteranceEndedAt = DateTime.now();
+    _speakingTier = null;
+    _speakingSource = null;
+    _currentInterruptible = true;
+  }
+
+  /// Perintahnya sudah diproses. Gerbang belum tentu langsung lepas.
+  ///
+  /// Kalau jawaban asisten masih mengantre atau sedang diucapkan, gerbang
+  /// bertahan sampai jawaban itu habis. Panggil ini SESUDAH jawabannya masuk
+  /// antrean, bukan sebelum - kalau dipanggil lebih dulu, antreannya masih
+  /// kosong, gerbang lepas seketika, dan jawaban yang menyusul akan bersaing
+  /// dengan narasi mode seperti sebelumnya.
+  void endVoiceSession() {
+    if (!_gateHeld && !_gateDraining) return;
+    _gateHeld = false;
+    final answerPending = _speakingSource == SpeechSource.assistant ||
+        _pending.any((q) => q.source == SpeechSource.assistant);
+    if (answerPending) {
+      _gateDraining = true;
+      return;
+    }
+    _releaseGate();
+  }
+
+  /// Selama [body] berjalan, ucapan bersumber [SpeechSource.mode] dihitung
+  /// sebagai jawaban asisten.
+  ///
+  /// Dipakai `VoiceProvider` saat menjalankan aksi milik mode yang diminta
+  /// lewat perintah suara - "jepret", "ulangi", "jeda", "stop navigasi".
+  ///
+  /// Kalimat yang keluar dari aksi itu ("Suara panduan dimatikan.", nominal
+  /// uang yang terbaca) BUKAN narasi mode yang kebetulan lewat: ia jawaban
+  /// langsung atas perintah yang barusan diucapkan pengguna. Tanpa
+  /// pengecualian ini, gerbang yang dibuka perintah itu sendiri akan menelan
+  /// jawabannya - pengguna menahan tombol, bicara, lalu tidak mendengar apa
+  /// pun.
+  ///
+  /// Hanya berlaku untuk ucapan yang berangkat **secara sinkron** di dalam
+  /// [body]. Itu memang cakupan yang dituju: aksi yang jawabannya baru siap
+  /// beberapa detik kemudian (hasil inferensi uang, hasil pembacaan teks)
+  /// berangkat setelah gerbang lepas dengan sendirinya.
+  T speakModeAsAssistant<T>(T Function() body) {
+    final previous = _attributeModeAsAssistant;
+    _attributeModeAsAssistant = true;
+    try {
+      return body();
+    } finally {
+      _attributeModeAsAssistant = previous;
+    }
+  }
+
+  bool _attributeModeAsAssistant = false;
+
+  void _releaseGate() {
+    _gateHeld = false;
+    _gateDraining = false;
+    _gateWatchdog?.cancel();
+    _gateWatchdog = null;
+  }
+
+  /// Dipanggil dari [_drain] tiap satu ucapan selesai.
+  void _maybeReleaseAfterAnswer() {
+    if (!_gateDraining) return;
+    if (_pending.any((q) => q.source == SpeechSource.assistant)) return;
+    _releaseGate();
+  }
   bool get isSettling =>
       _settlingUntil != null && DateTime.now().isBefore(_settlingUntil!);
   int get pendingCount => _pending.length;
@@ -168,12 +325,38 @@ class TtsQueue {
   Future<void> speak(
     String message, {
     SpeechTier tier = SpeechTier.info,
+    SpeechSource source = SpeechSource.mode,
     String? dedupKey,
     bool? interruptible,
     Duration? maxAge,
   }) async {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return;
+
+    // Aksi mode yang dijalankan atas permintaan lisan pengguna berbicara
+    // sebagai asisten. Lihat [speakModeAsAssistant].
+    if (_attributeModeAsAssistant && source == SpeechSource.mode) {
+      source = SpeechSource.assistant;
+    }
+
+    // ── Gerbang sesi suara ──
+    //
+    // Diperiksa PALING AWAL, sebelum dedup. Kalau dicatat di dedup lalu
+    // dibuang, kalimat yang sama tidak akan bisa masuk lagi selama
+    // [dedupWindow] setelah gerbang lepas - narasi yang dibungkam jadi ikut
+    // hilang sesudahnya, bukan cuma tertunda.
+    //
+    // Critical TETAP LEWAT. Ini keputusan sadar dan arahnya jelas: pengguna
+    // sedang berdiri di jalan, dan lubang di depan kakinya tidak menunggu
+    // sampai dia selesai bicara. Harganya nyata - suara peringatan itu ikut
+    // masuk ke mikrofon dan bisa merusak pengenalan perintahnya - tapi
+    // perintah yang salah dikenali masih bisa diulang, sedangkan langkah
+    // yang terlanjur jatuh ke lubang tidak.
+    if (voiceGateClosed &&
+        source == SpeechSource.mode &&
+        tier != SpeechTier.critical) {
+      return;
+    }
 
     final now = DateTime.now();
 
@@ -216,7 +399,7 @@ class TtsQueue {
 
       // Jangan potong Critical lain yang belum selesai.
       if (_speakingTier == SpeechTier.critical && !_currentInterruptible) {
-        _enqueue(trimmed, tier, canInterrupt, maxAge, dedupKey: dedupKey);
+        _enqueue(trimmed, tier, source, canInterrupt, maxAge, dedupKey: dedupKey);
         unawaited(_drain());
         return;
       }
@@ -225,11 +408,14 @@ class TtsQueue {
       await _respectMinGap();
 
       _speakingTier = SpeechTier.critical;
+      _speakingSource = source;
       _currentInterruptible = canInterrupt;
       await TTSService.instance.speak(trimmed, interrupt: true);
       _lastUtteranceEndedAt = DateTime.now();
       _speakingTier = null;
+      _speakingSource = null;
       _currentInterruptible = true;
+      _maybeReleaseAfterAnswer();
 
       unawaited(_drain());
       return;
@@ -244,23 +430,27 @@ class TtsQueue {
       await _respectMinGap();
 
       _speakingTier = SpeechTier.warning;
+      _speakingSource = source;
       _currentInterruptible = canInterrupt;
       await TTSService.instance.speak(trimmed, interrupt: true);
       _lastUtteranceEndedAt = DateTime.now();
       _speakingTier = null;
+      _speakingSource = null;
       _currentInterruptible = true;
+      _maybeReleaseAfterAnswer();
 
       unawaited(_drain());
       return;
     }
 
-    _enqueue(trimmed, tier, canInterrupt, maxAge, dedupKey: dedupKey);
+    _enqueue(trimmed, tier, source, canInterrupt, maxAge, dedupKey: dedupKey);
     unawaited(_drain());
   }
 
   void _enqueue(
     String message,
     SpeechTier tier,
+    SpeechSource source,
     bool interruptible,
     Duration? maxAge, {
     String? dedupKey,
@@ -280,6 +470,7 @@ class TtsQueue {
     _pending.add(_QueuedSpeech(
       message: message,
       tier: tier,
+      source: source,
       sequence: _sequenceCounter++,
       interruptible: interruptible,
       dedupKey: dedupKey,
@@ -300,8 +491,11 @@ class TtsQueue {
       // dari objek yang lebih dekat (karena DetectionFilter sudah
       // mengurutkan dari yang terdekat), jadi justru itu yang harus
       // dipertahankan.
-      final lastInfoIdx =
-          _pending.lastIndexWhere((q) => q.tier == SpeechTier.info);
+      // Jawaban asisten tidak pernah jadi korban. Ia lahir dari perintah
+      // yang baru saja diucapkan pengguna, dan membuangnya berarti dia
+      // menahan tombol, bicara, lalu tidak mendengar apa pun.
+      final lastInfoIdx = _pending.lastIndexWhere((q) =>
+          q.tier == SpeechTier.info && q.source != SpeechSource.assistant);
       if (lastInfoIdx >= 0) {
         _pending.removeAt(lastInfoIdx);
       } else {
@@ -322,6 +516,7 @@ class TtsQueue {
     await TTSService.instance.stop();
     _lastUtteranceEndedAt = DateTime.now();
     _speakingTier = null;
+    _speakingSource = null;
   }
 
   // ── Drain ────────────────────────────────────────────────────────────
@@ -386,29 +581,57 @@ class TtsQueue {
           _warningHeldSince = null;
         }
 
+        // Ditandai SEBELUM menunggu jeda bernapas, bukan sesudahnya.
+        //
+        // `removeAt` di atas sudah mengeluarkan item ini dari `_pending`,
+        // jadi di antara dua baris itu ada celah di mana antrean tampak
+        // kosong sementara tidak ada yang tercatat sedang bicara. Siapa pun
+        // yang bertanya "masih ada yang mau diucapkan?" di celah itu akan
+        // dijawab "tidak", padahal ucapannya sudah dipegang di tangan.
+        //
+        // Celahnya bukan teoretis: `endVoiceSession` dipanggil tepat sesudah
+        // jawaban asisten dimasukkan ke antrean, dan `_drain` berjalan
+        // sinkron sampai `await` pertamanya - yaitu baris di bawah ini.
+        // Gerbang lepas seketika, lalu arahan jalur memotong jawaban yang
+        // baru mau keluar.
+        _speakingTier = next.tier;
+        _speakingSource = next.source;
+        _currentInterruptible = next.interruptible;
+
         await _respectMinGap();
         if (_drainGeneration != myGeneration) break;
 
-        _speakingTier = next.tier;
-        _currentInterruptible = next.interruptible;
         await TTSService.instance.speak(next.message);
         _lastUtteranceEndedAt = DateTime.now();
 
         if (_drainGeneration == myGeneration) {
           _speakingTier = null;
+          _speakingSource = null;
           _currentInterruptible = true;
         }
+        // Jawaban terakhir baru saja selesai: lepas gerbang di sini, bukan
+        // di `finally`. Antrean bisa masih berisi narasi mode yang menunggu,
+        // dan menunggu seluruh antrean habis berarti gerbang bertahan jauh
+        // lebih lama daripada jawabannya sendiri.
+        _maybeReleaseAfterAnswer();
       }
     } finally {
       _draining = false;
       if (_drainGeneration == myGeneration &&
           _speakingTier != SpeechTier.critical) {
         _speakingTier = null;
+        _speakingSource = null;
         _currentInterruptible = true;
       }
+      _maybeReleaseAfterAnswer();
     }
   }
 
+  /// Hentikan semuanya dan lepas gerbang.
+  ///
+  /// Gerbang ikut dilepas dengan sengaja: `stop()` berarti "tidak ada lagi
+  /// yang perlu diucapkan", dan menahan gerbang untuk jawaban yang barusan
+  /// dibuang hanya akan membungkam mode sampai penjaga waktu bertindak.
   Future<void> stop() async {
     _pending.clear();
     _recentDedup.clear();
@@ -417,7 +640,9 @@ class TtsQueue {
     await TTSService.instance.stop();
     _lastUtteranceEndedAt = DateTime.now();
     _speakingTier = null;
+    _speakingSource = null;
     _currentInterruptible = true;
+    _releaseGate();
   }
 
   /// Diagnostik untuk panel debug.
@@ -426,6 +651,11 @@ class TtsQueue {
         'speakingTier': _speakingTier?.name,
         'interruptible': _currentInterruptible,
         'settling': isSettling,
+        'voiceGate': _gateHeld
+            ? 'held'
+            : _gateDraining
+                ? 'draining'
+                : 'open',
         'warningHeldMs': _warningHeldSince == null
             ? null
             : DateTime.now().difference(_warningHeldSince!).inMilliseconds,

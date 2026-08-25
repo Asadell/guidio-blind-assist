@@ -239,10 +239,20 @@ class VoiceProvider extends ChangeNotifier {
         _state != VoiceState.allFailed) {
       return;
     }
+
+    // Bungkam mode yang sedang berjalan, SEBELUM mikrofon dibuka.
+    //
+    // Urutannya penting: narasi yang sempat berangkat sesudah mikrofon
+    // menyala akan terekam sebagai bagian dari perintah pengguna. Ini juga
+    // yang memotong ucapan yang sedang berjalan - pengguna yang menahan
+    // tombol sudah memutuskan untuk bicara, dan memaksanya menunggu Vinara
+    // selesai berarti separuh perintahnya jatuh ke mikrofon yang belum siap.
+    await TtsQueue.instance.beginVoiceSession();
+
     // Mesin tidak siap: katakan, jangan diam. `listen()` pada mesin yang gagal
     // diinisialisasi tidak melakukan apa-apa dan tidak melaporkan apa-apa.
     if (!_sttAvailable) {
-      _setState(VoiceState.allFailed);
+      _setState(VoiceState.allFailed, keepVoiceGate: true);
       await _respond(
         'Pengenalan suara tidak tersedia di perangkat ini. '
         'Gunakan tombol Pilih mode untuk berpindah.',
@@ -348,7 +358,10 @@ class VoiceProvider extends ChangeNotifier {
   Future<void> startHoldToTalk() async {
     _holdActive = true;
     _holdTimedOut = false;
-    await TTSService.instance.stop();
+    // Pemotongan TTS tidak lagi dikerjakan di sini. `_beginListening` membuka
+    // gerbang suara, dan gerbang itulah yang menghentikan ucapan berjalan
+    // sekaligus membuang antrean milik mode. Dua tempat yang menghentikan
+    // hal yang sama hanya akan berselisih saat salah satunya diubah.
     await _beginListening(hold: true);
     // Sesi tidak jadi dibuka - mesin belum siap, atau state belum
     // mengizinkan. Jangan tinggalkan tanda tahan yang menyala, karena
@@ -393,7 +406,7 @@ class VoiceProvider extends ChangeNotifier {
     _holdTimedOut = true;
     await _stt.cancel();
     HapticService.instance.warning();
-    _setState(VoiceState.noSpeech);
+    _setState(VoiceState.noSpeech, keepVoiceGate: true);
     await _respond('Waktu habis, silakan coba lagi.', save: false);
   }
 
@@ -407,6 +420,7 @@ class VoiceProvider extends ChangeNotifier {
     await TtsQueue().speak(
       'Tahan tombolnya, lalu bicara.',
       tier: SpeechTier.info,
+      source: SpeechSource.assistant,
     );
   }
 
@@ -490,7 +504,7 @@ class VoiceProvider extends ChangeNotifier {
           VoiceState.noSpeech,
         ),
     };
-    _setState(state);
+    _setState(state, keepVoiceGate: true);
     _respond(message, save: false);
   }
 
@@ -508,7 +522,7 @@ class VoiceProvider extends ChangeNotifier {
       if (command.suggestions.length >= 2) {
         // AS-19 - ambigu, pertanyaan pilihan dua.
         _suggestions = command.suggestions;
-        _setState(VoiceState.ambiguous);
+        _setState(VoiceState.ambiguous, keepVoiceGate: true);
         _respond(
           'Saya dengar "$text". Maksudmu ${command.suggestions[0].spokenLabel}, atau ${command.suggestions[1].spokenLabel}?',
           save: false,
@@ -518,7 +532,7 @@ class VoiceProvider extends ChangeNotifier {
       if (command.suggestions.isNotEmpty) {
         // AS-18 - tidak dikenali, satu tebakan tersedia.
         _suggestions = command.suggestions;
-        _setState(VoiceState.unrecognized);
+        _setState(VoiceState.unrecognized, keepVoiceGate: true);
         _respond('Saya dengar "$text". Maksudmu ${command.suggestions[0].spokenLabel}?', save: false);
         return;
       }
@@ -603,7 +617,10 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
     _setState(VoiceState.processingLocal);
-    action();
+    // Aksi mode berbicara sebagai asisten: kalimat yang keluar darinya
+    // ("Suara panduan dimatikan.") adalah jawaban atas perintah ini, bukan
+    // narasi mode yang kebetulan lewat.
+    TtsQueue.instance.speakModeAsAssistant(action);
     _consecutiveFailures = 0;
     final label = primaryActionLabel?.call();
     await _respond(label != null ? 'Baik, $label.' : 'Baik.', save: false);
@@ -616,14 +633,19 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
     _setState(VoiceState.processingLocal);
-    repeat();
+    // Isi ulangannya sendiri yang jadi jawaban - tidak ada `_respond` di
+    // jalur ini, jadi kalau ucapan itu ikut terbungkam, "ulangi" berbuah
+    // hening total.
+    TtsQueue.instance.speakModeAsAssistant(repeat);
     _consecutiveFailures = 0;
     _setState(VoiceState.responded);
   }
 
   Future<void> _handlePlayback({required bool pause}) async {
     final handler = pause ? onPauseSpeech : onResumeSpeech;
-    final handled = handler?.call() ?? false;
+    final handled = handler == null
+        ? false
+        : TtsQueue.instance.speakModeAsAssistant(handler);
     if (handled) {
       _consecutiveFailures = 0;
       await _respond(pause ? 'Dijeda.' : 'Dilanjutkan.', save: false);
@@ -657,7 +679,7 @@ class VoiceProvider extends ChangeNotifier {
 
   Future<void> _handleStopWalking() async {
     final stop = onStopWalking;
-    if (stop == null || !stop()) {
+    if (stop == null || !TtsQueue.instance.speakModeAsAssistant(stop)) {
       await _handleLocal('Kamu sedang tidak dalam panduan jalan.');
       return;
     }
@@ -731,10 +753,17 @@ class VoiceProvider extends ChangeNotifier {
   /// Toggle flashlight - nyala jadi mati, mati jadi nyala.\n  /// Konfirmasi TTS menyebutkan status baru, bukan perintah.
   Future<void> _handleTorch() async {
     _setState(VoiceState.processingLocal);
-    await _camera.toggleTorch();
-    final msg = _camera.isTorchOn
-        ? 'Baik, lampu dinyalakan.'
-        : 'Baik, lampu dimatikan.';
+    final wantOn = !_camera.isTorchOn;
+    final changed = await _camera.toggleTorch();
+    // Konfirmasi hanya diucapkan kalau lampunya BENAR-BENAR berubah. Aturan
+    // yang sama dengan perpindahan mode: suara Vinara tidak boleh pernah
+    // mengonfirmasi sesuatu yang tidak terjadi - dan lampu adalah hal yang
+    // paling tidak bisa diperiksa sendiri oleh penggunanya.
+    final msg = changed
+        ? (wantOn ? 'Baik, lampu dinyalakan.' : 'Baik, lampu dimatikan.')
+        : (wantOn
+            ? 'Lampu tidak bisa dinyalakan sekarang.'
+            : 'Lampu tidak bisa dimatikan sekarang.');
     await _respond(msg, save: false);
   }
 
@@ -772,7 +801,11 @@ class VoiceProvider extends ChangeNotifier {
 
   Future<void> _handleDescribeScene() async {
     _setState(VoiceState.processingLlm);
-    onSpeak?.call('Saya foto sekitarmu dulu, tunggu sebentar.');
+    // Lewat `_speakResponse`, bukan `onSpeak?.call` langsung. `onSpeak` hanya
+    // dipasang VoiceScreen; dipanggil dari mode lain lewat perintah suara
+    // "deskripsikan", kalimat ini dulu hilang tanpa jejak dan pengguna
+    // menunggu dalam diam selama Moondream2 dibangunkan.
+    unawaited(_speakResponse('Saya foto sekitarmu dulu, tunggu sebentar.'));
 
     if (!_camera.isInitialized) {
       await _handleLocal('Kamera tidak tersedia untuk mengambil foto.');
@@ -924,18 +957,38 @@ class VoiceProvider extends ChangeNotifier {
     _response = message;
     _lastActivity = DateTime.now();
     if (save) _history.add(ChatTurn(isUser: false, text: message));
+
+    // Urutannya dibalik dari versi sebelumnya, dan itu yang membuat gerbang
+    // suara bekerja.
+    //
+    // `_setState(responded)` adalah yang menutup gerbang, dan `endVoiceSession`
+    // hanya menahan gerbang kalau jawabannya SUDAH ada di antrean. Kalau state
+    // dipindahkan lebih dulu seperti dulu, antreannya masih kosong pada saat
+    // itu, gerbang lepas seketika, dan narasi mode yang tertahan langsung
+    // berebut dengan jawaban yang baru menyusul sepersekian detik kemudian.
+    final speaking = _speakResponse(message);
     _setState(VoiceState.responded);
+    await speaking;
+  }
+
+  /// Ucapkan jawaban asisten. Selalu bersumber [SpeechSource.assistant],
+  /// jadi ia tidak pernah ikut terbungkam gerbang suaranya sendiri.
+  Future<void> _speakResponse(String message) async {
     if (onSpeak != null) {
       onSpeak!(message);
-    } else {
-      // Cadangan ini dulu menembak langsung ke mesin TTS, melewati antrean.
-      // `onSpeak` hanya dipasang VoiceScreen, jadi sejak mic bekerja dari
-      // semua mode, jalur inilah yang dipakai Mode Deteksi dan Navigasi -
-      // tempat narasi rintangan sedang berjalan. Dua sumber suara yang tidak
-      // saling tahu berarti jawaban Vinara dan peringatan "ada orang di depan"
-      // saling menimpa. Lewat antrean, keduanya bergiliran.
-      await TtsQueue().speak(message, tier: SpeechTier.info);
+      return;
     }
+    // Cadangan ini dulu menembak langsung ke mesin TTS, melewati antrean.
+    // `onSpeak` hanya dipasang VoiceScreen, jadi sejak mic bekerja dari
+    // semua mode, jalur inilah yang dipakai Mode Deteksi dan Navigasi -
+    // tempat narasi rintangan sedang berjalan. Dua sumber suara yang tidak
+    // saling tahu berarti jawaban Vinara dan peringatan "ada orang di depan"
+    // saling menimpa. Lewat antrean, keduanya bergiliran.
+    await TtsQueue().speak(
+      message,
+      tier: SpeechTier.info,
+      source: SpeechSource.assistant,
+    );
   }
 
   /// AS-20 - pengguna menekan tombol Bicara lagi saat Vinara masih bicara:
@@ -945,8 +998,42 @@ class VoiceProvider extends ChangeNotifier {
     await startListening();
   }
 
-  void _setState(VoiceState state) {
+  /// State yang berarti "asisten sudah selesai mengurus perintah ini".
+  ///
+  /// Dipakai sebagai satu-satunya titik penutup gerbang suara. Menyebarnya
+  /// ke tiap jalur - jawaban, galat, batas waktu, perintah tak dikenali -
+  /// berarti setiap jalur baru yang ditambahkan nanti berpeluang lupa
+  /// menutupnya, dan gerbang yang tidak pernah tertutup membuat aplikasi
+  /// bisu bagi orang yang seluruh antarmukanya adalah suara.
+  static const _terminalStates = {
+    VoiceState.idle,
+    VoiceState.responded,
+    VoiceState.noSpeech,
+    VoiceState.tooNoisy,
+    VoiceState.transcribeFailed,
+    VoiceState.unrecognized,
+    VoiceState.ambiguous,
+    VoiceState.allFailed,
+    VoiceState.fallbackActive,
+  };
+
+  /// [keepVoiceGate] dipakai jalur yang berpindah ke state akhir **sebelum**
+  /// jawabannya diucapkan - state-nya spesifik (`noSpeech`, `allFailed`) dan
+  /// dipakai layar, jadi tidak bisa diserahkan begitu saja ke `_respond` yang
+  /// selalu memasang `responded`.
+  ///
+  /// Tanpa penanda ini, gerbang lepas satu langkah terlalu awal: kalimat
+  /// "Waktu habis, silakan coba lagi." berangkat ke antrean yang sudah
+  /// terbuka lagi, dan arahan jalur bertier Warning memotongnya.
+  void _setState(VoiceState state, {bool keepVoiceGate = false}) {
     _state = state;
+    // Gerbang tidak lepas seketika di sini: kalau jawabannya sudah masuk
+    // antrean, `endVoiceSession` menahannya sampai jawaban itu habis
+    // diucapkan. Karena itu `_respond` memasukkan ucapannya DULU, baru
+    // memanggil fungsi ini.
+    if (!keepVoiceGate && _terminalStates.contains(state)) {
+      TtsQueue.instance.endVoiceSession();
+    }
     notifyListeners();
   }
 
@@ -973,6 +1060,10 @@ class VoiceProvider extends ChangeNotifier {
     clearModeHandlers();
     _holdCapTimer?.cancel();
     _stt.cancel();
+    // Sesi yang mati bersama providernya tidak akan pernah menutup gerbangnya
+    // sendiri. Penjaga waktu memang menangkapnya, tapi 30 detik hening bagi
+    // orang yang seluruh antarmukanya suara adalah 30 detik terlalu lama.
+    TtsQueue.instance.endVoiceSession();
     super.dispose();
   }
 }

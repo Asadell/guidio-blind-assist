@@ -423,9 +423,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       _updateGhosts(dets);
     }
 
-    // Tawaran / kontrol lampu. Perhatikan: slot tampil saat gelap ATAU saat lampu sedang menyala,
-    // supaya pengguna bisa mematikan lampu kapan saja.
-    final showTorchSlot = _hasCameraPermission && (cam.isTorchOn || (cam.isDark && !cam.darkDismissed));
+    // Tawaran / kontrol lampu. Aturannya sekarang milik `TorchSlot`, dibagi
+    // dengan Baca Teks, Kenali Uang, dan Cari Objek - empat mode yang
+    // kegagalannya benar-benar ditentukan cahaya.
+    final showTorchSlot = TorchSlot.visible(cam, hasCameraPermission: _hasCameraPermission);
 
     final banner = _resolveBanner(global, cam);
     final hasBanner = banner != null;
@@ -489,37 +490,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
             Positioned(
               left: 0, right: 0,
               bottom: bottomInset + AppSizes.bottomActionBarHeight,
-              child: ContextualActionSlot(
-                message: cam.isTorchOn
-                    ? 'Lampu senter menyala'
-                    : 'Sekitar gelap - perlu nyalakan lampu?',
-                primaryLabel: cam.isTorchOn ? 'Matikan Lampu' : 'Nyalakan Lampu',
-                primaryIcon: cam.isTorchOn
-                    ? Icons.flashlight_off_rounded
-                    : Icons.flashlight_on_rounded,
-                onPrimary: () {
-                  if (cam.isTorchOn) {
-                    cam.setTorch(false);
-                    TtsQueue().speak('Lampu dimatikan.', tier: SpeechTier.info);
-                  } else {
-                    cam.setTorch(true);
-                    TtsQueue().speak('Lampu dinyalakan.', tier: SpeechTier.info);
-                  }
-                },
-                secondaryLabel: 'Lewati',
-                secondaryIcon: Icons.close_rounded,
-                onSecondary: () {
-                  if (cam.isTorchOn) {
-                    cam.setTorch(false);
-                    TtsQueue().speak('Lampu dimatikan.', tier: SpeechTier.info);
-                  } else {
-                    cam.dismissDarkOffer();
-                    TtsQueue().speak(
-                      'Baik, lampu tidak dinyalakan. Deteksi tetap berjalan.',
-                      tier: SpeechTier.info,
-                    );
-                  }
-                },
+              child: TorchSlot(
+                cam: cam,
+                dismissMessage:
+                    'Baik, lampu tidak dinyalakan. Deteksi tetap berjalan.',
               ),
             ),
 

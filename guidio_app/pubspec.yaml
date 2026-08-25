@@ -20,7 +20,7 @@ dependencies:
   tflite_flutter: ^0.12.1
 
   # Text-to-Speech (Bahasa Indonesia)
-  flutter_tts: ^4.0.2
+  flutter_tts: ^4.2.5
 
   # Speech-to-Text (Voice Assistant)
   speech_to_text: ^7.0.0
