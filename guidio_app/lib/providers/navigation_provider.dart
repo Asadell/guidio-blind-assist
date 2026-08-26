@@ -199,6 +199,50 @@ class NavigationProvider extends ChangeNotifier {
 
   Timer? _loopTimer;
   int _consecutiveFailures = 0;
+
+  /// Frame BERTURUT-TURUT yang benar-benar layak dipercaya.
+  ///
+  /// Pasangan simetris dari [_consecutiveFailures]. Tanpa ini, satu frame
+  /// bagus yang nyempil di antara frame-frame buruk sudah cukup untuk
+  /// menyatakan pulih, dan fasenya berayun bolak-balik.
+  int _consecutiveTrusted = 0;
+
+  /// Berapa frame terbaca berturut-turut sebelum boleh menyatakan pulih.
+  /// Cerminan ambang `_consecutiveFailures == 2` di arah sebaliknya.
+  static const _kTrustedToRecover = 2;
+
+  /// Rem khusus pengumuman PERUBAHAN FASE.
+  ///
+  /// Inilah lubang yang membuat Mode Navigasi terdengar berputar-putar.
+  /// `_emitGuidance` punya histeresis dan rem yang rapi, tapi pengumuman
+  /// fase ("Jalur sulit dibaca", "Jalur terbaca lagi") memanggil `_speak`
+  /// LANGSUNG dan melewati semuanya. Begitu fasenya berayun, dua kalimat itu
+  /// ikut berayun tanpa satu pun peredam.
+  static const _phaseAnnounceGap = Duration(seconds: 5);
+  DateTime _lastPhaseAnnounceAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Mengucapkan pengumuman fase, tapi tidak lebih rapat dari
+  /// [_phaseAnnounceGap]. Mengembalikan false kalau diredam.
+  ///
+  /// **`critical` KEBAL rem ini, dan itu wajib.** Rem yang lugu menahan semua
+  /// tier sama rata, dan akibatnya tertangkap test: peringatan "Jalur sulit
+  /// dibaca" (warning) menghabiskan jatah jeda, lalu eskalasi "Berhenti jalan
+  /// dulu" yang menyusul beberapa frame kemudian ikut terbungkam. Pengguna
+  /// tunanetra terus berjalan sambil mengira arahannya cuma tertinggal
+  /// sedikit, padahal mode ini sudah tidak melihat apa pun.
+  ///
+  /// Yang diredam rem ini adalah OBROLAN - ayunan warning/info bolak-balik.
+  /// Perintah berhenti bukan obrolan.
+  bool _announcePhase(String message, SpeechTier tier) {
+    final now = DateTime.now();
+    if (tier != SpeechTier.critical &&
+        now.difference(_lastPhaseAnnounceAt) < _phaseAnnounceGap) {
+      return false;
+    }
+    _lastPhaseAnnounceAt = now;
+    _speak(message, tier: tier);
+    return true;
+  }
   String _lastSpokenMessage = '';
   DateTime _lastSpokenAt = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -309,27 +353,45 @@ class NavigationProvider extends ChangeNotifier {
       TFLiteService.instance.isLoaded
           ? Future.value(true)
           : TFLiteService.instance.tryLoad(),
-      // Lapis keempat: YOLO INT8 (yolo11n.tflite). Terbukti lebih akurat
-      // untuk `tiang` dibanding model FP16. Optional - gagal muat tidak
-      // menjatuhkan mode.
+      // Lapis keempat: YOLO navigasi INT8 (berkasnya bernama
+      // `yolo11n.tflite`, tapi isinya model navigasi enam kelas yang sama -
+      // NCHW [1,3,640,640], keluaran [1,10,8400]). Terbukti lebih akurat
+      // untuk `tiang` dibanding varian FP16.
       YoloNavInt8Service.instance.tryLoad(),
     ]);
 
     _modelsLoading = false;
 
-    // Lapis ketiga dan keempat sengaja TIDAK ikut menentukan `_modelsReady`.
+    // KEEMPAT lapis wajib. Mode ini menyala hanya kalau semuanya termuat.
     //
-    // Keduanya menambah cakupan, bukan menopang mode ini. Kalau SSD atau
-    // YOLO INT8 gagal dimuat, panduan jalur dan enam kelas bahaya custom
-    // tetap berjalan penuh.
+    // Sebelumnya lapis 3 (SSD COCO) dan 4 (YOLO INT8) opsional: gagal muat
+    // dibiarkan, mode tetap jalan dengan dua lapis. Niatnya baik - ponsel
+    // RAM kecil tetap kebagian panduan jalur - tapi akibatnya satu mode
+    // memakai nama yang sama untuk dua tingkat perlindungan yang berbeda
+    // jauh, tanpa pengguna pernah diberi tahu yang mana yang sedang aktif.
+    //
+    // Lapis 4 khusus mengurus rintangan vertikal tipis (tiang listrik, tiang
+    // rambu). Itu justru golongan yang paling berbahaya bagi pengguna
+    // tunanetra: tongkat melewati tiang tanpa menyentuhnya, lalu kepala yang
+    // menemukannya. Menjalankan mode ini tanpa lapis 4 sambil tetap
+    // menyebutnya "Navigasi" menjanjikan perlindungan yang tidak ada.
+    //
+    // Jadi sekarang: keempatnya termuat, atau mode ini mengaku tidak bisa.
     _cocoReady = results[2];
-    _int8Ready  = results[3];
-    _modelsReady = results[0] && results[1];
+    _int8Ready = results[3];
+    _modelsReady = results[0] && results[1] && results[2] && results[3];
 
     if (!_modelsReady) {
-      // Tidak ada cadangan server lagi. Katakan apa adanya - dan sebut mode
-      // apa yang MASIH bisa dipakai, supaya ini bukan jalan buntu.
-      debugPrint('[Nav] Model on-device gagal dimuat.');
+      // Sebut lapis mana yang gagal. Tanpa ini, "tidak bisa dijalankan" sama
+      // saja untuk empat sebab yang berbeda, dan tidak ada yang bisa
+      // ditindaklanjuti - baik oleh pengguna maupun oleh yang memperbaiki.
+      final gagal = <String>[
+        if (!results[0]) 'PIDNet segmentasi jalur',
+        if (!results[1]) 'YOLO navigasi FP16',
+        if (!results[2]) 'SSD MobileNet COCO',
+        if (!results[3]) 'YOLO navigasi INT8',
+      ].join(', ');
+      debugPrint('[Nav] Model on-device gagal dimuat: $gagal');
       _phase = NavPhase.unavailable;
       _speak(
         'Panduan jalur tidak bisa dijalankan di perangkat ini. '
@@ -340,9 +402,8 @@ class NavigationProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint('[Nav] Model on-device siap. PIDNet + YOLO FP16'
-        '${_int8Ready ? " + YOLO INT8" : ""}'
-        '${_cocoReady ? " + SSD COCO" : ""} aktif.');
+    debugPrint('[Nav] Empat lapis on-device siap: PIDNet + YOLO FP16 '
+        '+ SSD COCO + YOLO INT8.');
     _speak('Panduan jalur aktif.', tier: SpeechTier.info);
     notifyListeners();
     _startLoop();
@@ -447,7 +508,15 @@ class NavigationProvider extends ChangeNotifier {
       final coco         = results[2] as List<Detection>;
       final int8         = results[3] as List<Detection>;
 
-      if (zoneAnalysis == null) return;
+      // PIDNet mengembalikan null berarti frame ini TIDAK menghasilkan
+      // apa-apa. Sebelumnya di sini cuma `return`: penghitung kegagalan tidak
+      // bertambah, fase tidak berubah, zona tidak diperbarui. Kalau PIDNet
+      // terus mengembalikan null, layar membeku pada keadaan terakhir dan
+      // pengguna tetap mendengar arahan lama seolah jalur masih terbaca.
+      if (zoneAnalysis == null) {
+        _handleFailure();
+        return;
+      }
 
       // Gabung semua sumber: custom FP16 + YOLO INT8 + COCO.
       // YOLO INT8 digabung dulu ke custom (label setara, IoU-dedup),
@@ -472,7 +541,6 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   void _applyOnDeviceResult(ZoneAnalysis zones, List<Detection> obstacles) {
-    final wasDown = _phase == NavPhase.degraded || _phase == NavPhase.loadingModels;
 
     // Saat frame tidak layak jadi dasar arahan, zonanya ditandai TIDAK
     // DIKETAHUI, bukan dibiarkan menampilkan hasil mentahnya.
@@ -485,13 +553,39 @@ class NavigationProvider extends ChangeNotifier {
     _left   = untrusted ? ZoneStatus.unknown : zones.left;
     _center = untrusted ? ZoneStatus.unknown : zones.center;
     _right  = untrusted ? ZoneStatus.unknown : zones.right;
-    _phase  = NavPhase.active;
+
+    // Frame yang tidak layak dipercaya BUKAN pemulihan, walaupun modelnya
+    // berjalan tanpa melempar. Ia memutus rentetan, bukan menambahnya.
+    _consecutiveTrusted = untrusted ? 0 : _consecutiveTrusted + 1;
+
+    // Fase hanya boleh naik lagi setelah beberapa frame terbaca BERTURUT.
+    //
+    // Versi sebelumnya menulis `_phase = NavPhase.active` tanpa syarat, jadi
+    // satu frame yang kebetulan tidak melempar - bahkan yang seluruh zonanya
+    // "tidak diketahui" - langsung membatalkan status turun. Berpasangan
+    // dengan ambang `_consecutiveFailures == 2`, hasilnya ayunan: turun,
+    // naik, turun, naik, masing-masing membawa kalimatnya sendiri.
+    //
+    // `loadingModels` sengaja TIDAK dihitung "sedang turun": frame terbaca
+    // pertama sesudah masuk mode bukan pemulihan, dan mengucapkan "Jalur
+    // terbaca lagi" di situ mengarang kejadian yang tidak pernah ada.
+    //
+    // `unavailable` sebaliknya WAJIB dihitung. Pengguna baru saja disuruh
+    // "Berhenti jalan dulu" dengan nada kritis; membiarkannya pulih diam-diam
+    // berarti ia berdiri menunggu izin yang tidak pernah datang.
+    final sedangTurun =
+        _phase == NavPhase.degraded || _phase == NavPhase.unavailable;
+    if (!sedangTurun) {
+      _phase = NavPhase.active;
+    } else if (_consecutiveTrusted >= _kTrustedToRecover) {
+      _phase = NavPhase.active;
+      _announcePhase('Jalur terbaca lagi.', SpeechTier.info);
+    }
+
     _obstacles = obstacles;
     _pothole = obstacles.any((d) =>
         (d.labelEn == 'lubang' || d.labelEn == 'got_terbuka') &&
         d.dangerLevel == 'critical');
-
-    if (wasDown) _speak('Jalur terbaca lagi.', tier: SpeechTier.info);
 
     final guidance = _composeGuidance(zones, obstacles);
     _emitGuidance(guidance.$1, guidance.$2,
@@ -677,8 +771,22 @@ class NavigationProvider extends ChangeNotifier {
   /// kehabisan memori - bukan jaringan. Naskahnya ikut berubah: menyalahkan
   /// "sambungan server" untuk masalah yang ada di tangan pengguna hanya
   /// mengirimnya mencari sinyal yang tidak akan menolong.
+  /// Pintu uji untuk dua jalur di bawah.
+  ///
+  /// Ayunan fase yang pernah lolos ke tangan pengguna hanya bisa ditangkap
+  /// dengan menggerakkan `_applyOnDeviceResult` dan `_handleFailure`
+  /// bergantian. Menjalankannya lewat pintu publik menuntut tiga model TFLite
+  /// yang hidup, dan itu justru membuat regresinya tidak pernah teruji.
+  @visibleForTesting
+  void debugApplyResult(ZoneAnalysis zones, List<Detection> obstacles) =>
+      _applyOnDeviceResult(zones, obstacles);
+
+  @visibleForTesting
+  void debugHandleFailure() => _handleFailure();
+
   void _handleFailure() {
     _consecutiveFailures++;
+    _consecutiveTrusted = 0;
 
     // Satu kegagalan bisa jadi hanya satu frame buruk - jangan langsung
     // menakuti pengguna. Beberapa berturut-turut berarti mode ini memang
@@ -686,7 +794,8 @@ class NavigationProvider extends ChangeNotifier {
     // berarti membiarkan orang berjalan menyangka dirinya dituntun.
     if (_consecutiveFailures == 2 && _phase != NavPhase.degraded) {
       _phase = NavPhase.degraded;
-      _speak('Jalur sulit dibaca, arahan mungkin tertinggal.', tier: SpeechTier.warning);
+      _announcePhase(
+          'Jalur sulit dibaca, arahan mungkin tertinggal.', SpeechTier.warning);
       notifyListeners();
       return;
     }
@@ -694,10 +803,10 @@ class NavigationProvider extends ChangeNotifier {
     if (_consecutiveFailures >= 4 && _phase != NavPhase.unavailable) {
       _phase = NavPhase.unavailable;
       _left = _center = _right = ZoneStatus.unknown;
-      _speak(
+      _announcePhase(
         'Berhenti jalan dulu. Saya tidak bisa membaca jalur sekarang. '
         'Periksa apakah kamera tertutup, atau cari tempat yang lebih terang.',
-        tier: SpeechTier.critical,
+        SpeechTier.critical,
       );
       notifyListeners();
     }
@@ -812,6 +921,8 @@ class NavigationProvider extends ChangeNotifier {
     _currentIdx = 0;
     _riskZoneWarning = null;
     _consecutiveFailures = 0;
+    _consecutiveTrusted = 0;
+    _lastPhaseAnnounceAt = DateTime.fromMillisecondsSinceEpoch(0);
     _lastSpokenMessage = '';
     _modelsReady   = false;
     _modelsLoading = false;

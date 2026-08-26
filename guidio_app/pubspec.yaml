@@ -129,11 +129,26 @@ flutter:
     # inferensi percobaan, jadi menambahkannya kembali pun aman - tapi
     # 1,3 MB di APK untuk berkas yang pasti ditolak tetap sia-sia.
     - assets/models/yolo11n_navigasi.tflite     # YoloNavigasiService - rintangan navigasi, 6 kelas
+    - assets/models/yolo11n.tflite              # YoloNavInt8Service - lapis keempat, INT8 NCHW
     #
-    # yolo11n.tflite (model lama) TIDAK dibundel lagi. Selain sudah digantikan,
-    # bentuk inputnya NCHW [1,3,640,640] sementara YoloNavigasiService menyusun
-    # NHWC [1,640,640,3] - interpreter menolaknya dan deteksi rintangan
-    # mengembalikan daftar kosong pada setiap frame tanpa tanda apa pun.
+    # yolo11n.tflite SEMPAT dicabut dari daftar ini, dan pencabutan itu
+    # diam-diam melumpuhkan lapis keempat pipeline navigasi.
+    #
+    # Alasan pencabutannya benar PADA MASANYA: bentuk inputnya NCHW
+    # [1,3,640,640] sementara YoloNavigasiService menyusun NHWC
+    # [1,640,640,3], jadi interpreter menolaknya dan deteksi rintangan
+    # mengembalikan daftar kosong tiap frame tanpa satu pun tanda.
+    #
+    # Tapi model ini sekarang dimuat YoloNavInt8Service, bukan
+    # YoloNavigasiService. Service itu dibangun KHUSUS untuk tata letak NCHW:
+    # ia mentranspose NHWC ke NCHW sendiri sebelum inferensi, dan bahkan
+    # menolak memuat model yang bentuknya BUKAN NCHW.
+    #
+    # Selama berkasnya tidak ada di daftar ini, `rootBundle.load` gagal,
+    # `_int8Ready` tetap false, dan `NavigationProvider` diam-diam memakai
+    # `Future.value(const <Detection>[])` sebagai gantinya. Pipeline yang
+    # dikira berjalan empat lapis sebenarnya cuma tiga - tanpa galat, tanpa
+    # log, tanpa perbedaan yang terlihat di layar. Biayanya 2,9 MB.
     - assets/icons/
 
   # ── Font DIBUNDEL, tidak diunduh saat runtime ───────────────────────────
