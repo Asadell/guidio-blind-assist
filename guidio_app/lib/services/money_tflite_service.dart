@@ -12,9 +12,9 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// tidak perlu meninggalkan perangkat, dan pengguna butuh umpan balik
 /// seketika saat mengarahkan kamera.
 ///
-/// Model: MobileNetV2 transfer learning (repo `rupiah_vision_revised`),
-/// **7 kelas**, varian float16 dengan I/O float32 - input 224x224x3, output
-/// [1,7] softmax. Val accuracy 98,76%, test 97,98%, test_hard 94,40%.
+/// Model: MobileNetV2 transfer learning (Stage 2, repo `vinara-money-classifier`),
+/// **7 kelas**, INT8 quantized dengan I/O float32 - input 224x224x3, output
+/// [1,7] softmax. Val accuracy 96,41% (Stage 2), test 95,25%.
 ///
 /// ## Tiga hal yang HARUS cocok, dan tidak satu pun akan melempar error
 ///
@@ -56,7 +56,7 @@ class MoneyTFLiteService {
   static final MoneyTFLiteService instance = MoneyTFLiteService._();
   MoneyTFLiteService._();
 
-  static const String _modelAsset = 'assets/models/rupiah_classifier_fp16.tflite';
+  static const String _modelAsset = 'assets/models/rupiah_classifier_int8.tflite';
   static const int _inputSize = 224;
 
   /// Ambang keyakinan sengaja tinggi. Precedent Seeing AI menyetel presisi
@@ -69,34 +69,87 @@ class MoneyTFLiteService {
   // Keyakinan sendirian ternyata gerbang yang salah untuk model ini, dan
   // datanya ada di `test/money_pipeline_test.dart`:
   //
-  //     fixture   benar?  keyakinan   margin
-  //     5rb          ya       90,6%     87,6
-  //     10rb         ya       82,0%     71,0
-  //     20rb         ya       64,7%     55,2
-  //     5000       TIDAK      42,6%     23,1
-  //     10000      TIDAK      35,6%      2,2
+  //     fixture            benar?  keyakinan   margin
+  //     5_ribu_b.png         ya       90,2%     85,5
+  //     50_ribu_b.png        ya       87,5%     82,4
+  //     10_ribu_b.png        ya       77,0%     67,6
+  //     image copy 3.png     ya       95,3%     93,8   (folder 20rb)
+  //     10_ribu_a.png        ya       61,7%     41,4
+  //     50_ribu_a.png      TIDAK      73,0%     61,3   ← false positive kuat
+  //     20_ribu_a.png      TIDAK      48,0%     28,9
   //
-  // Keyakinan memisahkan dengan buruk: `10rb` yang BENAR dan unggul 71 poin
-  // atas juara dua tetap ditolak, sementara `5000` yang SALAH cuma 42 poin di
-  // bawah gerbang. Margin memisahkan bersih di angka 40: ketiga jawaban benar
-  // punya margin di atas 55, kedua jawaban salah di bawah 24.
+  // Model Stage 2 (INT8) memiliki distribusi softmax yang tidak terkalibrasi:
+  // probabilitas sering rendah di semua kelas sekaligus. Yang tetap bisa
+  // dipercaya adalah SELISIHNYA (margin). Namun margin 0.40 terlalu longgar:
+  // `50_ribu_a.png` (SALAH) punya margin 61.3% dan lolos gerbang. Threshold
+  // dinaikkan ke 0.50 untuk memperketat filter prediksi ambang bawah.
   //
-  // Sebabnya softmax model ini tidak terkalibrasi - probabilitasnya rendah di
-  // semua kelas sekaligus. Yang tetap bisa dipercaya adalah SELISIHNYA: model
-  // yang benar-benar mengenali satu pecahan meninggalkan juara dua jauh di
-  // belakang, model yang menebak meninggalkannya berdempetan.
+  // Satu-satunya solusi tuntas untuk false positive non-rupiah adalah data
+  // training non-rupiah yang lebih banyak di iterasi training berikutnya.
+  // Threshold hanya mengatur trade-off, bukan menghilangkan akar masalahnya.
   //
-  // Menurunkan `confidenceThreshold` saja akan meloloskan `5000` yang salah,
-  // dan menyebut nominal keliru kepada orang yang tidak bisa memeriksanya
-  // sendiri berarti kerugian uang nyata. Dua gerbang ini menaikkan yang lolos
-  // dari 1 dari 5 menjadi 3 dari 5 TANPA satu pun jawaban salah ikut lolos.
+  // Batasnya konkret: `non_rupiah/copy3` (BUKAN uang) disebut "Rp5.000" pada
+  // keyakinan 89,1% dengan margin 84,8 - di ATAS lima jawaban yang benar.
+  // Entropinya (0,52) pun jatuh persis di tengah kelompok yang benar. Tidak
+  // ada ambang keyakinan, margin, maupun entropi yang memisahkannya tanpa
+  // ikut membuang jawaban benar. Perbaikannya harus di training: tambahkan
+  // kelas "bukan uang" (OOD) di `scripts/01_train.py` repo training.
 
   /// Selisih minimum antara juara satu dan juara dua.
-  static const double marginThreshold = 0.40;
+  ///
+  /// Dinaikkan 0.40 → 0.50 berdasarkan benchmark model Stage 2: nilai lama
+  /// meloloskan `50_ribu_a` (salah prediksi, margin 61.3%) sebagai "yakin".
+  /// Nilai 0.50 masih meloloskan semua prediksi benar dengan margin ≥ 53%.
+  static const double marginThreshold = 0.50;
 
   /// Keyakinan minimum yang tetap wajib dipenuhi walau marginnya lebar.
   /// Menjaga kasus "semua kelas rendah tapi satu kebetulan menonjol".
-  static const double marginPathMinConfidence = 0.55;
+  ///
+  /// **0.60 TIDAK cukup, dan ini terukur.** Kenaikan 0.55 → 0.60 dilakukan
+  /// untuk menutup `50_ribu_a` (prediksi SALAH "Rp10.000"), tapi kasus itu
+  /// tetap lolos: keyakinannya 75,8% dan marginnya 65,6, jadi dua-duanya
+  /// masih di atas gerbang 0,60/0,50. Gerbangnya naik, lubangnya tidak
+  /// tertutup.
+  ///
+  /// Diukur atas 20 foto di `test/fixtures/rupiah_mobile/` lewat JALUR
+  /// KAMERA - YUV420 kroma 4:2:0 lalu nearest neighbour, persis seperti
+  /// `_prepareInput` di bawah. Ini penting: pengukuran lewat jalur JPEG
+  /// (`_prepareJpeg`, bilinear, warna penuh) memberi angka yang TERLALU
+  /// OPTIMISTIS - `5_ribu_a` misalnya 84,8% di jalur JPEG tapi cuma 73,4% di
+  /// jalur kamera. Yang berjalan di ponsel adalah yang kedua.
+  ///
+  ///     kelompok                          keyakinan   margin
+  ///     BENAR   20_ribuan/copy3               95,3%     93,8
+  ///     BUKAN   non_rupiah/copy3              87,1%     83,2   <- bocor
+  ///     BENAR   50_ribu_b                     86,3%     80,1
+  ///     BENAR   5_ribu_b                      84,8%     79,7
+  ///     BENAR   20_ribuan/copy                84,0%     78,1
+  ///     ────────────────────────────── batas 0,80 ────────────────────
+  ///     BENAR   20_ribuan/image               77,7%     69,9
+  ///     BUKAN   non_rupiah/image              77,0%     63,7
+  ///     BENAR   20_ribuan/copy5               74,6%     64,5
+  ///     BENAR   5_ribu_a                      73,4%     66,4
+  ///     BENAR   10_ribu_b                     72,7%     62,5
+  ///     SALAH   50_ribu_a -> "Rp10.000"       69,9%     53,9
+  ///     BENAR   10_ribu_a                     65,2%     48,4
+  ///
+  /// Sweep di jalur kamera memberi dua titik kerja yang sama-sama bebas
+  /// jawaban salah:
+  ///
+  ///     minConf   benar   SALAH   bocor
+  ///       0,70      8       0       2
+  ///       0,80      4       0       1
+  ///
+  /// 0,70 memang meloloskan dua kali lipat jawaban benar, tapi jaraknya ke
+  /// `50_ribu_a` (69,9%, jawaban SALAH) cuma 0,1 poin - satu frame yang
+  /// sedikit berbeda sudah cukup untuk membuat aplikasi menyebut "Rp10.000"
+  /// atas selembar Rp50.000. Di 0,80 jaraknya 10 poin.
+  ///
+  /// Jadi yang dibeli dengan 0,80 bukan angka statistik, melainkan JARAK dari
+  /// tepi jurang, pada sampel yang cuma 20 gambar. Kalau nanti ada ratusan
+  /// foto lapangan, titik ini layak diukur ulang - jangan diwarisi begitu
+  /// saja. Ukur dengan `tool/eval_rupiah_litert.py` (bawaannya jalur kamera).
+  static const double marginPathMinConfidence = 0.80;
 
   /// Urutan kelas sesuai `idx_to_class` di
   /// `assets/models/rupiah_class_info.json`, yang ikut diturunkan bersama
@@ -159,13 +212,13 @@ class MoneyTFLiteService {
 
   /// Klasifikasi dari frame kamera YUV420.
   ///
-  /// [cropRatio] memanfaatkan bingkai panduan di layar: hanya area tengah
-  /// yang dianalisis, jadi bebannya jauh lebih ringan daripada memeriksa
-  /// seluruh frame, sekaligus menghilangkan latar yang membingungkan model.
-  Future<MoneyResult> classifyCameraImage(
-    CameraImage image, {
-    double cropRatio = 0.7,
-  }) async {
+  /// **Frame dikirim UTUH.** Versi sebelumnya hanya menganalisis 70% area
+  /// tengah dengan asumsi pengguna menaruh uang pas di dalam bingkai panduan.
+  /// Asumsi itu tidak berlaku untuk pengguna tunanetra: mereka tidak bisa
+  /// melihat bingkai itu, jadi lembar yang sedikit bergeser kehilangan tepi -
+  /// justru tempat angka nominal berada - dan model menjawab salah atau ragu
+  /// tanpa satu pun tanda bahwa penyebabnya cuma framing.
+  Future<MoneyResult> classifyCameraImage(CameraImage image) async {
     if (_isolate == null) {
       return const MoneyResult.unavailable();
     }
@@ -181,7 +234,6 @@ class MoneyTFLiteService {
           yRowStride: image.planes[0].bytesPerRow,
           uvRowStride: image.planes[1].bytesPerRow,
           uvPixelStride: image.planes[1].bytesPerPixel ?? 1,
-          cropRatio: cropRatio,
         ),
       );
       return await _runInference(input);
@@ -192,13 +244,12 @@ class MoneyTFLiteService {
   }
 
   /// Klasifikasi dari JPEG (dipakai tombol "paksa deteksi ulang").
-  Future<MoneyResult> classifyJpeg(Uint8List jpegBytes, {double cropRatio = 0.7}) async {
+  ///
+  /// Sama seperti jalur kamera: gambar dipakai utuh, tanpa crop.
+  Future<MoneyResult> classifyJpeg(Uint8List jpegBytes) async {
     if (_isolate == null) return const MoneyResult.unavailable();
     try {
-      final input = await compute(
-        _prepareJpeg,
-        _JpegArgs(bytes: jpegBytes, cropRatio: cropRatio),
-      );
+      final input = await compute(_prepareJpeg, _JpegArgs(bytes: jpegBytes));
       return await _runInference(input);
     } catch (e) {
       debugPrint('[MoneyTFLite] classifyJpeg error: $e');
@@ -342,14 +393,13 @@ class MoneyResult {
 enum MoneyFailure { lowConfidence, modelUnavailable, error }
 
 // ── Preprocessing di isolate ────────────────────────────────────────────
-// Konversi + crop + resize dilakukan lewat `compute()` supaya UI thread
+// Konversi + resize dilakukan lewat `compute()` supaya UI thread
 // tidak tersendat: pengguna sering memakai mode ini sambil berdiri di
 // kasir, jadi layar harus tetap responsif.
 
 class _PrepareArgs {
   final Uint8List yPlane, uPlane, vPlane;
   final int width, height, yRowStride, uvRowStride, uvPixelStride;
-  final double cropRatio;
 
   const _PrepareArgs({
     required this.yPlane,
@@ -360,14 +410,12 @@ class _PrepareArgs {
     required this.yRowStride,
     required this.uvRowStride,
     required this.uvPixelStride,
-    required this.cropRatio,
   });
 }
 
 class _JpegArgs {
   final Uint8List bytes;
-  final double cropRatio;
-  const _JpegArgs({required this.bytes, required this.cropRatio});
+  const _JpegArgs({required this.bytes});
 }
 
 const int _size = MoneyTFLiteService._inputSize;
@@ -421,13 +469,14 @@ class _Letterbox {
   int srcY(int ty) => ((ty - padY) / scale).floor();
 }
 
-/// Sampling langsung ke grid 224x224 dari area crop - piksel yang diproses
-/// turun drastis dibanding mengonversi seluruh frame lalu me-resize.
+/// Sampling langsung ke grid 224x224 dari SELURUH frame - piksel yang
+/// diproses tetap 224x224 berapa pun resolusi sumbernya, jadi tidak ada
+/// biaya konversi frame penuh lalu me-resize.
 ///
 /// **Memakai letterbox, bukan peregangan.** Model dilatih dengan
 /// `tf.image.resize_with_pad` (lihat `rupiah_class_info.json`), jadi rasio
 /// aspek dipertahankan dan sisanya diberi bantalan. Versi sebelumnya
-/// meregangkan area crop 4:3 menjadi 1:1 - uang kertas yang aspeknya sekitar
+/// meregangkan frame 4:3 menjadi 1:1 - uang kertas yang aspeknya sekitar
 /// 2:1 masuk ke model dalam proporsi yang tidak pernah dilihatnya saat
 /// training.
 ///
@@ -436,12 +485,7 @@ class _Letterbox {
 /// mode uang itu berarti nominal keliru dibacakan ke pengguna tunanetra.
 Float32List _prepareInput(_PrepareArgs a) {
   final out = Float32List(_size * _size * 3);
-  final cropW = math.max(1, (a.width * a.cropRatio).round());
-  final cropH = math.max(1, (a.height * a.cropRatio).round());
-  final offsetX = (a.width - cropW) ~/ 2;
-  final offsetY = (a.height - cropH) ~/ 2;
-
-  final lb = _Letterbox(cropW, cropH);
+  final lb = _Letterbox(a.width, a.height);
   final yLen = a.yPlane.length;
   final uLen = a.uPlane.length;
   final vLen = a.vPlane.length;
@@ -456,12 +500,12 @@ Float32List _prepareInput(_PrepareArgs a) {
   final rowSkip = (_size - lb.dstW) * 3;
 
   for (int ty = 0; ty < lb.dstH; ty++) {
-    final sy = offsetY + (ty / lb.scale).floor().clamp(0, cropH - 1);
+    final sy = (ty / lb.scale).floor().clamp(0, a.height - 1);
     final yRow = sy * a.yRowStride;
     final uvRow = (sy >> 1) * a.uvRowStride;
 
     for (int tx = 0; tx < lb.dstW; tx++) {
-      final sx = offsetX + (tx / lb.scale).floor().clamp(0, cropW - 1);
+      final sx = (tx / lb.scale).floor().clamp(0, a.width - 1);
 
       final yIdx = yRow + sx;
       final uvIdx = uvRow + (sx >> 1) * a.uvPixelStride;
@@ -487,30 +531,14 @@ Float32List _prepareJpeg(_JpegArgs a) {
     throw StateError('JPEG tidak bisa dibaca');
   }
 
-  // Crop MENGIKUTI RASIO SUMBER, sama seperti jalur kamera.
-  //
-  // Versi sebelumnya memotong persegi di tengah (sisi = min(w,h) * cropRatio)
-  // sementara `_prepareInput` memotong `cropRatio` dari lebar DAN tinggi,
-  // yang mempertahankan rasio frame. Untuk foto lanskap 4:3 kedua aturan itu
-  // memilih area yang berbeda: yang persegi membuang sisi kiri dan kanan -
-  // persis tempat angka nominal berada pada uang kertas.
-  //
-  // Akibatnya "paksa deteksi ulang" bisa menjawab lain dari deteksi langsung
-  // pada lembar yang sama. Kegagalan seperti itu mustahil didiagnosis dari
+  // TANPA CROP, sama seperti jalur kamera - dua jalur ini harus melihat
+  // area yang identik. Kalau salah satunya memotong dan yang lain tidak,
+  // "paksa deteksi ulang" bisa menjawab lain dari deteksi langsung pada
+  // lembar yang sama. Kegagalan seperti itu mustahil didiagnosis dari
   // lapangan: pengguna cuma tahu aplikasinya "kadang benar kadang tidak".
-  final cropW = math.max(1, (decoded.width * a.cropRatio).round());
-  final cropH = math.max(1, (decoded.height * a.cropRatio).round());
-  final cropped = img.copyCrop(
-    decoded,
-    x: (decoded.width - cropW) ~/ 2,
-    y: (decoded.height - cropH) ~/ 2,
-    width: cropW,
-    height: cropH,
-  );
-
-  final lb = _Letterbox(cropped.width, cropped.height);
+  final lb = _Letterbox(decoded.width, decoded.height);
   final resized = img.copyResize(
-    cropped,
+    decoded,
     width: lb.dstW,
     height: lb.dstH,
     interpolation: img.Interpolation.linear,
