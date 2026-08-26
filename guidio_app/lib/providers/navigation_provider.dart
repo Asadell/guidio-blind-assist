@@ -39,7 +39,17 @@ class NavigationStep {
 /// > menolong. Sekarang mode ini hidup atau mati bersama modelnya sendiri,
 /// > dan mengatakannya apa adanya.
 enum NavPhase {
-  calibrating, // NV-01
+  // NV-01 `calibrating` DIHAPUS. Fase itu tidak pernah mengukur apa pun:
+  // `startCalibration()` hanya mengatur fase, dan `finishCalibration()` yang
+  // benar-benar memuat model lalu menjalankan loop. Yang tersisa cuma satu
+  // kartu "Pegang ponsel tegak" dengan tombol "Siap, mulai" - satu ketukan
+  // wajib sebelum panduan boleh dimulai.
+  //
+  // Ketukan itu mahal justru bagi pengguna yang dituju mode ini: ia berdiri
+  // di tempat yang belum dikenalnya, sudah meminta Navigasi lewat suara atau
+  // lembar Pilih Mode, lalu panduannya menolak mulai sampai sebuah tombol
+  // yang tidak bisa dilihatnya ditemukan dan ditekan. Sekarang Navigasi
+  // langsung memuat model dan mulai memandu begitu modenya dimasuki.
   loadingModels, // NV-02 - memuat PIDNet + YOLO on-device
   active, // NV-03..NV-09
   unavailable, // NV-11 - model on-device tidak bisa dipakai
@@ -60,7 +70,7 @@ class NavigationProvider extends ChangeNotifier {
       (_navigating && _steps.isNotEmpty && _currentIdx < _steps.length) ? _steps[_currentIdx] : null;
   Map<String, String> get favorites => Map.unmodifiable(_favorites);
 
-  NavPhase _phase = NavPhase.calibrating;
+  NavPhase _phase = NavPhase.loadingModels;
   NavPhase get phase => _phase;
 
   ZoneStatus _left = ZoneStatus.unknown;
@@ -254,13 +264,11 @@ class NavigationProvider extends ChangeNotifier {
 
   void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
 
-  void startCalibration() {
-    _phase = NavPhase.calibrating;
-    notifyListeners();
-  }
-
-  /// NV-01 selesai → muat model on-device → NV-03 jalur aman.
-  void finishCalibration() {
+  /// Masuk Mode Navigasi: muat model on-device → NV-03 jalur aman.
+  ///
+  /// Tidak ada gerbang sebelum ini. Dipanggil sekali oleh `NavigasiScreen`
+  /// begitu layarnya terpasang.
+  void beginNavigation() {
     _phase = NavPhase.loadingModels;
     _left = _center = _right = ZoneStatus.unknown;
     notifyListeners();
@@ -722,7 +730,7 @@ class NavigationProvider extends ChangeNotifier {
   /// pengguna yang tidak melihat layar. Ini padanan verbalnya, dan inilah yang
   /// dibacakan tombol kiri "Ulangi arahan".
   String zoneSummary() {
-    if (_phase == NavPhase.calibrating || _phase == NavPhase.loadingModels) {
+    if (_phase == NavPhase.loadingModels) {
       return 'Jalur belum terbaca, tunggu sebentar.';
     }
     if (_left == ZoneStatus.unknown &&

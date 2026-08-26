@@ -187,7 +187,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     _cam = context.read<CameraProvider>();
   }
 
-  final TextEditingController _destCtrl = TextEditingController();
+
   bool _hasCameraPermission = true;
   String? _debugOverride;
   bool _silentMode = false;
@@ -256,7 +256,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       // Inferensinya sendiri tetap berjalan tanpa ini - yang menjaga pengguna
       // adalah arahan suaranya, bukan gambarnya.
       nav.wantsSegmentationOverlay = true;
-      nav.startCalibration();
+      nav.beginNavigation();
 
       // NV-18 - satu-satunya konfirmasi wajib di seluruh app.
       context.read<AppModeProvider>().confirmLeave = _leaveGuard;
@@ -343,7 +343,6 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     _voice.clearModeHandlers();
     _cam.onFrameReady = null;
     _cam.stopStream();
-    _destCtrl.dispose();
     super.dispose();
   }
 
@@ -395,10 +394,10 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (!mounted) return true;
     // Hanya fase yang benar-benar SEDANG memandu yang boleh menghadang.
     //
-    // Syarat lamanya `phase != paused`, dan itu menjaring tiga fase yang sama
-    // sekali bukan "sedang berjalan dituntun": `calibrating` (kartu "Pegang
-    // ponsel tegak" masih terbuka, panduan belum pernah mulai),
-    // `loadingModels`, dan `unavailable` (model gagal dimuat - justru saat
+    // Syarat lamanya `phase != paused`, dan itu menjaring dua fase yang sama
+    // sekali bukan "sedang berjalan dituntun": `loadingModels` (model belum
+    // siap, panduan belum pernah mulai) dan `unavailable` (model gagal dimuat
+    // - justru saat
     // pengguna paling perlu cepat pindah ke Mode Deteksi Objek, dan itu
     // persis mode yang disarankan sendiri oleh pesan kegagalannya).
     //
@@ -465,11 +464,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     return result ?? false;
   }
 
-  Future<void> _startNav() async {
-    final dest = _destCtrl.text.trim();
-    if (dest.isEmpty) return;
-    await context.read<NavigationProvider>().startNavigation(dest);
-  }
+
 
   /// Tombol kiri BottomActionBar - membisukan / menyalakan suara panduan.
   ///
@@ -528,7 +523,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             children: [
               const SheetHeader(
                 title: 'Debug - Mode Navigasi',
-                subtitle: 'NV-01..13,15,17,22..24 tercapai lewat kalibrasi/simulasi/kondisi nyata',
+                subtitle: 'NV-02..13,15,17,22..24 tercapai lewat simulasi/kondisi nyata',
                 closeLabel: 'Tutup panel debug',
               ),
               const SizedBox(height: AppSpacing.s3),
@@ -656,8 +651,6 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
               actionLabel: 'Izinkan kamera',
               onAction: _requestPermission,
             )
-          else if (nav.phase == NavPhase.calibrating)
-            _calibrationCard(nav)
           else if (nav.phase == NavPhase.loadingModels)
             Positioned(
               top: topInset + AppSizes.modeBadgeHeight + AppSpacing.s4,
@@ -676,13 +669,12 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
                 ),
               ),
             ),
-            Positioned(
-              top: topInset + modeBadgeTopOffset(hasBanner: hasBanner) + AppSizes.modeBadgeHeight + AppSpacing.s3 + (hasCriticalObstacle ? 40 : 52) + AppSpacing.s3,
-              left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-              child: nav.isNavigating && nav.currentStep != null
-                  ? _NavCard(step: nav.currentStep!, onStop: () => context.read<NavigationProvider>().stopNavigation())
-                  : _DestInput(ctrl: _destCtrl, onStart: _startNav, favorites: nav.favorites),
-            ),
+            if (nav.isNavigating && nav.currentStep != null)
+              Positioned(
+                top: topInset + modeBadgeTopOffset(hasBanner: hasBanner) + AppSizes.modeBadgeHeight + AppSpacing.s3 + (hasCriticalObstacle ? 40 : 52) + AppSpacing.s3,
+                left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
+                child: _NavCard(step: nav.currentStep!, onStop: () => context.read<NavigationProvider>().stopNavigation()),
+              ),
             if (nav.pothole)
               Positioned(
                 left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
@@ -738,25 +730,6 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (nav.left == ZoneStatus.safe) return 0;
     if (nav.right == ZoneStatus.safe) return 2;
     return -1;
-  }
-
-  Widget _calibrationCard(NavigationProvider nav) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.phone_android_rounded, color: AppColors.onDark, size: 40),
-            const SizedBox(height: AppSpacing.s4),
-            Text('Pegang ponsel tegak setinggi dada, kamera menghadap depan',
-                textAlign: TextAlign.center, style: AppTypography.body(color: AppColors.onDark)),
-            const SizedBox(height: AppSpacing.s6),
-            FullScreenButton(label: 'Siap, mulai', onTap: nav.finishCalibration),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget? _resolveBanner(BuildContext context, NavigationProvider nav, GlobalConditionsProvider global, CameraProvider cam) {
@@ -858,86 +831,4 @@ class _NavCard extends StatelessWidget {
   }
 }
 
-class _DestInput extends StatelessWidget {
-  final TextEditingController ctrl;
-  final VoidCallback onStart;
-  final Map<String, String> favorites;
-  const _DestInput({required this.ctrl, required this.onStart, required this.favorites});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.s4),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: AppRadius.card,
-        boxShadow: AppElevation.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: ctrl,
-                  style: AppTypography.body(),
-                  decoration: InputDecoration(
-                    hintText: 'Mau ke mana? (opsional)',
-                    hintStyle: AppTypography.body(color: AppColors.ink2),
-                    prefixIcon: const Icon(Icons.search, color: AppColors.ink2),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s2),
-              Semantics(
-                button: true,
-                label: 'Mulai navigasi',
-                child: GestureDetector(
-                  onTap: onStart,
-                  child: Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    decoration: const BoxDecoration(color: AppColors.actionLabel, borderRadius: AppRadius.pillShape),
-                    child: Center(child: Text('Mulai', style: AppTypography.label(color: AppColors.onDark))),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (favorites.isNotEmpty) ...[
-            const Divider(height: AppSpacing.s6),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text('FAVORIT', style: AppTypography.eyebrow()),
-            ),
-            const SizedBox(height: AppSpacing.s2),
-            ...favorites.entries.map(
-              (e) => Semantics(
-                button: true,
-                label: 'Navigasi ke ${e.key}',
-                child: InkWell(
-                  onTap: () {
-                    ctrl.text = e.key;
-                    onStart();
-                  },
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.star_rounded, color: AppColors.warningFill, size: 20),
-                        const SizedBox(width: AppSpacing.s3),
-                        Text(e.key, style: AppTypography.body()),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
