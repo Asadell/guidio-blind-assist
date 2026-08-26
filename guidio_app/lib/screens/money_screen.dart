@@ -358,42 +358,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
               actionLabel: 'Izinkan kamera',
               onAction: _requestPermission,
             )
-          else ...[
-            if (spec!.frame != null)
-              Center(
-                child: SizedBox(
-                  width: 300,
-                  height: 172,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: GuideFrame(fit: spec.frame!, showCaption: spec.frameDefaultCaption),
-                      ),
-                      if (spec.pillOverride != null)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 12,
-                          child: Center(
-                            child: MediaQuery(
-                              data: media.copyWith(
-                                textScaler: fontScaleDemo ? const TextScaler.linear(2.0) : media.textScaler,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.scrimText,
-                                  borderRadius: AppRadius.pillShape,
-                                ),
-                                child: Text(spec.pillOverride!, style: AppTypography.caption(color: AppColors.onDark)),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+          else if (spec != null) ...[
             if (spec.card != null && spec.cardPlacement == _CardPlacement.center)
               Center(
                 child: Padding(

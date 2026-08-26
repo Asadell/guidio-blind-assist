@@ -904,18 +904,6 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
   }
 
   Widget _cameraWithGuide(CameraProvider cam) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(child: CameraPreview(cam.controller!)),
-        Center(
-          child: SizedBox(
-            width: 280,
-            height: 190,
-            child: GuideFrame(fit: _scanning ? FrameFit.fit : FrameFit.empty),
-          ),
-        ),
-      ],
-    );
+    return Positioned.fill(child: CameraPreview(cam.controller!));
   }
 }
