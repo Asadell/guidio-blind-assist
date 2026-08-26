@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vibration/vibration.dart';
@@ -147,6 +148,21 @@ class CameraProvider extends ChangeNotifier {
         }
         _initialized = false;
         _controller = null;
+        // Diumumkan SEBELUM controller lama dibuang, lalu ditunggu satu frame.
+        //
+        // `CameraPreview` mendaftarkan listener pada controller-nya dan
+        // `CameraStage` membaca `controller.value.aspectRatio` saat build.
+        // Keduanya melempar begitu controller itu di-dispose. Membuangnya di
+        // sini tanpa memberi pohon widget satu kesempatan menggambar ulang
+        // berarti layar yang masih memegangnya akan rebuild di atas objek yang
+        // sudah mati - "A CameraController was used after being disposed",
+        // kotak merah yang berkedip tepat saat mode berpindah ke preset lain.
+        //
+        // `notifyListeners()` saja tidak cukup: ia hanya menjadwalkan rebuild
+        // untuk frame berikutnya, sementara baris di bawahnya berjalan lebih
+        // dulu. `endOfFrame` yang membuat urutannya benar.
+        notifyListeners();
+        await SchedulerBinding.instance.endOfFrame;
         await previous.dispose();
       }
 
