@@ -212,12 +212,11 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
-                  decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-              Text('Debug - Mode Asisten Suara', style: AppTypography.title()),
-              const SizedBox(height: 4),
-              Text('AS-01..04,06,08..12,14,15,17..20,22 tercapai lewat alur bicara nyata',
-                  textAlign: TextAlign.center, style: AppTypography.caption()),
+              const SheetHeader(
+                title: 'Debug - Mode Asisten Suara',
+                subtitle: 'AS-01..04,06,08..12,14,15,17..20,22 tercapai lewat alur bicara nyata',
+                closeLabel: 'Tutup panel debug',
+              ),
               const SizedBox(height: AppSpacing.s3),
               Flexible(
                 child: ListView(

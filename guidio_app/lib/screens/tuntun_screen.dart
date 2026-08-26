@@ -642,12 +642,11 @@ class _DebugSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
-                decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-            Text('Debug - Mode Deteksi Objek', style: AppTypography.title()),
-            const SizedBox(height: 4),
-            Text('DO-01..05,08..12,14,16..18,27,28 sudah tercapai lewat kamera/izin/koneksi nyata',
-                textAlign: TextAlign.center, style: AppTypography.caption()),
+            const SheetHeader(
+              title: 'Debug - Mode Deteksi Objek',
+              subtitle: 'DO-01..05,08..12,14,16..18,27,28 sudah tercapai lewat kamera/izin/koneksi nyata',
+              closeLabel: 'Tutup panel debug',
+            ),
             const SizedBox(height: AppSpacing.s3),
             Flexible(
               child: ListView(

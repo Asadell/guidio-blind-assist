@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../mock/ocr_mock_data.dart';
 import '../theme/index.dart';
+import 'sheet_header.dart';
 
 /// OcrDebugSheet - bottom sheet QA khusus Mode Baca Teks: daftar 22 state
 /// BT-01..BT-22 (bagian 8). Memilih satu item memaksa tampilan lokal
@@ -57,32 +58,48 @@ class _OcrDebugSheetContent extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: AppColors.hairline, borderRadius: BorderRadius.circular(2)),
+            ExcludeSemantics(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 10, bottom: AppSpacing.s3),
+                decoration: BoxDecoration(color: AppColors.hairline, borderRadius: BorderRadius.circular(2)),
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenMargin, AppSpacing.s4, AppSpacing.screenMargin, AppSpacing.s2),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenMargin, 0, AppSpacing.screenMargin, AppSpacing.s2),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Text('Debug - Mode Baca Teks', style: AppTypography.title()),
+                    child: Semantics(
+                      header: true,
+                      child: Text('Debug - Mode Baca Teks', style: AppTypography.title()),
+                    ),
                   ),
-                  if (activeId != null)
+                  if (activeId != null) ...[
+                    const SizedBox(width: AppSpacing.s2),
                     GestureDetector(
                       onTap: onCancel,
                       child: Semantics(
                         button: true,
                         label: 'Batalkan mode debug',
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          height: AppSizes.minTouchTarget,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
                           decoration: const BoxDecoration(color: AppColors.criticalTint, borderRadius: AppRadius.pillShape),
                           child: Text('Batalkan', style: AppTypography.label(color: AppColors.criticalLabel)),
                         ),
                       ),
                     ),
+                  ],
+                  const SizedBox(width: AppSpacing.s2),
+                  // "Batalkan" membuang override debug; tombol ini menutup
+                  // lembarnya. Dua hal berbeda, jadi dua tombol - lembar yang
+                  // sedang memakai override tidak boleh cuma bisa ditutup
+                  // dengan cara yang sekaligus membatalkan override itu.
+                  const SheetCloseButton(label: 'Tutup panel debug'),
                 ],
               ),
             ),

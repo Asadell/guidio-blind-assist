@@ -607,17 +607,11 @@ class _DebugStateSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 34,
-            height: 4,
-            margin: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
-            decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2)),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Panel debug - Kenali Uang', style: AppTypography.title()),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
+            child: SheetHeader(
+              title: 'Panel debug - Kenali Uang',
+              closeLabel: 'Tutup panel debug',
             ),
           ),
           const SizedBox(height: AppSpacing.s2),

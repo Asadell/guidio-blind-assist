@@ -482,12 +482,11 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
-                  decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-              Text('Debug - Mode Navigasi', style: AppTypography.title()),
-              const SizedBox(height: 4),
-              Text('NV-01..13,15,17,22..24 tercapai lewat kalibrasi/simulasi/kondisi nyata',
-                  textAlign: TextAlign.center, style: AppTypography.caption()),
+              const SheetHeader(
+                title: 'Debug - Mode Navigasi',
+                subtitle: 'NV-01..13,15,17,22..24 tercapai lewat kalibrasi/simulasi/kondisi nyata',
+                closeLabel: 'Tutup panel debug',
+              ),
               const SizedBox(height: AppSpacing.s3),
               Flexible(
                 child: ListView(

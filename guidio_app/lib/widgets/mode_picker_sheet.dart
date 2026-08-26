@@ -5,6 +5,7 @@ import '../providers/index.dart';
 import '../screens/settings_screen.dart';
 import '../theme/index.dart';
 import 'mode_badge.dart';
+import 'sheet_header.dart';
 
 /// ModePickerSheet (5.5) - enam mode, cadangan untuk situasi tidak bisa
 /// bicara. Fokus terkunci di dalam sheet; setelah ditutup, fokus kembali ke
@@ -91,19 +92,9 @@ class _ModePickerSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ExcludeSemantics(
-              child: Container(
-                width: 34, height: 4,
-                margin: const EdgeInsets.only(bottom: AppSpacing.s4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceSunk,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Semantics(
-              header: true,
-              child: Text('Pilih Mode', style: AppTypography.title()),
+            const SheetHeader(
+              title: 'Pilih Mode',
+              closeLabel: 'Tutup pilihan mode',
             ),
             const SizedBox(height: 6),
             Container(

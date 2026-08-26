@@ -749,9 +749,10 @@ class _DebugSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 34, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.s4),
-                decoration: BoxDecoration(color: AppColors.surfaceSunk, borderRadius: BorderRadius.circular(2))),
-            Text('Debug - Mode Cari Objek', style: AppTypography.title()),
+            const SheetHeader(
+              title: 'Debug - Mode Cari Objek',
+              closeLabel: 'Tutup panel debug',
+            ),
             const SizedBox(height: AppSpacing.s2),
             Flexible(
               child: ListView(

@@ -17,6 +17,7 @@ export 'page_action_zone.dart';
 export 'permission_card.dart';
 export 'result_panel.dart';
 export 'segmentation_overlay.dart';
+export 'sheet_header.dart';
 export 'speaking_indicator.dart';
 export 'status_banner.dart';
 export 'target_chip.dart';
