@@ -101,11 +101,11 @@ class YoloNavInt8Service {
     }
   }
 
-  /// Buffer keluaran yang dipakai ulang — [10 × 8400] float.
+  /// Buffer keluaran yang dipakai ulang - [10 × 8400] float.
   Float32List? _outputBuffer;
   Uint8List?   _outputBytes;
 
-  /// Buffer NCHW yang dipakai ulang — [3 × 640 × 640] float.
+  /// Buffer NCHW yang dipakai ulang - [3 × 640 × 640] float.
   ///
   /// Tensor masuk dari NavFrameConverter dalam format NHWC datar
   /// (R0G0B0 R1G1B1 ...). Di sini kita salin ke tata letak NCHW
