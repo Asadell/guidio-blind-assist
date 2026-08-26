@@ -10,6 +10,9 @@ design_system
 *.torchscript
 *.ts
 *.gguf
+backup_models/
+*_backup*.tflite
+backup_*.tflite
 
 # Documentation files
 *.md
