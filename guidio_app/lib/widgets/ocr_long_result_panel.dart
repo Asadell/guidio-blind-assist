@@ -40,6 +40,24 @@ class OcrLongResultPanel extends StatelessWidget {
   final ScrollController? scrollController;
 
   final VoidCallback? onTogglePlayback; // jeda / lanjut
+
+  /// Hentikan pembacaan sepenuhnya - bukan jeda.
+  ///
+  /// Terpisah dari [onTogglePlayback] dengan sengaja. Jeda menyimpan niat
+  /// melanjutkan; stop menutup pembacaan. Tanpa yang kedua, satu-satunya cara
+  /// mendiamkan halaman yang terlanjur dibacakan adalah menjeda lalu berharap
+  /// tidak menekan lanjut - dan itu terdengar seperti suara yang tidak bisa
+  /// dimatikan, persis di mode yang hasilnya paling panjang.
+  final VoidCallback? onStop;
+
+  /// Tutup panel hasil dan kembalikan layar ke keadaan siap memotret.
+  ///
+  /// Panel ini yang paling besar di seluruh aplikasi - sampai 280 dp konten
+  /// plus kepala dan kontrol - dan ia bertahan sampai foto berikutnya diambil.
+  /// Tanpa jalan keluar yang terlihat, satu-satunya cara menyingkirkannya
+  /// adalah memotret lagi, yaitu menjalankan pekerjaan yang justru tidak
+  /// diinginkan pengguna.
+  final VoidCallback? onDismiss;
   final VoidCallback? onReplay; // ulangi dari awal
   final String? tertiaryLabel; // mis. "Bicara ke Asisten"
   final VoidCallback? onTertiary;
@@ -55,6 +73,8 @@ class OcrLongResultPanel extends StatelessWidget {
     this.vertical = false,
     this.scrollController,
     this.onTogglePlayback,
+    this.onStop,
+    this.onDismiss,
     this.onReplay,
     this.tertiaryLabel,
     this.onTertiary,
@@ -125,7 +145,15 @@ class OcrLongResultPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: Text(eyebrow, style: AppTypography.eyebrow(color: eyebrowColor))),
+        if (!muted && (speaking || paused) && onStop != null) ...[
+          _stopButton(),
+          const SizedBox(width: AppSpacing.s2),
+        ],
         if (!muted && (speaking || paused)) _playPauseButton(),
+        if (onDismiss != null) ...[
+          const SizedBox(width: AppSpacing.s2),
+          _dismissButton(),
+        ],
       ],
     );
   }
@@ -234,6 +262,51 @@ class OcrLongResultPanel extends StatelessWidget {
     );
   }
 
+  /// Tombol stop di baris atas, bersebelahan dengan jeda/lanjut. Posisinya
+  /// tetap, tidak ikut bergeser saat isi panel berubah panjang - tombol yang
+  /// berpindah adalah tombol yang harus dicari ulang setiap kali, dan pengguna
+  /// yang tidak melihat layar hanya punya posisi untuk dihafal.
+  Widget _stopButton() {
+    return Semantics(
+      button: true,
+      label: 'Hentikan pembacaan',
+      child: GestureDetector(
+        onTap: onStop,
+        child: Container(
+          width: _controlSize.toDouble(),
+          height: _controlSize.toDouble(),
+          decoration: const BoxDecoration(
+            color: AppColors.criticalTint,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.stop_rounded, color: AppColors.criticalLabel),
+        ),
+      ),
+    );
+  }
+
+  /// Silang penutup panel. Selalu di ujung kanan baris atas, apa pun kontrol
+  /// lain yang sedang tampil di sebelahnya - jalan keluar tidak boleh berpindah
+  /// tempat mengikuti keadaan.
+  Widget _dismissButton() {
+    return Semantics(
+      button: true,
+      label: 'Tutup hasil baca',
+      child: GestureDetector(
+        onTap: onDismiss,
+        child: Container(
+          width: _controlSize.toDouble(),
+          height: _controlSize.toDouble(),
+          decoration: const BoxDecoration(
+            color: AppColors.surfaceSunk,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.close_rounded, color: AppColors.ink1),
+        ),
+      ),
+    );
+  }
+
   Widget _audioControls() {
     final buttons = [
       _pill(
@@ -242,6 +315,8 @@ class OcrLongResultPanel extends StatelessWidget {
         filled: true,
         onTap: onTogglePlayback,
       ),
+      if ((speaking || paused) && onStop != null)
+        _pill(label: 'Stop', icon: Icons.stop_rounded, filled: false, onTap: onStop),
       _pill(label: 'Ulangi', icon: Icons.replay_rounded, filled: false, onTap: onReplay),
       if (tertiaryLabel != null) _pill(label: tertiaryLabel!, icon: Icons.mic_none_rounded, filled: false, onTap: onTertiary),
     ];

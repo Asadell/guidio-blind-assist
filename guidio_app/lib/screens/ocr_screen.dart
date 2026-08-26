@@ -71,6 +71,21 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
   Timer? _sentenceTicker;
   Timer? _expiryTicker;
 
+  /// Pemantau apakah mesin suara MASIH bicara.
+  ///
+  /// `TtsProvider.speak` kembali begitu kalimatnya diterima antrean tier,
+  /// bukan begitu kalimatnya selesai diucapkan - untuk Warning yang tidak
+  /// memotong apa pun, ia kembali dalam hitungan milidetik. Tanpa pemantau
+  /// ini `_speaking` langsung jatuh ke false sementara mesin baru mulai
+  /// membaca, dan seluruh kontrol jeda/stop lenyap dari layar tepat saat
+  /// pengguna paling membutuhkannya: suara terus berjalan menit-menitan tanpa
+  /// satu pun tombol yang bisa menghentikannya.
+  Timer? _speechWatch;
+
+  /// Dinaikkan setiap kali pembacaan dimulai atau dihentikan, supaya pemantau
+  /// milik pembacaan lama tidak menutup state pembacaan yang baru.
+  int _speechEpoch = 0;
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +145,14 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     _hardTimeoutTimer?.cancel();
     _sentenceTicker?.cancel();
     _expiryTicker?.cancel();
+    _speechWatch?.cancel();
+    // Meninggalkan mode ini TIDAK boleh meninggalkan suaranya. Satu halaman
+    // penuh bisa berbunyi menit-menitan, dan mode berikutnya tidak punya satu
+    // pun tombol untuk menghentikan bacaan yang bukan miliknya - pengguna
+    // hanya mendengar teks yang sudah tidak relevan menimpa narasi mode baru.
+    if (_speaking || _paused) {
+      unawaited(context.read<TtsProvider>().stop());
+    }
     context.read<CameraProvider>().stopStream();
     context.read<VoiceProvider>().clearModeHandlers();
     // ML Kit memegang sumber daya native yang TIDAK ikut dibersihkan pengumpul
@@ -299,9 +322,13 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
 
   Future<void> _speak() async {
     if (_blocks.isEmpty) return;
+    final epoch = ++_speechEpoch;
     setState(() {
       _speaking = true;
       _paused = false;
+      // Jam kedaluwarsa 15 menit dihitung dari SELESAI dibacakan. Selama masih
+      // berbunyi hasilnya jelas belum basi.
+      _completedAt = null;
     });
     final flat = <String>[];
     for (final b in _blocks) {
@@ -312,16 +339,113 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     // Warning, bukan Info: pembacaan ini diminta pengguna secara eksplisit dan
     // bisa berlangsung menit-menitan - membiarkannya dibuang sebagai "Info
     // basi" karena antre 2 detik akan membatalkan permintaan yang disengaja.
-    // Tetap bisa dipotong pengguna lewat tombol "Jeda bacaan".
+    // Tetap bisa dipotong pengguna lewat tombol "Jeda bacaan" dan "Stop".
     if (!mounted) return;
-    await context.read<TtsProvider>().speak(fullText, tier: SpeechTier.warning);
+    final tts = context.read<TtsProvider>();
+    await tts.speak(fullText, tier: SpeechTier.warning);
+
+    // `speak` di atas hanya menaruh kalimatnya ke antrean tier lalu kembali -
+    // untuk Warning yang tidak sedang memotong apa pun, ia kembali sebelum
+    // mesin suara mengucapkan satu kata pun. Menandai selesai di sini berarti
+    // seluruh kontrol pembacaan (jeda, stop, sorotan kalimat, label tombol
+    // kiri) hilang dari layar seketika sementara suaranya baru mulai jalan.
+    // Yang menentukan kapan pembacaan benar-benar berakhir adalah antrean,
+    // jadi itu yang ditanyakan.
+    await _waitUntilSpeechEnds(tts, epoch);
+    if (!mounted || epoch != _speechEpoch) return;
+
     _sentenceTicker?.cancel();
-    if (!mounted) return;
     setState(() {
       _speaking = false;
       _activeSentenceGlobal = -1;
       _completedAt = DateTime.now();
     });
+  }
+
+  /// Selesai ketika antrean suara benar-benar diam, atau ketika pembacaan ini
+  /// sudah digantikan/dihentikan (ditandai [epoch] yang tidak lagi terbaru).
+  Future<void> _waitUntilSpeechEnds(TtsProvider tts, int epoch) {
+    _speechWatch?.cancel();
+    final done = Completer<void>();
+    void finish(Timer t) {
+      t.cancel();
+      if (!done.isCompleted) done.complete();
+    }
+
+    _speechWatch = Timer.periodic(const Duration(milliseconds: 200), (t) {
+      if (!mounted || epoch != _speechEpoch || !tts.isActive) {
+        finish(t);
+      }
+    });
+    return done.future;
+  }
+
+  /// Hentikan pembacaan sepenuhnya - bukan jeda.
+  ///
+  /// Bedanya dari [_togglePause] ada di apa yang tersisa sesudahnya: jeda
+  /// menyimpan niat melanjutkan (tombol berubah jadi "Lanjutkan bacaan"),
+  /// stop mengembalikan layar ke keadaan hasil yang tenang, dengan "Putar
+  /// ulang" sebagai satu-satunya jalan memulai lagi.
+  ///
+  /// Memakai `stop()`, bukan `interruptByUser()`. Yang kedua hanya membuang
+  /// antrean Info dan memotong ucapan yang SEDANG berjalan; teks panjang yang
+  /// masih menunggu giliran di antrean bertier Warning akan tetap di sana dan
+  /// muncul kembali beberapa detik kemudian - tepat kelakuan "tidak bisa
+  /// dimatikan" yang tombol ini ada untuk menghilangkannya.
+  Future<void> _stopSpeaking() async {
+    final tts = _haltSpeech();
+    await Vibration.hasVibrator().then((has) {
+      if (has) Vibration.vibrate(duration: 15);
+    });
+    await tts.stop();
+    if (!mounted) return;
+    // Dikatakan, bukan didiamkan: pengguna yang tidak melihat layar tidak
+    // punya cara lain memastikan tekanannya terdaftar dan bukan mesin
+    // suaranya yang kebetulan berhenti sendiri.
+    await tts.speak('Bacaan dihentikan.', tier: SpeechTier.info);
+  }
+
+  /// Tutup panel hasil dan kembali ke keadaan siap memotret.
+  ///
+  /// Menghentikan suaranya sekalian. Panel yang ditutup sementara bacaannya
+  /// terus berbunyi adalah keadaan yang paling membingungkan dari keduanya:
+  /// tidak ada lagi satu pun kontrol di layar yang bisa mendiamkannya.
+  Future<void> _dismissResult() async {
+    final tts = _haltSpeech();
+    setState(() {
+      _blocks = [];
+      _fail = _FailKind.none;
+      _completedAt = null;
+      _debugOverride = null;
+    });
+    await Vibration.hasVibrator().then((has) {
+      if (has) Vibration.vibrate(duration: 15);
+    });
+    await tts.stop();
+    if (!mounted) return;
+    await tts.speak(
+      'Hasil ditutup. Tekan tombol kiri bawah untuk membaca teks lagi.',
+      tier: SpeechTier.info,
+    );
+  }
+
+  /// Setel state pembacaan ke "diam", tanpa mengucapkan apa pun.
+  ///
+  /// Dipisah karena [_stopSpeaking] dan [_dismissResult] melakukan hal yang
+  /// sama persis di sini lalu berpisah hanya pada kalimat yang diucapkan -
+  /// dan urutan di dalamnya (naikkan epoch SEBELUM menyentuh state) adalah
+  /// yang menjaga pemantau pembacaan lama tidak menulis ulang state baru.
+  TtsProvider _haltSpeech() {
+    _speechEpoch++;
+    _speechWatch?.cancel();
+    _sentenceTicker?.cancel();
+    setState(() {
+      _speaking = false;
+      _paused = false;
+      _activeSentenceGlobal = -1;
+      _completedAt = DateTime.now();
+    });
+    return context.read<TtsProvider>();
   }
 
   Future<void> _animateActiveSentence(int count) async {
@@ -345,12 +469,20 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
 
   Future<void> _togglePause() async {
     if (_speaking) {
-      await context.read<TtsProvider>().interruptByUser();
+      // Epoch dinaikkan lebih dulu supaya pemantau milik pembacaan yang baru
+      // dijeda tidak ikut menutup state sesudahnya.
+      _speechEpoch++;
+      _speechWatch?.cancel();
       _sentenceTicker?.cancel();
       setState(() {
         _speaking = false;
         _paused = true;
       });
+      // `stop()`, bukan `interruptByUser()` - lihat alasannya di
+      // [_stopSpeaking]. Teks panjang yang masih menunggu giliran di antrean
+      // Warning akan kembali berbunyi beberapa detik setelah dijeda kalau
+      // yang dipakai cuma memotong ucapan yang sedang berjalan.
+      await context.read<TtsProvider>().stop();
     } else if (_paused) {
       setState(() => _paused = false);
       await _speak();
@@ -481,6 +613,15 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
                   : _paused
                       ? 'Lanjutkan bacaan'
                       : 'Baca teks',
+              // Ikonnya ikut berubah. Labelnya hanya dibacakan TalkBack, jadi
+              // tanpa ini pengguna awas melihat ikon kamera yang tidak berubah
+              // sedikit pun sementara artinya sudah berganti jadi "jeda" -
+              // dan menyimpulkan tidak ada cara menghentikan bacaannya.
+              cameraIcon: _speaking
+                  ? Icons.pause_rounded
+                  : _paused
+                      ? Icons.play_arrow_rounded
+                      : Icons.camera_alt_outlined,
               onCameraPressed:
                   (_speaking || _paused) ? _togglePause : (_scanning ? null : _scan),
               cameraEnabled: !_scanning,
@@ -519,10 +660,30 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     if (_debugOverride != null) return [_renderDebug(context, bottomInset, _debugOverride!)];
 
     if (_fail == _FailKind.timeout) {
-      return [_bottomPanel(bottomInset, ResultPanel(text: 'Pembacaan terlalu lama. Coba foto ulang.', failed: true, onRetry: _scan))];
+      return [
+        _bottomPanel(
+          bottomInset,
+          ResultPanel(
+            text: 'Pembacaan terlalu lama. Coba foto ulang.',
+            failed: true,
+            onRetry: _scan,
+            onDismiss: _dismissResult,
+          ),
+        ),
+      ];
     }
     if (_fail == _FailKind.zeroText) {
-      return [_bottomPanel(bottomInset, ResultPanel(text: 'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal.', failed: true, onRetry: _scan))];
+      return [
+        _bottomPanel(
+          bottomInset,
+          ResultPanel(
+            text: 'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal.',
+            failed: true,
+            onRetry: _scan,
+            onDismiss: _dismissResult,
+          ),
+        ),
+      ];
     }
 
     if (_scanning) {
@@ -530,7 +691,17 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     }
 
     if (_hasExpired) {
-      return [_bottomPanel(bottomInset, ResultPanel(text: 'Hasil sudah lebih dari 15 menit. Foto ulang untuk membaca lagi.', failed: true, onRetry: _scan))];
+      return [
+        _bottomPanel(
+          bottomInset,
+          ResultPanel(
+            text: 'Hasil sudah lebih dari 15 menit. Foto ulang untuk membaca lagi.',
+            failed: true,
+            onRetry: _scan,
+            onDismiss: _dismissResult,
+          ),
+        ),
+      ];
     }
 
     if (_blocks.isEmpty) {
@@ -563,6 +734,8 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             paused: _paused,
             onReplay: _replay,
             onTogglePlayback: _togglePause,
+            onStop: _stopSpeaking,
+            onDismiss: _dismissResult,
             secondaryLabel: 'Salin teks',
             onSecondary: _copy,
           ),
@@ -619,6 +792,8 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       muted: false,
       vertical: _isFontScale200,
       onTogglePlayback: _togglePause,
+      onStop: _stopSpeaking,
+      onDismiss: _dismissResult,
       onReplay: _replay,
       tertiaryLabel: (!_speaking && !_paused) ? 'Bicara ke Asisten' : null,
       onTertiary: _goToAssistant,

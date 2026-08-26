@@ -12,6 +12,23 @@ class ResultPanel extends StatelessWidget {
   final bool failed;
   final VoidCallback? onReplay;
   final VoidCallback? onTogglePlayback;
+
+  /// Hentikan pembacaan sepenuhnya.
+  ///
+  /// Terpisah dari [onTogglePlayback] dengan sengaja. Jeda menyimpan niat
+  /// melanjutkan; stop menutup pembacaan. Tanpa yang kedua, satu-satunya cara
+  /// mendiamkan halaman yang terlanjur dibacakan adalah menjeda lalu berharap
+  /// tidak menekan lanjut - keadaan yang terdengar seperti suara yang tidak
+  /// bisa dimatikan.
+  final VoidCallback? onStop;
+
+  /// Tutup panel hasil dan kembalikan layar ke keadaan siap memotret.
+  ///
+  /// Panel ini menutupi sepertiga bawah layar termasuk sebagian pratinjau
+  /// kamera, dan ia bertahan sampai foto berikutnya diambil. Tanpa jalan
+  /// keluar yang terlihat, satu-satunya cara menyingkirkannya adalah memotret
+  /// lagi - yaitu menjalankan pekerjaan yang justru tidak diinginkan pengguna.
+  final VoidCallback? onDismiss;
   final VoidCallback? onRetry;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
@@ -25,6 +42,8 @@ class ResultPanel extends StatelessWidget {
     this.failed = false,
     this.onReplay,
     this.onTogglePlayback,
+    this.onStop,
+    this.onDismiss,
     this.onRetry,
     this.secondaryLabel,
     this.onSecondary,
@@ -46,7 +65,19 @@ class ResultPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('GAGAL MEMUAT', style: AppTypography.eyebrow(color: AppColors.criticalLabel)),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text('GAGAL MEMUAT',
+                            style: AppTypography.eyebrow(color: AppColors.criticalLabel)),
+                      ),
+                      // Panel gagal juga menutupi layar, dan "Coba lagi" bukan
+                      // jalan keluar - ia menjalankan ulang hal yang barusan
+                      // gagal. Menutup harus tetap mungkin tanpa memotret lagi.
+                      if (onDismiss != null) _dismissControl(),
+                    ],
+                  ),
                   const SizedBox(height: 6),
                   Text(text, style: AppTypography.body()),
                   const SizedBox(height: 14),
@@ -88,7 +119,15 @@ class ResultPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: Text(eyebrow, style: AppTypography.eyebrow(color: eyebrowColor))),
+              if ((speaking || paused) && onStop != null) ...[
+                _stopControl(),
+                const SizedBox(width: AppSpacing.s2),
+              ],
               _audioControl(),
+              if (onDismiss != null) ...[
+                const SizedBox(width: AppSpacing.s2),
+                _dismissControl(),
+              ],
             ],
           ),
           const SizedBox(height: 8),
@@ -133,6 +172,51 @@ class ResultPanel extends StatelessWidget {
             speaking ? Icons.pause_rounded : Icons.play_arrow_rounded,
             color: speaking ? AppColors.onDark : AppColors.actionLabel,
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Tombol stop duduk di baris atas, bersebelahan dengan jeda/lanjut.
+  ///
+  /// Posisinya tetap - tidak ikut berpindah saat isi panel berubah panjang -
+  /// karena tombol yang bergeser adalah tombol yang harus dicari ulang setiap
+  /// kali, dan pengguna yang tidak melihat layar hanya punya posisi untuk
+  /// dihafal.
+  Widget _stopControl() {
+    return Semantics(
+      button: true,
+      label: 'Hentikan pembacaan',
+      child: GestureDetector(
+        onTap: onStop,
+        child: Container(
+          width: 48, height: 48,
+          decoration: const BoxDecoration(
+            color: AppColors.criticalTint,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.stop_rounded, color: AppColors.criticalLabel),
+        ),
+      ),
+    );
+  }
+
+  /// Silang penutup panel. Selalu di ujung kanan baris atas, apa pun kontrol
+  /// lain yang sedang tampil di sebelahnya - jalan keluar tidak boleh berpindah
+  /// tempat mengikuti keadaan.
+  Widget _dismissControl() {
+    return Semantics(
+      button: true,
+      label: 'Tutup hasil baca',
+      child: GestureDetector(
+        onTap: onDismiss,
+        child: Container(
+          width: 48, height: 48,
+          decoration: const BoxDecoration(
+            color: AppColors.surfaceSunk,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.close_rounded, color: AppColors.ink1),
         ),
       ),
     );
