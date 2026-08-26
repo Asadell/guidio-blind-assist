@@ -97,13 +97,23 @@ flutter:
     # memuatnya lewat rootBundle.
     - assets/models/ssd_mobilenet.tflite        # TFLiteService - deteksi rintangan
     - assets/models/labelmap.txt                # TFLiteService - label COCO
-    - assets/models/rupiah_classifier_fp16.tflite  # MoneyTFLiteService - 7 pecahan
-    - assets/models/rupiah_classifier_int8.tflite
+    - assets/models/rupiah_classifier_int8.tflite  # MoneyTFLiteService - 7 pecahan
     #
-    # uang_rupiah.tflite dan rupiah_classifier_int8.tflite (dua model lama)
-    # sengaja TIDAK dibundel lagi: sudah digantikan
-    # rupiah_classifier_fp16.tflite. Berkasnya tetap ada di assets/models/
-    # sebagai arsip, tapi tidak ikut ke APK.
+    # uang_rupiah.tflite (2,7 MB) dan rupiah_classifier_fp16.tflite (4,6 MB)
+    # TIDAK dibundel: MoneyTFLiteService hanya memuat varian int8, jadi 7,3 MB
+    # itu ikut ke APK tanpa satu pun yang membacanya. Berkasnya tetap ada di
+    # assets/models/ sebagai arsip.
+    #
+    # int8 yang dipilih, BUKAN fp16, sesuai rekomendasi repo training sendiri
+    # (`scripts/02_export_tflite.py`, kunci `recommended_for_flutter`). Bobot
+    # dan aktivasinya INT8 tapi I/O-nya tetap float32, jadi jalur praproses
+    # di Dart tidak berubah sama sekali.
+    #
+    # CATATAN untuk `flutter test`: runtime desktop di blobs/ berasal dari
+    # tflite_flutter_plugin v0.5.0 (2021) dan TIDAK bisa menjalankan model
+    # terkuantisasi - keluarannya kolaps jadi rata 1/7 untuk masukan apa pun.
+    # Android memakai LiteRT 1.4.0 lewat tflite_flutter 0.12.1 dan menjalankan
+    # model ini dengan benar. Jangan simpulkan model rusak dari hasil desktop.
     #
     # rupiah_labels.txt juga tidak dibundel - urutan kelasnya sudah tetap di
     # MoneyTFLiteService.classValues, jadi tidak ada yang memuatnya lewat

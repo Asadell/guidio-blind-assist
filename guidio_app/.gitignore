@@ -80,3 +80,13 @@ android/captures/
 assets/models/backup_models/
 *_backup*.tflite
 backup_*.tflite
+# Foto uji dari kamera ponsel sendiri (test/fixtures/rupiah_mobile/, ~12 MB).
+#
+# Sengaja TIDAK di-commit: isinya foto uang milik pengembang, ukurannya besar,
+# dan gunanya cuma untuk menyetel ambang di MoneyTFLiteService secara lokal.
+# Sumber aslinya ada di <root repo>/test/rupiah/ - salin ulang dengan:
+#   cp -r ../../test/rupiah/. test/fixtures/rupiah_mobile/
+#
+# Tanpa folder ini test/rupiah_kamera_e2e_test.dart melewati dirinya sendiri
+# dengan pesan yang jelas, bukan gagal.
+test/fixtures/rupiah_mobile/
