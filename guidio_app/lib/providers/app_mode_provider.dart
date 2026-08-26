@@ -162,8 +162,35 @@ class AppModeProvider extends ChangeNotifier {
   /// layar tujuan, bukan diucapkan di sini.
   Future<bool> setMode(AppMode mode, {String? spokenPrefix}) async {
     if (_mode == mode) return false;
-    if (confirmLeave != null) {
-      final ok = await confirmLeave!(_mode, mode);
+    final guard = confirmLeave;
+    if (guard != null) {
+      // Hook ini milik layar lain, jadi ia bisa saja melempar - misalnya
+      // karena layarnya sudah dibuang dan `context`-nya tidak lagi sah.
+      // Kalau itu terjadi, perpindahan mode WAJIB tetap jalan.
+      //
+      // Membiarkan galatnya naik pernah mengunci pengguna sepenuhnya: hook
+      // `confirmLeave` milik NavigasiScreen yang sudah mati tertinggal
+      // terpasang, setiap `setMode` memanggilnya, tiap panggilan melempar,
+      // dan tidak ada satu pun mode yang bisa dituju lagi. Untuk pengguna
+      // tunanetra itu berarti aplikasi berhenti menuruti perintah tanpa
+      // sepatah kata pun penjelasan.
+      //
+      // Jadi gerbangnya GAGAL-TERBUKA, bukan gagal-tertutup. Menahan
+      // perpindahan hanya sah kalau ada layar hidup yang benar-benar
+      // menjawab "jangan": konfirmasi yang hilang jauh lebih ringan
+      // akibatnya daripada pengguna yang terperangkap.
+      bool ok;
+      try {
+        ok = await guard(_mode, mode);
+      } catch (e, st) {
+        debugPrint('[AppMode] confirmLeave melempar, dilepas lalu '
+            'perpindahan diteruskan: $e\n$st');
+        // Hook yang rusak dilepas supaya tidak melukai perpindahan berikutnya,
+        // tapi hanya kalau ia masih hook yang sama - layar baru bisa saja
+        // sudah memasang miliknya sendiri sementara `await` di atas berjalan.
+        if (identical(confirmLeave, guard)) confirmLeave = null;
+        ok = true;
+      }
       if (!ok) return false;
     }
     _previousMode = _mode; // simpan mode sebelumnya untuk goBack()

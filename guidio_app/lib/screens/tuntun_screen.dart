@@ -46,6 +46,26 @@ const List<(String, String)> _doDebugCatalog = [
 ];
 
 class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver {
+  // ── Rujukan provider untuk dispose() ──────────────────────────────────
+  //
+  // `context.read` DILARANG di dalam dispose(): elemennya sudah tidak aktif,
+  // jadi pencarian ancestor melempar "Looking up a deactivated widget's
+  // ancestor is unsafe". Karena galatnya jatuh di baris PERTAMA yang membaca
+  // provider, seluruh pelepasan sesudahnya tidak pernah berjalan - handler
+  // dan stream kamera milik mode ini tetap hidup sesudah modenya ditinggalkan.
+  // Rujukannya karena itu dicatat saat dependensi siap.
+  late CameraProvider _cam;
+  late DetectionProvider _detection;
+  late VoiceProvider _voice;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _cam = context.read<CameraProvider>();
+    _detection = context.read<DetectionProvider>();
+    _voice = context.read<VoiceProvider>();
+  }
+
   bool _hasCameraPermission = true;
   bool _hasMicPermission = true;
   bool _warmingUp = true;
@@ -147,10 +167,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     _warmupTimer?.cancel();
     _speakingPoll?.cancel();
     _pausedReminder?.cancel();
-    context.read<CameraProvider>().removeListener(_onCameraDarkChanged);
-    context.read<DetectionProvider>().stopRealtime();
-    context.read<CameraProvider>().stopStream();
-    context.read<VoiceProvider>().clearModeHandlers();
+    _cam.removeListener(_onCameraDarkChanged);
+    _detection.stopRealtime();
+    _cam.stopStream();
+    _voice.clearModeHandlers();
     super.dispose();
   }
 

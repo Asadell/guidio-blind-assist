@@ -92,6 +92,26 @@ const _moneyAckPattern = [0, 40, 60, 40, 60, 40];
 const _positivePattern = [0, 25, 45, 25];
 
 class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
+  // ── Rujukan provider untuk dispose() ──────────────────────────────────
+  //
+  // `context.read` DILARANG di dalam dispose(): elemennya sudah tidak aktif,
+  // jadi pencarian ancestor melempar "Looking up a deactivated widget's
+  // ancestor is unsafe". Karena galatnya jatuh di baris PERTAMA yang membaca
+  // provider, seluruh pelepasan sesudahnya tidak pernah berjalan - handler
+  // dan stream kamera milik mode ini tetap hidup sesudah modenya ditinggalkan.
+  // Rujukannya karena itu dicatat saat dependensi siap.
+  late MoneyProvider _money;
+  late VoiceProvider _voice;
+  late CameraProvider _cam;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _money = context.read<MoneyProvider>();
+    _voice = context.read<VoiceProvider>();
+    _cam = context.read<CameraProvider>();
+  }
+
   MoneyDebugState? _debugOverride;
   bool _hasCameraPermission = true;
   bool _offlineBannerShownOnce = false;
@@ -155,14 +175,12 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _offlineHideTimer?.cancel();
-    final money = context.read<MoneyProvider>();
-    money.onSpeak = null;
-    money.onHaptic = null;
-    money.pause();
-    context.read<VoiceProvider>().clearModeHandlers();
-    final cam = context.read<CameraProvider>();
-    cam.onFrameReady = null;
-    cam.stopStream();
+    _money.onSpeak = null;
+    _money.onHaptic = null;
+    _money.pause();
+    _voice.clearModeHandlers();
+    _cam.onFrameReady = null;
+    _cam.stopStream();
     super.dispose();
   }
 

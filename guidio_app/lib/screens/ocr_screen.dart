@@ -48,6 +48,26 @@ class OcrScreen extends StatefulWidget {
 enum _FailKind { none, zeroText, timeout }
 
 class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
+  // ── Rujukan provider untuk dispose() ──────────────────────────────────
+  //
+  // `context.read` DILARANG di dalam dispose(): elemennya sudah tidak aktif,
+  // jadi pencarian ancestor melempar "Looking up a deactivated widget's
+  // ancestor is unsafe". Karena galatnya jatuh di baris PERTAMA yang membaca
+  // provider, seluruh pelepasan sesudahnya tidak pernah berjalan - handler
+  // dan stream kamera milik mode ini tetap hidup sesudah modenya ditinggalkan.
+  // Rujukannya karena itu dicatat saat dependensi siap.
+  late TtsProvider _tts;
+  late CameraProvider _cam;
+  late VoiceProvider _voice;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tts = context.read<TtsProvider>();
+    _cam = context.read<CameraProvider>();
+    _voice = context.read<VoiceProvider>();
+  }
+
   bool _hasCameraPermission = true;
   bool _scanning = false;
   bool _speaking = false;
@@ -151,10 +171,10 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     // pun tombol untuk menghentikan bacaan yang bukan miliknya - pengguna
     // hanya mendengar teks yang sudah tidak relevan menimpa narasi mode baru.
     if (_speaking || _paused) {
-      unawaited(context.read<TtsProvider>().stop());
+      unawaited(_tts.stop());
     }
-    context.read<CameraProvider>().stopStream();
-    context.read<VoiceProvider>().clearModeHandlers();
+    _cam.stopStream();
+    _voice.clearModeHandlers();
     // ML Kit memegang sumber daya native yang TIDAK ikut dibersihkan pengumpul
     // sampah Dart. Ditutup saat keluar mode, bukan dibiarkan hidup sepanjang
     // umur aplikasi: Mode Navigasi menjalankan tiga model sekaligus, dan di

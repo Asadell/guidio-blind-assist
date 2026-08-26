@@ -37,6 +37,22 @@ class VoiceScreen extends StatefulWidget {
 }
 
 class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
+  // ── Rujukan provider untuk dispose() ──────────────────────────────────
+  //
+  // `context.read` DILARANG di dalam dispose(): elemennya sudah tidak aktif,
+  // jadi pencarian ancestor melempar "Looking up a deactivated widget's
+  // ancestor is unsafe". Karena galatnya jatuh di baris PERTAMA yang membaca
+  // provider, seluruh pelepasan sesudahnya tidak pernah berjalan - handler
+  // dan stream kamera milik mode ini tetap hidup sesudah modenya ditinggalkan.
+  // Rujukannya karena itu dicatat saat dependensi siap.
+  late VoiceProvider _voice;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _voice = context.read<VoiceProvider>();
+  }
+
   bool _hasMicPermission = true;
   bool _hasCameraPermission = true;
   String? _debugOverride;
@@ -121,17 +137,16 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _longAnswerTimer?.cancel();
     _expiryCheckTimer?.cancel();
-    final voice = context.read<VoiceProvider>();
-    voice.onSpeak = null;
-    voice.onOpenSettings = null;
-    voice.onAllFeaturesFailed = null;
-    voice.onAdjustSpeechRate = null;
+    _voice.onSpeak = null;
+    _voice.onOpenSettings = null;
+    _voice.onAllFeaturesFailed = null;
+    _voice.onAdjustSpeechRate = null;
     if (widget.isOverlay) {
-      voice.onNavigateBack = null;
+      _voice.onNavigateBack = null;
     } else {
       // Hanya lepas handler yang dipasang layar ini. Sebagai overlay, handler
       // milik mode di bawahnya harus tetap utuh.
-      voice.clearModeHandlers();
+      _voice.clearModeHandlers();
     }
     super.dispose();
   }

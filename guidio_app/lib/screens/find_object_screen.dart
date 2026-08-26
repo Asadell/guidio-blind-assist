@@ -54,6 +54,26 @@ extension on _Debug {
 }
 
 class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBindingObserver {
+  // ── Rujukan provider untuk dispose() ──────────────────────────────────
+  //
+  // `context.read` DILARANG di dalam dispose(): elemennya sudah tidak aktif,
+  // jadi pencarian ancestor melempar "Looking up a deactivated widget's
+  // ancestor is unsafe". Karena galatnya jatuh di baris PERTAMA yang membaca
+  // provider, seluruh pelepasan sesudahnya tidak pernah berjalan - handler
+  // dan stream kamera milik mode ini tetap hidup sesudah modenya ditinggalkan.
+  // Rujukannya karena itu dicatat saat dependensi siap.
+  late FindObjectProvider _findObject;
+  late VoiceProvider _voice;
+  late CameraProvider _cam;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _findObject = context.read<FindObjectProvider>();
+    _voice = context.read<VoiceProvider>();
+    _cam = context.read<CameraProvider>();
+  }
+
   final SpeechToText _stt = SpeechToText();
   bool _sttReady = false;
   bool _hasCameraPermission = true;
@@ -177,17 +197,15 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     // gerbang suaranya sendiri, dan mode berikutnya akan diam tanpa sebab
     // sampai penjaga waktu bertindak.
     TtsQueue.instance.endVoiceSession();
-    final provider = context.read<FindObjectProvider>();
-    provider.onSpeak = null;
-    provider.onDirectionHaptic = null;
-    provider.frameSource = null;
-    provider.frameRejectReason = null;
-    provider.isOffline = null;
-    provider.reset();
-    context.read<VoiceProvider>().clearModeHandlers();
-    final cam = context.read<CameraProvider>();
-    cam.onFrameReady = null;
-    cam.stopStream();
+    _findObject.onSpeak = null;
+    _findObject.onDirectionHaptic = null;
+    _findObject.frameSource = null;
+    _findObject.frameRejectReason = null;
+    _findObject.isOffline = null;
+    _findObject.reset();
+    _voice.clearModeHandlers();
+    _cam.onFrameReady = null;
+    _cam.stopStream();
     super.dispose();
   }
 

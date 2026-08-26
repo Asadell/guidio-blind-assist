@@ -148,6 +148,45 @@ class _ExpiringDetectionCard extends StatelessWidget {
 }
 
 class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObserver {
+  // ── Rujukan provider untuk dispose() ──────────────────────────────────
+  //
+  // `context.read` DILARANG di dalam dispose(). Elemennya sudah tidak aktif
+  // di titik itu, jadi pencarian ancestor melempar "Looking up a deactivated
+  // widget's ancestor is unsafe" - dan karena galatnya terjadi di BARIS
+  // PERTAMA dispose, seluruh pelepasan sesudahnya tidak pernah berjalan:
+  // `confirmLeave` tetap terpasang, `onFrameReady` tetap tersambung, stream
+  // kamera tetap hidup.
+  //
+  // Akibat paling parahnya persis yang dilaporkan dari lapangan: `confirmLeave`
+  // tertinggal menunjuk ke State yang sudah mati, lalu SETIAP perpindahan mode
+  // berikutnya memanggilnya, melempar lagi di `context.read` milik State mati
+  // itu, dan `setMode` batal. Pengguna terkunci di modenya sekarang.
+  //
+  // Rujukannya karena itu dicatat saat dependensi siap, seperti yang memang
+  // disarankan pesan galat Flutter itu sendiri.
+  late AppModeProvider _appMode;
+  late NavigationProvider _nav;
+  late VoiceProvider _voice;
+  late CameraProvider _cam;
+
+  /// Tear-off disimpan SEKALI. `identical(_confirmLeaveNavigasi,
+  /// _confirmLeaveNavigasi)` mengembalikan **false** - Dart tidak
+  /// mengkanonikalisasi tear-off metode instans, jadi setiap penyebutan
+  /// melahirkan closure baru. Syarat lama `identical(appMode.confirmLeave,
+  /// _confirmLeaveNavigasi)` karena itu tidak pernah benar, dan hook-nya tidak
+  /// akan pernah dilepas walaupun dispose sempat berjalan.
+  late final Future<bool> Function(AppMode, AppMode) _leaveGuard =
+      _confirmLeaveNavigasi;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _appMode = context.read<AppModeProvider>();
+    _nav = context.read<NavigationProvider>();
+    _voice = context.read<VoiceProvider>();
+    _cam = context.read<CameraProvider>();
+  }
+
   final TextEditingController _destCtrl = TextEditingController();
   bool _hasCameraPermission = true;
   String? _debugOverride;
@@ -220,7 +259,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       nav.startCalibration();
 
       // NV-18 - satu-satunya konfirmasi wajib di seluruh app.
-      context.read<AppModeProvider>().confirmLeave = _confirmLeaveNavigasi;
+      context.read<AppModeProvider>().confirmLeave = _leaveGuard;
 
       // Kontrak tombol kiri: perintah suara "jepret" menjalankan hal yang
       // sama persis dengan menekan tombol kiri - di mode ini, membisukan dan
@@ -288,22 +327,22 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   void dispose() {
     _holdSweeper?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    final appMode = context.read<AppModeProvider>();
-    if (identical(appMode.confirmLeave, _confirmLeaveNavigasi)) {
-      appMode.confirmLeave = null;
+    // Hanya lepas kalau hook yang terpasang memang MILIK layar ini. Kalau
+    // layar Navigasi baru sudah sempat memasang miliknya, membersihkan tanpa
+    // syarat justru melucuti konfirmasi NV-18 dari layar yang masih hidup.
+    if (identical(_appMode.confirmLeave, _leaveGuard)) {
+      _appMode.confirmLeave = null;
     }
-    final nav = context.read<NavigationProvider>();
-    nav.onSpeak = null;
-    nav.onTakeover = null;
-    nav.cameraSource = null;
+    _nav.onSpeak = null;
+    _nav.onTakeover = null;
+    _nav.cameraSource = null;
     // Melepas gambar hamparan sekalian: `ui.Image` memegang memori di luar
     // heap Dart dan tidak ikut dibersihkan pengumpul sampah.
-    nav.wantsSegmentationOverlay = false;
-    nav.stopNavigation();
-    context.read<VoiceProvider>().clearModeHandlers();
-    final cam = context.read<CameraProvider>();
-    cam.onFrameReady = null;
-    cam.stopStream();
+    _nav.wantsSegmentationOverlay = false;
+    _nav.stopNavigation();
+    _voice.clearModeHandlers();
+    _cam.onFrameReady = null;
+    _cam.stopStream();
     _destCtrl.dispose();
     super.dispose();
   }
@@ -349,6 +388,11 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   /// Fokus terkunci di dalam lembar (bawaan `showModalBottomSheet`); setelah
   /// ditutup, fokus kembali ke tombol pemanggilnya, bukan ke atas layar.
   Future<bool> _confirmLeaveNavigasi(AppMode from, AppMode to) async {
+    // Pertahanan berlapis. Kalau hook ini entah bagaimana masih terpasang
+    // sesudah layarnya mati, JANGAN menahan perpindahan mode: tidak ada
+    // seorang pun yang sedang dituntun oleh layar yang sudah tidak ada, dan
+    // mengembalikan false di sini akan mengunci pengguna di modenya sekarang.
+    if (!mounted) return true;
     // Hanya fase yang benar-benar SEDANG memandu yang boleh menghadang.
     //
     // Syarat lamanya `phase != paused`, dan itu menjaring tiga fase yang sama
