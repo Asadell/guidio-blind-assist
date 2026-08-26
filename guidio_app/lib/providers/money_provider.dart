@@ -173,6 +173,22 @@ class MoneyProvider extends ChangeNotifier {
   DateTime _lastInference = DateTime.fromMillisecondsSinceEpoch(0);
   int _consecutiveMiss = 0;
 
+  // ── Multi-frame voting ────────────────────────────────────────────────────
+  //
+  // Satu frame yang kebetulan diprediksi salah (mis. sudut ekstrem, gerakan)
+  // tidak boleh langsung memindahkan state ke "fit". Tiga frame berturut-turut
+  // yang sepakat pada nominal yang sama memberi kepastian yang jauh lebih kuat
+  // dan sangat murah - classifikasi 224x224 berjalan tiap 600ms, jadi 3 frame
+  // hanya menambah ~1,2 detik penundaan dalam kasus terburuk.
+  //
+  // Trade-off yang diterima: user yang menggerakkan kamera cepat perlu sedikit
+  // lebih lama menunggu bingkai hijau. Manfaatnya: prediksi sesaat pada foto
+  // yang susah (50rb_a yang terdeteksi sebagai 10rb) tidak pernah membuat
+  // bingkai berubah hijau dan mendorong user menekan tombol snap.
+  static const int _kRequiredConsecutive = 3;
+  int _consecutiveDetections = 0;
+  int? _lastDetectedValue;
+
   /// Hasil buffer terbaru dari model - diperbarui tiap frame, dipakai saat
   /// snapAndAnnounce() dipanggil. Tidak pernah auto-diumumkan.
   MoneyResult? _latestResult;
@@ -219,13 +235,30 @@ class MoneyProvider extends ChangeNotifier {
 
     if (result.detected && result.valueIdr != null) {
       _consecutiveMiss = 0;
-      // Update visual state ke "fit" (bingkai hijau) agar user tahu
-      // kamera sudah melihat uang dan siap di-snap - tapi TIDAK bicara.
-      if (_state != MoneyState.fit && _state != MoneyState.detected) {
-        _set(MoneyState.fit);
+
+      // Multi-frame voting: hitung frame berturut-turut yang sepakat.
+      // Reset counter kalau nominal berubah di antara frame.
+      if (result.valueIdr == _lastDetectedValue) {
+        _consecutiveDetections++;
+      } else {
+        _consecutiveDetections = 1;
+        _lastDetectedValue = result.valueIdr;
+      }
+
+      // State baru ke "fit" hanya setelah N frame sepakat.
+      // Ini mencegah prediksi sesaat dari satu frame yang kebetulan jelek
+      // memindahkan bingkai ke hijau dan mendorong user menekan snap.
+      if (_consecutiveDetections >= _kRequiredConsecutive) {
+        if (_state != MoneyState.fit && _state != MoneyState.detected) {
+          _set(MoneyState.fit);
+        }
       }
       return;
     }
+
+    // Deteksi gagal - reset voting counter.
+    _consecutiveDetections = 0;
+    _lastDetectedValue = null;
 
     switch (result.failure) {
       case MoneyFailure.lowConfidence:
