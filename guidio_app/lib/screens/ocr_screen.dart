@@ -565,8 +565,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     final showTorchSlot =
         TorchSlot.visible(cam, hasCameraPermission: _hasCameraPermission);
     // Seluruh konten layar ini berpatokan pada `bottomInset`, jadi satu
-    // penambahan di sini menggeser tombol "Baca teks" dan panel hasilnya
-    // sekaligus.
+    // penambahan di sini menggeser seluruh panel hasilnya sekaligus.
     final bottomInset =
         rawBottomInset + (showTorchSlot ? TorchSlot.slotHeight : 0);
 
@@ -724,23 +723,22 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       ];
     }
 
-    if (_blocks.isEmpty) {
-      return [
-        Positioned(
-          left: AppSpacing.screenMargin,
-          right: AppSpacing.screenMargin,
-          bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s6 + 96 + AppSpacing.s3,
-          // Tidak pernah dikunci. ML Kit tidak butuh jaringan sama sekali,
-          // jadi tidak ada kondisi jaringan apa pun yang boleh mematikan
-          // tombol ini.
-          child: FullScreenButton(
-            label: 'Baca teks',
-            icon: Icons.document_scanner_outlined,
-            onTap: _scan,
-          ),
-        ),
-      ];
-    }
+    // BT-01 idle: KOSONG, dan itu disengaja.
+    //
+    // Dulu di sini ada FullScreenButton "Baca teks" setinggi 96 dp. Tombol
+    // itu memanggil `_scan` - persis sama dengan tombol kiri BottomActionBar
+    // yang sudah selalu ada di dasar layar. Jadi ada dua tombol berbeda
+    // bentuk, berbeda tempat, berjarak beberapa sentimeter, yang melakukan
+    // hal yang sama.
+    //
+    // Bagi pengguna TalkBack duplikat itu bukan sekadar berlebihan: menyapu
+    // layar melewati dua kandidat "Baca teks" menimbulkan keraguan mana yang
+    // benar, dan tombol besar itu juga menutupi bagian bawah pratinjau kamera
+    // persis di tempat teks yang mau dibaca biasanya berada.
+    //
+    // Satu aksi, satu tombol, di tempat yang sama seperti mode lain: tombol
+    // kiri BottomActionBar. Kenali Uang sudah memakai pola itu sejak awal.
+    if (_blocks.isEmpty) return const [];
 
     final singleShort = _blocks.length == 1 && _blocks.first.ok && _blocks.first.sentences.length <= 2;
     if (singleShort) {
@@ -832,11 +830,11 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
   Widget _renderDebug(BuildContext context, double bottomInset, String id) {
     switch (id) {
       case 'BT-01':
-        return Positioned(
-          left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-          bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s6 + 96 + AppSpacing.s3,
-          child: const FullScreenButton(label: 'Baca teks', icon: Icons.document_scanner_outlined),
-        );
+        // Idle sekarang tidak menaruh apa pun di zona konten - aksinya ada di
+        // tombol kiri BottomActionBar, yang selalu tampil di luar zona ini.
+        // Panel debug harus menunjukkan keadaan yang sebenarnya, bukan tombol
+        // yang sudah tidak ada.
+        return const SizedBox.shrink();
       case 'BT-03':
         return const Center(
           child: ColoredBox(color: AppColors.bgPage, child: SizedBox(width: double.infinity, height: double.infinity)),

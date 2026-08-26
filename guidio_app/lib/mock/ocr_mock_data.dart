@@ -42,7 +42,7 @@ class OcrDebugEntry {
 // yang memaksa state mustahil hanya membuat penguji melaporkan "bug" yang
 // sebenarnya adalah simulasinya sendiri.
 const List<OcrDebugEntry> ocrDebugCatalog = [
-  OcrDebugEntry('BT-01', 'Idle', 'Tombol utama aktif, busur panduan'),
+  OcrDebugEntry('BT-01', 'Idle', 'Busur panduan; aksi ada di tombol kiri bar bawah'),
   OcrDebugEntry('BT-03', 'Menjepret', 'Kilat + getar + pill "Gambar diambil"'),
   OcrDebugEntry('BT-04', 'Memproses', 'Panel loading, tinggi dipesan penuh'),
   OcrDebugEntry('BT-05', 'Mendekati timeout', 'Banner + hitungan mono + Batalkan'),
