@@ -22,11 +22,46 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   bool _permanentlyDenied = false;
   bool _requesting = false;
 
+  /// Langkah pembuka belum ditentukan - layar belum boleh merender kartu apa
+  /// pun. Tanpa penjaga ini kartu "Izin kamera" sempat berkedip satu frame
+  /// bagi pengguna yang kameranya sudah lama diizinkan dan sebenarnya hanya
+  /// perlu ditanya soal mikrofon.
+  bool _resolving = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _announceStep();
+    _resolveStartStep();
+  }
+
+  /// Menentukan langkah pembuka dari status izin yang SEBENARNYA.
+  ///
+  /// Sebelumnya layar ini selalu mulai dari kamera, dan `MainScreen` hanya
+  /// memanggilnya kalau kamera belum diizinkan. Akibatnya pengguna yang
+  /// mengizinkan kamera tapi menolak mikrofon TIDAK PERNAH ditanya lagi soal
+  /// mikrofon: layar ini tidak pernah tampil, `VoiceProvider.init()` gagal
+  /// diam-diam, dan perintah suara - jalur utama aplikasi ini - mati tanpa
+  /// satu pun kalimat yang menjelaskan kenapa.
+  Future<void> _resolveStartStep() async {
+    final camera = await Permission.camera.isGranted;
+    final mic = await Permission.microphone.isGranted;
+    if (!mounted) return;
+    if (!camera) {
+      setState(() {
+        _step = _Step.camera;
+        _resolving = false;
+      });
+      _announceStep();
+    } else if (!mic) {
+      setState(() {
+        _step = _Step.microphone;
+        _resolving = false;
+      });
+      _announceStep();
+    } else {
+      widget.onDone();
+    }
   }
 
   @override
@@ -81,16 +116,38 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     }
   }
 
-  void _advance() {
-    if (_step == _Step.camera) {
-      setState(() {
-        _step = _Step.microphone;
-        _permanentlyDenied = false;
-      });
-      _announceStep();
-    } else {
+  Future<void> _advance() async {
+    if (_step != _Step.camera) {
       widget.onDone();
+      return;
     }
+    // Mikrofon bisa saja sudah diizinkan di pemasangan sebelumnya - jangan
+    // menanyakan ulang sesuatu yang jawabannya sudah ada.
+    if (await Permission.microphone.isGranted) {
+      widget.onDone();
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _step = _Step.microphone;
+      _permanentlyDenied = false;
+    });
+    _announceStep();
+  }
+
+  /// Mikrofon BOLEH dilewati, kamera tidak.
+  ///
+  /// Kartu langkah mikrofon sudah menjanjikan "fitur lain tetap berjalan
+  /// penuh tanpa mikrofon", tapi sebelumnya tidak ada satu pun tombol yang
+  /// menepati janji itu: menolak sekali (bukan permanen) meninggalkan
+  /// pengguna di layar dengan satu tombol "Izinkan mikrofon" dan tidak ada
+  /// jalan maju. Untuk pengguna tunanetra itu jalan buntu total.
+  Future<void> _skipMicrophone() async {
+    await TTSService.instance.speak(
+      'Melanjutkan tanpa mikrofon. Perintah suara mati, mode tetap bisa '
+      'dipilih lewat tombol Pilih mode.',
+    );
+    widget.onDone();
   }
 
   /// IZ-04 - dibacakan bertahap. Membacakan empat langkah sekaligus tidak
@@ -106,6 +163,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
 
   @override
   Widget build(BuildContext context) {
+    if (_resolving) {
+      return const Scaffold(
+        backgroundColor: AppColors.bgPage,
+        body: SizedBox.expand(),
+      );
+    }
     final isCamera = _step == _Step.camera;
 
     // IZ-01..IZ-04 - layar penunjang tanpa BottomActionBar, jadi seluruh
@@ -116,8 +179,10 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
         primaryLabel: 'Buka Pengaturan ponsel',
         primaryIcon: Icons.settings_outlined,
         onPrimary: () => _openSystemSettings(isCamera),
-        secondaryLabel: 'Ulangi langkah ini',
-        onSecondary: () => TTSService.instance.speak('Mengulangi langkah ini.'),
+        secondaryLabel: isCamera ? 'Ulangi langkah ini' : 'Lanjut tanpa mikrofon',
+        onSecondary: isCamera
+            ? () => TTSService.instance.speak('Mengulangi langkah ini.')
+            : _skipMicrophone,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -134,6 +199,8 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
       primaryDisabled: _requesting,
       primaryDisabledReason: _requesting ? 'Menunggu jawabanmu' : null,
       onPrimary: _request,
+      secondaryLabel: isCamera ? null : 'Lanjut tanpa mikrofon',
+      onSecondary: isCamera ? null : _skipMicrophone,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

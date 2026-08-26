@@ -39,10 +39,22 @@ class _MainScreenState extends State<MainScreen> {
     await _checkPermissions();
   }
 
+  /// Kamera DAN mikrofon, bukan kamera saja.
+  ///
+  /// Versi sebelumnya hanya memeriksa kamera, jadi pengguna yang mengizinkan
+  /// kamera tapi menolak mikrofon melewati layar izin sepenuhnya. Mikrofon
+  /// tidak pernah diminta lagi, `VoiceProvider.init()` gagal dan cuma menulis
+  /// `debugPrint` yang tidak terlihat di rilis, lalu perintah suara mati
+  /// tanpa penjelasan apa pun.
+  ///
+  /// Mikrofon tetap TIDAK wajib - layar izinnya menyediakan "Lanjut tanpa
+  /// mikrofon". Yang berubah cuma satu: pengguna sekarang benar-benar
+  /// ditanya, dan tahu apa yang dia lepaskan.
   Future<void> _checkPermissions() async {
     final cameraGranted = await Permission.camera.isGranted;
+    final micGranted = await Permission.microphone.isGranted;
     if (!mounted) return;
-    if (cameraGranted) {
+    if (cameraGranted && micGranted) {
       setState(() => _stage = _BootStage.initializing);
       await _initServices();
     } else {
