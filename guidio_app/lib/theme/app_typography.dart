@@ -1,14 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
 /// Skala tipografi design system Vinara.
 /// IBM Plex Sans untuk semua teks, IBM Plex Mono untuk angka teknis
 /// (jarak, persentase, waktu) - dipakai bersama `tabularFigures` supaya
-/// nominal tidak bergeser saat berubah. Fallback otomatis lewat GoogleFonts
-/// (Noto Sans / Roboto), tidak pernah font geometris.
+/// nominal tidak bergeser saat berubah.
+///
+/// **Fontnya DIBUNDEL, bukan diunduh.** Versi sebelumnya memakai
+/// `GoogleFonts.ibmPlexSans()`, yang mengambil berkasnya dari
+/// fonts.gstatic.com saat dipakai pertama kali dan MELEMPAR tanpa penangkap
+/// kalau jaringan mati - muncul di log perangkat sebagai `Unhandled
+/// Exception` di layar pertama. Aplikasi ini empat dari enam modenya
+/// dirancang jalan penuh tanpa jaringan, jadi menyandera hurufnya pada
+/// unduhan adalah kontradiksi. Lihat blok `fonts:` di pubspec.yaml.
 abstract final class AppTypography {
+  /// Nama family HARUS sama persis dengan `family:` di pubspec.yaml.
+  /// Kalau meleset, Flutter diam-diam jatuh ke font sistem tanpa satu pun
+  /// galat - jadi keduanya dijadikan konstanta di sini supaya hanya ada satu
+  /// tempat yang perlu dicocokkan.
+  static const String sansFamily = 'IBM Plex Sans';
+  static const String monoFamily = 'IBM Plex Mono';
+
   static TextStyle _sans({
     required double fontSize,
     required double height,
@@ -16,7 +29,8 @@ abstract final class AppTypography {
     required double letterSpacing,
     Color color = AppColors.ink1,
   }) =>
-      GoogleFonts.ibmPlexSans(
+      TextStyle(
+        fontFamily: sansFamily,
         fontSize: fontSize,
         height: height / fontSize,
         fontWeight: weight,
@@ -30,7 +44,8 @@ abstract final class AppTypography {
     required FontWeight weight,
     Color color = AppColors.ink1,
   }) =>
-      GoogleFonts.ibmPlexMono(
+      TextStyle(
+        fontFamily: monoFamily,
         fontSize: fontSize,
         height: height / fontSize,
         fontWeight: weight,

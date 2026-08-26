@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 import 'app_spacing.dart';
@@ -19,7 +18,7 @@ abstract final class AppTheme {
         surface: AppColors.bgPage,
       ),
       scaffoldBackgroundColor: AppColors.bgPage,
-      fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
+      fontFamily: AppTypography.sansFamily,
     );
 
     return base.copyWith(
@@ -93,7 +92,7 @@ abstract final class AppTheme {
         brightness: Brightness.dark,
       ),
       scaffoldBackgroundColor: AppColors.darkBg,
-      fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
+      fontFamily: AppTypography.sansFamily,
     );
     return base.copyWith(
       appBarTheme: const AppBarTheme(backgroundColor: AppColors.darkBg, elevation: 0),
@@ -115,7 +114,7 @@ abstract final class AppTheme {
         surface: AppColors.cameraVoid,
       ),
       scaffoldBackgroundColor: AppColors.cameraVoid,
-      fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
+      fontFamily: AppTypography.sansFamily,
     );
     return base.copyWith(
       appBarTheme: const AppBarTheme(backgroundColor: AppColors.cameraVoid, elevation: 0),
