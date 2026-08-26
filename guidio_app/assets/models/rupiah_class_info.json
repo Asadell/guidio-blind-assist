@@ -59,5 +59,15 @@
     "patience": 12,
     "seed": 42
   },
-  "n_params": 2423239
+  "n_params": 2423239,
+  "model_version": "stage2_20260826",
+  "model_file": "rupiah_classifier_int8.tflite",
+  "quantization": "INT8 (float IO)",
+  "val_accuracy": 0.9641,
+  "test_accuracy": 0.9525,
+  "mobile_thresholds": {
+    "confidence_gate": 0.85,
+    "margin_gate": 0.50,
+    "margin_min_confidence": 0.60
+  }
 }

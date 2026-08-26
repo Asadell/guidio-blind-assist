@@ -1,0 +1,36 @@
+{
+  "temperature": 0.5205972234678728,
+  "confidence_threshold": 0.9872542372881355,
+  "entropy_threshold": 0.00515408965140974,
+  "max_entropy": 1.9459101490553132,
+  "target_precision": 0.995,
+  "measured": {
+    "coverage": 0.39825581395348836,
+    "selective_accuracy": 1.0,
+    "accuracy_all": 0.9563953488372093,
+    "ece_before": 0.07610361641452623,
+    "ece_after": 0.016837628826753992
+  },
+  "classes": [
+    "1000",
+    "2000",
+    "5000",
+    "10000",
+    "20000",
+    "50000",
+    "100000"
+  ],
+  "spoken": {
+    "1000": "seribu rupiah",
+    "2000": "dua ribu rupiah",
+    "5000": "lima ribu rupiah",
+    "10000": "sepuluh ribu rupiah",
+    "20000": "dua puluh ribu rupiah",
+    "50000": "lima puluh ribu rupiah",
+    "100000": "seratus ribu rupiah"
+  },
+  "residual_errors": [],
+  "usage_note": "Terapkan di sisi klien: probs = softmax(logits / temperature). Tolak kalau max(probs) < confidence_threshold ATAU entropy(probs) > entropy_threshold. Kalau model TFLite yang dipakai sudah mengandung softmax, bagi dulu log(probs) dengan temperature lalu softmax ulang, atau ekspor varian logits.",
+  "reject_message_id": "uang_tidak_jelas",
+  "reject_message_text": "Uang belum terbaca jelas. Coba dekatkan ke kamera, ratakan uangnya, dan tahan sebentar."
+}
