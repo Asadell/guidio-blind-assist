@@ -3,10 +3,11 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guidio_app/services/money_tflite_service.dart';
 import 'package:image/image.dart' as img;
+
+import 'helpers/camera_frame.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// UJI PIPELINE UANG - LEWAT FUNGSI YANG BENAR-BENAR DIPAKAI APLIKASI
@@ -87,60 +88,6 @@ const _fixtures = <_Fixture>[
 
 // ── Fabrikasi frame kamera ───────────────────────────────────────────────────
 
-/// Ubah gambar RGB jadi [CameraImage] YUV420 bertata letak Android.
-///
-/// Tata letaknya ditiru persis, bukan disederhanakan: `YUV_420_888` di
-/// mayoritas perangkat Android memberi bidang U dan V yang *interleaved*
-/// dengan `pixelStride == 2`, dan [MoneyTFLiteService] mengindeksnya lewat
-/// `(y~/2) * uvRowStride + (x~/2) * uvPixelStride`. Kalau test memakai tata
-/// letak planar (`pixelStride == 1`) yang lebih gampang dibuat, bug indeks
-/// kroma pada perangkat asli tidak akan pernah tertangkap.
-///
-/// Koefisien BT.601 full-range di sini adalah kebalikan tepat dari yang
-/// dipakai service, jadi konversi bolak-balik tidak menyuntikkan pergeseran
-/// warna yang bisa disalahartikan sebagai kesalahan model.
-CameraImage _toCameraImage(img.Image src) {
-  final w = src.width - (src.width.isOdd ? 1 : 0);
-  final h = src.height - (src.height.isOdd ? 1 : 0);
-
-  final yPlane = Uint8List(w * h);
-  final uvRowStride = w;
-  const uvPixelStride = 2;
-  final uPlane = Uint8List((h ~/ 2) * uvRowStride);
-  final vPlane = Uint8List((h ~/ 2) * uvRowStride);
-
-  for (var y = 0; y < h; y++) {
-    for (var x = 0; x < w; x++) {
-      final p = src.getPixel(x, y);
-      final r = p.r.toDouble(), g = p.g.toDouble(), b = p.b.toDouble();
-
-      yPlane[y * w + x] =
-          (0.299 * r + 0.587 * g + 0.114 * b).round().clamp(0, 255);
-
-      // Subsampling 4:2:0 - kroma hanya ditulis di piksel genap.
-      if (y.isEven && x.isEven) {
-        final u = (-0.168736 * r - 0.331264 * g + 0.5 * b) + 128.0;
-        final v = (0.5 * r - 0.418688 * g - 0.081312 * b) + 128.0;
-        final idx = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStride;
-        uPlane[idx] = u.round().clamp(0, 255);
-        vPlane[idx] = v.round().clamp(0, 255);
-      }
-    }
-  }
-
-  return CameraImage.fromPlatformInterface(CameraImageData(
-    format: const CameraImageFormat(ImageFormatGroup.yuv420, raw: 35),
-    width: w,
-    height: h,
-    planes: [
-      CameraImagePlane(bytes: yPlane, bytesPerRow: w),
-      CameraImagePlane(
-          bytes: uPlane, bytesPerRow: uvRowStride, bytesPerPixel: uvPixelStride),
-      CameraImagePlane(
-          bytes: vPlane, bytesPerRow: uvRowStride, bytesPerPixel: uvPixelStride),
-    ],
-  ));
-}
 
 // ── Pelaporan ────────────────────────────────────────────────────────────────
 
@@ -253,6 +200,67 @@ void main() {
         'memvalidasi model sama sekali.');
   });
 
+  // Gerbang kedua, dan ini bukan paranoia - kondisinya PERNAH terjadi dan
+  // menghasilkan diagnosis yang salah total.
+  //
+  // Runtime desktop di `blobs/libtensorflowlite_c-linux.so` berasal dari
+  // tflite_flutter_plugin v0.5.0 (2021). Dia memuat model terkuantisasi tanpa
+  // mengeluh, mengalokasikan tensornya, menjalankan inferensinya, lalu
+  // mengembalikan distribusi RATA 1/7 untuk masukan APA PUN - gambar uang,
+  // gambar hitam, maupun noise acak. Tidak ada exception, tidak ada peringatan.
+  //
+  // Android TIDAK terpengaruh: tflite_flutter 0.12.1 memakai LiteRT 1.4.0
+  // (`com.google.ai.edge.litert:litert`), yang menjalankan model yang sama
+  // dengan benar. Ini murni keterbatasan pustaka desktop.
+  //
+  // Tanpa gerbang ini, suite melaporkan "0/5 argmax benar, 5/5 MENEBAK" dan
+  // pembacanya menyimpulkan modelnya rusak, lalu mengganti model yang
+  // sebenarnya sehat dengan model lain. Itu persis yang sempat terjadi.
+  test('runtime bisa menjalankan model terkuantisasi', () async {
+    if (!modelLoaded) {
+      if (allowSkip) {
+        markTestSkipped('Runtime TFLite tidak ada.');
+        return;
+      }
+      return; // sudah dilaporkan oleh uji prasyarat di atas
+    }
+
+    final hitam = img.Image(width: 224, height: 224);
+    img.fill(hitam, color: img.ColorRgb8(0, 0, 0));
+    final putih = img.Image(width: 224, height: 224);
+    img.fill(putih, color: img.ColorRgb8(255, 255, 255));
+
+    final a = await svc.classifyCameraImage(toCameraImage(hitam));
+    final b = await svc.classifyCameraImage(toCameraImage(putih));
+    final pa = a.probabilities;
+    final pb = b.probabilities;
+
+    expect(pa, isNotNull, reason: 'Inferensi tidak mengembalikan distribusi.');
+    expect(pb, isNotNull, reason: 'Inferensi tidak mengembalikan distribusi.');
+
+    var beda = 0.0;
+    for (var i = 0; i < pa!.length; i++) {
+      beda = math.max(beda, (pa[i] - pb![i]).abs());
+    }
+
+    if (beda < 1e-6) {
+      fail('Runtime TFLite ini TIDAK bisa menjalankan model terkuantisasi.\n\n'
+          'Gambar hitam polos dan gambar putih polos menghasilkan distribusi '
+          'yang identik (selisih maksimum ${beda.toStringAsExponential(2)}), '
+          'artinya keluaran model tidak bergantung sama sekali pada '
+          'masukannya:\n'
+          '  hitam: ${pa.map((v) => v.toStringAsFixed(4)).join(", ")}\n'
+          '  putih: ${pb!.map((v) => v.toStringAsFixed(4)).join(", ")}\n\n'
+          'Ini BUKAN bukti modelnya rusak. blobs/libtensorflowlite_c-linux.so '
+          'berasal dari tflite_flutter_plugin v0.5.0 (2021) dan tidak sanggup '
+          'menjalankan model INT8, sementara Android memakai LiteRT 1.4.0 dan '
+          'menjalankannya dengan benar.\n\n'
+          'Jangan menilai kualitas model dari angka-angka di bawah ini. '
+          'Verifikasi di perangkat Android, atau lewat runtime LiteRT modern '
+          'di Python (paket pip `ai-edge-litert`).');
+    }
+  });
+
   tearDownAll(() {
     if (readings.isEmpty) return;
     readings.sort((a, b) => a.fx.label.compareTo(b.fx.label));
@@ -295,7 +303,7 @@ void main() {
         expect(decoded, isNotNull, reason: 'Gagal decode ${fx.path}');
 
         final result =
-            await svc.classifyCameraImage(_toCameraImage(decoded!));
+            await svc.classifyCameraImage(toCameraImage(decoded!));
         readings.add(_Reading(fx, result));
 
         if (result.detected) {
@@ -335,7 +343,7 @@ void main() {
         final decoded =
             img.decodeImage(File(fx.path).readAsBytesSync())!;
         final r = _Reading(
-            fx, await svc.classifyCameraImage(_toCameraImage(decoded)));
+            fx, await svc.classifyCameraImage(toCameraImage(decoded)));
 
         // ignore: avoid_print
         print('[${fx.label}] ${r.distribution}');
@@ -367,7 +375,7 @@ void main() {
         final decoded =
             img.decodeImage(File(fx.path).readAsBytesSync())!;
         final r = _Reading(
-            fx, await svc.classifyCameraImage(_toCameraImage(decoded)));
+            fx, await svc.classifyCameraImage(toCameraImage(decoded)));
 
         final margin = r.result.margin;
         expect(r.result.detected, isTrue,
@@ -404,7 +412,7 @@ void main() {
         final bytes = File(fx.path).readAsBytesSync();
         final decoded = img.decodeImage(bytes)!;
 
-        final fromCamera = await svc.classifyCameraImage(_toCameraImage(decoded));
+        final fromCamera = await svc.classifyCameraImage(toCameraImage(decoded));
         // JPEG dibuat ulang dari sumber yang sama supaya perbedaan yang
         // terlihat murni berasal dari preprocessing, bukan dari format berkas.
         final fromJpeg = await svc.classifyJpeg(
