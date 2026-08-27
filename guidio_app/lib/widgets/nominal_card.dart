@@ -50,21 +50,33 @@ String formatRupiah(int amount) {
 }
 
 /// NominalCard (5.13) - khusus Mode Kenali Uang. Satu-satunya tempat
-/// `display` 56sp dipakai. Nominal WAJIB dua bentuk (angka + kata), dan
-/// tidak pernah ditampilkan saat keyakinan rendah - pemanggil bertanggung
-/// jawab tidak me-render kartu ini pada kondisi itu.
+/// `display` 56sp dipakai. Nominal WAJIB dua bentuk (angka + kata).
 ///
 /// Kartu ini hanya menampilkan **satu nominal**: lembar yang sedang dihadapi
 /// kamera. Tidak ada rincian lembar dan tidak ada total berjalan - mode ini
 /// tidak menjumlahkan apa pun.
+///
+/// Sejak gerbang keyakinan berhenti menahan jawaban, kartu ini juga dipakai
+/// untuk hasil yang BELUM yakin, lewat [certain]. Dulu kondisi itu dirender
+/// sebagai kartu peringatan tanpa angka sama sekali, dan itu yang membuat
+/// mode uang buntu di lapangan.
 class NominalCard extends StatelessWidget {
   final int amount;
   final VoidCallback? onReplay;
+
+  /// `false` berarti nominal ini tebakan terbaik model, bukan kepastian.
+  ///
+  /// Pagarnya harus terbaca SEBELUM angkanya, bukan sesudah: pengguna awas
+  /// membaca kartu dari atas, dan pembaca layar mengumumkan label semantik
+  /// sebagai satu kalimat utuh. Menaruh "Sepertinya" di bawah angka berarti
+  /// sebagian orang tidak pernah sampai ke sana.
+  final bool certain;
 
   const NominalCard({
     super.key,
     required this.amount,
     this.onReplay,
+    this.certain = true,
   });
 
   @override
@@ -75,19 +87,35 @@ class NominalCard extends StatelessWidget {
     return Semantics(
       header: true,
       liveRegion: true,
-      label: '$formatted, $words',
+      label: certain
+          ? '$formatted, $words'
+          : 'Sepertinya $formatted, $words. '
+              'Keyakinan rendah, sebaiknya dicek ulang.',
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(AppSpacing.s6),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surfaceCard,
           borderRadius: AppRadius.card,
           boxShadow: AppElevation.card,
+          border: certain
+              ? null
+              : Border.all(color: AppColors.warningFill, width: 3),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (!certain) ...[
+              ExcludeSemantics(
+                child: Text(
+                  'SEPERTINYA',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.eyebrow(color: AppColors.warningLabel),
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
             ExcludeSemantics(
               child: Text(
                 formatted,
@@ -103,6 +131,16 @@ class NominalCard extends StatelessWidget {
                 style: AppTypography.title(color: AppColors.ink2),
               ),
             ),
+            if (!certain) ...[
+              const SizedBox(height: AppSpacing.s2),
+              ExcludeSemantics(
+                child: Text(
+                  'Keyakinan rendah. Dekatkan sedikit lalu tekan lagi kalau ragu.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.caption(color: AppColors.warningLabel),
+                ),
+              ),
+            ],
             if (onReplay != null) ...[
               const SizedBox(height: AppSpacing.s4),
               Semantics(

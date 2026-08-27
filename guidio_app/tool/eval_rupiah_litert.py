@@ -133,8 +133,14 @@ def ground_truth(folder, name):
     return None
 
 
-def diumumkan(conf, margin):
-    """Gerbang yang sama dengan MoneyTFLiteService."""
+def yakin(conf, margin):
+    """Gerbang yang sama dengan MoneyTFLiteService.
+
+    Sejak gerbang berhenti menahan jawaban, fungsi ini TIDAK lagi menentukan
+    diumumkan atau tidak - nominal selalu diumumkan. Yang ditentukannya adalah
+    NADA: lolos berarti dibacakan lugas, gagal berarti dibacakan berpagar
+    ("Sepertinya ..."). Lihat MoneyResult.certain.
+    """
     return conf >= CONF_THRESHOLD or (margin >= MARGIN_THRESHOLD
                                       and conf >= MARGIN_MIN_CONF)
 
@@ -176,40 +182,57 @@ def main():
         margin = conf - float(p[order[1]])
         rows.append(dict(label=f'{folder}/{name}', gt=ground_truth(folder, name),
                          top=CLASSES[order[0]], conf=conf, margin=margin,
-                         diumumkan=diumumkan(conf, margin)))
+                         yakin=yakin(conf, margin)))
 
     rows.sort(key=lambda r: -r['conf'])
     bar = '═' * 92
     print(f'\n{bar}')
-    print(f'  EVALUASI FOTO PONSEL - jalur {jalur.upper()} - gerbang '
+    print(f'  EVALUASI FOTO PONSEL - jalur {jalur.upper()} - gerbang NADA '
           f'conf>={CONF_THRESHOLD} / margin>={MARGIN_THRESHOLD} / '
           f'minConf={MARGIN_MIN_CONF}')
+    print('  Semua baris DIUMUMKAN. Gerbang cuma memilih lugas vs berpagar.')
     print(bar)
 
-    benar = salah = bocor = 0
+    benar_yakin = benar_pagar = 0
+    salah_yakin = salah_pagar = 0
+    bocor_yakin = bocor_pagar = 0
     n_uang = sum(1 for r in rows if r['gt'] is not None)
     for r in rows:
         gt = 'BUKAN UANG' if r['gt'] is None else rp(r['gt'])
-        if not r['diumumkan']:
-            vonis = 'belum yakin'
-        elif r['gt'] is None:
+        nada = 'yakin   ' if r['yakin'] else 'berpagar'
+        if r['gt'] is None:
             vonis = 'BOCOR - bukan uang disebut nominal'
-            bocor += 1
+            if r['yakin']:
+                bocor_yakin += 1
+            else:
+                bocor_pagar += 1
         elif r['top'] == r['gt']:
-            vonis = 'diumumkan BENAR'
-            benar += 1
+            vonis = 'benar'
+            if r['yakin']:
+                benar_yakin += 1
+            else:
+                benar_pagar += 1
         else:
-            vonis = 'DIUMUMKAN SALAH'
-            salah += 1
+            vonis = 'SALAH'
+            if r['yakin']:
+                salah_yakin += 1
+            else:
+                salah_pagar += 1
         print(f"  {r['label']:<28} {gt:>10}  top={rp(r['top']):>10}  "
-              f"conf={r['conf']*100:5.1f}%  margin={r['margin']*100:5.1f}  {vonis}")
+              f"conf={r['conf']*100:5.1f}%  margin={r['margin']*100:5.1f}  "
+              f"{nada}  {vonis}")
 
     print('─' * 92)
-    print(f'  diumumkan & benar      : {benar}/{n_uang} gambar uang')
-    print(f'  DIUMUMKAN SALAH        : {salah}   (harus 0)')
-    print(f'  bukan uang tapi bocor  : {bocor}')
+    print(f'  benar, nada yakin      : {benar_yakin}/{n_uang} gambar uang')
+    print(f'  benar, berpagar        : {benar_pagar}/{n_uang}')
+    print(f'  SALAH dengan nada yakin: {salah_yakin}   (harus 0 - ini satu-satunya'
+          f' angka yang boleh memerahkan skrip ini)')
+    print(f'  salah tapi berpagar    : {salah_pagar}   (risiko yang sengaja'
+          f' diterima saat gerbang berhenti menahan jawaban)')
+    print(f'  bukan uang, nada yakin : {bocor_yakin}')
+    print(f'  bukan uang, berpagar   : {bocor_pagar}')
     print(bar + '\n')
-    return 1 if salah else 0
+    return 1 if salah_yakin else 0
 
 
 if __name__ == '__main__':

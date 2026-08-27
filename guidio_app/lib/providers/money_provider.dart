@@ -41,7 +41,7 @@ enum MoneyState {
   dark,        // UG-12b
   processing,  // UG-04
   detected,    // UG-05 (nominal lembar yang sedang dihadapi kamera)
-  uncertain,   // UG-06
+  uncertain,   // UG-06 (model belum yakin - pratinjau saja, TIDAK memblokir)
   notMoney,    // UG-07
   foreign,     // UG-18
 }
@@ -67,6 +67,14 @@ class MoneyProvider extends ChangeNotifier {
 
   int _lastAmount = 0;
   int get lastAmount => _lastAmount;
+
+  /// Jawaban terakhir lolos gerbang keyakinan atau tidak.
+  ///
+  /// Layar memakainya untuk memilih antara kartu nominal biasa dan kartu
+  /// berpagar "Sepertinya". Nilainya menyusul [lastAmount], jadi keduanya
+  /// selalu bicara tentang lembar yang sama.
+  bool _lastAnswerCertain = true;
+  bool get lastAnswerCertain => _lastAnswerCertain;
 
   int _noCandidateHintIndex = 0;
   String get noCandidateHint => _kNoCandidateHints[_noCandidateHintIndex];
@@ -112,6 +120,7 @@ class MoneyProvider extends ChangeNotifier {
     if (_running) return;
     _running = true;
     _lastAmount = 0;
+    _lastAnswerCertain = true;
     _set(MoneyState.idle);
     if (!_useRealModel) _fallbackWhenModelMissing();
   }
@@ -245,29 +254,31 @@ class MoneyProvider extends ChangeNotifier {
         _lastDetectedValue = result.valueIdr;
       }
 
-      // State baru ke "fit" hanya setelah N frame sepakat.
-      // Ini mencegah prediksi sesaat dari satu frame yang kebetulan jelek
-      // memindahkan bingkai ke hijau dan mendorong user menekan snap.
-      if (_consecutiveDetections >= _kRequiredConsecutive) {
-        if (_state != MoneyState.fit && _state != MoneyState.detected) {
-          _set(MoneyState.fit);
-        }
+      // Bingkai hijau tetap dijaga ketat: hanya untuk hasil yang YAKIN dan
+      // sudah stabil N frame. Itu janji visual "posisi pas", dan janji itu
+      // tidak boleh diberikan pada tebakan berpagar.
+      //
+      // Yang berubah: hasil berpagar tidak lagi memblokir apa pun. Dulu ia
+      // memunculkan kartu "Belum yakin" yang menutup layar dan membuat
+      // pengguna mengulang gerakan tanpa tahu apa yang salah. Sekarang ia
+      // cuma pratinjau bernada netral - tombolnya tetap bisa ditekan kapan
+      // saja dan tetap menjawab.
+      final steady = _consecutiveDetections >= _kRequiredConsecutive;
+      if (_state == MoneyState.detected) return;
+
+      if (result.certain && steady) {
+        if (_state != MoneyState.fit) _set(MoneyState.fit);
+      } else if (!result.certain && _state != MoneyState.uncertain) {
+        _set(MoneyState.uncertain);
       }
       return;
     }
 
-    // Deteksi gagal - reset voting counter.
+    // Tidak ada hasil sama sekali - reset voting counter.
     _consecutiveDetections = 0;
     _lastDetectedValue = null;
 
     switch (result.failure) {
-      case MoneyFailure.lowConfidence:
-        // UG-06 - ragu. Tampilkan bingkai + indikator tapi tidak bicara
-        // secara otomatis; pesan muncul saat user snap.
-        _consecutiveMiss = 0;
-        if (_state != MoneyState.uncertain) {
-          _set(MoneyState.uncertain);
-        }
       case MoneyFailure.modelUnavailable:
         _useRealModel = false;
         if (!_running) return;
@@ -299,53 +310,30 @@ class MoneyProvider extends ChangeNotifier {
 
     final result = _latestResult;
     if (result == null || !result.detected || result.valueIdr == null) {
-      _speak(_uncertainAdvice(result), tier: SpeechTier.warning);
+      _speak(_noReadingAdvice(result), tier: SpeechTier.warning);
       return;
     }
 
-    // Ada uang - masuk ke alur deteksi normal (session tracking + TTS).
-    _enterDetected(result.valueIdr!);
+    // Selalu menjawab. Yang membedakan cuma nadanya, dan itu dibawa
+    // `result.certain` sampai ke kalimat TTS dan kartu di layar.
+    _enterDetected(result.valueIdr!, certain: result.certain);
   }
 
-  /// Instruksi saat nominal tidak bisa dipastikan.
+  /// Instruksi saat model TIDAK mengeluarkan hasil apa pun.
   ///
-  /// Dibedakan menurut BENTUK keraguannya, bukan satu kalimat untuk semua.
-  /// Kalimat tunggal "belum yakin, dekatkan dan tahan diam" adalah keluhan
-  /// nyata dari uji lapangan: pengguna mengulang gerakan yang sama berkali
-  /// kali karena aplikasi tidak pernah memberi tahu apa yang sebenarnya salah.
-  ///
-  /// Tiga bentuk yang bisa dibedakan dari keluaran model:
-  ///
-  /// - **Margin sempit, keyakinan lumayan.** Model bimbang antara dua pecahan
-  ///   yang mirip. Mengulang dari sudut yang sama tidak akan menolong; yang
-  ///   dibutuhkan sudut atau cahaya yang berbeda.
-  /// - **Keyakinan rendah merata.** Yang terlihat mungkin bukan uang.
-  /// - **Belum ada hasil sama sekali.** Kamera baru menyala atau menghadap
-  ///   ke tempat lain.
-  String _uncertainAdvice(MoneyResult? result) {
+  /// Cakupannya sekarang sempit dan itu disengaja. Keraguan model bukan lagi
+  /// urusan fungsi ini: hasil berpagar tetap dijawab dengan nominalnya lewat
+  /// [_enterDetected]. Yang tersisa di sini hanya dua keadaan yang benar-benar
+  /// tidak punya angka untuk disampaikan - model belum siap, atau belum ada
+  /// satu pun frame yang selesai diproses.
+  String _noReadingAdvice(MoneyResult? result) {
     if (result == null) {
       return 'Belum ada yang terbaca. Arahkan kamera ke uang, lalu tekan lagi.';
     }
     if (result.failure == MoneyFailure.modelUnavailable) {
       return 'Pengenalan uang tidak tersedia saat ini.';
     }
-    if (result.failure != MoneyFailure.lowConfidence) {
-      return 'Tidak ada uang yang terlihat. Arahkan kamera ke uang, '
-          'lalu tekan lagi.';
-    }
-
-    final margin = result.margin;
-    if (margin != null && margin < 0.15) {
-      // Dua pecahan berdempetan. Ini yang paling sering terjadi pada lembar
-      // yang terlipat atau tertutup bayangan.
-      return 'Masih tertukar antara dua pecahan. Bentangkan uangnya, '
-          'lalu coba dari sudut yang sedikit berbeda.';
-    }
-    if (result.confidence < 0.35) {
-      return 'Belum pasti ini uang. Objek yang terlihat sepertinya bukan uang rupiah.';
-    }
-    return 'Hampir terbaca. Tahan diam sebentar, pastikan tidak ada bayangan '
-        'di atas uangnya.';
+    return 'Gambar belum bisa dibaca. Arahkan kamera ke uang, lalu tekan lagi.';
   }
 
   void _startHintRotation() {
@@ -466,9 +454,10 @@ class MoneyProvider extends ChangeNotifier {
     }
   }
 
+  /// Jalur mock saja. Di jalur nyata keadaan ini tidak pernah bicara sendiri
+  /// dan tidak pernah menahan jawaban - lihat [_applyRealResult].
   void _enterUncertain() {
     _set(MoneyState.uncertain);
-    _speak('Belum yakin, dekatkan sedikit dan tahan diam.', tier: SpeechTier.warning);
     _after(2200, _enterProcessing);
   }
 
@@ -490,9 +479,22 @@ class MoneyProvider extends ChangeNotifier {
 
   /// Satu lembar, satu jawaban. Menekan tombol lagi pada lembar yang sama
   /// hanya mengulang nominal yang sama - tidak pernah menambah apa pun.
-  void _enterDetected(int amount) {
+  ///
+  /// [certain] menentukan NADA, bukan boleh atau tidaknya menjawab. Pagarnya
+  /// harus terdengar di kalimat pertama, bukan disimpan di akhir: pengguna
+  /// tunanetra sering menekan tombol berikutnya sebelum kalimat selesai, jadi
+  /// "Sepertinya" wajib jadi kata pembuka. Tier warning ikut dipakai supaya
+  /// antrean suara tidak menyamakannya dengan jawaban yang pasti.
+  void _enterDetected(int amount, {bool certain = true}) {
     _lastAmount = amount;
+    _lastAnswerCertain = certain;
     _set(MoneyState.detected);
-    _speak(terbilangRupiah(amount), tier: SpeechTier.info);
+    _speak(
+      certain
+          ? terbilangRupiah(amount)
+          : 'Sepertinya ${terbilangRupiah(amount)}. Kalau ragu, dekatkan '
+              'sedikit lalu tekan lagi.',
+      tier: certain ? SpeechTier.info : SpeechTier.warning,
+    );
   }
 }

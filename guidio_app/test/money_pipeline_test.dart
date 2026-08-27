@@ -125,7 +125,7 @@ class _Reading {
 
   String get verdict {
     if (result.confidence < 0.30 || margin < 0.10) return 'MENEBAK';
-    if (!result.detected) return 'ragu';
+    if (!result.certain) return 'berpagar';
     return 'yakin';
   }
 
@@ -265,7 +265,7 @@ void main() {
     if (readings.isEmpty) return;
     readings.sort((a, b) => a.fx.label.compareTo(b.fx.label));
     final ok = readings.where((r) => r.argmaxCorrect).length;
-    final confident = readings.where((r) => r.result.detected).length;
+    final confident = readings.where((r) => r.result.certain).length;
     final guessing = readings.where((r) => r.verdict == 'MENEBAK').length;
 
     // ignore: avoid_print
@@ -277,7 +277,7 @@ void main() {
     // ignore: avoid_print
     print('${'─' * 78}\n'
         '  argmax benar        : $ok/${readings.length}\n'
-        '  tembus ambang 0,85  : $confident/${readings.length}\n'
+        '  lolos gerbang yakin : $confident/${readings.length}\n'
         '  di zona MENEBAK     : $guessing/${readings.length}   '
         '(chance level = ${(_chance * 100).toStringAsFixed(1)}%)\n'
         '${'═' * 78}\n');
@@ -286,9 +286,13 @@ void main() {
   // ── A. KEAMANAN - wajib hijau selamanya ───────────────────────────────────
   //
   // Aturan tunggal yang tidak bisa ditawar: aplikasi tidak boleh menyebut
-  // nominal yang salah dengan yakin. Pengguna tunanetra tidak punya cara
+  // nominal yang salah DENGAN NADA YAKIN. Pengguna tunanetra tidak punya cara
   // memverifikasi, jadi false positive di sini berarti kerugian uang nyata.
-  // Diam ("belum yakin") selalu lebih baik daripada salah.
+  //
+  // Yang berubah sejak gerbang berhenti menahan jawaban: di bawah ambang,
+  // nominalnya tetap keluar, tapi berpagar ("sepertinya"). Jadi yang diuji di
+  // sini adalah `certain`, BUKAN `detected` - `detected` sekarang praktis
+  // selalu true, dan menguji-nya berarti tidak menguji apa pun.
   group('A. KEAMANAN - tidak pernah yakin-tapi-salah', () {
     for (final fx in _fixtures) {
       test('${fx.label} tidak dibacakan sebagai nominal keliru', () async {
@@ -306,19 +310,21 @@ void main() {
             await svc.classifyCameraImage(toCameraImage(decoded!));
         readings.add(_Reading(fx, result));
 
-        if (result.detected) {
+        if (result.certain) {
           expect(result.valueIdr, equals(fx.expected),
               reason: 'BAHAYA: ${fx.label} dibacakan sebagai '
-                  'Rp${_fmt(result.valueIdr!)} dengan keyakinan '
-                  '${(result.confidence * 100).toStringAsFixed(1)}%, '
+                  'Rp${_fmt(result.valueIdr!)} dengan NADA YAKIN pada '
+                  'keyakinan ${(result.confidence * 100).toStringAsFixed(1)}%, '
                   'padahal aslinya Rp${_fmt(fx.expected)}.');
         } else {
-          // Di bawah ambang, UI wajib bungkam soal angka.
-          expect(result.valueIdr, isNull,
-              reason: 'valueIdr harus null saat tidak yakin - UI memakainya '
-                  'untuk memutuskan boleh/tidaknya menyebut nominal.');
-          expect(result.message, isNotNull,
-              reason: 'Saat ragu, pengguna harus dapat instruksi perbaikan.');
+          // Di bawah ambang nominalnya tetap keluar, tapi UI wajib
+          // memagarinya. Yang dijaga di sini: angkanya ADA (kalau null, layar
+          // kembali buntu seperti versi lama) dan nadanya tidak yakin.
+          expect(result.valueIdr, isNotNull,
+              reason: 'Hasil berpagar tetap harus membawa nominal - itu yang '
+                  'dibacakan sebagai "sepertinya ...". valueIdr null berarti '
+                  'mode uang buntu lagi.');
+          expect(result.certain, isFalse);
         }
       });
     }
@@ -364,10 +370,14 @@ void main() {
       // keyakinannya di bawah 0,85.
       //
       // Tes yang mengukur ambang, bukan hasil, akan memaksa orang berikutnya
-      // memilih antara melonggarkan gerbang atau mengabaikan tesnya. Yang
-      // benar adalah menguji `detected`, karena itulah yang menentukan apakah
-      // mode ini berfungsi bagi penggunanya.
-      test('${fx.label} → nominalnya benar-benar diucapkan ke pengguna', () async {
+      // memilih antara melonggarkan gerbang atau mengabaikan tesnya.
+      //
+      // Sejak gerbang berhenti menahan jawaban, `detected` tidak lagi cocok
+      // dipakai di sini: nominalnya SELALU sampai ke pengguna sekarang. Yang
+      // masih layak diukur adalah apakah sampainya dengan nada yakin atau
+      // cuma sebagai "sepertinya" - itulah beda antara model yang dipercaya
+      // dan model yang ditoleransi.
+      test('${fx.label} → nominalnya diucapkan dengan nada yakin', () async {
         if (!modelLoaded) {
           markTestSkipped('Model TFLite tidak termuat.');
           return;
@@ -378,7 +388,7 @@ void main() {
             fx, await svc.classifyCameraImage(toCameraImage(decoded)));
 
         final margin = r.result.margin;
-        expect(r.result.detected, isTrue,
+        expect(r.result.certain, isTrue,
             reason: '${fx.label}: keyakinan '
                 '${(r.result.confidence * 100).toStringAsFixed(1)}%'
                 '${margin == null ? "" : ", margin ${(margin * 100).toStringAsFixed(1)} poin"} '
@@ -386,8 +396,8 @@ void main() {
                 'ATAU margin >= ${(MoneyTFLiteService.marginThreshold * 100).toStringAsFixed(0)} poin '
                 'dengan keyakinan >= ${(MoneyTFLiteService.marginPathMinConfidence * 100).toStringAsFixed(0)}%; '
                 'chance level ${(_chance * 100).toStringAsFixed(1)}%). '
-                'Aplikasi akan bilang "belum yakin" dan tidak pernah '
-                'menyebutkan nominal - mode Kenali Uang praktis tidak berfungsi.\n'
+                'Nominalnya tetap diucapkan, tapi berpagar "sepertinya" - '
+                'pengguna dapat angka tanpa kepastian.\n'
                 '  Distribusi: ${r.distribution}');
       });
     }

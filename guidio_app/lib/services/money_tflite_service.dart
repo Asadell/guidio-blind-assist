@@ -40,18 +40,36 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 /// rutin melewati angka itu bahkan saat tebakannya salah. Tanpa softmax,
 /// pengaman "nominal tidak pernah ditebak" lumpuh total.
 ///
-/// Bukti bahwa pengaman itu bekerja, dari berkas uji `test/fixtures/money`:
-/// pada `uang_10000_b.jpg` model salah menebak 2000, tapi keyakinannya
-/// 0,44 - di bawah ambang, jadi aplikasi bilang "ragu" alih-alih menyebut
-/// nominal yang salah. Dengan logit angkanya 1,75 dan nominal keliru itu
-/// akan dibacakan dengan penuh percaya diri.
+/// Bukti bahwa pembedaan itu bekerja, dari berkas uji `test/fixtures/money`:
+/// pada `uang_10000_b.jpg` model salah menebak 2000 dengan keyakinan 0,44.
+/// Angka itu jauh di bawah ambang, jadi jawabannya keluar sebagai tebakan
+/// berpagar, bukan pernyataan yakin. Dengan logit angkanya 1,75 dan nominal
+/// keliru itu akan dibacakan dengan penuh percaya diri.
 ///
 /// Jadi kalau model diganti lagi: periksa ketiganya, jangan diasumsikan.
 ///
-/// ATURAN MUTLAK: nominal TIDAK PERNAH ditebak. Di bawah ambang keyakinan,
-/// yang dikembalikan hanya instruksi perbaikan - salah menyebut nominal ke
-/// pengguna tunanetra berarti kerugian uang nyata, jadi false positive di
-/// sini jauh lebih berbahaya daripada false negative.
+/// ## Aturan jawaban: SELALU menjawab, TIDAK selalu dengan nada yakin
+///
+/// Versi sebelumnya menolak menjawab di bawah ambang: nominalnya dibuang dan
+/// yang keluar cuma instruksi "Belum yakin, dekatkan sedikit". Di atas kertas
+/// itu terdengar seperti pengaman. Di lapangan justru itu yang mematikan
+/// fiturnya - kasus paling biasa, uang tergeletak di meja lalu difoto sambil
+/// berdiri, berakhir buntu di kartu peringatan tanpa jalan keluar, dan
+/// pengguna yang tidak melihat layar tidak punya cara menebak apa yang kurang.
+///
+/// Sekarang [_runInference] selalu mengembalikan nominal, dan [MoneyResult.certain]
+/// yang membedakan dua nada jawaban:
+///
+/// - `certain == true`  -> lolos gerbang, boleh dibacakan lugas ("Lima puluh
+///   ribu rupiah").
+/// - `certain == false` -> di bawah gerbang, WAJIB dibacakan berpagar
+///   ("Sepertinya lima puluh ribu rupiah") plus ajakan mengecek ulang.
+///
+/// Risikonya tidak dihapus, hanya dipindah, dan itu disengaja: nominal di
+/// bawah ambang memang masih bisa salah. Yang menahannya sekarang bukan diam,
+/// melainkan kata "sepertinya". Lapisan atas TIDAK BOLEH mengabaikan
+/// [MoneyResult.certain] - membacakan hasil berpagar dengan nada lugas
+/// mengembalikan persis bahaya yang dulu ditahan oleh penolakan menjawab.
 class MoneyTFLiteService {
   static final MoneyTFLiteService instance = MoneyTFLiteService._();
   MoneyTFLiteService._();
@@ -297,25 +315,24 @@ class MoneyTFLiteService {
     final passesMargin =
         margin >= marginThreshold && confidence >= marginPathMinConfidence;
 
-    // UG-06 - ragu: nominal TIDAK ditampilkan, hanya instruksi perbaikan.
-    if (!passesConfidence && !passesMargin) {
-      return MoneyResult.uncertain(
-        confidence,
-        topValueIdr: classValues[bestIndex],
-        probabilities: List.unmodifiable(probs),
-        margin: margin,
-      );
-    }
+    // Gerbang ini TIDAK LAGI menahan jawaban, hanya menentukan nadanya.
+    // Lihat catatan panjang di dokumentasi kelas: menahan jawaban membuat
+    // mode ini buntu pada kasus pemakaian yang paling umum.
     return MoneyResult.detected(
       valueIdr: classValues[bestIndex],
       confidence: confidence,
+      certain: passesConfidence || passesMargin,
       probabilities: List.unmodifiable(probs),
+      margin: margin,
     );
   }
 }
 
-/// Hasil klasifikasi. `detected == false` berarti layar HANYA boleh
-/// menampilkan instruksi, tidak boleh menampilkan angka apa pun.
+/// Hasil klasifikasi.
+///
+/// `detected == false` sekarang HANYA berarti tidak ada hasil sama sekali -
+/// model belum siap, atau frame-nya gagal dibaca. Keraguan model TIDAK lagi
+/// muncul sebagai `detected == false`; itu dibawa oleh [certain].
 class MoneyResult {
   final bool detected;
   final int? valueIdr;
@@ -323,14 +340,19 @@ class MoneyResult {
   final MoneyFailure? failure;
   final String? message;
 
-  /// Nominal dengan probabilitas TERTINGGI, terisi juga saat `detected == false`.
+  /// Nominalnya lolos gerbang keyakinan atau tidak.
   ///
-  /// UI TIDAK BOLEH memakai field ini - itu justru melanggar aturan "nominal
-  /// tidak pernah ditebak" yang dijaga [MoneyTFLiteService.confidenceThreshold].
-  /// Gunanya khusus diagnostik dan pengujian: tanpa ini, test tidak bisa
-  /// membedakan "model ragu tapi tebakan teratasnya benar" dari "model ragu
-  /// DAN tebakan teratasnya salah". Dua kondisi itu butuh perbaikan yang
-  /// sangat berbeda, dan menyamakannya membuat suite uji lolos terus.
+  /// `false` berarti angkanya tetap ada dan tetap boleh disampaikan, tapi
+  /// WAJIB berpagar ("sepertinya") dan tidak boleh dibacakan seolah pasti.
+  /// Ini satu-satunya pembeda antara jawaban yang bisa dipegang dan tebakan
+  /// terbaik model, jadi mengabaikannya di lapisan UI sama saja menghapus
+  /// pengamannya.
+  final bool certain;
+
+  /// Nominal dengan probabilitas TERTINGGI. Sekarang selalu sama dengan
+  /// [valueIdr]; dipertahankan karena suite uji memakainya untuk memisahkan
+  /// "argmax benar" dari "argmax benar DAN yakin" - dua kondisi yang butuh
+  /// perbaikan sangat berbeda, dan menyamakannya membuat test lolos terus.
   final int? topValueIdr;
 
   /// Distribusi softmax lengkap, urutannya sesuai
@@ -342,38 +364,24 @@ class MoneyResult {
   /// Selisih probabilitas juara satu ke juara dua. Null kalau tidak dihitung.
   final double? margin;
 
+  /// Nominal terbaca. [certain] menentukan nada penyampaiannya, BUKAN boleh
+  /// atau tidaknya angka itu disampaikan.
   const MoneyResult.detected({
     required int this.valueIdr,
     required this.confidence,
+    required this.certain,
     this.probabilities,
+    this.margin,
   })  : detected = true,
         failure = null,
         message = null,
-        margin = null,
         topValueIdr = valueIdr;
-
-  /// Ragu, dengan [margin] ke juara dua supaya lapisan atas bisa memilih
-  /// instruksi yang tepat.
-  ///
-  /// Bedanya nyata bagi pengguna: margin sempit berarti model bimbang antara
-  /// dua pecahan dan yang dibutuhkan adalah sudut atau cahaya yang berbeda;
-  /// keyakinan rendah merata berarti yang terlihat mungkin bukan uang sama
-  /// sekali. Menyuruh "dekatkan dan tahan diam" untuk kedua-duanya membuat
-  /// pengguna mengulang gerakan yang sama sampai menyerah.
-  const MoneyResult.uncertain(
-    this.confidence, {
-    this.topValueIdr,
-    this.probabilities,
-    this.margin,
-  })  : detected = false,
-        valueIdr = null,
-        failure = MoneyFailure.lowConfidence,
-        message = 'Belum yakin. Dekatkan sedikit dan tahan diam.';
 
   const MoneyResult.unavailable()
       : detected = false,
         valueIdr = null,
         confidence = 0,
+        certain = false,
         topValueIdr = null,
         probabilities = null,
         margin = null,
@@ -384,13 +392,17 @@ class MoneyResult {
       : detected = false,
         valueIdr = null,
         confidence = 0,
+        certain = false,
         topValueIdr = null,
         probabilities = null,
         margin = null,
         failure = MoneyFailure.error;
 }
 
-enum MoneyFailure { lowConfidence, modelUnavailable, error }
+/// `lowConfidence` sengaja DIHAPUS. Keraguan model bukan lagi kegagalan yang
+/// menghentikan jawaban - itu sekarang dibawa oleh [MoneyResult.certain].
+/// Yang tersisa di sini murni kondisi "tidak ada hasil sama sekali".
+enum MoneyFailure { modelUnavailable, error }
 
 // ── Preprocessing di isolate ────────────────────────────────────────────
 // Konversi + resize dilakukan lewat `compute()` supaya UI thread

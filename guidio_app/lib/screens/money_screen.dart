@@ -252,8 +252,18 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _replay(int amount) {
-    context.read<TtsProvider>().speak(terbilangRupiah(amount), tier: SpeechTier.info);
+  /// Putar ulang nominal terakhir.
+  ///
+  /// Pagarnya ikut diputar ulang. Kalau tidak, tombol replay jadi celah yang
+  /// mengubah tebakan jadi kepastian hanya karena pengguna menekannya dua
+  /// kali - persis bahaya yang dijaga [MoneyResult.certain].
+  void _replay(int amount, {bool certain = true}) {
+    context.read<TtsProvider>().speak(
+          certain
+              ? terbilangRupiah(amount)
+              : 'Sepertinya ${terbilangRupiah(amount)}.',
+          tier: certain ? SpeechTier.info : SpeechTier.warning,
+        );
   }
 
   @override
@@ -473,15 +483,23 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       case MoneyState.processing:
         return const _RenderSpec(frame: FrameFit.fit, badgeBusy: true);
       case MoneyState.detected:
-        return _RenderSpec(card: NominalCard(amount: p.lastAmount, onReplay: () => _replay(p.lastAmount)));
-      case MoneyState.uncertain:
-        return const _RenderSpec(
-          frame: FrameFit.fit,
-          card: AlertCard(
-            tier: AlertTier.warning,
-            title: 'Belum yakin',
-            description: 'Dekatkan sedikit dan tahan diam sebentar.',
+        return _RenderSpec(
+          card: NominalCard(
+            amount: p.lastAmount,
+            certain: p.lastAnswerCertain,
+            onReplay: () => _replay(p.lastAmount, certain: p.lastAnswerCertain),
           ),
+        );
+      case MoneyState.uncertain:
+        // Pratinjau, BUKAN penghalang. Sebelumnya keadaan ini memunculkan
+        // kartu peringatan "Belum yakin" yang menutup layar tanpa memberi
+        // jalan keluar - uang yang tergeletak di meja lalu difoto sambil
+        // berdiri hampir selalu berakhir di sini. Sekarang cuma pill netral:
+        // tombolnya tetap bisa ditekan, dan tetap menjawab dengan nominal
+        // berpagar.
+        return const _RenderSpec(
+          frame: FrameFit.partial,
+          pillOverride: 'Uang terlihat, tekan tombol untuk membaca nominal',
         );
       case MoneyState.notMoney:
         return _RenderSpec(
@@ -519,12 +537,15 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       case MoneyDebugState.ug05:
         return _RenderSpec(card: NominalCard(amount: 50000, onReplay: () => _replay(50000)));
       case MoneyDebugState.ug06:
-        return const _RenderSpec(
-          frame: FrameFit.fit,
-          card: AlertCard(
-            tier: AlertTier.warning,
-            title: 'Belum yakin',
-            description: 'Dekatkan sedikit dan tahan diam sebentar.',
+        // UG-06 sekarang berwujud kartu nominal berpagar, bukan penolakan
+        // menjawab. Panel debug harus menampilkan yang sama dengan produksi,
+        // kalau tidak ia berhenti berguna untuk memeriksa keadaan ini.
+        return _RenderSpec(
+          frame: FrameFit.partial,
+          card: NominalCard(
+            amount: 50000,
+            certain: false,
+            onReplay: () => _replay(50000, certain: false),
           ),
         );
       case MoneyDebugState.ug07:
