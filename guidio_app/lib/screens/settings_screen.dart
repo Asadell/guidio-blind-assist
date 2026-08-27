@@ -136,7 +136,19 @@ class SettingsScreen extends StatelessWidget {
           // zona itu tidak bisa hadir di tengah daftar.
           _SettingsRow(
             title: 'Alamat server',
-            value: settings.serverHost,
+            // Disamarkan secara bawaan, dengan saklar mata yang SAMA dengan
+            // yang ada di halaman Alamat Server.
+            value: settings.serverHostMasked,
+            // Pembaca layar TIDAK boleh membacakan alamat yang sedang
+            // disamarkan. Kalau ia tetap dibacakan, penyamaran di layar cuma
+            // menipu orang yang melihat - sementara siapa pun yang menyalakan
+            // TalkBack tetap mendengarnya, termasuk di ruangan yang penuh
+            // orang.
+            valueSemantics:
+                settings.serverHostVisible ? settings.serverHost : 'tersembunyi',
+            obscured: !settings.serverHostVisible,
+            onToggleObscure: () =>
+                context.read<SettingsProvider>().toggleServerHostVisible(),
             child: OutlinedButton(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ServerAddressScreen()),
@@ -242,13 +254,33 @@ class _SettingsRow extends StatelessWidget {
   final String? value;
   final Widget child;
 
-  const _SettingsRow({required this.title, required this.value, required this.child});
+  /// Yang dibacakan pembaca layar sebagai ganti [value]. Null berarti
+  /// [value] apa adanya.
+  final String? valueSemantics;
+
+  /// Ada isinya berarti baris ini punya saklar mata di sebelah nilainya.
+  final VoidCallback? onToggleObscure;
+
+  /// Hanya menentukan bentuk ikon mata. Penyamaran teksnya sendiri sudah
+  /// dilakukan pemanggil lewat [value] - baris ini tidak pernah memegang
+  /// nilai aslinya, jadi tidak ada yang bisa bocor dari sini.
+  final bool obscured;
+
+  const _SettingsRow({
+    required this.title,
+    required this.value,
+    required this.child,
+    this.valueSemantics,
+    this.onToggleObscure,
+    this.obscured = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final terbaca = valueSemantics ?? value;
     return Semantics(
       container: true,
-      label: value == null ? title : '$title, $value',
+      label: terbaca == null ? title : '$title, $terbaca',
       child: Container(
         constraints: const BoxConstraints(minHeight: 72),
         margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin, vertical: AppSpacing.s1),
@@ -264,7 +296,29 @@ class _SettingsRow extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: Text(title, style: AppTypography.bodyStrong())),
-                if (value != null) Text(value!, style: AppTypography.label(color: AppColors.ink2)),
+                if (value != null)
+                  ExcludeSemantics(
+                    child: Text(value!,
+                        style: AppTypography.label(color: AppColors.ink2)),
+                  ),
+                if (onToggleObscure != null)
+                  Semantics(
+                    button: true,
+                    label: obscured
+                        ? 'Tampilkan alamat server'
+                        : 'Sembunyikan alamat server',
+                    child: IconButton(
+                      icon: Icon(
+                        obscured
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 20,
+                        color: AppColors.ink2,
+                      ),
+                      tooltip: obscured ? 'Tampilkan' : 'Sembunyikan',
+                      onPressed: onToggleObscure,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.s2),

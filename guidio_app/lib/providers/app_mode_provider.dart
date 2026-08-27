@@ -65,9 +65,27 @@ extension AppModeLabel on AppMode {
 
   /// Mode yang benar-benar mati tanpa internet.
   ///
-  /// Mode Navigasi tetap BERJALAN OFFLINE menggunakan model TFLite on-device
-  /// (YOLO11n untuk bounding box rintangan & PIDNet-S untuk segmentasi 3-zona).
-  bool get disabledWhenOffline => this == AppMode.findObject;
+  /// Bedanya dengan [needsServer] ada di kalimat yang dibaca pengguna:
+  /// `needsServer` saja menghasilkan "Tanpa internet: sebagian fitur mati",
+  /// yang menjanjikan masih ada sebagian yang jalan. Mode di daftar ini tidak
+  /// menyisakan apa pun, jadi kalimatnya "Tidak tersedia, butuh internet" dan
+  /// itemnya benar-benar dinonaktifkan.
+  ///
+  /// **Cari Objek** memakai YOLOE open-vocabulary yang hanya ada di server.
+  ///
+  /// **Deskripsi Suasana** memakai Moondream2, juga hanya di server. Ia sempat
+  /// tidak masuk daftar ini karena `voice_provider` juga mengurus perintah
+  /// suara lokal - tapi perintah suara itu dijalankan lewat tombol Bicara yang
+  /// ada di SETIAP mode, bukan lewat masuk ke mode ini. Yang khas dari mode
+  /// ini cuma satu: mengirim foto ke VLM. Tanpa server, tidak ada satu pun
+  /// bagiannya yang tersisa, dan menandainya "sebagian fitur mati" membuat
+  /// pengguna tunanetra masuk ke mode yang tidak bisa menjawab apa pun lalu
+  /// menyimpulkan aplikasinya rusak.
+  ///
+  /// Mode Navigasi TIDAK termasuk: ia tetap berjalan penuh offline dengan
+  /// empat model TFLite on-device.
+  bool get disabledWhenOffline =>
+      this == AppMode.findObject || this == AppMode.voice;
 
   /// Petunjuk kata kunci perintah suara untuk diumumkan atau ditampilkan di UI
   String get voiceHint => switch (this) {

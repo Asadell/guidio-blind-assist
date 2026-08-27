@@ -21,14 +21,23 @@ class SegmentationPalette {
   /// Lubang, tangga, dan bahaya permukaan lain.
   final Color hazard;
 
-  /// Bukan jalur - dibiarkan transparan secara bawaan supaya yang menonjol
-  /// hanya jalurnya, bukan seluruh layar.
+  /// Bukan jalur, TAPI sejajar dengan jalur.
+  ///
+  /// Dulu transparan penuh. Sekarang merah tipis, dan pembatasnya penting:
+  /// hanya dicat mulai dari baris tempat jalur pertama muncul ke bawah - lihat
+  /// [maskToImage]. Tanpa pembatas itu, langit dan pucuk pohon ikut memerah
+  /// dan seluruh layar jadi merah kecuali secarik hijau, yang justru
+  /// menghilangkan kontras yang mau dibangun.
+  ///
+  /// Dengan pembatas itu, yang memerah persis rumput, pagar tanaman, dan aspal
+  /// di kiri-kanan trotoar. Untuk pengguna low-vision, "hijau tempat kaki
+  /// boleh mendarat, merah tidak" terbaca dalam sekali lihat.
   final Color nonWalkable;
 
   const SegmentationPalette({
     this.walkable = const Color(0x4451B055),
     this.hazard = const Color(0x66E5484D),
-    this.nonWalkable = const Color(0x00000000),
+    this.nonWalkable = const Color(0x2EE5484D),
   });
 
   static const SegmentationPalette standard = SegmentationPalette();
@@ -62,9 +71,29 @@ Future<ui.Image> maskToImage(
     _rgba(palette.walkable),
     _rgba(palette.hazard),
   ];
+  const kosong = <int>[0, 0, 0, 0];
+
+  // Baris teratas yang masih mengandung jalur. Di atasnya tidak ada apa pun
+  // yang akan diinjak, jadi tidak ada gunanya diwarnai - itu langit, pohon,
+  // dan bangunan di kejauhan.
+  var barisJalurTeratas = height;
+  for (var y = 0; y < height; y++) {
+    final row = y * width;
+    for (var x = 0; x < width; x++) {
+      if (mask[row + x] == 1) {
+        barisJalurTeratas = y;
+        break;
+      }
+    }
+    if (barisJalurTeratas != height) break;
+  }
 
   for (var i = 0; i < mask.length; i++) {
-    final c = colors[mask[i] < colors.length ? mask[i] : 0];
+    final cls = mask[i] < colors.length ? mask[i] : 0;
+    // Bukan jalur DAN di atas garis jalur teratas -> dibiarkan bening.
+    final c = (cls == 0 && i ~/ width < barisJalurTeratas)
+        ? kosong
+        : colors[cls];
     final o = i * 4;
     rgba[o] = c[0];
     rgba[o + 1] = c[1];
@@ -113,7 +142,20 @@ class SegmentationOverlay extends StatelessWidget {
   /// Ikut memudar saat jalur tidak lagi terbaca, alih-alih hilang mendadak.
   final double opacity;
 
-  const SegmentationOverlay({super.key, required this.image, this.opacity = 1.0});
+  /// Sumbu jalur yang disarankan, dari `ZoneAnalysis.path`.
+  ///
+  /// Titiknya ternormalisasi 0..1 terhadap frame, jadi tidak perlu tahu ukuran
+  /// layar. Kosong berarti tidak ada jalur, dan tidak ada garis yang digambar -
+  /// menggambar garis "kira-kira" di keadaan itu justru menyarankan langkah
+  /// yang tidak punya dasar.
+  final List<({double x, double y, double width})> path;
+
+  const SegmentationOverlay({
+    super.key,
+    required this.image,
+    this.opacity = 1.0,
+    this.path = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +164,7 @@ class SegmentationOverlay extends StatelessWidget {
     return IgnorePointer(
       child: RepaintBoundary(
         child: CustomPaint(
-          painter: _SegmentationPainter(img, opacity),
+          painter: _SegmentationPainter(img, opacity, path),
           size: Size.infinite,
         ),
       ),
@@ -133,8 +175,9 @@ class SegmentationOverlay extends StatelessWidget {
 class _SegmentationPainter extends CustomPainter {
   final ui.Image image;
   final double opacity;
+  final List<({double x, double y, double width})> path;
 
-  _SegmentationPainter(this.image, this.opacity);
+  _SegmentationPainter(this.image, this.opacity, this.path);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -154,11 +197,61 @@ class _SegmentationPainter extends CustomPainter {
       Offset.zero & size,
       paint,
     );
+
+    _gambarJalur(canvas, size);
+  }
+
+  /// Garis sumbu jalur, dari kaki ke arah jauh.
+  ///
+  /// Hamparan hijau menjawab "permukaan mana yang layak". Garis ini menjawab
+  /// pertanyaan yang berbeda dan lebih berguna: "lewat mana". Pada trotoar
+  /// yang terbelah tiang, hamparannya menunjukkan dua bidang hijau dan
+  /// menyerahkan pilihan ke pembaca; garisnya menunjuk satu.
+  ///
+  /// Dua goresan, gelap dulu lalu terang di atasnya. Garis hijau tunggal
+  /// hilang di atas rumput dan daun yang warnanya senada - dan latar itu
+  /// justru yang paling sering ada di kiri-kanan trotoar.
+  void _gambarJalur(Canvas canvas, Size size) {
+    if (path.length < 2) return;
+
+    final p = Path();
+    var pertama = true;
+    for (final titik in path) {
+      final o = Offset(titik.x * size.width, titik.y * size.height);
+      if (pertama) {
+        p.moveTo(o.dx, o.dy);
+        pertama = false;
+      } else {
+        p.lineTo(o.dx, o.dy);
+      }
+    }
+
+    final a = opacity.clamp(0.0, 1.0);
+    canvas.drawPath(
+      p,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 9
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true
+        ..color = const Color(0xFF10361A).withValues(alpha: 0.55 * a),
+    );
+    canvas.drawPath(
+      p,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true
+        ..color = const Color(0xFF4CE664).withValues(alpha: a),
+    );
   }
 
   @override
   bool shouldRepaint(_SegmentationPainter old) =>
-      old.image != image || old.opacity != opacity;
+      old.image != image || old.opacity != opacity || old.path != path;
 }
 
 /// Legenda kecil untuk menjelaskan arti warna hamparan.

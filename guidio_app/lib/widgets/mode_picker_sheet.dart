@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -73,6 +75,43 @@ const List<AppMode> _pickableModes = [
 class _ModePickerSheet extends StatelessWidget {
   const _ModePickerSheet();
 
+  /// Tutup lembar DULU, baru ganti mode.
+  ///
+  /// Urutannya sengaja dibalik dari versi sebelumnya, yang menunggu
+  /// `setMode()` selesai baru menutup. `setMode()` bukan operasi sekejap: ia
+  /// bisa memunculkan konfirmasi keluar-Navigasi (NV-18) dan mengumumkan mode
+  /// baru lewat antrean suara. Selama itu lembarnya masih terpampang, dan
+  /// pengguna yang sudah menekan pilihannya melihat layar seolah ketukannya
+  /// tidak terbaca - lalu menekan lagi.
+  ///
+  /// Menutup lebih dulu aman karena tiga hal sudah dipegang sebelum `pop()`:
+  /// provider mode, antrean suara, dan mode sebelumnya. Konfirmasi NV-18 pun
+  /// tidak ikut hilang - dialognya dibangun dari context layar Navigasi lewat
+  /// `AppModeProvider.confirmLeave`, bukan dari context lembar ini, jadi ia
+  /// muncul di atas layar yang tetap hidup.
+  ///
+  /// Nilai balik `setMode` tetap WAJIB diperiksa. Membatalkan konfirmasi
+  /// keluar-Navigasi berarti mode TIDAK berganti, `announceEntry` tidak
+  /// jalan, dan tanpa kalimat penutup ini pengguna yang tidak melihat layar
+  /// menyimpulkan modenya sudah berpindah.
+  void _pilihMode(BuildContext context, AppMode mode) {
+    final appMode = context.read<AppModeProvider>();
+    final tts = context.read<TtsProvider>();
+    final previous = appMode.mode;
+
+    Navigator.of(context).pop();
+
+    unawaited(() async {
+      final changed = await appMode.setMode(mode);
+      if (!changed && appMode.mode == previous) {
+        tts.speak(
+          'Tetap di mode ${previous.label}.',
+          tier: SpeechTier.info,
+        );
+      }
+    }());
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = context.watch<AppModeProvider>().mode;
@@ -95,6 +134,7 @@ class _ModePickerSheet extends StatelessWidget {
             const SheetHeader(
               title: 'Pilih Mode',
               closeLabel: 'Tutup pilihan mode',
+              centerTitle: true,
             ),
             const SizedBox(height: 6),
             Container(
@@ -141,31 +181,7 @@ class _ModePickerSheet extends StatelessWidget {
                     disabled: disabled,
                     limited: limited,
                     reason: caps.unavailableReason(mode, offline: offline),
-                    onTap: disabled
-                        ? null
-                        : () async {
-                            // Nilai balik `setMode` WAJIB diperiksa. Tanpa ini,
-                            // membatalkan konfirmasi keluar-Navigasi menutup
-                            // sheet tanpa satu kata pun terucap: `announceEntry`
-                            // tidak jalan karena mode tidak berubah, dan
-                            // pengguna yang tidak melihat layar menyimpulkan
-                            // modenya sudah berganti. VoiceProvider sudah
-                            // menangani ini dengan benar sejak awal - hanya
-                            // jalur sheet yang bocor.
-                            final appMode = context.read<AppModeProvider>();
-                            final tts = context.read<TtsProvider>();
-                            final navigator = Navigator.of(context);
-                            final previous = appMode.mode;
-
-                            final changed = await appMode.setMode(mode);
-                            if (!changed && appMode.mode == previous) {
-                              tts.speak(
-                                'Tetap di mode ${previous.label}.',
-                                tier: SpeechTier.info,
-                              );
-                            }
-                            navigator.pop();
-                          },
+                    onTap: disabled ? null : () => _pilihMode(context, mode),
                   );
                 },
               ),

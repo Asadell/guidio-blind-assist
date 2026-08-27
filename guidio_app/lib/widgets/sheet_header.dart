@@ -38,12 +38,22 @@ class SheetHeader extends StatelessWidget {
   /// melakukan sesuatu yang lain lebih dulu.
   final VoidCallback? onClose;
 
+  /// Judul ditaruh di tengah, bukan rata kiri.
+  ///
+  /// Bawaannya `false` supaya lembar lain tidak ikut berubah. Penengahannya
+  /// diukur terhadap SELURUH lebar kepala, bukan terhadap sisa ruang di
+  /// sebelah kiri tombol tutup - karena itu ada ruang kosong seukuran tombol
+  /// di sisi kiri. Tanpa penyeimbang itu, judul yang "di tengah" akan tampak
+  /// bergeser ke kiri sejauh setengah lebar tombol.
+  final bool centerTitle;
+
   const SheetHeader({
     super.key,
     required this.title,
     required this.closeLabel,
     this.subtitle,
     this.onClose,
+    this.centerTitle = false,
   });
 
   @override
@@ -71,10 +81,16 @@ class SheetHeader extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Penyeimbang tombol tutup. Lihat [centerTitle].
+            if (centerTitle) const SizedBox(width: AppSizes.minTouchTarget),
             Expanded(
               child: Semantics(
                 header: true,
-                child: Text(title, style: AppTypography.title()),
+                child: Text(
+                  title,
+                  textAlign: centerTitle ? TextAlign.center : TextAlign.start,
+                  style: AppTypography.title(),
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.s2),
@@ -83,7 +99,11 @@ class SheetHeader extends StatelessWidget {
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
-          Text(subtitle!, style: AppTypography.caption()),
+          Text(
+            subtitle!,
+            textAlign: centerTitle ? TextAlign.center : TextAlign.start,
+            style: AppTypography.caption(),
+          ),
         ],
       ],
     );

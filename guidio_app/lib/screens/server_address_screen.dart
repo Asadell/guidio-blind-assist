@@ -37,8 +37,12 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
   ServerFieldState _state = ServerFieldState.idle;
   int? _latencyMs;
 
-  /// Saat demo, tekan ikon mata untuk menyembunyikan alamat IP dari layar.
-  bool _obscured = false;
+  /// Ikon mata TIDAK lagi punya status sendiri di sini.
+  ///
+  /// Dulu `bool _obscured` milik layar ini saja, dan akibatnya alamat yang
+  /// disembunyikan di halaman ini tetap terpampang di baris ringkasan
+  /// Pengaturan. Satu saklar untuk satu rahasia - lihat
+  /// `SettingsProvider.serverHostVisible`.
 
   static final _hostPattern = RegExp(r'^[\w.-]+:\d{2,5}$');
 
@@ -65,7 +69,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
         _latencyMs = null;
       });
       await TtsQueue.instance.speak(
-        'Format alamat salah. Alamat butuh titik dua dan nomor port. Contoh benar: 10.0.2.2 titik dua 8000.',
+        'Format alamat salah. Alamat butuh titik dua dan nomor port. Contoh benar: 127.0.0.1 titik dua 8000.',
         source: SpeechSource.assistant,
       );
       return;
@@ -133,17 +137,25 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
             icon: Icons.check_circle_outline_rounded,
           ),
         ServerFieldState.invalid => (
-            text: 'Format salah - alamat butuh titik dua dan nomor port. Contoh benar: 10.0.2.2:8000',
+            text: 'Format salah - alamat butuh titik dua dan nomor port. Contoh benar: 127.0.0.1:8000',
             color: AppColors.criticalLabel,
             icon: Icons.error_outline_rounded,
           ),
         ServerFieldState.failed => (
-            text: 'Gagal terhubung. Alamat lama ($_savedHost) tetap dipakai.',
+            // Alamat lama ikut disamarkan kalau matanya sedang tertutup.
+            // Pesan gagal adalah tempat paling mudah terlewat saat menutupi
+            // alamat: yang disembunyikan di kolom isian muncul kembali di sini.
+            text: 'Gagal terhubung. Alamat lama '
+                '(${_visible ? _savedHost : "tersembunyi"}) tetap dipakai.',
             color: AppColors.criticalLabel,
             icon: Icons.cloud_off_rounded,
           ),
         _ => null,
       };
+
+  /// Dibaca ulang tiap build supaya perubahan dari layar Pengaturan langsung
+  /// terlihat di sini, dan sebaliknya.
+  bool get _visible => context.watch<SettingsProvider>().serverHostVisible;
 
   @override
   Widget build(BuildContext context) {
@@ -194,26 +206,30 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                     controller: _ctrl,
                     autocorrect: false,
                     keyboardType: TextInputType.url,
-                    // Saat _obscured = true, teks diganti karakter titik
-                    // sehingga alamat IP tidak terlihat saat demo.
-                    obscureText: _obscured,
+                    // Mata tertutup -> teks diganti karakter titik sehingga
+                    // alamatnya tidak terbaca saat demo atau tangkapan layar.
+                    obscureText: !_visible,
                     obscuringCharacter: '•',
                     decoration: InputDecoration(
-                      hintText: 'host:port, mis. 10.0.2.2:8000',
+                      hintText: 'host:port, mis. 127.0.0.1:8000',
                       isDense: true,
                       suffixIcon: Semantics(
-                        label: _obscured ? 'Tampilkan alamat server' : 'Sembunyikan alamat server',
+                        label: _visible
+                            ? 'Sembunyikan alamat server'
+                            : 'Tampilkan alamat server',
                         button: true,
                         excludeSemantics: false,
                         child: IconButton(
                           icon: Icon(
-                            _obscured
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                            _visible
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                             size: 20,
                           ),
-                          tooltip: _obscured ? 'Tampilkan' : 'Sembunyikan',
-                          onPressed: () => setState(() => _obscured = !_obscured),
+                          tooltip: _visible ? 'Sembunyikan' : 'Tampilkan',
+                          onPressed: () => context
+                              .read<SettingsProvider>()
+                              .toggleServerHostVisible(),
                         ),
                       ),
                     ),

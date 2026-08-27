@@ -72,6 +72,45 @@ void main() {
         reason: 'Hook yang sehat tidak boleh ikut dilepas.');
   });
 
+  // ── Mode yang mati tanpa server ────────────────────────────────────────────
+  //
+  // Satu bendera, `AppMode.disabledWhenOffline`, memberi makan DUA jalan masuk
+  // yang berbeda:
+  //
+  //   1. Lembar Pilih Mode - itemnya dinonaktifkan dan kalimatnya berbunyi
+  //      "Tidak tersedia, butuh internet", bukan "sebagian fitur mati".
+  //   2. Perintah suara - `VoiceProvider` menolak berpindah dan menjelaskan
+  //      alasannya.
+  //
+  // Yang kedua justru jalan utama bagi pengguna tunanetra. Kalau bendera ini
+  // dilonggarkan tanpa sengaja, keduanya ikut jebol sekaligus dan tidak ada
+  // yang merah - dia cuma masuk ke mode yang diam saja lalu menyimpulkan
+  // aplikasinya rusak. Karena itu benderanya diuji di sini, bukan efeknya di
+  // masing-masing layar.
+  group('mode yang butuh server', () {
+    test('Cari Objek dan Deskripsi Suasana mati total tanpa server', () {
+      expect(AppMode.findObject.disabledWhenOffline, isTrue);
+      expect(AppMode.voice.disabledWhenOffline, isTrue,
+          reason: 'Deskripsi Suasana hanya punya satu isi, yaitu mengirim '
+              'foto ke Moondream2 di server. Tanpa itu tidak ada sisanya.');
+    });
+
+    test('mode on-device TIDAK pernah dimatikan tanpa server', () {
+      // Navigasi yang paling menentukan di sini: ia berjalan penuh dengan
+      // empat model TFLite di ponsel, dan mematikannya saat sinyal hilang
+      // berarti mencabut panduan jalan justru di tempat yang tidak bersinyal.
+      for (final mode in [
+        AppMode.navigasi,
+        AppMode.tuntun,
+        AppMode.money,
+        AppMode.ocr,
+      ]) {
+        expect(mode.disabledWhenOffline, isFalse, reason: mode.label);
+        expect(mode.needsServer, isFalse, reason: mode.label);
+      }
+    });
+  });
+
   testWidgets('dispose layar tidak boleh meninggalkan hook menggantung',
       (tester) async {
     final appMode = AppModeProvider();

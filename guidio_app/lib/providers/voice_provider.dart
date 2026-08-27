@@ -53,6 +53,33 @@ class VoiceProvider extends ChangeNotifier {
 
   VoiceProvider(this._camera, this._detection, this._appMode, this._findObject);
 
+  /// Apakah server sedang tidak terjangkau.
+  ///
+  /// Dipasang lapisan yang punya akses `GlobalConditionsProvider` (lihat
+  /// `MainScreen._initServices`), memakai pola callback yang sama dengan
+  /// `FindObjectProvider.isOffline`. Disuntik lewat konstruktor akan memaksa
+  /// `ChangeNotifierProxyProvider4` di `main.dart` jadi lima dependensi hanya
+  /// untuk satu bacaan boolean.
+  ///
+  /// Null berarti tidak diketahui, dan yang tidak diketahui TIDAK menghalangi:
+  /// mengunci mode karena status yang belum terbaca lebih merugikan daripada
+  /// membiarkan satu percobaan gagal dengan pesan yang jelas.
+  bool Function()? isBackendDown;
+
+  /// Mode ini butuh server DAN servernya sedang tidak ada.
+  ///
+  /// Dipakai sebelum berpindah mode lewat suara. Lembar Pilih Mode sudah
+  /// menonaktifkan itemnya sejak awal, tapi lembar itu jalan KEDUA - untuk
+  /// pengguna tunanetra, suara adalah jalan utama ganti mode. Tanpa penjagaan
+  /// di sini, dia berpindah ke mode yang tidak bisa menjawab apa pun, mencoba
+  /// beberapa kali, lalu menyimpulkan aplikasinya rusak.
+  bool _butuhServerTapiMati(AppMode target) =>
+      target.disabledWhenOffline && (isBackendDown?.call() ?? false);
+
+  String _pesanButuhServer(AppMode target) =>
+      '${target.label} butuh internet, dan server sedang tidak terhubung. '
+      'Mode lain tetap bisa dipakai.';
+
   final SpeechToText _stt = SpeechToText();
   VoiceState _state = VoiceState.idle;
   String _lastText = '';
@@ -730,6 +757,12 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
+    if (_butuhServerTapiMati(target)) {
+      _consecutiveFailures = 0;
+      await _respond(_pesanButuhServer(target), save: false);
+      return;
+    }
+
     // Sudah berada di mode yang diminta: katakan apa adanya, jangan berpura-pura
     // berpindah dan jangan mengumumkan ulang panduan mode.
     if (_appMode.mode == target) {
@@ -970,6 +1003,17 @@ class VoiceProvider extends ChangeNotifier {
   /// - Pop VoiceScreen overlay jika ada (via onNavigateBack)
   Future<void> _handleFindObjectTarget(String target) async {
     _setState(VoiceState.processingLocal);
+
+    // Jalur pintas "carikan [barang]" ikut dijaga. Ia memindahkan mode tanpa
+    // lewat `_handleModeSwitch`, jadi penjagaan di sana tidak menutupinya -
+    // dan justru perintah inilah yang paling sering dipakai untuk masuk Cari
+    // Objek.
+    if (_butuhServerTapiMati(AppMode.findObject)) {
+      _consecutiveFailures = 0;
+      await _respond(_pesanButuhServer(AppMode.findObject), save: false);
+      return;
+    }
+
     _findObject.setTarget(target);
     final changed = await _appMode.setMode(AppMode.findObject, spokenPrefix: 'Baik, mencari $target.');
     if (changed) {

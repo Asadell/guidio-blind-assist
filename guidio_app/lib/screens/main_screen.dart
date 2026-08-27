@@ -73,6 +73,12 @@ class _MainScreenState extends State<MainScreen> {
     final globals = context.read<GlobalConditionsProvider>();
     context.read<CameraProvider>().onErrorChanged = globals.setCameraError;
 
+    // Perintah suara perlu tahu status server supaya tidak memindahkan
+    // pengguna ke mode yang tidak bisa menjawab apa pun. Dipasang di sini,
+    // bukan disuntik lewat konstruktor, karena `VoiceProvider` hidup selama
+    // aplikasi hidup sementara layar ini selalu ada di bawahnya.
+    context.read<VoiceProvider>().isBackendDown = () => globals.isBackendDown;
+
     try {
       await Future.wait([
         context.read<CameraProvider>().initCamera(),

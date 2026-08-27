@@ -235,19 +235,45 @@ void main() {
       img.dispose();
     });
 
-    test('walkable terlihat, non-walkable tembus pandang', () async {
-      // Kelas 0 sengaja transparan penuh supaya yang menonjol hanya jalurnya.
-      // Kalau ini bocor jadi berwarna, seluruh layar tertutup kabut dan
-      // hamparan yang harusnya menjelaskan justru menyembunyikan.
+    test('bukan-jalur yang SEJAJAR jalur diwarnai merah', () async {
+      // Kontras yang dituju: hijau tempat kaki boleh mendarat, merah tidak.
+      // Untuk pengguna low-vision itu terbaca dalam sekali lihat, jauh lebih
+      // cepat daripada mencari tepi bidang hijau di antara rumput dan aspal
+      // yang warnanya senada.
       final img = await maskToImage(Uint8List.fromList([0, 1, 2]), 3, 1);
       final data = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
       final px = data!.buffer.asUint8List();
 
-      expect(px[3], 0, reason: 'non-walkable harus alfa 0');
+      expect(px[3], greaterThan(0),
+          reason: 'bukan-jalur di baris yang sama dengan jalur harus terlihat');
       expect(px[7], greaterThan(0), reason: 'walkable harus terlihat');
       expect(px[11], greaterThan(0), reason: 'hazard harus terlihat');
+      expect(px[11], greaterThan(px[3]),
+          reason: 'hazard harus lebih pekat daripada sekadar bukan-jalur - '
+              'lubang dan pinggir rumput tidak boleh terbaca sama');
       expect(px[11], greaterThan(px[7]),
           reason: 'hazard harus lebih pekat daripada jalur biasa');
+      img.dispose();
+    });
+
+    test('bukan-jalur DI ATAS jalur tetap tembus pandang', () async {
+      // Penjaga terpenting dari pewarnaan merah itu. Kelas 0 mencakup langit,
+      // pucuk pohon, dan bangunan di kejauhan - semuanya di atas jalur, dan
+      // tidak satu pun akan diinjak. Mewarnainya membuat hampir seluruh layar
+      // merah, dan hamparan yang harusnya menjelaskan justru menyembunyikan
+      // permukaan yang sedang dinilai.
+      //
+      // Mask 2x2: baris atas bukan-jalur semua, baris bawah ada jalurnya.
+      final img = await maskToImage(
+          Uint8List.fromList([0, 0, 0, 1]), 2, 2);
+      final data = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final px = data!.buffer.asUint8List();
+
+      expect(px[3], 0, reason: 'langit di baris atas harus tetap bening');
+      expect(px[7], 0, reason: 'langit di baris atas harus tetap bening');
+      expect(px[11], greaterThan(0),
+          reason: 'bukan-jalur di baris yang sama dengan jalur harus merah');
+      expect(px[15], greaterThan(0), reason: 'jalur harus terlihat');
       img.dispose();
     });
 

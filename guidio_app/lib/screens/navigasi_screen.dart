@@ -625,7 +625,10 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
                   // Urutan gambar disengaja: segmentasi jalur paling bawah
                   // sebagai konteks permukaan, tint zona di atasnya, lalu
                   // kotak rintangan paling atas supaya tidak pernah tertutup.
-                  SegmentationOverlay(image: nav.segmentationImage),
+                  SegmentationOverlay(
+                    image: nav.segmentationImage,
+                    path: nav.pathPoints,
+                  ),
                   _ZoneOverlay(left: nav.left, center: nav.center, right: nav.right),
                   DetectionOverlay(detections: nav.obstacles),
                 ],
@@ -784,12 +787,16 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     );
   }
 
-  int _recommendedZone(NavigationProvider nav) {
-    if (nav.center == ZoneStatus.safe) return 1;
-    if (nav.left == ZoneStatus.safe) return 0;
-    if (nav.right == ZoneStatus.safe) return 2;
-    return -1;
-  }
+  /// Zona yang disarankan, diambil APA ADANYA dari provider.
+  ///
+  /// Versi sebelumnya menghitung ulang di sini: tengah kalau aman, lalu kiri,
+  /// lalu kanan, dan `-1` kalau tidak ada satu pun yang berstatus aman. Aturan
+  /// terakhir itu yang merusaknya. Justru saat tidak ada zona aman - tiang di
+  /// tengah trotoar, lubang membentang - pengguna paling butuh diberi tahu ke
+  /// mana harus melangkah, dan di situlah layar malah berhenti menyarankan
+  /// apa pun. `ZoneAnalysis` sudah menghitungnya dari celah jalur yang
+  /// sebenarnya; tugas layar cuma menampilkannya.
+  int _recommendedZone(NavigationProvider nav) => nav.recommendedZone;
 
   Widget? _resolveBanner(BuildContext context, NavigationProvider nav, GlobalConditionsProvider global, CameraProvider cam) {
     if (_debugOverride == 'NV-16' || (cam.healthMessage?.contains('menutupi') ?? false)) {
@@ -814,7 +821,18 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     if (nav.phase == NavPhase.degraded) {
       return const StatusBanner(tier: AlertTier.warning, message: 'Jalur sulit dibaca, arahan mungkin tertinggal');
     }
-    if (nav.left == ZoneStatus.danger && nav.center == ZoneStatus.danger && nav.right == ZoneStatus.danger) {
+    // "Berhenti" hanya kalau memang TIDAK ADA jalur, bukan sekadar karena
+    // ketiga zona berstatus buruk.
+    //
+    // Ketiganya bisa buruk sekaligus pada trotoar yang sepenuhnya bisa
+    // dilewati - tiang di tengah membelah jalur jadi dua sisa yang
+    // masing-masing tidak mencapai ambang zona, padahal salah satunya cukup
+    // lebar untuk dilalui. Menyuruh berhenti di situ salah, dan salahnya ke
+    // arah yang merugikan: pengguna berhenti di tengah trotoar tanpa alasan.
+    if (nav.pathPoints.isEmpty &&
+        nav.left == ZoneStatus.danger &&
+        nav.center == ZoneStatus.danger &&
+        nav.right == ZoneStatus.danger) {
       return const StatusBanner(tier: AlertTier.critical, message: 'Tidak ada jalur aman, berhenti dulu');
     }
     if (nav.center == ZoneStatus.danger) {

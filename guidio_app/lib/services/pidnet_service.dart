@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -40,6 +41,23 @@ enum SceneDoubt {
   notGrounded,
 }
 
+/// Satu ruas jalur yang bisa dilewati, di satu kedalaman.
+///
+/// Koordinatnya ternormalisasi 0..1 terhadap frame model, jadi lapisan gambar
+/// bisa memakainya langsung berapa pun ukuran layarnya.
+class PathPoint {
+  /// Titik tengah jalur secara horizontal. 0 = tepi kiri, 1 = tepi kanan.
+  final double x;
+
+  /// Kedalaman. 1 = tepat di depan kaki, mengecil ke arah kejauhan.
+  final double y;
+
+  /// Lebar jalur di kedalaman ini, sebagai pecahan lebar frame.
+  final double width;
+
+  const PathPoint({required this.x, required this.y, required this.width});
+}
+
 class ZoneAnalysis {
   /// Rasio piksel walkable (0.0 – 1.0) per zona.
   final double leftRatio;
@@ -53,6 +71,23 @@ class ZoneAnalysis {
 
   /// Indeks zona yang direkomendasikan (0=kiri, 1=tengah, 2=kanan).
   final int recommendedZone;
+
+  /// Sumbu jalur yang bisa dilewati, dari yang terdekat ke kaki ke arah jauh.
+  ///
+  /// Kosong berarti tidak ada ruas layak jalan yang cukup lebar di pita bawah -
+  /// itulah satu-satunya kondisi yang benar-benar berarti "berhenti".
+  ///
+  /// Ini yang membuat mode ini bisa MENYARANKAN, bukan cuma menilai. Tiga
+  /// rasio zona hanya bisa bilang "kanan buruk"; sumbu jalur bisa bilang
+  /// "jalurnya menikung ke kiri di depan tiang itu", dan itu yang sebenarnya
+  /// dibutuhkan orang yang sedang berjalan.
+  final List<PathPoint> path;
+
+  /// Pergeseran yang disarankan, -1 (mepet kiri) sampai +1 (mepet kanan).
+  ///
+  /// Selisih antara posisi jalur beberapa langkah di depan dan posisi jalur
+  /// tepat di depan kaki. Nol berarti jalurnya lurus.
+  final double pathShift;
 
   /// Waktu inference dalam milidetik.
   final double inferenceMs;
@@ -92,29 +127,45 @@ class ZoneAnalysis {
     required this.right,
     required this.recommendedZone,
     required this.inferenceMs,
+    this.path = const [],
+    this.pathShift = 0,
     this.doubt = SceneDoubt.none,
     this.mask,
     this.maskWidth = 0,
     this.maskHeight = 0,
   });
 
-  /// Pesan TTS sederhana berdasarkan zona - sama dengan yang dipakai backend.
+  /// Arahan suara. SELALU menyebut ke mana harus melangkah kalau masih ada
+  /// jalur, bukan cuma menilai apa yang di depan.
+  ///
+  /// Versi sebelumnya berhenti di "Jalur di depan tidak aman." dan diam soal
+  /// jalan keluarnya. Untuk pengguna awas kalimat itu cukup, karena dia
+  /// melihat sendiri bahwa sebelah kirinya kosong. Pengguna tunanetra tidak
+  /// punya sumber kedua: kalimat yang cuma melarang membuatnya berhenti tanpa
+  /// tahu harus bagaimana, dan berhenti di tengah trotoar bukan keadaan aman.
+  ///
+  /// Karena itu "berhenti" sekarang hanya diucapkan kalau [path] benar-benar
+  /// kosong - tidak ada satu pun ruas layak jalan yang cukup lebar di pita
+  /// bawah. Selama masih ada ruas, yang keluar adalah arah.
   String get ttsMessage {
-    // Rintangan akan ditangani lapisan atas (NavigationProvider).
-    // Di sini hanya beri arahan zona jalur.
-    if (left == ZoneStatus.danger &&
-        center == ZoneStatus.danger &&
-        right == ZoneStatus.danger) {
+    if (path.isEmpty) {
       return 'Berhenti dulu. Tidak ada jalur aman di sekitar sini.';
     }
-    if (center == ZoneStatus.danger) {
-      return 'Jalur di depan tidak aman.';
+
+    // Ambang 0,12 kira-kira seperlima lebar jalur pada trotoar biasa: cukup
+    // besar untuk berarti "geser", cukup kecil untuk tidak menyuruh pengguna
+    // bergerak setiap kali sumbu jalur bergoyang satu piksel.
+    if (pathShift <= -0.12) {
+      return center == ZoneStatus.danger
+          ? 'Jalur di depan tertutup. Ambil sebelah kiri.'
+          : 'Agak ke kiri.';
     }
-    return switch (recommendedZone) {
-      0 => 'Tetap di kiri.',
-      2 => 'Geser ke kanan.',
-      _ => 'Jalur aman, jalan lurus.',
-    };
+    if (pathShift >= 0.12) {
+      return center == ZoneStatus.danger
+          ? 'Jalur di depan tertutup. Ambil sebelah kanan.'
+          : 'Agak ke kanan.';
+    }
+    return 'Jalur aman, jalan lurus.';
   }
 
   ZoneStatus get recommendedStatus => switch (recommendedZone) {
@@ -246,6 +297,61 @@ const int _maskOutH = 96;
 // Threshold rasio walkable per zona
 const double _threshSafe    = 0.50; // ≥50% walkable → AMAN
 const double _threshCaution = 0.30; // ≥30% walkable → HATI-HATI, sisanya BAHAYA
+
+/// Pita bawah frame yang dipakai untuk menilai zona DAN menyusun sumbu jalur.
+///
+/// Ini perbaikan paling menentukan di berkas ini. Versi sebelumnya menghitung
+/// rasio zona atas SELURUH tinggi frame, termasuk langit, pucuk pohon, pagar
+/// tanaman, dan jalan raya di kejauhan. Tidak satu pun dari itu akan diinjak
+/// dalam sepuluh langkah ke depan, tapi semuanya masuk hitungan sebagai
+/// "tidak layak jalan" dan menenggelamkan trotoar yang benar-benar ada di
+/// sepertiga kiri dan kanan.
+///
+/// Akibatnya terukur di log perangkat: `L=0.21 C=0.35 R=0.13`. Dengan ambang
+/// 0,30 dan 0,50, kiri dan kanan SELALU jatuh ke BAHAYA - bahkan pada frame
+/// yang hamparannya jelas menunjukkan trotoar hijau melebar ke kiri. Pengguna
+/// membaca "Kiri BAHAYA, Kanan BAHAYA" di atas gambar yang isinya jalan mulus.
+///
+/// 0,45 kira-kira delapan langkah ke depan pada tinggi pegang ponsel biasa.
+/// Naikkan kalau arahannya terasa terlalu pendek pandang; turunkan kalau
+/// kejauhan mulai ikut mempengaruhi keputusan langkah berikutnya.
+const double _zoneBandFrac = 0.45;
+
+/// Jumlah irisan kedalaman di dalam pita. 14 irisan pada 211 baris berarti
+/// tiap ruas setebal ~15 baris - cukup halus untuk mengikuti tikungan
+/// trotoar, cukup tebal untuk tidak goyah oleh derau satu-dua piksel.
+const int _pathSlices = 14;
+
+/// Lebar minimum satu ruas jalur, sebagai pecahan lebar frame.
+///
+/// Di bawah ini ruasnya tidak dianggap jalur sama sekali. Celah selebar 5%
+/// frame pada trotoar 2 meter kira-kira 10 cm - bukan jalan, itu retakan.
+/// Menyarankannya sebagai jalur jauh lebih berbahaya daripada diam.
+const double _pathMinWidthFrac = 0.06;
+
+/// Celah sesempit ini di dalam koridor ditutup sebelum ruas dicari.
+///
+/// Nat ubin, garis sambungan beton, dan bayangan tipis sering terbaca sebagai
+/// satu-dua kolom bukan-jalur di tengah trotoar yang sebenarnya utuh. Tanpa
+/// penutupan celah, koridor selebar dua meter terbelah jadi dua ruas satu
+/// meter, dan arahannya berubah jadi "pilih sisi" untuk masalah yang tidak
+/// ada.
+///
+/// Batasnya sengaja kecil. Celah yang lebih lebar dari ini - ubin pemandu
+/// yang menonjol, got terbuka, kaki tiang - memang harus tetap membelah
+/// koridor, karena memang tidak boleh diinjak.
+const double _pathGapFrac = 0.04;
+
+/// Setengah lebar badan pengguna, sebagai pecahan lebar frame.
+///
+/// Dipakai untuk satu pertanyaan: apakah koridor di depan masih memuat badan
+/// pengguna kalau dia terus lurus? Kalau ya, dia TIDAK disuruh bergeser.
+///
+/// Tanpa ambang ini, arahan ikut bergoyang mengikuti titik hilang perspektif:
+/// trotoar lurus pun sumbunya bergeser di dalam frame saat kamera miring
+/// sedikit, dan pengguna terus-menerus disuruh "agak ke kanan" lalu "agak ke
+/// kiri" untuk jalan yang sebenarnya lurus.
+const double _shoulderFrac = 0.10;
 
 // Normalisasi ImageNet-nya sekarang dikerjakan NavFrameConverter, sekaligus
 // dengan rotasi dan penskalaan, dalam satu lintasan di isolate.
@@ -582,37 +688,166 @@ class PidnetService {
     return out;
   }
 
-  // ── Hitung rasio 3 zona & hasilkan ZoneAnalysis ─────────────
+  /// Susun sumbu jalur dari histogram kolom per irisan.
+  ///
+  /// Tiga aturan, dan ketiganya lahir dari melihat maskanya sendiri, bukan
+  /// dari teori. Mask nyata `01_got_terbuka.png` berbentuk begini (`#` layak
+  /// jalan, baris bawah = tepat di depan kaki):
+  ///
+  ///     ....###########......####..#######......
+  ///     #############........##############.....
+  ///     ##############.......######...#######...
+  ///     ################.....##################.
+  ///     ########################################
+  ///
+  /// **1. Celah sempit ditutup dulu.** Nat ubin dan garis sambungan membelah
+  /// koridor yang sebenarnya utuh. Lihat [_pathGapFrac].
+  ///
+  /// **2. Ruas dipilih yang BERSAMBUNG dengan ruas di bawahnya**, bukan yang
+  /// terlebar di tiap irisan. Perhatikan gambar di atas: got di tengah membuat
+  /// dua cabang, dan yang lebih lebar berganti-ganti sisi dari satu kedalaman
+  /// ke kedalaman berikutnya. Memilih "terlebar" tiap irisan menghasilkan
+  /// sumbu yang melompat kiri-kanan dan garis panduan yang menembus got.
+  /// Menyambung dari ruas terdekat ke kaki membuat sumbu itu mengikuti SATU
+  /// koridor yang benar-benar bisa ditempuh dari tempat pengguna berdiri.
+  ///
+  /// **3. Penelusuran berhenti kalau tidak ada ruas yang bersambung.** Jalur
+  /// yang muncul lagi di kejauhan tapi terputus di dekat kaki bukan jalur yang
+  /// bisa ditempuh dari sini.
+  List<PathPoint> _tracePath(
+    List<Uint16List> sliceCols,
+    List<int> sliceRows,
+    int sliceH,
+  ) {
+    final minRun = (_pidnetW * _pathMinWidthFrac).round();
+    final maxGap = (_pidnetW * _pathGapFrac).round();
+    final points = <PathPoint>[];
+
+    int prevStart = -1, prevEnd = -1;
+
+    for (int sIdx = 0; sIdx < _pathSlices; sIdx++) {
+      final rows = sliceRows[sIdx];
+      if (rows == 0) break;
+      final cols = sliceCols[sIdx];
+
+      // Kolom dihitung jalur kalau MAYORITAS baris di irisan ini layak jalan.
+      final layak = List<bool>.generate(
+          _pidnetW, (x) => cols[x] * 2 >= rows,
+          growable: false);
+
+      // Tutup celah sempit di antara dua bagian yang layak.
+      var x = 0;
+      while (x < _pidnetW) {
+        if (layak[x]) {
+          x++;
+          continue;
+        }
+        var j = x;
+        while (j < _pidnetW && !layak[j]) {
+          j++;
+        }
+        if (x > 0 && j < _pidnetW && j - x <= maxGap) {
+          for (var k = x; k < j; k++) {
+            layak[k] = true;
+          }
+        }
+        x = j;
+      }
+
+      // Kumpulkan ruas yang cukup lebar.
+      int pickStart = -1, pickEnd = -1, pickScore = -1;
+      int runStart = -1;
+      for (int i = 0; i <= _pidnetW; i++) {
+        final isWalk = i < _pidnetW && layak[i];
+        if (isWalk) {
+          if (runStart < 0) runStart = i;
+          continue;
+        }
+        if (runStart < 0) continue;
+
+        final len = i - runStart;
+        if (len >= minRun) {
+          // Irisan terdekat kaki: ambil yang terlebar, itu titik berangkatnya.
+          // Sesudahnya: ambil yang paling banyak bertumpuk dengan ruas
+          // sebelumnya, supaya sumbunya mengikuti satu koridor.
+          final int score = prevStart < 0
+              ? len
+              : (i < prevEnd ? i : prevEnd) -
+                  (runStart > prevStart ? runStart : prevStart);
+          if (score > pickScore) {
+            pickScore = score;
+            pickStart = runStart;
+            pickEnd = i;
+          }
+        }
+        runStart = -1;
+      }
+
+      // Skor <= 0 berarti tidak ada ruas yang menyentuh koridor sebelumnya.
+      if (pickStart < 0 || (prevStart >= 0 && pickScore <= 0)) break;
+
+      final yMid = _pidnetH - (sIdx + 0.5) * sliceH;
+      points.add(PathPoint(
+        x: (pickStart + pickEnd) / 2 / _pidnetW,
+        y: (yMid / _pidnetH).clamp(0.0, 1.0),
+        width: (pickEnd - pickStart) / _pidnetW,
+      ));
+      prevStart = pickStart;
+      prevEnd = pickEnd;
+    }
+    return points;
+  }
+
+  // ── Hitung rasio 3 zona, sumbu jalur, dan rekomendasi ───────────────────
+  //
+  // Satu lintasan atas pita bawah menghasilkan histogram kolom per irisan
+  // kedalaman. Rasio zona dan sumbu jalur sama-sama dibaca dari histogram itu,
+  // jadi keduanya tidak pernah bisa saling bertentangan - dan biayanya tetap
+  // satu lintasan, bukan dua.
   ZoneAnalysis _computeZones(List<int> mask, double inferMs,
       {SceneDoubt doubt = SceneDoubt.none, Uint8List? small}) {
-    // Bagi gambar jadi 3 kolom vertikal (kiri, tengah, kanan)
-    const zoneW  = _pidnetW ~/ 3;
+    const zoneW = _pidnetW ~/ 3;
+    final bandStart = _pidnetH - (_pidnetH * _zoneBandFrac).round();
+    final bandRows = _pidnetH - bandStart;
+    final sliceH = (bandRows / _pathSlices).ceil();
 
-    int leftWalk = 0, leftTotal = 0;
-    int centWalk = 0, centTotal = 0;
-    int rightWalk = 0, rightTotal = 0;
+    // sliceCols[s][x] = berapa baris walkable di irisan s, kolom x.
+    // Irisan 0 adalah yang PALING DEKAT ke kaki.
+    final sliceCols = List.generate(
+        _pathSlices, (_) => Uint16List(_pidnetW),
+        growable: false);
+    final sliceRows = List<int>.filled(_pathSlices, 0);
 
-    for (int h = 0; h < _pidnetH; h++) {
+    for (int h = bandStart; h < _pidnetH; h++) {
+      final s = ((_pidnetH - 1 - h) ~/ sliceH).clamp(0, _pathSlices - 1);
+      sliceRows[s]++;
+      final row = h * _pidnetW;
+      final cols = sliceCols[s];
       for (int w = 0; w < _pidnetW; w++) {
-        final cls = mask[h * _pidnetW + w];
-        // _classWalkable=1 → layak jalan; _classNonWalkable=0 & _classHazard=2 → tidak
-        final isWalk = cls == _classWalkable;
+        if (mask[row + w] == _classWalkable) cols[w]++;
+      }
+    }
+
+    int leftWalk = 0, centWalk = 0, rightWalk = 0;
+    for (int s = 0; s < _pathSlices; s++) {
+      final cols = sliceCols[s];
+      for (int w = 0; w < _pidnetW; w++) {
+        final n = cols[w];
+        if (n == 0) continue;
         if (w < zoneW) {
-          leftTotal++;
-          if (isWalk) { leftWalk++; }
+          leftWalk += n;
         } else if (w < zoneW * 2) {
-          centTotal++;
-          if (isWalk) { centWalk++; }
+          centWalk += n;
         } else {
-          rightTotal++;
-          if (isWalk) { rightWalk++; }
+          rightWalk += n;
         }
       }
     }
 
-    final lRatio = leftWalk  / max(leftTotal,  1);
-    final cRatio = centWalk  / max(centTotal,  1);
-    final rRatio = rightWalk / max(rightTotal, 1);
+    final perZone = max(bandRows * zoneW, 1);
+    final lRatio = leftWalk / perZone;
+    final cRatio = centWalk / perZone;
+    final rRatio = rightWalk / (bandRows * (_pidnetW - zoneW * 2)).clamp(1, 1 << 30);
 
     ZoneStatus toStatus(double ratio) {
       if (ratio >= _threshSafe)    { return ZoneStatus.safe; }
@@ -624,27 +859,57 @@ class PidnetService {
     final cStatus = toStatus(cRatio);
     final rStatus = toStatus(rRatio);
 
-    // Rekomendasi zona: pilih yang paling aman, prioritas tengah
-    int recommended = 1; // tengah default
-    if (cStatus == ZoneStatus.safe) {
-      recommended = 1;
-    } else if (lRatio >= rRatio && lStatus != ZoneStatus.danger) {
-      recommended = 0;
-    } else if (rStatus != ZoneStatus.danger) {
-      recommended = 2;
+    final path = _tracePath(sliceCols, sliceRows, sliceH);
+
+    // ── Rekomendasi ──
+    //
+    // Diambil dari sumbu jalur, bukan dari perbandingan tiga rasio. Bedanya
+    // justru pada kasus yang paling penting: tiang di tengah trotoar membuat
+    // ketiga rasio jelek sekaligus, dan perbandingan rasio lalu memilih "yang
+    // paling tidak jelek" - jawaban yang tidak berhubungan dengan letak celah
+    // yang sebenarnya. Sumbu jalur melihat celahnya langsung.
+    var recommended = 1;
+    var shift = 0.0;
+    if (path.isNotEmpty) {
+      // Beberapa langkah di depan, bukan ruas terjauh: ujung jalur yang jauh
+      // paling banyak derainya, dan pengguna toh cuma perlu tahu langkah
+      // berikutnya.
+      final tuju = path[min(4, path.length - 1)];
+      final kiri = tuju.x - tuju.width / 2;
+      final kanan = tuju.x + tuju.width / 2;
+
+      // Pertanyaannya BUKAN "di mana tengah koridor", melainkan "kalau saya
+      // terus lurus, badan saya masih muat?". Dua pertanyaan itu memberi
+      // jawaban berbeda pada trotoar lurus yang lebar, dan yang pertama
+      // memberi jawaban yang salah: sumbu koridor selalu bergeser sedikit
+      // mengikuti titik hilang perspektif, jadi pengguna terus disuruh
+      // bergeser padahal jalannya lurus.
+      const lurus = 0.5;
+      if (kiri + _shoulderFrac <= lurus && lurus <= kanan - _shoulderFrac) {
+        recommended = 1;
+        shift = 0.0;
+      } else {
+        shift = (tuju.x - lurus).clamp(-1.0, 1.0);
+        recommended = tuju.x < 1 / 3
+            ? 0
+            : tuju.x < 2 / 3
+                ? 1
+                : 2;
+      }
     } else {
-      // Semua bahaya - pilih yang paling tinggi rasionya
+      // Tidak ada jalur sama sekali. Rasio dipakai hanya supaya chip zona
+      // tetap menunjuk sisi yang paling lapang, tapi arahannya tetap
+      // "berhenti" - lihat [ZoneAnalysis.ttsMessage].
       if (lRatio >= cRatio && lRatio >= rRatio) {
         recommended = 0;
       } else if (rRatio >= cRatio) {
         recommended = 2;
-      } else {
-        recommended = 1;
       }
     }
 
     debugPrint('[PIDNet] L=${lRatio.toStringAsFixed(2)} '
         'C=${cRatio.toStringAsFixed(2)} R=${rRatio.toStringAsFixed(2)} '
+        'jalur=${path.length} geser=${shift.toStringAsFixed(2)} '
         '→ rec=$recommended  (${inferMs.toStringAsFixed(0)}ms)');
 
     return ZoneAnalysis(
@@ -656,6 +921,8 @@ class PidnetService {
       right:           rStatus,
       recommendedZone: recommended,
       inferenceMs:     inferMs,
+      path:            path,
+      pathShift:       shift,
       doubt:           doubt,
       mask:            small,
       maskWidth:       small == null ? 0 : _maskOutW,

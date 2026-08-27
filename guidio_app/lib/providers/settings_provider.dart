@@ -40,6 +40,35 @@ class SettingsProvider extends ChangeNotifier {
   double get fontScale => _fontScale;
   bool get onboardingDone => _onboardingDone;
   String get serverHost => _serverHost;
+
+  /// Apakah alamat server boleh terbaca di layar.
+  ///
+  /// SENGAJA tidak disimpan ke penyimpanan: tiap kali aplikasi dibuka,
+  /// alamatnya kembali tersembunyi. Nilai ini dipakai saat memotret layar,
+  /// merekam demo, dan presentasi di depan orang banyak - keadaan di mana
+  /// "saya lupa menyembunyikannya lagi" adalah kegagalan yang tidak bisa
+  /// ditarik kembali.
+  ///
+  /// Ditaruh di provider, bukan di `State` masing-masing layar, karena
+  /// alamatnya muncul di DUA tempat: baris ringkasan di Pengaturan dan kolom
+  /// isian di halaman Alamat Server. Dua saklar terpisah berarti pengguna
+  /// menyembunyikannya di satu halaman lalu menemukannya masih terpampang di
+  /// halaman satunya.
+  bool _serverHostVisible = false;
+  bool get serverHostVisible => _serverHostVisible;
+
+  void toggleServerHostVisible() {
+    _serverHostVisible = !_serverHostVisible;
+    notifyListeners();
+  }
+
+  /// Alamat siap tampil: apa adanya kalau boleh terbaca, titik-titik kalau
+  /// tidak.
+  ///
+  /// Panjang penyamarannya TETAP, tidak mengikuti panjang alamat aslinya.
+  /// Titik sebanyak jumlah karakter tetap membocorkan apakah yang tersimpan
+  /// itu `127.0.0.1:8000` atau `192.168.100.20:8000`.
+  String get serverHostMasked => _serverHostVisible ? _serverHost : '••••••••';
   bool get isFontScale200 => _fontScale >= 1.9;
   bool get isLoaded => _prefs != null;
 

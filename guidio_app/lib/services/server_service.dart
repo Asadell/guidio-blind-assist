@@ -2,9 +2,14 @@ import 'dart:typed_data';
 import '../core/net/api_client.dart';
 
 // ── Konfigurasi Server ─────────────────────────────────────────────────────
-// Emulator Android  : 10.0.2.2:8000
-// Device fisik      : ganti lewat Pengaturan → Alamat server (PG-08).
-const String kDefaultServerHost = '10.0.2.2:8000';
+// Bawaan            : 127.0.0.1:8000 (server berjalan di perangkat yang sama)
+// Emulator Android  : 10.0.2.2:8000  - alias emulator untuk localhost laptop
+// Device fisik      : IP laptop di jaringan yang sama, mis. 192.168.1.5:8000
+//
+// Semuanya diganti lewat Pengaturan → Alamat server (PG-08), dan alamat yang
+// pernah disimpan SELALU menang atas nilai bawaan ini - jadi mengubahnya di
+// sini hanya berpengaruh pada pemasangan baru.
+const String kDefaultServerHost = '127.0.0.1:8000';
 // ──────────────────────────────────────────────────────────────────────────
 
 /// Klien untuk **hanya** yang benar-benar butuh server.

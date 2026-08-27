@@ -105,6 +105,24 @@ class NavigationProvider extends ChangeNotifier {
   ui.Image? _segmentationImage;
   ui.Image? get segmentationImage => _segmentationImage;
 
+  /// Sumbu jalur yang disarankan, siap digambar.
+  ///
+  /// Disimpan sebagai record, bukan `PathPoint`, supaya lapisan widget tidak
+  /// perlu mengimpor service segmentasi. Isinya paling banyak 14 titik, jadi
+  /// menyalinnya tiap frame tidak terasa.
+  List<({double x, double y, double width})> _pathPoints = const [];
+  List<({double x, double y, double width})> get pathPoints => _pathPoints;
+
+  /// Zona yang disarankan: 0 kiri, 1 tengah, 2 kanan, -1 tidak ada.
+  ///
+  /// Datang dari `ZoneAnalysis`, yang menghitungnya dari celah jalur yang
+  /// sebenarnya. Layar TIDAK BOLEH menghitung ulang sendiri dari tiga status
+  /// zona - itu yang dulu terjadi, dan hasilnya rekomendasi hilang persis di
+  /// saat paling dibutuhkan, yaitu ketika tidak ada satu zona pun berstatus
+  /// aman.
+  int _recommendedZone = -1;
+  int get recommendedZone => _recommendedZone;
+
   /// Layar menyalakan ini saat hamparan jalur benar-benar terlihat.
   ///
   /// Dipisah dari sekadar "mode navigasi aktif" karena inferensi tetap harus
@@ -630,6 +648,18 @@ class NavigationProvider extends ChangeNotifier {
     _left   = untrusted ? ZoneStatus.unknown : zones.left;
     _center = untrusted ? ZoneStatus.unknown : zones.center;
     _right  = untrusted ? ZoneStatus.unknown : zones.right;
+
+    // Frame yang tidak layak dipercaya tidak boleh menggambar garis jalur
+    // maupun menyarankan zona. Garis hijau yang melintas di layar adalah
+    // ajakan melangkah, dan ajakan itu harus punya dasar yang sama kuatnya
+    // dengan kalimat yang diucapkan.
+    _pathPoints = untrusted
+        ? const []
+        : [
+            for (final t in zones.path)
+              (x: t.x, y: t.y, width: t.width),
+          ];
+    _recommendedZone = untrusted ? -1 : zones.recommendedZone;
 
     // Frame yang tidak layak dipercaya BUKAN pemulihan, walaupun modelnya
     // berjalan tanpa melempar. Ia memutus rentetan, bukan menambahnya.
