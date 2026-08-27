@@ -179,7 +179,73 @@ void main() {
     });
   });
 
-  group('D. Penjaga waktu', () {
+  group('D. Jawaban asisten tidak pernah dibuang karena kadaluarsa', () {
+    // Narasi mode menggambarkan dunia yang bergerak, jadi yang terlambat
+    // memang lebih baik dibuang. Jawaban atas perintah pengguna tidak begitu:
+    // dia menahan tombol, bicara, lalu menunggu. Jawaban yang hilang karena
+    // antreannya kebetulan panjang terdengar sama persis seperti aplikasi yang
+    // tidak mendengar perintahnya, dan dia tidak punya cara membedakannya.
+    //
+    // Kasus nyata yang dijaga di sini: deskripsi suasana Moondream2 bisa
+    // memakan belasan detik, sementara `infoMaxAge` cuma 2 detik. Catatan
+    // kualitas yang mengantre di belakangnya - "fotonya agak gelap" - akan
+    // SELALU jatuh tempo sebelum gilirannya tiba.
+    test('jawaban yang menunggu lebih lama dari infoMaxAge tetap terucap',
+        () async {
+      TtsQueue.instance.infoMaxAge = const Duration(milliseconds: 40);
+
+      await TtsQueue.instance.speak(
+        'Deskripsi panjang.',
+        source: SpeechSource.assistant,
+      );
+      await TtsQueue.instance.speak(
+        'Fotonya agak gelap.',
+        source: SpeechSource.assistant,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await settle();
+
+      expect(spoken, ['Deskripsi panjang.', 'Fotonya agak gelap.'],
+          reason: 'Jawaban asisten kedua dibuang karena dianggap basi. '
+              'Pengguna mendengar deskripsinya tapi tidak pernah diberi tahu '
+              'bahwa fotonya kurang bagus.');
+
+      TtsQueue.instance.infoMaxAge = const Duration(seconds: 2);
+    });
+
+    test('narasi mode yang basi TETAP dibuang', () async {
+      // Sisi lain dari aturan yang sama, dan tanpa ini aturan di atas bisa
+      // dilonggarkan sampai berlaku untuk semua orang. Narasi rintangan yang
+      // sudah lewat harus hilang, bukan menumpuk lalu terucap terlambat.
+      //
+      // Antrean yang kosong langsung mengucapkan item pertama, jadi tidak ada
+      // yang sempat basi. Supaya jalur kadaluarsanya benar-benar dilewati,
+      // ucapan pertama dibuat lambat agar yang kedua harus menunggu.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('flutter_tts'),
+              (call) async {
+        if (call.method == 'speak') {
+          spoken.add(call.arguments as String);
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+        return 1;
+      });
+      TtsQueue.instance.infoMaxAge = const Duration(milliseconds: 60);
+
+      await TtsQueue.instance.speak('Kalimat penahan.');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await TtsQueue.instance.speak('Ada orang di depan.');
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+
+      expect(spoken, isNot(contains('Ada orang di depan.')),
+          reason: 'Narasi mode yang sudah kadaluarsa harus dibuang - '
+              'dunia yang digambarkannya sudah berpindah.');
+
+      TtsQueue.instance.infoMaxAge = const Duration(seconds: 2);
+    });
+  });
+
+  group('E. Penjaga waktu', () {
     test('gerbang tidak pernah tertutup selamanya', () async {
       // Jaring pengaman terakhir. Satu jalur yang lupa menutup sesi akan
       // membuat aplikasi bisu bagi orang yang seluruh antarmukanya adalah

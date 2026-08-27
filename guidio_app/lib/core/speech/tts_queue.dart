@@ -46,6 +46,15 @@ class _QueuedSpeech {
   final Duration maxAge;
   final bool interruptible;
 
+  /// Diucapkan dengan locale en-US, lalu mesin dikembalikan ke Indonesia.
+  ///
+  /// Ada di sini, bukan cuma di [TTSService], supaya deskripsi suasana dari
+  /// Moondream2 bisa lewat antrean seperti ucapan lain. Sebelumnya jalur itu
+  /// memanggil `TTSService.speakEnglish` langsung justru KARENA antrean tidak
+  /// bisa membawa bahasa - dan bypass itu yang membuatnya lolos dari seluruh
+  /// arbitrase di sini.
+  final bool english;
+
   /// Kunci dedup. Dua item dengan kunci sama yang masuk berdekatan
   /// digabung jadi satu, sehingga narasi identik tidak diucapkan dua kali
   /// hanya karena dua frame berturut-turut sepakat.
@@ -58,10 +67,24 @@ class _QueuedSpeech {
     required this.sequence,
     required this.maxAge,
     this.interruptible = true,
+    this.english = false,
     this.dedupKey,
   }) : queuedAt = DateTime.now();
 
-  bool isStale(DateTime now) => now.difference(queuedAt) > maxAge;
+  /// Jawaban asisten TIDAK PERNAH basi.
+  ///
+  /// Narasi mode menggambarkan dunia yang bergerak: "ada orang di depan" yang
+  /// terlambat tiga detik sudah salah, jadi lebih baik dibuang. Jawaban atas
+  /// perintah pengguna tidak begitu. Pengguna menahan tombol, bicara, lalu
+  /// menunggu - dan kalau jawabannya dibuang karena antreannya kebetulan
+  /// panjang, yang dia dapat adalah kesenyapan tanpa penjelasan.
+  ///
+  /// Ini bukan kasus teoretis: deskripsi suasana Moondream2 bisa memakan
+  /// belasan detik, sementara [infoMaxAge] cuma 2 detik. Catatan kualitas yang
+  /// mengantre di belakangnya akan SELALU dibuang tanpa aturan ini - dan
+  /// catatan itu justru yang memberi tahu pengguna bahwa fotonya kurang bagus.
+  bool isStale(DateTime now) =>
+      source == SpeechSource.mode && now.difference(queuedAt) > maxAge;
 }
 
 /// TtsQueue - antrean bertingkat "satu pintu suara".
@@ -105,7 +128,46 @@ class _QueuedSpeech {
 class TtsQueue {
   static final TtsQueue instance = TtsQueue._internal();
   factory TtsQueue() => instance;
-  TtsQueue._internal();
+
+  TtsQueue._internal() {
+    // Penjaga jalur pintas. Lihat catatan di `TTSService.debugQueueBusyReason`.
+    TTSService.debugQueueBusyReason = () {
+      if (_inEngineCall) return null; // panggilan antrean sendiri
+      if (voiceGateClosed) return 'gerbang suara tertutup';
+      if (_speakingTier != null) {
+        return 'sedang mengucapkan ${_speakingTier!.name}';
+      }
+      if (_pending.isNotEmpty) return 'punya ${_pending.length} antrean';
+      return null;
+    };
+  }
+
+  // ── Jalur ke mesin ──────────────────────────────────────────────────────
+  //
+  // SEMUA sentuhan ke [TTSService] dari kelas ini lewat dua metode ini, supaya
+  // penjaga jalur pintas tidak melaporkan antrean kepada dirinya sendiri.
+
+  bool _inEngineCall = false;
+
+  Future<void> _engineSpeak(String text,
+      {bool interrupt = false, bool english = false}) async {
+    _inEngineCall = true;
+    try {
+      await TTSService.instance
+          .speak(text, interrupt: interrupt, english: english);
+    } finally {
+      _inEngineCall = false;
+    }
+  }
+
+  Future<void> _engineStop() async {
+    _inEngineCall = true;
+    try {
+      await TTSService.instance.stop();
+    } finally {
+      _inEngineCall = false;
+    }
+  }
 
   // ── Konfigurasi ──────────────────────────────────────────────────────
 
@@ -214,7 +276,7 @@ class TtsQueue {
     if (_speakingTier == SpeechTier.critical && !_currentInterruptible) return;
 
     _drainGeneration++;
-    await TTSService.instance.stop();
+    await _engineStop();
     _lastUtteranceEndedAt = DateTime.now();
     _speakingTier = null;
     _speakingSource = null;
@@ -329,6 +391,7 @@ class TtsQueue {
     String? dedupKey,
     bool? interruptible,
     Duration? maxAge,
+    bool english = false,
   }) async {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return;
@@ -399,18 +462,19 @@ class TtsQueue {
 
       // Jangan potong Critical lain yang belum selesai.
       if (_speakingTier == SpeechTier.critical && !_currentInterruptible) {
-        _enqueue(trimmed, tier, source, canInterrupt, maxAge, dedupKey: dedupKey);
+        _enqueue(trimmed, tier, source, canInterrupt, maxAge,
+            dedupKey: dedupKey, english: english);
         unawaited(_drain());
         return;
       }
 
-      await TTSService.instance.stop();
+      await _engineStop();
       await _respectMinGap();
 
       _speakingTier = SpeechTier.critical;
       _speakingSource = source;
       _currentInterruptible = canInterrupt;
-      await TTSService.instance.speak(trimmed, interrupt: true);
+      await _engineSpeak(trimmed, interrupt: true, english: english);
       _lastUtteranceEndedAt = DateTime.now();
       _speakingTier = null;
       _speakingSource = null;
@@ -426,13 +490,13 @@ class TtsQueue {
         _speakingTier == SpeechTier.info &&
         _currentInterruptible) {
       _drainGeneration++;
-      await TTSService.instance.stop();
+      await _engineStop();
       await _respectMinGap();
 
       _speakingTier = SpeechTier.warning;
       _speakingSource = source;
       _currentInterruptible = canInterrupt;
-      await TTSService.instance.speak(trimmed, interrupt: true);
+      await _engineSpeak(trimmed, interrupt: true, english: english);
       _lastUtteranceEndedAt = DateTime.now();
       _speakingTier = null;
       _speakingSource = null;
@@ -443,7 +507,8 @@ class TtsQueue {
       return;
     }
 
-    _enqueue(trimmed, tier, source, canInterrupt, maxAge, dedupKey: dedupKey);
+    _enqueue(trimmed, tier, source, canInterrupt, maxAge,
+        dedupKey: dedupKey, english: english);
     unawaited(_drain());
   }
 
@@ -454,6 +519,7 @@ class TtsQueue {
     bool interruptible,
     Duration? maxAge, {
     String? dedupKey,
+    bool english = false,
   }) {
     // Tolak kembar yang MASIH mengantre.
     //
@@ -473,6 +539,7 @@ class TtsQueue {
       source: source,
       sequence: _sequenceCounter++,
       interruptible: interruptible,
+      english: english,
       dedupKey: dedupKey,
       maxAge: maxAge ??
           (tier == SpeechTier.warning ? warningMaxAge : infoMaxAge),
@@ -513,7 +580,7 @@ class TtsQueue {
     }
     _drainGeneration++;
     _pending.removeWhere((q) => q.tier == SpeechTier.info);
-    await TTSService.instance.stop();
+    await _engineStop();
     _lastUtteranceEndedAt = DateTime.now();
     _speakingTier = null;
     _speakingSource = null;
@@ -601,7 +668,7 @@ class TtsQueue {
         await _respectMinGap();
         if (_drainGeneration != myGeneration) break;
 
-        await TTSService.instance.speak(next.message);
+        await _engineSpeak(next.message, english: next.english);
         _lastUtteranceEndedAt = DateTime.now();
 
         if (_drainGeneration == myGeneration) {
@@ -637,7 +704,7 @@ class TtsQueue {
     _recentDedup.clear();
     _warningHeldSince = null;
     _drainGeneration++;
-    await TTSService.instance.stop();
+    await _engineStop();
     _lastUtteranceEndedAt = DateTime.now();
     _speakingTier = null;
     _speakingSource = null;

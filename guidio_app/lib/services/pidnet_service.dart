@@ -301,8 +301,23 @@ class PidnetService {
       'assets/models/pidnet_s_3zona.tflite',
     ];
 
+    // Tiap kandidat dicoba DUA KALI: sekali dengan GPU delegate, sekali murni
+    // CPU. Lihat [_coba] untuk alasannya - urutan ini yang dulu membuat mode
+    // navigasi mati total di perangkat nyata.
+    //
+    // Berkasnya dibaca sekali di sini, bukan di dalam tiap percobaan. Kandidat
+    // yang tidak dibundel (fp16) gagal satu kali dengan satu baris log, bukan
+    // dua kali dengan pesan yang sama.
     for (final aset in kandidat) {
-      if (await _coba(aset)) return true;
+      final Uint8List modelBytes;
+      try {
+        modelBytes = (await rootBundle.load(aset)).buffer.asUint8List();
+      } catch (e) {
+        debugPrint('[PIDNet] $aset tidak ada di bundel: $e');
+        continue;
+      }
+      if (await _coba(aset, modelBytes, gpu: true)) return true;
+      if (await _coba(aset, modelBytes, gpu: false)) return true;
     }
 
     debugPrint('[PIDNet] Tidak ada varian model yang bisa dijalankan.');
@@ -310,28 +325,61 @@ class PidnetService {
     return false;
   }
 
-  Future<bool> _coba(String aset) async {
+  /// Satu percobaan muat: satu berkas, satu pilihan delegate.
+  ///
+  /// ## Kenapa GPU dan CPU harus jadi dua percobaan terpisah
+  ///
+  /// Versi sebelumnya membungkus GPU delegate dalam `try/catch`, tapi yang
+  /// dibungkus cuma PEMBUATAN `InterpreterOptions` - dan itu tidak pernah
+  /// melempar. Yang melempar adalah `Interpreter.fromBuffer`, saat TFLite
+  /// menerapkan delegate ke graf. Jadi `catch`-nya menangkap kegagalan yang
+  /// tidak pernah terjadi, sementara kegagalan yang sungguhan jatuh ke `catch`
+  /// terluar dan menghapus seluruh kandidat itu. Tidak ada jalan mundur ke CPU
+  /// sama sekali.
+  ///
+  /// Ini bukan skenario teoretis. Di log perangkat:
+  ///
+  ///     W/tflite: Attempting to use a delegate that only supports
+  ///               static-sized tensors with a graph that has dynamic-sized
+  ///               tensors (tensor#9 is a dynamic-sized tensor).
+  ///     [PIDNet] assets/models/pidnet_s_3zona.tflite tidak bisa dipakai:
+  ///              Invalid argument(s): Unable to create interpreter.
+  ///     [Nav] Model on-device gagal dimuat: PIDNet segmentasi jalur
+  ///
+  /// Modelnya sendiri sehat: 73 dari 218 tensornya bersumbu batch dinamis
+  /// (`shape_signature` dimulai -1) karena `scripts/07_export_onnx.py` di repo
+  /// `vinara-sidewalk-cv2` selalu menandai `{"input": {0: "batch"}}`. Runtime
+  /// CPU menerima itu tanpa keluhan - makanya pengujian Python di
+  /// `test/navigation/` lulus - tapi GPU delegate menolak graf dengan tensor
+  /// dinamis, dan penolakannya menggagalkan pembuatan interpreter.
+  ///
+  /// Perbaikan tuntasnya ada di sisi ekspor: batch dipatok 1 supaya tidak ada
+  /// tensor dinamis sama sekali, lalu GPU delegate bisa dipakai lagi. Sampai
+  /// itu terjadi, jatuh ke CPU jauh lebih baik daripada mode navigasi yang
+  /// tidak pernah menyala.
+  Future<bool> _coba(String aset, Uint8List modelBytes,
+      {required bool gpu}) async {
+    // Di luar Android tidak ada GpuDelegateV2 yang relevan, jadi percobaan
+    // GPU-nya dilewati alih-alih dijalankan dua kali dengan hasil sama.
+    if (gpu && !Platform.isAndroid) return false;
+
     Interpreter? interpreter;
     try {
-      final bd = await rootBundle.load(aset);
-      final modelBytes = bd.buffer.asUint8List();
-
-      // GPU delegate - coba aktifkan di Android; jika gagal, CPU saja
-      InterpreterOptions options;
-      try {
-        if (Platform.isAndroid) {
-          options = InterpreterOptions()
-            ..addDelegate(GpuDelegateV2())
-            ..threads = 2;
-        } else {
-          options = InterpreterOptions()..threads = 2;
-        }
-      } catch (_) {
-        options = InterpreterOptions()..threads = 2;
-        debugPrint('[PIDNet] GPU delegate gagal, pakai CPU');
-      }
+      final options = InterpreterOptions()..threads = 2;
+      if (gpu) options.addDelegate(GpuDelegateV2());
 
       interpreter = Interpreter.fromBuffer(modelBytes, options: options);
+
+      // Sumbu batch model ini dinamis. Interpreter memang memakai [1, ...]
+      // sebagai bentuk bawaan, tapi mematoknya di sini membuat alokasi
+      // tensornya pasti dan menghilangkan satu sumber kegagalan diam-diam.
+      try {
+        interpreter.resizeInputTensor(0, interpreter.getInputTensor(0).shape);
+        interpreter.allocateTensors();
+      } catch (_) {
+        // Sebagian build menolak resize ke bentuk yang sama persis. Tidak
+        // masalah: bentuk bawaannya memang sudah yang kita mau.
+      }
 
       // Deteksi input format: BHWC atau BCHW
       final inputShape = interpreter.getInputTensor(0).shape;
@@ -353,7 +401,7 @@ class PidnetService {
       _loaded = true;
       debugPrint('[PIDNet] Model siap: $aset '
           '(${(modelBytes.length / 1024).toStringAsFixed(0)} KB, '
-          '${bhwc ? "BHWC" : "BCHW"})');
+          '${bhwc ? "BHWC" : "BCHW"}, ${gpu ? "GPU" : "CPU"})');
       return true;
     } catch (e) {
       // Varian ini tidak bisa dipakai di perangkat ini. Interpreter-nya
@@ -365,7 +413,8 @@ class PidnetService {
       } catch (_) {
         // Menutup yang gagal disiapkan boleh saja ikut gagal.
       }
-      debugPrint('[PIDNet] $aset tidak bisa dipakai: $e');
+      debugPrint('[PIDNet] $aset lewat ${gpu ? "GPU" : "CPU"} '
+          'tidak bisa dipakai: $e');
       _loaded = false;
       return false;
     }

@@ -651,60 +651,119 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
               actionLabel: 'Izinkan kamera',
               onAction: _requestPermission,
             )
-          else if (nav.phase == NavPhase.loadingModels)
+          // Slot atas: indikator zona, dan kartu langkah kalau sedang menuju
+          // suatu tempat. Satu `Positioned`, satu kolom.
+          //
+          // Dua masalah yang diperbaiki di sini. Pertama, offset kartu langkah
+          // dulu MENYALIN ULANG tinggi indikator zona
+          // (`+ (hasCriticalObstacle ? 40 : 52) + s3`); dua tempat yang harus
+          // diubah bersamaan, dan yang satu pasti terlupa. Kedua, cabang
+          // `loadingModels` memakai rumus offset yang berbeda sendiri
+          // (`+ modeBadgeHeight + s4`, tanpa `modeBadgeTopOffset`), jadi
+          // indikatornya MENGABAIKAN tinggi banner - saat banner "Server tidak
+          // terhubung" muncul, chip zonanya naik menimpa lencana mode, lalu
+          // melompat turun begitu model selesai dimuat.
+          else
             Positioned(
-              top: topInset + AppSizes.modeBadgeHeight + AppSpacing.s4,
-              left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-              child: const ZoneIndicator(left: ZoneStatus.unknown, center: ZoneStatus.unknown, right: ZoneStatus.unknown),
-            )
-          else ...[
-            Positioned(
-              top: topInset + modeBadgeTopOffset(hasBanner: hasBanner) + AppSizes.modeBadgeHeight + AppSpacing.s3,
-              left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-              child: SizedBox(
-                height: hasCriticalObstacle ? 40 : 52,
-                child: ZoneIndicator(
-                  left: nav.left, center: nav.center, right: nav.right,
-                  recommended: _recommendedZone(nav),
-                ),
+              top: topInset +
+                  modeBadgeTopOffset(hasBanner: hasBanner) +
+                  AppSizes.modeBadgeHeight +
+                  AppSpacing.s3,
+              left: AppSpacing.screenMargin,
+              right: AppSpacing.screenMargin,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (nav.phase == NavPhase.loadingModels)
+                    const ZoneIndicator(
+                      left: ZoneStatus.unknown,
+                      center: ZoneStatus.unknown,
+                      right: ZoneStatus.unknown,
+                    )
+                  else ...[
+                    SizedBox(
+                      height: hasCriticalObstacle ? 40 : 52,
+                      child: ZoneIndicator(
+                        left: nav.left, center: nav.center, right: nav.right,
+                        recommended: _recommendedZone(nav),
+                      ),
+                    ),
+                    if (nav.isNavigating && nav.currentStep != null) ...[
+                      const SizedBox(height: AppSpacing.s3),
+                      _NavCard(
+                        step: nav.currentStep!,
+                        onStop: () =>
+                            context.read<NavigationProvider>().stopNavigation(),
+                      ),
+                    ],
+                  ],
+                ],
               ),
             ),
-            if (nav.isNavigating && nav.currentStep != null)
-              Positioned(
-                top: topInset + modeBadgeTopOffset(hasBanner: hasBanner) + AppSizes.modeBadgeHeight + AppSpacing.s3 + (hasCriticalObstacle ? 40 : 52) + AppSpacing.s3,
-                left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-                child: _NavCard(step: nav.currentStep!, onStop: () => context.read<NavigationProvider>().stopNavigation()),
-              ),
-            if (nav.pothole)
-              Positioned(
-                left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-                bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s6 + 100,
-                child: AlertCard(tier: AlertTier.warning, title: 'Permukaan tidak rata', description: 'Sekitar ${nav.potholeSteps.toStringAsFixed(0)} langkah di depan'),
-              ),
-            if (obstacles.isNotEmpty)
-              Positioned(
-                left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
-                bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
-                child: AlertCardStack(
-                  cards: obstacles
-                      .map((h) => _ExpiringDetectionCard(
-                            key: ValueKey(cardIdentity(h.detection)),
-                            held: h,
-                          ))
-                      .toList(),
-                ),
-              ),
 
-            // Legenda warna hamparan. Muncul hanya saat ada yang digambar,
-            // supaya tidak menjanjikan sesuatu yang belum terlihat.
-            if (nav.segmentationImage != null)
+          // Slot bawah hanya berlaku saat modelnya sudah siap - sebelum itu
+          // belum ada rintangan maupun hamparan untuk ditampilkan.
+          if (_hasCameraPermission && nav.phase != NavPhase.loadingModels) ...[
+            // Slot bawah: legenda, peringatan permukaan, dan kartu rintangan
+            // ditumpuk dalam SATU kolom.
+            //
+            // Sebelumnya ketiganya adalah tiga `Positioned` terpisah yang
+            // saling menebak tinggi tetangganya lewat angka ajaib: kartu
+            // permukaan duduk di `+ s6 + 100` dan legendanya di
+            // `+ s6 + (obstacles.isNotEmpty ? 100 : 0)`. Angka 100 itu tebakan
+            // tinggi tumpukan rintangan, dan tebakan itu meleset begitu ada
+            // DUA kartu (`AlertCardStack` menampilkan sampai dua). Tumpukannya
+            // tumbuh ke atas melewati 100, menutupi kartu "Permukaan tidak
+            // rata", dan chip legenda mendarat tepat di atas chip jarak
+            // "70 cm" milik kartu teratas.
+            //
+            // Kolom membuat tingginya dihitung, bukan ditebak. Deskripsi dua
+            // baris, teks yang lebih panjang, atau font scale 200% tidak lagi
+            // membuat satu kartu memakan kartu lain.
+            //
+            // Urutannya dari bawah: rintangan paling dekat ke ibu jari,
+            // peringatan permukaan di atasnya, legenda paling atas karena ia
+            // cuma kunci warna.
+            if (nav.pothole || obstacles.isNotEmpty || nav.segmentationImage != null)
               Positioned(
+                left: AppSpacing.screenMargin,
                 right: AppSpacing.screenMargin,
-                bottom: bottomInset +
-                    AppSizes.bottomActionBarHeight +
-                    AppSpacing.s6 +
-                    (obstacles.isNotEmpty ? 100 : 0),
-                child: const SegmentationLegend(),
+                bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Legenda warna hamparan. Muncul hanya saat ada yang
+                    // digambar, supaya tidak menjanjikan sesuatu yang belum
+                    // terlihat.
+                    if (nav.segmentationImage != null) ...[
+                      const Align(
+                        alignment: Alignment.centerRight,
+                        child: SegmentationLegend(),
+                      ),
+                      const SizedBox(height: AppSpacing.s2),
+                    ],
+                    if (nav.pothole) ...[
+                      AlertCard(
+                        tier: AlertTier.warning,
+                        title: 'Permukaan tidak rata',
+                        description:
+                            'Sekitar ${nav.potholeSteps.toStringAsFixed(0)} langkah di depan',
+                      ),
+                      const SizedBox(height: AppSpacing.s2),
+                    ],
+                    if (obstacles.isNotEmpty)
+                      AlertCardStack(
+                        cards: obstacles
+                            .map((h) => _ExpiringDetectionCard(
+                                  key: ValueKey(cardIdentity(h.detection)),
+                                  held: h,
+                                ))
+                            .toList(),
+                      ),
+                  ],
+                ),
               ),
           ],
 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import '../core/speech/tts_queue.dart';
 import 'package:flutter/semantics.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/index.dart';
 import '../services/server_service.dart';
-import '../services/tts_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 
@@ -64,8 +64,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
         _state = ServerFieldState.invalid;
         _latencyMs = null;
       });
-      await TTSService.instance.speak(
+      await TtsQueue.instance.speak(
         'Format alamat salah. Alamat butuh titik dua dan nomor port. Contoh benar: 10.0.2.2 titik dua 8000.',
+        source: SpeechSource.assistant,
       );
       return;
     }
@@ -87,8 +88,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
         _state = ServerFieldState.valid;
         _latencyMs = ms;
       });
-      await TTSService.instance.speak(
+      await TtsQueue.instance.speak(
         'Terhubung. Waktu tempuh $ms milidetik. Tekan Simpan alamat untuk memakainya.',
+        source: SpeechSource.assistant,
       );
     } else {
       // PG-08e - kegagalan uji tidak boleh diam-diam mencabut server yang
@@ -97,8 +99,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
         _state = ServerFieldState.failed;
         _latencyMs = null;
       });
-      await TTSService.instance.speak(
+      await TtsQueue.instance.speak(
         'Gagal terhubung. Alamat lama, $_savedHost, tetap dipakai. Periksa alamatnya lalu uji lagi.',
+        source: SpeechSource.assistant,
       );
     }
   }
@@ -109,7 +112,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
     if (!mounted) return;
     // Konfirmasi diucapkan SESUDAH tersimpan - bagian 4.1 berlaku untuk semua
     // konfirmasi, bukan hanya ganti mode.
-    await TTSService.instance.speak('Alamat server tersimpan.');
+    await TtsQueue.instance.speak('Alamat server tersimpan.', source: SpeechSource.assistant);
     if (mounted) Navigator.of(context).pop();
   }
 

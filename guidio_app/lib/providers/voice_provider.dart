@@ -11,7 +11,6 @@ import '../providers/detection_provider.dart';
 import '../providers/find_object_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/server_service.dart';
-import '../services/tts_service.dart';
 
 /// VoiceState - bagian 11 IMPLEMENTASI.md (AS-01..AS-25). Granular dari 4
 /// fase asli (idle/listening/processing/responding) supaya tiap sub-state
@@ -654,7 +653,14 @@ class VoiceProvider extends ChangeNotifier {
     // Tidak ada pembacaan panjang yang berjalan. Perlakukan "jeda" sebagai
     // permintaan menghentikan suara - itu maksud yang paling mungkin.
     if (pause) {
-      await TTSService.instance.stop();
+      // Lewat antrean, BUKAN `TTSService.stop()` langsung.
+      //
+      // Menghentikan mesin di belakang punggung antrean menyisakan
+      // `_pending` yang masih berisi dan gerbang suara yang masih tertutup:
+      // ucapan yang sedang berjalan terpotong, lalu antrean langsung
+      // melanjutkan ke item berikutnya - yang justru berlawanan dengan
+      // maksud "jeda". `TtsQueue.stop()` mengosongkan keduanya sekaligus.
+      await TtsQueue.instance.stop();
       _setState(VoiceState.responded);
       return;
     }
@@ -869,8 +875,28 @@ class VoiceProvider extends ChangeNotifier {
       // aba-aba, pengguna tunanetra mendengar suaranya tiba-tiba berganti
       // bahasa di tengah aplikasi yang seluruhnya Bahasa Indonesia, dan
       // kesimpulan pertama yang wajar adalah aplikasinya rusak.
-      await TTSService.instance.speak('Dalam bahasa Inggris.');
-      await TTSService.instance.speakEnglish(description);
+      // Ketiganya lewat ANTREAN, bukan langsung ke mesin.
+      //
+      // Dulu jalur ini memanggil `TTSService` langsung karena antrean belum
+      // bisa membawa bahasa. Akibatnya deskripsi sepanjang belasan detik
+      // duduk di luar seluruh arbitrase: narasi mode yang mengantre di
+      // belakangnya kedaluwarsa lalu dibuang diam-diam, gerbang suara lepas
+      // lebih awal karena antreannya tampak kosong, dan peringatan bahaya
+      // memotong deskripsinya lewat `stop()` yang membatalkan SISA rantainya
+      // sekalian - kalimat kedua dan ketiga hilang tanpa jejak.
+      //
+      // Sebagai `assistant`, ketiganya kebal gerbang, kebal kedaluwarsa, dan
+      // menahan gerbang sampai selesai. Bahaya kritis tetap boleh memotong,
+      // tapi sekarang sisanya tetap di antrean dan tetap terucap sesudahnya.
+      await TtsQueue.instance.speak(
+        'Dalam bahasa Inggris.',
+        source: SpeechSource.assistant,
+      );
+      await TtsQueue.instance.speak(
+        description,
+        source: SpeechSource.assistant,
+        english: true,
+      );
       await _speakQualityNote(scene);
     } on CaptureRejected catch (rejected) {
       // Foto ditolak sebelum dikirim. Instruksi perbaikannya sudah dibacakan
@@ -911,7 +937,10 @@ class VoiceProvider extends ChangeNotifier {
   /// apakah mau memfoto ulang. Dia tidak punya cara lain memverifikasinya.
   Future<void> _speakQualityNote(SceneDescription scene) async {
     if (scene.message.trim().isEmpty) return;
-    await TTSService.instance.speak(scene.message);
+    await TtsQueue.instance.speak(
+      scene.message,
+      source: SpeechSource.assistant,
+    );
   }
 
 
@@ -994,7 +1023,15 @@ class VoiceProvider extends ChangeNotifier {
   /// AS-20 - pengguna menekan tombol Bicara lagi saat Vinara masih bicara:
   /// memotong tanpa nada khusus, langsung mulai dengar lagi.
   Future<void> interruptAndListenAgain() async {
-    await TTSService.instance.stop();
+    // `TtsQueue.interruptByUser()`, bukan `TTSService.stop()`.
+    //
+    // Bedanya satu hal, dan hal itu soal keselamatan: antrean menolak
+    // memotong Critical yang ditandai tidak bisa dipotong. "Awas, lubang di
+    // depan" yang terpenggal jadi "awas, lu-" lebih buruk daripada tidak ada,
+    // dan pengguna tunanetra tidak punya layar untuk memeriksa sisanya.
+    // `TTSService.stop()` tidak tahu apa-apa soal tier, jadi ia memotong
+    // semuanya tanpa kecuali.
+    await TtsQueue.instance.interruptByUser();
     await startListening();
   }
 

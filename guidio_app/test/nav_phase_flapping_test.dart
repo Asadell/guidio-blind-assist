@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:guidio_app/core/speech/tts_queue.dart' show SpeechTier;
 import 'package:guidio_app/providers/navigation_provider.dart';
 import 'package:guidio_app/services/pidnet_service.dart';
 import 'package:guidio_app/widgets/zone_indicator.dart' show ZoneStatus;

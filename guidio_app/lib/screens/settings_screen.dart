@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import '../core/speech/tts_queue.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/index.dart';
-import '../services/tts_service.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 import 'onboarding_screen.dart';
@@ -17,8 +17,9 @@ class SettingsScreen extends StatelessWidget {
   /// memberi tahu, tapi aksinya **diulang di dasar layar**: aksi yang hanya
   /// ada di kartu atas memaksa pengguna low vision menjangkau zona merah.
   Future<void> _manageStorage() async {
-    await TTSService.instance.speak(
+    await TtsQueue.instance.speak(
       'Membuka Pengaturan ponsel. Cari menu Penyimpanan, lalu hapus cache Vinara.',
+      source: SpeechSource.assistant,
     );
     await openAppSettings();
   }
@@ -46,8 +47,9 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => TTSService.instance.speak(
+                  onPressed: () => TtsQueue.instance.speak(
                     'Motor di sebelah kanan atas, sekitar dua koma delapan meter.',
+                    source: SpeechSource.assistant,
                   ),
                   child: const Text('Coba dengar'),
                 ),

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../core/net/api_client.dart';
 import '../core/speech/tts_queue.dart' show SpeechTier, TtsQueue;
@@ -116,7 +117,7 @@ class NavigationProvider extends ChangeNotifier {
     if (_wantsSegmentationOverlay == value) return;
     _wantsSegmentationOverlay = value;
     if (!value) _disposeSegmentationImage();
-    notifyListeners();
+    _notify();
   }
 
   /// Satu konversi mask dalam penerbangan.
@@ -151,7 +152,7 @@ class NavigationProvider extends ChangeNotifier {
       }
       _segmentationImage?.dispose();
       _segmentationImage = img;
-      notifyListeners();
+      _notify();
     } catch (e) {
       debugPrint('[Nav] konversi mask gagal: $e');
     } finally {
@@ -186,7 +187,7 @@ class NavigationProvider extends ChangeNotifier {
     if (_cameraTooDark == tooDark && _cameraMisaimed == misaimed) return;
     _cameraTooDark = tooDark;
     _cameraMisaimed = misaimed;
-    notifyListeners();
+    _notify();
   }
 
   /// Status loading model on-device.
@@ -271,14 +272,14 @@ class NavigationProvider extends ChangeNotifier {
       case PaceAction.dropCocoLayer:
         debugPrint('[Nav] Perangkat lambat (${_pace.emaMs.toStringAsFixed(0)} ms), '
             'lapis COCO dimatikan otomatis.');
-        notifyListeners();
+        _notify();
       case PaceAction.warnUser:
         _speak(
           'Ponsel ini memproses jalur lebih lambat dari biasanya. '
           'Jalan lebih pelan, arahan bisa datang terlambat.',
           tier: SpeechTier.warning,
         );
-        notifyListeners();
+        _notify();
       case PaceAction.none:
         break;
     }
@@ -315,7 +316,7 @@ class NavigationProvider extends ChangeNotifier {
   void beginNavigation() {
     _phase = NavPhase.loadingModels;
     _left = _center = _right = ZoneStatus.unknown;
-    notifyListeners();
+    _notify();
 
     if (!_modelsReady && !_modelsLoading) {
       _loadOnDeviceModels();
@@ -398,20 +399,24 @@ class NavigationProvider extends ChangeNotifier {
         'Mode Deteksi Objek tetap bisa memperingatkan rintangan.',
         tier: SpeechTier.critical,
       );
-      notifyListeners();
+      _notify();
       return;
     }
 
     debugPrint('[Nav] Empat lapis on-device siap: PIDNet + YOLO FP16 '
         '+ SSD COCO + YOLO INT8.');
     _speak('Panduan jalur aktif.', tier: SpeechTier.info);
-    notifyListeners();
+    _notify();
     _startLoop();
   }
 
   void _startLoop() {
     _loopTimer?.cancel();
     _pacer.reset();
+    // Sesi baru berhak atas kesempatan baru: isolate yang mati tadi dibuat
+    // ulang saat modelnya dimuat lagi, jadi menghukumnya selamanya berarti
+    // membuang lapis yang mungkin sudah sehat.
+    _lapisMati.clear();
     _candidateMessage = '';
     _candidateStreak = 0;
     // Pengawas kecepatan mulai dari nol tiap sesi: ponsel yang tadi lambat
@@ -430,6 +435,62 @@ class NavigationProvider extends ChangeNotifier {
     _loopTimer?.cancel();
     _loopTimer = null;
     _pacer.reset();
+  }
+
+  // ── Penjaga lapis model ───────────────────────────────────────────────────
+  //
+  // `Future.wait` di [_tickOnDevice] menunggu KEEMPAT lapis. Satu lapis yang
+  // tidak pernah menjawab karena itu bukan sekadar lapis yang hilang - ia
+  // membekukan seluruh loop navigasi, selamanya, tanpa satu pun baris log.
+  //
+  // Dan itu bisa terjadi. `IsolateInterpreter` dari tflite_flutter 0.12.1
+  // menjalankan inferensi di dalam `await for` TANPA try/catch
+  // (`isolate_interpreter.dart:100`). Kalau `TfLiteInterpreterInvoke`
+  // mengembalikan error, exception-nya tidak tertangkap, isolate-nya mati,
+  // `idle` tidak pernah dikirim, dan `_wait()` di sisi pemanggil menggantung
+  // selamanya. Persis yang terekam di log perangkat:
+  //
+  //     E/tflite : Input tensor 207 lacks data
+  //     E/flutter: Unhandled exception: Bad state: failed precondition
+  //     #1 Interpreter.invoke (tflite_flutter/src/interpreter.dart:164)
+  //     #3 IsolateInterpreter._mainIsolate
+  //
+  // Setelah baris itu, satu hasil PIDNet masih sempat tercetak, lalu seluruh
+  // aplikasi diam total sampai ditutup. Kameranya jalan, TTS-nya jalan, tapi
+  // navigasinya sudah mati sejak tick pertama.
+  //
+  // Ini bukan perbaikan untuk penyebab invoke-nya gagal. Ini yang memastikan
+  // satu lapis yang gagal tidak lagi menjatuhkan tiga lapis yang sehat.
+
+  /// Batas tunggu satu lapis dalam satu tick.
+  ///
+  /// Longgar dengan sengaja. PIDNet di CPU terukur 1305 ms di perangkat uji,
+  /// jadi batas yang ketat akan membunuh lapis yang sebenarnya hidup, hanya
+  /// lambat. Yang dicari di sini bukan lapis lambat, melainkan lapis yang
+  /// TIDAK AKAN PERNAH menjawab.
+  static const _batasLapis = Duration(seconds: 4);
+
+  /// Lapis yang isolate-nya sudah terbukti mati. Tidak dipanggil lagi sampai
+  /// mode ini dimasuki ulang.
+  ///
+  /// Kenapa tidak sekadar mengandalkan timeout tiap tick: sesudah isolate-nya
+  /// mati, panggilan BERIKUTNYA ke `runForMultipleInputs` justru langsung
+  /// kembali tanpa menjalankan apa pun (`state` tersangkut di `loading`), dan
+  /// pemanggil lalu membaca buffer keluaran LAMA seolah itu hasil frame ini.
+  /// Untuk lapis rintangan, itu berarti kotak hantu yang menempel di layar dan
+  /// peringatan atas benda yang sudah tidak ada. Lebih jujur berhenti memakai
+  /// lapis itu sama sekali.
+  final Set<String> _lapisMati = {};
+
+  Future<T> _lapis<T>(String nama, Future<T> Function() jalankan, T saatGagal) {
+    if (_lapisMati.contains(nama)) return Future.value(saatGagal);
+    return jalankan().timeout(_batasLapis, onTimeout: () {
+      _lapisMati.add(nama);
+      debugPrint('[Nav] Lapis "$nama" tidak menjawab dalam '
+          '${_batasLapis.inSeconds} detik. Isolate-nya kemungkinan mati karena '
+          'inferensi gagal - lapis ini dilewati sampai mode dimasuki ulang.');
+      return saatGagal;
+    });
   }
 
   Future<void> _tick() async {
@@ -477,27 +538,43 @@ class NavigationProvider extends ChangeNotifier {
       // bingkai TEGAK yang sama dengan YOLO custom, sehingga kotaknya bisa
       // langsung dibandingkan dan digambar tanpa konversi tambahan.
       final results = await Future.wait([
-        PidnetService.instance.analyze(
-          tensors.pidnet,
-          // Mask hanya diminta kalau memang akan digambar.
-          withMask: _wantsSegmentationOverlay,
+        _lapis<ZoneAnalysis?>(
+          'PIDNet',
+          () => PidnetService.instance.analyze(
+            tensors.pidnet,
+            // Mask hanya diminta kalau memang akan digambar.
+            withMask: _wantsSegmentationOverlay,
+          ),
+          null,
         ),
-        YoloNavigasiService.instance.detect(
-          tensors.yolo,
-          tensors.uprightWidth,
-          tensors.uprightHeight,
+        _lapis<List<Detection>>(
+          'YOLO FP16',
+          () => YoloNavigasiService.instance.detect(
+            tensors.yolo,
+            tensors.uprightWidth,
+            tensors.uprightHeight,
+          ),
+          const [],
         ),
         if (_cocoReady)
-          TFLiteService.instance.runInference(frame)
+          _lapis<List<Detection>>(
+            'SSD COCO',
+            () => TFLiteService.instance.runInference(frame),
+            const [],
+          )
         else
           Future.value(const <Detection>[]),
         // Lapis keempat: YOLO INT8 memakai tensor NHWC yang sama dengan
         // model FP16 (ditranspose ke NCHW di dalam service).
         if (_int8Ready)
-          YoloNavInt8Service.instance.detect(
-            tensors.yolo,
-            tensors.uprightWidth,
-            tensors.uprightHeight,
+          _lapis<List<Detection>>(
+            'YOLO INT8',
+            () => YoloNavInt8Service.instance.detect(
+              tensors.yolo,
+              tensors.uprightWidth,
+              tensors.uprightHeight,
+            ),
+            const [],
           )
         else
           Future.value(const <Detection>[]),
@@ -590,7 +667,7 @@ class NavigationProvider extends ChangeNotifier {
     final guidance = _composeGuidance(zones, obstacles);
     _emitGuidance(guidance.$1, guidance.$2,
         takeover: guidance.$3, identity: guidance.$4);
-    notifyListeners();
+    _notify();
   }
 
   /// Susun satu pesan untuk frame ini: rintangan kritis didahulukan, lalu
@@ -796,7 +873,7 @@ class NavigationProvider extends ChangeNotifier {
       _phase = NavPhase.degraded;
       _announcePhase(
           'Jalur sulit dibaca, arahan mungkin tertinggal.', SpeechTier.warning);
-      notifyListeners();
+      _notify();
       return;
     }
 
@@ -808,7 +885,7 @@ class NavigationProvider extends ChangeNotifier {
         'Periksa apakah kamera tertutup, atau cari tempat yang lebih terang.',
         SpeechTier.critical,
       );
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -816,7 +893,7 @@ class NavigationProvider extends ChangeNotifier {
   void simulateIncomingCall() {
     _phase = NavPhase.paused;
     _stopLoop();
-    notifyListeners();
+    _notify();
   }
 
   void endSimulatedCall() {
@@ -824,7 +901,7 @@ class NavigationProvider extends ChangeNotifier {
     // NV-14b - status jalur SEKARANG, bukan yang tadi. Karena itu loop-nya
     // dijalankan lagi lebih dulu dan ringkasannya menyusul dari frame baru.
     _speak('Navigasi lanjut. ${_summaryPhrase()}', tier: SpeechTier.info);
-    notifyListeners();
+    _notify();
     _startLoop();
   }
 
@@ -893,13 +970,13 @@ class NavigationProvider extends ChangeNotifier {
     if (_phase != NavPhase.active) return;
     _phase = NavPhase.paused;
     _stopLoop();
-    notifyListeners();
+    _notify();
   }
 
   void resumeFromPause() {
     if (_phase != NavPhase.paused) return;
     _phase = NavPhase.active;
-    notifyListeners();
+    _notify();
     _startLoop();
   }
 
@@ -910,7 +987,7 @@ class NavigationProvider extends ChangeNotifier {
     _steps = [
       NavigationStep(instruction: 'Navigasi ke $dest belum tersedia. GPS akan ditambahkan.', distanceM: 0),
     ];
-    notifyListeners();
+    _notify();
     _speak('Tujuan disimpan: $dest. Fitur navigasi GPS segera hadir, arahan jalur dan rintangan tetap aktif.', tier: SpeechTier.info);
   }
 
@@ -931,16 +1008,59 @@ class NavigationProvider extends ChangeNotifier {
     // sini akan mematikan deteksi rintangan di mode itu tanpa satu pun tanda.
     _cocoReady     = false;
     _stopLoop();
-    notifyListeners();
+    _notify();
   }
 
   void saveFavorite(String name, String destination) {
     _favorites[name] = destination;
+    _notify();
+  }
+
+  /// Lihat [_notify]. Ditandai lebih dulu supaya pemberitahuan yang tertunda
+  /// tidak mendarat di provider yang sudah mati.
+  bool _disposed = false;
+
+  /// [notifyListeners] yang aman dipanggil dari mana saja, termasuk dari
+  /// `dispose()` sebuah layar dan dari callback asinkron yang selesai setelah
+  /// modenya ditutup.
+  ///
+  /// Bug yang sama pernah terlihat di log lewat `DetectionProvider`:
+  /// `NavigasiScreen.dispose()` memanggil [stopNavigation] SAAT fase build,
+  /// pohon widget sedang terkunci, dan `notifyListeners()` melempar
+  /// "setState() or markNeedsBuild() called when widget tree was locked".
+  /// Fungsinya tidak rusak, tapi tiap kali mode ditutup satu exception merah
+  /// masuk ke log - dan log yang berisik menenggelamkan kegagalan sungguhan.
+  /// True kalau pohon widget sedang terkunci (fase build/layout/paint).
+  ///
+  /// `SchedulerBinding.instance` MELEMPAR kalau binding-nya belum ada, dan itu
+  /// keadaan yang normal: `test/nav_phase_flapping_test.dart` dan kawan-kawan
+  /// memakai `test()` biasa, bukan `testWidgets()`, jadi tidak pernah ada
+  /// binding sama sekali. Di situ tidak ada pohon widget yang bisa terkunci,
+  /// jadi jawabannya false dan pemberitahuannya dikirim langsung.
+  bool get _pohonTerkunci {
+    try {
+      return SchedulerBinding.instance.schedulerPhase ==
+          SchedulerPhase.persistentCallbacks;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _notify() {
+    if (_disposed) return;
+    if (_pohonTerkunci) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (_disposed) return;
+        notifyListeners();
+      });
+      return;
+    }
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _stopLoop();
     // `ui.Image` memegang memori di luar heap Dart; pengumpul sampah tidak
     // membersihkannya.

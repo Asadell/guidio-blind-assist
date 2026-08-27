@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../core/net/api_client.dart' show FramePacer;
 import '../core/speech/tts_queue.dart';
@@ -74,6 +75,63 @@ class DetectionProvider extends ChangeNotifier {
   DateTime? _lastInferenceAt;
   DateTime? get lastInferenceAt => _lastInferenceAt;
 
+  /// True setelah [dispose]. ChangeNotifier melempar kalau [notifyListeners]
+  /// dipanggil sesudah itu, dan [_notify] bisa menunda panggilannya ke frame
+  /// berikutnya - jadi penanda ini yang memastikan penundaan itu tidak mendarat
+  /// di provider yang sudah mati.
+  bool _disposed = false;
+
+  /// [notifyListeners] yang aman dipanggil dari mana saja, termasuk dari
+  /// `dispose()` sebuah layar.
+  ///
+  /// Masalah yang diperbaiki, dari log perangkat:
+  ///
+  ///     The following assertion was thrown while dispatching notifications
+  ///     for DetectionProvider:
+  ///     setState() or markNeedsBuild() called when widget tree was locked.
+  ///     #4  DetectionProvider.stopRealtime
+  ///
+  /// Runtutannya: pengguna keluar dari mode Tuntun, Navigator melepas
+  /// layarnya SAAT fase build, `TuntunScreen.dispose()` memanggil
+  /// [stopRealtime], dan `notifyListeners()` mencoba menandai widget lain
+  /// perlu dibangun ulang. Di fase itu pohon widget terkunci, jadi Flutter
+  /// melempar. Tidak ada yang rusak secara fungsional - itu sebabnya bug ini
+  /// bertahan lama - tapi setiap kali mode ditutup, satu exception merah
+  /// dituliskan ke log, dan log yang berisik membuat kegagalan sungguhan
+  /// (misalnya `[PIDNet] Unable to create interpreter`) jadi mudah terlewat.
+  ///
+  /// Selama fase `persistentCallbacks` (build/layout/paint) pemberitahuannya
+  /// ditunda ke sesudah frame selesai. Di luar fase itu - yang berlaku untuk
+  /// hampir semua panggilan, karena datangnya dari callback kamera - tidak ada
+  /// penundaan sama sekali.
+  /// True kalau pohon widget sedang terkunci (fase build/layout/paint).
+  ///
+  /// `SchedulerBinding.instance` MELEMPAR kalau binding-nya belum ada, dan itu
+  /// keadaan yang normal: `test/nav_phase_flapping_test.dart` dan kawan-kawan
+  /// memakai `test()` biasa, bukan `testWidgets()`, jadi tidak pernah ada
+  /// binding sama sekali. Di situ tidak ada pohon widget yang bisa terkunci,
+  /// jadi jawabannya false dan pemberitahuannya dikirim langsung.
+  bool get _pohonTerkunci {
+    try {
+      return SchedulerBinding.instance.schedulerPhase ==
+          SchedulerPhase.persistentCallbacks;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _notify() {
+    if (_disposed) return;
+    if (_pohonTerkunci) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (_disposed) return;
+        notifyListeners();
+      });
+      return;
+    }
+    notifyListeners();
+  }
+
   // ── Real-time ──────────────────────────────────────────────────────────────
 
   void startRealtime() {
@@ -85,7 +143,7 @@ class DetectionProvider extends ChangeNotifier {
     // autofocus stabil; bahaya kritis tetap lewat.
     _scheduler.beginSession();
     _cameraProvider.onFrameReady = _processFrame;
-    notifyListeners();
+    _notify();
   }
 
   void stopRealtime() {
@@ -95,7 +153,7 @@ class DetectionProvider extends ChangeNotifier {
     _filter.reset();
     _scheduler.reset();
     _detections = [];
-    notifyListeners();
+    _notify();
   }
 
   Future<void> _processFrame(CameraImage image) async {
@@ -115,7 +173,7 @@ class DetectionProvider extends ChangeNotifier {
         _tracker.update(const []);
         if (_detections.isNotEmpty) {
           _detections = [];
-          notifyListeners();
+          _notify();
         }
         // Scheduler tetap ditengok. Jendela pengelompokan yang sudah berisi
         // sesuatu harus bisa keluar walau frame ini kosong; kalau tidak,
@@ -167,7 +225,7 @@ class DetectionProvider extends ChangeNotifier {
 
   void _updateAndSpeak(List<Detection> filtered) {
     _detections = filtered;
-    notifyListeners();
+    _notify();
 
     // Frame kosong tetap diumpankan ke scheduler: jendela pengelompokan yang
     // sudah berisi sesuatu harus tetap bisa keluar walau frame terakhir tidak
@@ -220,6 +278,10 @@ class DetectionProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    // Ditandai SEBELUM [stopRealtime], supaya pembongkarannya tetap berjalan
+    // (callback kamera dilepas, tracker dan filter direset) tapi tidak ada
+    // satu pun pemberitahuan yang dikirim dari provider yang sedang mati.
+    _disposed = true;
     stopRealtime();
     super.dispose();
   }

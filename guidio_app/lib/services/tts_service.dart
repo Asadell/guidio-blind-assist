@@ -154,6 +154,38 @@ class TTSService {
           'saya mungkin sulit dipahami. Pasang paket suara Bahasa Indonesia '
           'lewat Pengaturan ponsel, bagian Text-to-speech.';
 
+  // ── Penjaga jalur pintas ────────────────────────────────────────────────
+  //
+  // Kelas ini adalah MESIN suara, bukan pengatur giliran. Yang mengatur tier,
+  // dedup, jeda bernapas, masa tenang, dan gerbang mikrofon adalah `TtsQueue`.
+  // Memanggil [speak] atau [stop] langsung berarti melewati semuanya.
+  //
+  // Itu bukan larangan mutlak: layar splash, onboarding, dan izin bicara saat
+  // belum ada satu pun mode yang bernarasi, dan memaksa mereka lewat antrean
+  // tidak memberi apa-apa. Yang berbahaya adalah jalur pintas yang berjalan
+  // SAAT antrean sedang bekerja - itu berarti dua sumber suara yang tidak
+  // saling tahu, dan pengguna tunanetra yang tidak punya cara memilih.
+  //
+  // Kasus nyatanya pernah ada di `_handleDescribeScene`: deskripsi belasan
+  // detik langsung ke mesin, narasi mode di antrean kedaluwarsa lalu dibuang
+  // tanpa satu pun baris log. Tidak ada yang menyadarinya sampai jalurnya
+  // ditelusuri satu per satu.
+  //
+  // Karena itu penjaganya bukan pencegah, melainkan pelapor: kalau ada jalur
+  // pintas yang berjalan saat antrean aktif, dia menuliskannya ke log.
+
+  /// Diisi [TtsQueue] saat pertama kali dipakai. Mengembalikan penjelasan
+  /// singkat kalau antrean sedang bekerja, atau null kalau sedang senggang.
+  static String? Function()? debugQueueBusyReason;
+
+  void _laporJalurPintas(String metode) {
+    if (!kDebugMode) return;
+    final alasan = debugQueueBusyReason?.call();
+    if (alasan == null) return;
+    debugPrint('[TTS] JALUR PINTAS: $metode dipanggil langsung saat antrean '
+        '$alasan. Ucapan ini tidak lewat arbitrase TtsQueue.');
+  }
+
   /// Ucapkan [message]. Selalu tersampaikan kecuali dibatalkan [stop] atau
   /// oleh ucapan lain yang meminta [interrupt].
   ///
@@ -167,6 +199,7 @@ class TTSService {
   }) {
     final text = message.trim();
     if (text.isEmpty) return Future<void>.value();
+    _laporJalurPintas('speak');
 
     if (interrupt) {
       _generation++;
@@ -254,6 +287,7 @@ class TTSService {
 
   /// Hentikan yang sedang bicara DAN batalkan yang masih mengantre.
   Future<void> stop() async {
+    _laporJalurPintas('stop');
     _generation++;
     _tail = Future<void>.value();
     _speaking = false;
