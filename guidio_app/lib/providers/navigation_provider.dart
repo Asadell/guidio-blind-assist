@@ -748,37 +748,92 @@ class NavigationProvider extends ChangeNotifier {
       return (d.ttsMessage, SpeechTier.warning, false, _obstacleIdentity(d));
     }
 
-    final allDanger = _left == ZoneStatus.danger &&
-        _center == ZoneStatus.danger &&
-        _right == ZoneStatus.danger;
-    if (allDanger) {
-      return ('Berhenti dulu. Tidak ada jalur aman.', SpeechTier.critical, false,
-          'zona:semua-bahaya');
-    }
-    if (_center == ZoneStatus.danger) {
-      return ('Berhenti! Jalur di depan tidak aman.', SpeechTier.critical, true,
-          'zona:tengah-bahaya');
-    }
-
     // ── Frame tidak layak jadi dasar arahan berjalan ──
     //
-    // Diletakkan SESUDAH cabang bahaya dan rintangan, bukan sebelumnya. Kalau
-    // ada motor mendekat atau lubang di depan, pengguna tetap harus diberi
-    // tahu - terlepas dari apakah jalurnya terbaca dengan yakin. Yang ditahan
-    // di sini HANYA klaim positif "jalur aman, jalan lurus", karena itulah
-    // satu-satunya kalimat yang menyuruh orang melangkah.
+    // Diletakkan SESUDAH rintangan, tapi SEBELUM semua cabang zona. Urutan itu
+    // berubah bersamaan dengan cabang zona di bawahnya, dan harus berubah.
     //
-    // Tanpa cabang ini, kamera yang menghadap langit-langit kamar, tembok
-    // polos, atau bagian dalam saku tetap menghasilkan "Jalur aman, jalan
-    // lurus". PIDNet tidak pernah berkata "saya tidak bisa melihat"; dia
-    // memberi label ke setiap piksel apa pun yang masuk, dan sebagian besar
-    // permukaan polos jatuh ke kelas walkable.
+    // Dulu cabang zona yang mendahului ini cuma bisa mengucapkan "Berhenti",
+    // dan berhenti itu aman diucapkan dari frame seburuk apa pun. Sekarang
+    // cabang-cabang itu menyuruh MELANGKAH ke arah tertentu, dan itu tidak
+    // boleh disusun dari frame yang tidak terbaca. Kamera yang menghadap
+    // langit-langit kamar, tembok polos, atau bagian dalam saku akan tetap
+    // menghasilkan sumbu jalur - PIDNet tidak pernah berkata "saya tidak bisa
+    // melihat", dia memberi label ke setiap piksel apa pun yang masuk, dan
+    // sebagian besar permukaan polos jatuh ke kelas walkable.
+    //
+    // Peringatan rintangan tetap di atasnya: motor mendekat dan lubang di
+    // depan harus lewat terlepas dari apakah jalurnya terbaca yakin.
     final doubtMessage = _doubtMessage(zones);
     if (doubtMessage != null) {
       // Warning, bukan Info: pengguna sedang berjalan dan perlu tahu bahwa
       // panduannya sedang tidak bekerja. Tapi juga bukan Critical - tidak ada
       // bahaya yang terdeteksi, yang hilang cuma penglihatan sistem.
       return (doubtMessage, SpeechTier.warning, false, 'ragu:$doubtMessage');
+    }
+
+    // ── "Berhenti" hanya kalau memang tidak ada jalan ──
+    //
+    // Dua cabang di bawah ini dulu memutuskan dari tiga rasio zona saja, dan
+    // itu bertentangan dengan prinsip yang sudah ditulis di
+    // `ZoneAnalysis.ttsMessage`: berhenti hanya sah kalau `path` kosong.
+    // Provider ini menang karena berjalan lebih dulu, jadi prinsip itu tidak
+    // pernah benar-benar berlaku.
+    //
+    // Akibatnya terlihat langsung di layar. Pada frame dengan zona
+    // "Kiri BAHAYA, Tengah HATI-HATI, Kanan BAHAYA", hamparan jalur masih
+    // menggambar pita hijau yang jelas sedikit ke kiri - jalan yang benar-benar
+    // ada dan benar-benar bisa dilewati. Yang terucap: "Berhenti! Jalur di
+    // depan tidak aman." Pengguna tunanetra berhenti di tengah trotoar, tidak
+    // diberi satu pun jalan keluar, dan tidak punya cara memeriksa sendiri
+    // bahwa sebenarnya tinggal menggeser badan sedikit ke kiri.
+    //
+    // Rasio zona buruk di ketiga kolom adalah keadaan yang WAJAR pada trotoar
+    // sempit, trotoar berpohon, dan gang - persis tempat mode ini paling
+    // dibutuhkan. Yang menentukan bisa jalan atau tidak adalah ada tidaknya
+    // ruas selebar bahu, dan itu yang dijawab `zones.path`.
+    //
+    // Jadi rasio zona sekarang menentukan NADA, bukan boleh atau tidaknya
+    // melangkah: selama masih ada jalur, yang keluar tetap arah, cuma
+    // tingkat mendesaknya yang naik.
+    final allDanger = _left == ZoneStatus.danger &&
+        _center == ZoneStatus.danger &&
+        _right == ZoneStatus.danger;
+
+    if (!zones.adaJalur) {
+      // Benar-benar buntu: tidak ada satu pun ruas selebar bahu di pita bawah.
+      return (
+        allDanger
+            ? 'Berhenti dulu. Tidak ada jalur aman di sekitarmu.'
+            : 'Berhenti dulu. Jalur di depan tidak terbaca.',
+        SpeechTier.critical,
+        true,
+        'zona:buntu',
+      );
+    }
+
+    if (allDanger) {
+      // Sempit di segala arah, tapi masih ada celah yang muat. Arahnya
+      // disebutkan, dengan peringatan bahwa ruangnya tipis.
+      return (
+        '${zones.ttsMessage} Sekitarmu sempit, jalan pelan.',
+        SpeechTier.critical,
+        true,
+        'zona:sempit-${zones.ttsMessage}',
+      );
+    }
+
+    if (_center == ZoneStatus.danger) {
+      // `ZoneAnalysis.ttsMessage` sudah tahu keadaan ini dan menyusun
+      // kalimatnya sendiri - "Jalur di depan tertutup. Ambil sebelah kiri."
+      // Tier tetap critical: yang di depan memang tidak bisa dilewati, dan
+      // pengguna harus mendengarnya sekarang, bukan sesudah antrean habis.
+      return (
+        zones.ttsMessage,
+        SpeechTier.critical,
+        true,
+        'zona:tengah-tertutup-${zones.ttsMessage}',
+      );
     }
 
     return (zones.ttsMessage, SpeechTier.info, false, 'zona:${zones.ttsMessage}');

@@ -235,9 +235,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         if (_silentMode) {
           // Critical selalu bergetar, apa pun rekomendasinya. Sebelum ini
           // hanya rekomendasi kiri/kanan yang menghasilkan getar, sehingga
-          // "Berhenti! Jalur di depan tidak aman" - yang rekomendasinya
-          // tengah atau tidak ada sama sekali - lewat tanpa suara DAN tanpa
-          // getar. Dibisukan tidak boleh berarti peringatan bahaya hilang.
+          // kalimat "Berhenti dulu" - yang rekomendasinya tengah atau tidak
+          // ada sama sekali - lewat tanpa suara DAN tanpa getar. Dibisukan
+          // tidak boleh berarti peringatan bahaya hilang.
           if (tier == SpeechTier.critical) {
             _fireCriticalHaptic();
             return;

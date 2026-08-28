@@ -135,6 +135,35 @@ class ZoneAnalysis {
     this.maskHeight = 0,
   });
 
+  /// Ada ruas yang benar-benar bisa dilewati di frame ini.
+  ///
+  /// Inilah satu-satunya hal yang boleh menentukan "berhenti" atau "jalan
+  /// terus" - bukan tiga rasio zona. Tiang di tengah trotoar membuat ketiga
+  /// zona jelek sekaligus, padahal celah di sampingnya masih cukup lebar
+  /// untuk dilewati; menyuruh berhenti di situ berarti menghentikan orang di
+  /// tengah trotoar tanpa jalan keluar.
+  bool get adaJalur => path.isNotEmpty;
+
+  /// Seberapa jauh jalurnya dari lurus di depan, dalam kata.
+  ///
+  /// `pathShift` sudah dinolkan oleh pemeriksaan bahu di `_computeZones`
+  /// setiap kali badan pengguna MASIH MUAT kalau dia terus lurus. Jadi nilai
+  /// yang bukan nol tidak pernah berarti "sumbu jalur bergoyang sedikit" -
+  /// artinya selalu "kalau lurus, kamu tidak muat". Itu yang membuat
+  /// pembagian di bawah ini boleh sehalus ini tanpa jadi cerewet.
+  String get _seberapaGeser {
+    final besar = pathShift.abs();
+    // 0,12 adalah ambang tunggal versi lama - di bawahnya dulu selalu
+    // dijawab "jalan lurus". Angkanya dipertahankan, artinya yang berubah:
+    // bukan lagi batas antara "diam" dan "bergeser", melainkan antara
+    // "sedikit" dan "agak".
+    if (besar < 0.12) return 'sedikit';
+    if (besar < 0.28) return 'agak';
+    return 'jauh';
+  }
+
+  String get _arahGeser => pathShift < 0 ? 'kiri' : 'kanan';
+
   /// Arahan suara. SELALU menyebut ke mana harus melangkah kalau masih ada
   /// jalur, bukan cuma menilai apa yang di depan.
   ///
@@ -144,28 +173,53 @@ class ZoneAnalysis {
   /// punya sumber kedua: kalimat yang cuma melarang membuatnya berhenti tanpa
   /// tahu harus bagaimana, dan berhenti di tengah trotoar bukan keadaan aman.
   ///
-  /// Karena itu "berhenti" sekarang hanya diucapkan kalau [path] benar-benar
-  /// kosong - tidak ada satu pun ruas layak jalan yang cukup lebar di pita
-  /// bawah. Selama masih ada ruas, yang keluar adalah arah.
+  /// Karena itu "berhenti" hanya diucapkan kalau [path] benar-benar kosong.
+  /// Selama masih ada ruas, yang keluar adalah arah.
+  ///
+  /// ## Kenapa dibagi tiga tingkat, bukan satu ambang
+  ///
+  /// Versi sebelumnya cuma punya satu ambang, 0,12. Di bawah itu, apa pun
+  /// yang terjadi, kalimatnya "Jalur aman, jalan lurus."
+  ///
+  /// Itu keliru justru di pita yang paling sering muncul. `pathShift` bernilai
+  /// 0,00 KHUSUS saat pemeriksaan bahu memutuskan badan pengguna masih muat
+  /// lurus ke depan. Nilai seperti -0,10 karena itu bukan derau: ia berarti
+  /// pemeriksaan bahu sudah menjawab "tidak muat", tapi kalimatnya tetap
+  /// menyuruh jalan lurus. Terekam apa adanya di log perangkat:
+  ///
+  ///     [PIDNet] L=0.15 C=0.69 R=0.24 jalur=14 geser=-0.10 → rec=1
+  ///
+  /// Di layar, jalurnya jelas menikung ke kiri melewati lubang; yang terucap
+  /// "jalan lurus". Sekarang pita itu punya kalimatnya sendiri, "Sedikit ke
+  /// kiri", dan hanya `pathShift` yang benar-benar nol yang berhak berkata
+  /// lurus.
   String get ttsMessage {
-    if (path.isEmpty) {
+    if (!adaJalur) {
       return 'Berhenti dulu. Tidak ada jalur aman di sekitar sini.';
     }
 
-    // Ambang 0,12 kira-kira seperlima lebar jalur pada trotoar biasa: cukup
-    // besar untuk berarti "geser", cukup kecil untuk tidak menyuruh pengguna
-    // bergerak setiap kali sumbu jalur bergoyang satu piksel.
-    if (pathShift <= -0.12) {
-      return center == ZoneStatus.danger
-          ? 'Jalur di depan tertutup. Ambil sebelah kiri.'
-          : 'Agak ke kiri.';
+    final tertutup = center == ZoneStatus.danger;
+
+    // Nol berarti pemeriksaan bahu lolos: badan muat kalau terus lurus.
+    if (pathShift == 0) {
+      return tertutup
+          ? 'Jalur menyempit di depan. Terus lurus, pelan-pelan.'
+          : 'Jalur aman, jalan lurus.';
     }
-    if (pathShift >= 0.12) {
-      return center == ZoneStatus.danger
-          ? 'Jalur di depan tertutup. Ambil sebelah kanan.'
-          : 'Agak ke kanan.';
-    }
-    return 'Jalur aman, jalan lurus.';
+
+    final arah = _arahGeser;
+    return switch (_seberapaGeser) {
+      'sedikit' => tertutup
+          ? 'Jalur di depan tertutup. Geser sedikit ke $arah.'
+          : 'Sedikit ke $arah.',
+      'agak' => tertutup
+          ? 'Jalur di depan tertutup. Ambil sebelah $arah.'
+          : 'Agak ke $arah.',
+      _ => tertutup
+          ? 'Jalur di depan tertutup. Jalannya ada di sebelah $arah, '
+              'geser ke sana.'
+          : 'Ambil sebelah $arah.',
+    };
   }
 
   ZoneStatus get recommendedStatus => switch (recommendedZone) {
