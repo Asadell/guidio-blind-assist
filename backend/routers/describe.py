@@ -92,7 +92,22 @@ def _is_useless(caption: str) -> bool:
 async def describe_scene(
     request: Request,
     image: UploadFile = File(..., description="Gambar JPEG/PNG dari kamera"),
-    length: str = Form("short", description="short|normal"),
+    # Bawaan "normal", bukan "short".
+    #
+    # `short` menghasilkan caption gaya alt-text satu baris, dan pada foto
+    # yang ramai ia berhenti di tengah kalimat - dari log:
+    #
+    #     'A modern office features a blue water bottle, a laptop displaying code'
+    #
+    # Kalimat itu bukan dipotong aplikasi maupun bank kata; itu memang seluruh
+    # keluaran model pada panjang `short`. Untuk pengguna tunanetra, deskripsi
+    # yang berhenti di tengah adalah kegagalan yang paling menyesatkan: ia
+    # terdengar seperti jawaban lengkap, jadi tidak ada alasan untuk bertanya
+    # lagi, padahal separuh isinya tidak pernah disebut.
+    #
+    # `normal` menambah beberapa ratus milidetik inferensi dan itu murah
+    # dibayar sekali per tekanan tombol.
+    length: str = Form("normal", description="short|normal"),
     enhance: bool = Form(True),
     timeout: float = Form(DEFAULT_TIMEOUT),
 ):
