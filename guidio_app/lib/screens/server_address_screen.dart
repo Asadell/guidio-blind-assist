@@ -112,11 +112,48 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
 
   Future<void> _save() async {
     final host = _ctrl.text.trim();
+
+    // Provider diambil SEBELUM `await` pertama. Sesudah await, layar ini bisa
+    // saja sudah dilepas dan `context`-nya tidak lagi sah.
+    final globals = context.read<GlobalConditionsProvider>();
+    final caps = context.read<CapabilitiesProvider>();
+
     await context.read<SettingsProvider>().setServerHost(host);
     if (!mounted) return;
+
+    // ── Mode yang butuh server harus hidup SEKARANG, bukan nanti ──
+    //
+    // Tombol ini hanya bisa ditekan dari state `valid`, dan state itu hanya
+    // dicapai lewat `/health` yang benar-benar menjawab dari alamat ini.
+    // Jadi di baris ini kita memegang bukti terbaru yang ada di seluruh
+    // aplikasi, sementara dua tempat yang menentukan hidup-matinya Cari Objek
+    // dan Deskripsi Suasana masih memegang jawaban lama:
+    //
+    //   * `GlobalConditionsProvider` baru memeriksa ulang tiap 15 detik;
+    //   * `CapabilitiesProvider` menahan jawabannya 45 detik, dan bahkan
+    //     menolak bertanya sama sekali selama server dianggap mati.
+    //
+    // Akibatnya pengguna mendengar "Terhubung", menyimpan alamatnya, membuka
+    // Pilih Mode, dan menemukan dua mode itu masih ditandai tidak tersedia -
+    // aplikasi yang membantah kalimatnya sendiri beberapa detik sebelumnya.
+    //
+    // `setServerHost` di atas sudah memindahkan alamat aktif, jadi pertanyaan
+    // berikutnya berangkat ke server yang benar.
+    globals.markServerReachable(true);
+
+    // Dijalankan berbarengan dengan konfirmasi suara, bukan sebelumnya.
+    // "Alamat server tersimpan." memakan sekitar dua detik di antrean; satu
+    // permintaan `/api/capabilities` ke server yang barusan menjawab dalam
+    // puluhan milidetik selesai jauh di dalam jendela itu. Pengguna tidak
+    // menunggu apa pun, dan layar tidak pernah ditutup sebelum jawabannya
+    // sampai.
+    final kemampuanSegar = caps.refresh();
+
     // Konfirmasi diucapkan SESUDAH tersimpan - bagian 4.1 berlaku untuk semua
     // konfirmasi, bukan hanya ganti mode.
     await TtsQueue.instance.speak('Alamat server tersimpan.', source: SpeechSource.assistant);
+    await kemampuanSegar;
+
     if (mounted) Navigator.of(context).pop();
   }
 

@@ -37,8 +37,24 @@ class CapabilitiesProvider extends ChangeNotifier {
   /// bertanya tiap kali sheet dibuka akan menambah jeda sebelum sheet tampil.
   static const _staleAfter = Duration(seconds: 45);
 
+  /// Jawaban terakhir adalah "server tidak menjawab", bukan jawaban server.
+  ///
+  /// Dibedakan karena umur pantasnya beda jauh. Jawaban sungguhan boleh
+  /// dipegang 45 detik: kemampuan server tidak berubah sesering itu.
+  /// Kegagalan tidak boleh, karena ia menandai SEMUA mode berserver sebagai
+  /// mati, dan keadaan itu bisa berubah kapan saja - server baru dinyalakan,
+  /// alamatnya baru dibetulkan, Wi-Fi baru tersambung.
+  ///
+  /// Tanpa pembedaan ini, satu kegagalan mengunci Cari Objek dan Deskripsi
+  /// Suasana selama 45 detik penuh walau servernya sudah menjawab lagi satu
+  /// detik kemudian - dan pengguna yang membuka lembar Pilih Mode di jendela
+  /// itu diberi tahu bahwa modenya tidak tersedia, padahal tersedia.
+  bool _lastFetchFailed = false;
+
   bool get _isStale =>
-      _fetchedAt == null || DateTime.now().difference(_fetchedAt!) > _staleAfter;
+      _fetchedAt == null ||
+      _lastFetchFailed ||
+      DateTime.now().difference(_fetchedAt!) > _staleAfter;
 
   ModeCapability? _capOf(AppMode mode) => _modes?[_key(mode)];
 
@@ -90,6 +106,7 @@ class CapabilitiesProvider extends ChangeNotifier {
     _fetching = true;
     try {
       final res = await ServerService.instance.capabilities();
+      _lastFetchFailed = res == null;
       if (res == null) {
         // Server tidak menjawab - seluruh mode yang butuh server dianggap mati.
         _modes = {

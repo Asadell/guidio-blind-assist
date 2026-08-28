@@ -88,6 +88,31 @@ class GlobalConditionsProvider extends ChangeNotifier {
     await Future.wait([_pollBattery(), _pollServer()]);
   }
 
+  /// Catat hasil pemeriksaan server yang SUDAH terbukti, tanpa menunggu
+  /// giliran polling berikutnya.
+  ///
+  /// Polling berjalan tiap 15 detik. Itu cukup untuk mengabarkan server yang
+  /// mati di tengah jalan, tapi terlalu lambat untuk satu momen: pengguna
+  /// baru saja menekan "Uji koneksi", mendengar "Terhubung, waktu tempuh 40
+  /// milidetik", lalu menekan "Simpan alamat". Di detik itu dia sudah punya
+  /// bukti yang lebih segar daripada apa pun yang dipegang kelas ini, dan
+  /// tetap harus menunggu sampai polling menyusul sebelum Cari Objek dan
+  /// Deskripsi Suasana berhenti ditandai mati.
+  ///
+  /// Menunggu itu tidak sekadar lambat, ia membingungkan: aplikasi baru saja
+  /// mengucapkan "Terhubung", lalu lembar Pilih Mode masih berkata "Tidak
+  /// tersedia, butuh internet". Dua kalimat dari aplikasi yang sama, saling
+  /// bertentangan, dan pengguna tunanetra tidak punya cara memutuskan mana
+  /// yang benar.
+  ///
+  /// Hanya untuk hasil yang benar-benar diuji ke alamat yang sedang dipakai.
+  /// Menebak di sini akan menyalakan mode yang sebenarnya mati.
+  void markServerReachable(bool reachable) {
+    if (_serverUnreachable == !reachable) return;
+    _serverUnreachable = !reachable;
+    notifyListeners();
+  }
+
   /// Dipanggil CameraProvider saat kamera gagal disiapkan.
   void setCameraError(bool value) {
     if (_cameraError == value) return;
