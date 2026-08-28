@@ -33,11 +33,38 @@ class MoonDreamService:
         self._model = None
         self._tokenizer = None
         self._loaded = False
+        self._load_failed = False
         self._lock = asyncio.Lock()
 
     @property
     def loaded(self) -> bool:
+        """Bobot model SUDAH ada di memori. False sebelum permintaan pertama."""
         return self._loaded
+
+    @property
+    def available(self) -> bool:
+        """Endpoint describe bisa dilayani.
+
+        BUKAN sama dengan [loaded], dan bedanya penting. Model ini sengaja
+        lazy-load: bobotnya ~2 GB, jadi ia baru dimuat saat permintaan
+        pertama datang. Menyamakan "siap dilayani" dengan "sudah di memori"
+        berarti server yang sehat melaporkan dirinya setengah mati selama
+        belum ada yang memakainya.
+
+        Properti ini pernah TIDAK ADA sama sekali, dan itu bug yang tidak
+        terlihat dari sisi Python: `routers/support.py` dan `/health`
+        membacanya lewat `getattr(moondream, "available", False)`, yang
+        diam-diam menghasilkan False selamanya. Akibatnya `/api/capabilities`
+        selalu melaporkan mode Deskripsi Suasana `limited` dengan catatan
+        "deskripsi suasana butuh server" - di server yang justru sedang
+        terhubung dan sanggup melayaninya. Pengguna melihat mode yang sehat
+        ditandai setengah mati dan wajar berhenti memakainya.
+
+        Yang membuatnya False cuma satu: percobaan muat yang SUDAH pernah
+        gagal. Selama belum pernah dicoba, jawabannya True - server memang
+        siap melayani, warm-up-nya bagian dari permintaan pertama.
+        """
+        return not self._load_failed
 
     def _resolve_device(self) -> str:
         """Pilih device: 'cuda' jika tersedia, fallback ke 'cpu'."""
@@ -72,9 +99,18 @@ class MoonDreamService:
             ).to(device)
             self._model.eval()
             self._loaded = True
+            # Percobaan sebelumnya boleh saja gagal karena sebab sementara
+            # (VRAM penuh, berkas belum selesai diunduh). Keberhasilan
+            # menghapus catatan itu, kalau tidak satu kegagalan awal akan
+            # menandai mode ini mati selamanya sampai server di-restart.
+            self._load_failed = False
             logger.success(f"[Moondream2] Model siap di {device}.")
             return True
         except Exception as e:
+            # Dicatat supaya `available` bisa berkata jujur. Tanpa penanda ini
+            # satu-satunya cara pengguna tahu Moondream tidak bisa dimuat
+            # adalah menunggu deskripsi yang tidak pernah datang.
+            self._load_failed = True
             logger.error(f"[Moondream2] Gagal memuat model: {e}")
             return False
 
