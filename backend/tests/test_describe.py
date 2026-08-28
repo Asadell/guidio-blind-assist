@@ -122,3 +122,88 @@ class TestDescribeKonten:
                         "pavement", "concrete", "ground", "path", "hole")
         assert any(w in desc for w in hazard_words), \
             f"Caption tidak mendeskripsikan permukaan jalan: '{desc[:120]}'"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Regresi: foto apa pun yang bisa dibaca HARUS sampai ke Moondream2
+#
+#  Setiap penolakan berarti pengguna tunanetra sudah mengangkat ponsel,
+#  menunggu jepretan, menunggu perjalanan jaringan - lalu disuruh mengulang
+#  semuanya, tanpa bisa melihat fotonya untuk tahu apa yang salah. Jawaban
+#  "sepertinya ruangan dengan meja" dari foto agak buram memberi jauh lebih
+#  banyak daripada gerbang yang menjawab "coba lagi".
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestDescribeTidakMenolakKualitas:
+    """Gerbang `describe` hanya menjaga sumber daya, bukan menilai foto."""
+
+    @staticmethod
+    def _jpeg(frame):
+        import cv2
+        ok, buf = cv2.imencode(".jpg", frame)
+        assert ok
+        return buf.tobytes()
+
+    def test_foto_sangat_buram_tetap_diteruskan(self):
+        import cv2
+        import numpy as np
+
+        from services.image_gate import gate
+
+        buram = cv2.GaussianBlur(np.full((480, 640, 3), 90, np.uint8), (31, 31), 0)
+        g = gate(self._jpeg(buram), profile="describe", endpoint="test")
+
+        assert g.ok is True, "foto buram tidak boleh ditolak di jalur describe"
+        assert g.frame is not None
+
+    def test_foto_gelap_gulita_tetap_diteruskan(self):
+        import numpy as np
+
+        from services.image_gate import gate
+
+        gelap = np.zeros((480, 640, 3), np.uint8)
+        g = gate(self._jpeg(gelap), profile="describe", endpoint="test")
+
+        assert g.ok is True, "foto gelap tidak boleh ditolak di jalur describe"
+
+    def test_profil_lain_tetap_ketat(self):
+        """Kelonggaran ini KHUSUS describe, bukan pelemahan gerbang."""
+        import cv2
+        import numpy as np
+
+        from services.image_gate import gate
+
+        buram = cv2.GaussianBlur(np.full((480, 640, 3), 90, np.uint8), (31, 31), 0)
+        raw = self._jpeg(buram)
+
+        assert gate(raw, profile="find_object", endpoint="test").ok is False
+        assert gate(raw, profile="ocr", endpoint="test").ok is False
+
+
+class TestMoondreamPemanasan:
+    """Permintaan pertama tidak boleh membayar biaya pemuatan model.
+
+    Di log perangkat: permintaan pertama timeout pada 25 detik, model siap 6
+    detik kemudian, permintaan kedua selesai dalam 2,4 detik. Fotonya tidak
+    salah dan modelnya tidak lambat - yang salah cuma siapa yang menanggung
+    pemanasannya.
+    """
+
+    def test_service_punya_warm_up_dan_ensure_ready(self):
+        from services.moondream_service import MoonDreamService
+
+        assert hasattr(MoonDreamService, "warm_up"), (
+            "tanpa warm_up, pemuatan kembali ditanggung permintaan pertama"
+        )
+        assert hasattr(MoonDreamService, "ensure_ready"), (
+            "ensure_ready memisahkan tunggu-pemuatan dari batas waktu inferensi"
+        )
+
+    def test_pemanasan_dijalankan_saat_startup(self):
+        """Lifespan wajib memanggil warm_up, bukan menunggu request pertama."""
+        import inspect
+
+        import main
+
+        sumber = inspect.getsource(main.lifespan)
+        assert "warm_up()" in sumber
