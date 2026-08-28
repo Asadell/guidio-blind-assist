@@ -807,6 +807,27 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
               // saklar bisu untuk suara panduan, sesuai kontrak tombol kiri
               // di mode lain (Deteksi Objek memakai pola yang sama).
               cameraLabel: _silentMode ? 'Nyalakan Suara' : 'Matikan Suara',
+              // Rupa tombol mengikuti Mode Deteksi Objek, dan itu disengaja.
+              //
+              // Keduanya SAKLAR: satu menyalakan pengawasan rintangan, satu
+              // menyalakan suara panduan. Label tombol ini tidak pernah
+              // digambar - `_SquareButton` cuma menggambar ikon dan
+              // membacakan labelnya ke TalkBack - jadi tanpa warna dan ikon
+              // yang berganti, "sedang bersuara" dan "sedang bisu" terlihat
+              // persis sama. Bahasa warnanya sama persis dengan Deteksi
+              // Objek: hijau berarti tekan untuk menyalakan, merah berarti
+              // sedang hidup dan tekan untuk mematikan.
+              //
+              // Ikonnya bicara soal SUARA, bukan play/pause, karena yang
+              // dimatikan tombol ini cuma narasinya. Navigasi sendiri tetap
+              // berjalan saat bisu, dan arah tetap terasa lewat getar -
+              // ikon "pause" akan menjanjikan bahwa semuanya berhenti.
+              cameraIcon: _silentMode
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
+              cameraFill: _silentMode
+                  ? AppColors.positiveFill
+                  : AppColors.criticalFill,
               onCameraPressed: _toggleGuidanceVoice,
             ),
           ),
