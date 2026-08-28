@@ -614,7 +614,30 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
+      // `inactive` SENGAJA TIDAK melepas kamera.
+      //
+      // Di Android ia berarti "jendela kehilangan fokus", bukan "aplikasi
+      // ditinggalkan". Ia menyala untuk hal-hal yang berlangsung sedetik dan
+      // tidak menyentuh kamera sama sekali: bilah notifikasi ditarik turun,
+      // notifikasi melayang, panel volume, dialog sistem, pratinjau daftar
+      // aplikasi.
+      //
+      // Ini bukan kehati-hatian teoretis. Di log perangkat, tepat sebelum
+      // kamera mati saat pengguna baru membuka Mode Navigasi:
+      //
+      //     MSG_WINDOW_FOCUS_CHANGED 0 1
+      //     ...
+      //     [CameraProvider] kamera dilepas, aplikasi ke latar belakang
+      //
+      // Aplikasinya tidak pernah ke latar belakang. Yang hilang cuma fokus
+      // jendela, dan `inactive` di daftar ini membongkar kamera yang masih
+      // sepenuhnya milik kita. Layarnya tidak menghitam - preview-nya saja
+      // yang mati - jadi dari luar terlihat seperti kamera yang rusak sendiri.
+      //
+      // Perpindahan yang SUNGGUHAN ke latar belakang selalu melewati `paused`
+      // sesudah `inactive`, jadi tidak ada yang terlewat dengan menunggu.
       case AppLifecycleState.inactive:
+        break;
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
