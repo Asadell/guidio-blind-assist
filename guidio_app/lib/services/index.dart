@@ -10,3 +10,4 @@ export 'pidnet_service.dart';
 export 'yolo_navigasi_service.dart';
 export 'yolo_nav_int8_service.dart';
 export 'nav_frame_converter.dart';
+export 'translation_service.dart';
