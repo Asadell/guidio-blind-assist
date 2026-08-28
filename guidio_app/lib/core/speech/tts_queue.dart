@@ -571,6 +571,86 @@ class TtsQueue {
     }
   }
 
+  /// Jawaban langsung atas satu tekanan tombol - **menimpa apa pun yang
+  /// sedang bicara, tanpa mengantre dan tanpa jeda bernapas.**
+  ///
+  /// ## Kenapa ini perlu jalur sendiri
+  ///
+  /// [speak] mengarbitrase suara yang datang SENDIRI: narasi rintangan,
+  /// arahan jalur, petunjuk mode. Semuanya tidak diminta, jadi menunggu
+  /// giliran adalah perilaku yang benar - dan [minGap] 700 ms ada supaya
+  /// telinga sempat memisahkan satu kalimat dari kalimat berikutnya.
+  ///
+  /// Jawaban atas tekanan tombol bukan salah satu dari itu. Pengguna baru
+  /// saja menekan, dia sedang memegang uangnya di depan kamera, dan yang dia
+  /// tunggu cuma satu kalimat: nominalnya. Memasukkannya ke antrean berarti
+  /// dia mendengar sisa narasi lama dulu, lalu jeda 700 ms, baru jawabannya -
+  /// dan selama itu dia tidak punya cara tahu apakah tombolnya terbaca. Yang
+  /// terjadi berikutnya bisa ditebak: dia menekan lagi.
+  ///
+  /// Jadi di sini tidak ada antrean, tidak ada jeda, tidak ada dedup, dan
+  /// tidak ada masa tenang. Tekan berarti dengar, sekarang. Menekan lagi di
+  /// tengah kalimat menimpa kalimat itu, karena tekanan kedua berarti
+  /// pengguna sudah selesai dengan jawaban yang pertama.
+  ///
+  /// ## Satu-satunya yang tidak ditimpa
+  ///
+  /// Peringatan bahaya yang ditandai tidak bisa dipotong. Kalimat "awas
+  /// lubang" yang terpotong di tengah lebih buruk daripada tidak ada sama
+  /// sekali, dan tidak ada nominal uang yang lebih mendesak daripada itu.
+  /// Dalam kasus itu jawabannya mengantre di belakang - satu-satunya kasus
+  /// di mana ia menunggu.
+  ///
+  /// Sumbernya selalu [SpeechSource.assistant]: ini jawaban atas perbuatan
+  /// pengguna, jadi ia tidak boleh ikut dibungkam gerbang mikrofon dan tidak
+  /// boleh pernah dianggap basi.
+  Future<void> answerNow(
+    String message, {
+    SpeechTier tier = SpeechTier.info,
+    bool english = false,
+  }) async {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return;
+
+    // Bahaya yang sedang diucapkan dan ditandai tidak bisa dipotong: jawaban
+    // ini menunggu, bukan menimpa.
+    if (_speakingTier == SpeechTier.critical && !_currentInterruptible) {
+      _enqueue(trimmed, tier, SpeechSource.assistant, true, null,
+          english: english);
+      unawaited(_drain());
+      return;
+    }
+
+    // Generasi dinaikkan supaya `_drain` yang sedang berjalan berhenti begitu
+    // `await`-nya kembali, alih-alih melanjutkan ke item berikutnya di atas
+    // jawaban ini.
+    _drainGeneration++;
+
+    // Narasi mode yang menunggu dibuang. Ia menggambarkan keadaan beberapa
+    // detik lalu; mengucapkannya SESUDAH jawaban yang baru diminta pengguna
+    // hanya menimbun kalimat basi di belakang kalimat yang dia tunggu.
+    // Jawaban asisten lain dibiarkan - itu utang bicara yang belum lunas.
+    _pending.removeWhere((q) => q.source == SpeechSource.mode);
+    _warningHeldSince = null;
+
+    await _engineStop();
+
+    // TIDAK ada `_respectMinGap()` di sini, dan itu inti dari metode ini.
+    // Jeda bernapas berguna di antara dua narasi yang datang sendiri; di
+    // sini ia cuma menunda jawaban yang sudah diminta.
+    _speakingTier = tier;
+    _speakingSource = SpeechSource.assistant;
+    _currentInterruptible = true;
+    await _engineSpeak(trimmed, interrupt: true, english: english);
+    _lastUtteranceEndedAt = DateTime.now();
+    _speakingTier = null;
+    _speakingSource = null;
+    _currentInterruptible = true;
+    _maybeReleaseAfterAnswer();
+
+    unawaited(_drain());
+  }
+
   /// Pengguna menimpa TTS yang sedang jalan (barge-in).
   ///
   /// Tidak berlaku untuk utterance yang ditandai tidak bisa dipotong.

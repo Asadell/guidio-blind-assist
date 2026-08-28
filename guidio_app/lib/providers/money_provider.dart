@@ -87,14 +87,21 @@ class MoneyProvider extends ChangeNotifier {
   /// Callback keluar - screen yang mengubahnya jadi suara/getar sungguhan
   /// lewat TtsProvider/Vibration, supaya provider ini tetap tidak bergantung
   /// pada BuildContext (pola sama dengan `CameraProvider.onFrameReady`).
-  void Function(String text, SpeechTier tier)? onSpeak;
+  /// [langsung] true berarti kalimat ini adalah jawaban atas tekanan tombol,
+  /// jadi ia harus menimpa apa pun yang sedang bicara alih-alih mengantre.
+  /// Layar meneruskannya ke `TtsProvider.answerNow`. Lihat catatan di
+  /// `TtsQueue.answerNow` soal kenapa jawaban tekanan tombol tidak boleh
+  /// lewat arbitrase yang sama dengan narasi yang datang sendiri.
+  void Function(String text, SpeechTier tier, {bool langsung})? onSpeak;
   void Function(MoneyHaptic pattern)? onHaptic;
 
   Timer? _stepTimer;
   Timer? _hintRotateTimer;
   bool _running = false;
 
-  void _speak(String text, {SpeechTier tier = SpeechTier.info}) => onSpeak?.call(text, tier);
+  void _speak(String text,
+          {SpeechTier tier = SpeechTier.info, bool langsung = false}) =>
+      onSpeak?.call(text, tier, langsung: langsung);
   void _haptic(MoneyHaptic p) => onHaptic?.call(p);
 
   void _set(MoneyState s) {
@@ -160,6 +167,7 @@ class MoneyProvider extends ChangeNotifier {
       _speak(
         'Pengenalan uang tidak tersedia saat ini.',
         tier: SpeechTier.warning,
+        langsung: true,
       );
       return;
     }
@@ -316,13 +324,14 @@ class MoneyProvider extends ChangeNotifier {
 
     final result = _latestResult;
     if (result == null || !result.detected || result.valueIdr == null) {
-      _speak(_noReadingAdvice(result), tier: SpeechTier.warning);
+      _speak(_noReadingAdvice(result),
+          tier: SpeechTier.warning, langsung: true);
       return;
     }
 
     // Selalu menjawab. Yang membedakan cuma nadanya, dan itu dibawa
     // `result.certain` sampai ke kalimat TTS dan kartu di layar.
-    _enterDetected(result.valueIdr!, certain: result.certain);
+    _enterDetected(result.valueIdr!, certain: result.certain, langsung: true);
   }
 
   /// Instruksi saat model TIDAK mengeluarkan hasil apa pun.
@@ -491,7 +500,8 @@ class MoneyProvider extends ChangeNotifier {
   /// tunanetra sering menekan tombol berikutnya sebelum kalimat selesai, jadi
   /// "Sepertinya" wajib jadi kata pembuka. Tier warning ikut dipakai supaya
   /// antrean suara tidak menyamakannya dengan jawaban yang pasti.
-  void _enterDetected(int amount, {bool certain = true}) {
+  void _enterDetected(int amount,
+      {bool certain = true, bool langsung = false}) {
     _lastAmount = amount;
     _lastAnswerCertain = certain;
     _set(MoneyState.detected);
@@ -501,6 +511,10 @@ class MoneyProvider extends ChangeNotifier {
           : 'Sepertinya ${terbilangRupiah(amount)}. Kalau ragu, dekatkan '
               'sedikit lalu tekan lagi.',
       tier: certain ? SpeechTier.info : SpeechTier.warning,
+      // Jalur nyata SELALU berangkat dari tekanan tombol, jadi pemanggilnya
+      // menyalakan ini. Jalur mock berjalan sendiri lewat Timer dan tetap
+      // mengantre seperti narasi biasa.
+      langsung: langsung,
     );
   }
 }

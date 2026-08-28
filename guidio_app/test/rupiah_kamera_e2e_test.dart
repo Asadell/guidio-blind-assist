@@ -122,7 +122,8 @@ class _Sesi {
 Future<_Sesi> _pakaiAplikasi(img.Image foto) async {
   final provider = MoneyProvider();
   final diucapkan = <String>[];
-  provider.onSpeak = (text, tier) => diucapkan.add(text);
+  provider.onSpeak =
+      (text, tier, {bool langsung = false}) => diucapkan.add(text);
 
   final siap = await provider.enableRealModel();
   expect(siap, isTrue,

@@ -175,20 +175,36 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       // Prinsip 6 "umumkan saat tiba" - sesudah layar terpasang.
       context.read<AppModeProvider>().announceEntry(AppMode.money);
       final money = context.read<MoneyProvider>();
-      money.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
+      // Jawaban tekanan tombol menimpa, narasi otomatis mengantre.
+      //
+      // Bedanya terasa persis di momen yang paling menentukan mode ini:
+      // pengguna memegang uang di depan kamera, menekan tombol, lalu
+      // menunggu satu kalimat. Sebelum pemisahan ini jawabannya ikut antre
+      // di belakang narasi yang sedang berjalan plus jeda bernapas 700 ms,
+      // jadi tekanan tombol terasa tidak terbaca dan pengguna menekan lagi.
+      money.onSpeak = (text, tier, {bool langsung = false}) {
+        final tts = context.read<TtsProvider>();
+        // `unawaited` disengaja: pemanggilnya `MoneyProvider._speak` yang
+        // sinkron, dan menunggu ucapan selesai di sana akan menahan siklus
+        // inferensi selama kalimatnya berbunyi.
+        unawaited(langsung
+            ? tts.answerNow(text, tier: tier)
+            : tts.speak(text, tier: tier));
+      };
 
       // Kontrak tombol kiri: "jepret" lewat suara = menekan tombol kiri.
       final voice = context.read<VoiceProvider>();
       voice.onPrimaryAction = money.snapAndAnnounce;
       voice.primaryActionLabel = () => 'mengenali uang';
       voice.onRepeatLast = () {
+        // "Ulangi" juga perbuatan pengguna, jadi ia menimpa, bukan mengantre.
         if (money.lastAmount > 0) {
-          context.read<TtsProvider>().speak(
+          context.read<TtsProvider>().answerNow(
                 terbilangRupiah(money.lastAmount),
                 tier: SpeechTier.info,
               );
         } else {
-          context.read<TtsProvider>().speak(
+          context.read<TtsProvider>().answerNow(
                 'Belum ada nominal yang terbaca.',
                 tier: SpeechTier.info,
               );
@@ -305,7 +321,8 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
   /// mengubah tebakan jadi kepastian hanya karena pengguna menekannya dua
   /// kali - persis bahaya yang dijaga [MoneyResult.certain].
   void _replay(int amount, {bool certain = true}) {
-    context.read<TtsProvider>().speak(
+    // Ditekan pengguna, jadi menimpa - sama seperti tombol kiri.
+    context.read<TtsProvider>().answerNow(
           certain
               ? terbilangRupiah(amount)
               : 'Sepertinya ${terbilangRupiah(amount)}.',

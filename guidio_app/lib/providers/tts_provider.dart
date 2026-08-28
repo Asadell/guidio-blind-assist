@@ -27,6 +27,22 @@ class TtsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Jawaban langsung atas satu tekanan tombol - menimpa apa pun yang sedang
+  /// bicara, tanpa mengantre dan tanpa jeda bernapas.
+  ///
+  /// Pakai ini HANYA untuk kalimat yang lahir dari perbuatan pengguna
+  /// (tombol ditekan, "ulangi" diucapkan). Narasi yang datang sendiri tetap
+  /// lewat [speak], karena di sanalah arbitrase tier berguna. Rinciannya di
+  /// `TtsQueue.answerNow`.
+  Future<void> answerNow(
+    String message, {
+    SpeechTier tier = SpeechTier.info,
+  }) async {
+    notifyListeners();
+    await _queue.answerNow(message, tier: tier);
+    notifyListeners();
+  }
+
   /// Kompatibel dengan pemanggil lama: `critical: true` ≈ `tier: critical`.
   Future<void> enqueue(String message, {bool critical = false}) =>
       speak(message, tier: critical ? SpeechTier.critical : SpeechTier.info);
