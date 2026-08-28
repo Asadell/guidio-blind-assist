@@ -507,34 +507,56 @@ final narasi = generateNaturalNarration([
 Urutan objek: yang paling dekat disebut lebih dulu - objek paling berbahaya
 mendapat prioritas.
 
-### 5c. Deskripsi suasana: `scene_translator.dart`
+### 5c. Deskripsi suasana: `translation_service.dart`
 
 `POST /api/describe` mengembalikan `description_en`, caption Bahasa Inggris
-dari Moondream2. **Flutter menerjemahkannya secara lokal** sebelum dibacakan.
+dari Moondream2 - modelnya memang hanya bisa berbahasa Inggris. **Flutter
+menerjemahkannya di perangkat** sebelum dibacakan, lewat Google ML Kit
+On-Device Translation (`google_mlkit_translation`).
 
 ```dart
-final translated = translateSceneCaption(description);
-if (translated.isUsable) {
-  await TTSService.instance.speak(translated.indonesian!);   // id-ID
-} else {
-  await TTSService.instance.speak('Dalam bahasa Inggris.');  // penanda
-  await TTSService.instance.speakEnglish(description);       // en-US, lalu balik id-ID
+final translated = await TranslationService.instance.toIndonesian(captionEn);
+final speakInEnglish = translated == null;
+
+if (speakInEnglish) {
+  await TtsQueue.instance.speak('Dalam bahasa Inggris.');   // penanda
 }
+await TtsQueue.instance.speak(
+  translated ?? captionEn,
+  english: speakInEnglish,   // id-ID kalau berhasil, en-US kalau menyerah
+);
 ```
 
-Penerjemahnya kamus ditambah aturan urutan kata: 0 ms, offline, tanpa LLM.
-Prinsip yang sama yang membuat `narration_scheduler` dan `CommandParser`
-menggantikan Qwen. Menambahkan LLM penerjemah akan mengembalikan tepat tiga
-masalah yang sudah dibuang: lambat, bisa berhalusinasi, dan butuh server.
+Prinsipnya sama dengan yang membuat `narration_scheduler` dan `CommandParser`
+menggantikan Qwen: penerjemahannya berjalan **penuh di perangkat**, tidak
+menyentuh jaringan saat dipakai, dan tidak mengarang isi baru. Menambahkan LLM
+penerjemah akan mengembalikan tepat tiga masalah yang sudah dibuang: lambat,
+bisa berhalusinasi, dan butuh server.
 
-Kalau cakupan kamusnya terlalu rendah, penerjemah **menyerah** dan kalimat
-Inggrisnya dibacakan, didahului satu penanda singkat supaya pengguna tahu
-bahasanya berganti dan tidak menyangka aplikasinya rusak. Bahasa Indonesia yang
-kacau lebih buruk daripada Bahasa Inggris yang benar.
+Model kedua bahasa (~30 MB per bahasa) diunduh **sekali** di latar belakang
+saat aplikasi pertama kali dibuka - `main()` memanggil `prewarm()` tanpa
+`await`, jadi tidak ada yang menunggu. `isWifiRequired` sengaja `false`,
+berlawanan dengan default ML Kit: default itu berarti unduhannya diam-diam
+tidak pernah terjadi pada pengguna yang hanya punya data seluler, dan mereka
+justru mayoritas target aplikasi ini.
 
-Versi lama membacakan hasilnya langsung dalam Bahasa Inggris tanpa penerjemahan
-sama sekali, yang menuntut kemampuan Inggris lisan yang tidak bisa diasumsikan
-pada pengguna tunanetra di pasar dan warung Indonesia.
+Kalau modelnya belum siap, unduhannya gagal, atau terjemahannya tidak layak,
+`toIndonesian` mengembalikan **null** - tidak pernah setengah kalimat - dan
+kalimat Inggrisnya dibacakan, didahului satu penanda singkat supaya pengguna
+tahu bahasanya berganti dan tidak menyangka aplikasinya rusak. Deskripsi
+Inggris yang benar lebih berguna daripada keheningan.
+
+Pendahulunya, `core/voice/scene_translator.dart`, adalah kamus kata-per-kata
+buatan sendiri. Berkas itu **sudah dihapus**. Cakupannya tidak konsisten: satu
+foto diterjemahkan penuh, foto berikutnya setengah, foto ketiga menyerah - dan
+pengguna yang mengandalkan telinga tidak punya cara menebak versi mana yang
+sedang dia dengar. ML Kit menyelesaikan justru bagian itu: kalimat utuh atau
+tidak sama sekali.
+
+Sebelum keduanya, versi paling awal membacakan hasilnya langsung dalam Bahasa
+Inggris tanpa penerjemahan sama sekali, yang menuntut kemampuan Inggris lisan
+yang tidak bisa diasumsikan pada pengguna tunanetra di pasar dan warung
+Indonesia.
 
 ---
 
@@ -682,8 +704,7 @@ lib/
 │       ├── intents.dart              Enum VoiceIntent (20 intent baku)
 │       ├── command_parser.dart       Pencocokan ucapan offline, berlapis
 │       ├── narration_scheduler.dart  Kapan bicara + anggaran kata (AKTIF)
-│       ├── narration_engine.dart     Narasi bergaya panjang (tidak dipanggil)
-│       └── scene_translator.dart     Terjemah caption Moondream ke Indonesia
+│       └── narration_engine.dart     Narasi bergaya panjang (tidak dipanggil)
 ├── theme/                    Warna, tipografi, jarak, tema
 ├── widgets/                  Komponen sistem desain
 ├── providers/                State per mode, pengaturan, kondisi global
@@ -701,6 +722,7 @@ lib/
 │   ├── camera_health_service.dart  Orientasi dan guncangan dari accelerometer
 │   ├── server_service.dart       Dua panggilan backend yang tersisa
 │   ├── tts_service.dart          Mesin suara, ucapan diserialkan
+│   ├── translation_service.dart  Terjemah caption Moondream ke Indonesia (ML Kit)
 │   ├── detection_filter.dart     Penyaring anti banjir suara
 │   ├── object_tracker.dart       Pelacak SORT, penghalus jarak
 │   └── haptic_service.dart       Pola getar
