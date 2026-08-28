@@ -262,7 +262,8 @@ def assess_quality(image: np.ndarray,
                    blur_reject: float = BLUR_REJECT,
                    blur_warn: float = BLUR_WARN,
                    strict: bool = False,
-                   min_side: int = MIN_SIDE_PX) -> ImageQuality:
+                   min_side: int = MIN_SIDE_PX,
+                   reject_dark: bool = True) -> ImageQuality:
     """
     Nilai kualitas gambar dan hasilkan pesan Bahasa Indonesia yang
     ACTIONABLE untuk dibacakan TTS.
@@ -278,6 +279,11 @@ def assess_quality(image: np.ndarray,
         min_side: sisi terpendek minimum dalam pixel. Disetel per profil di
                 services/image_gate.py, karena OCR butuh resolusi jauh lebih
                 tinggi daripada deskripsi suasana.
+        reject_dark: kalau False, foto di bawah DARK_REJECT tidak ditolak -
+                cuma diturunkan ke POOR dan dicatat di `message`, lalu tetap
+                diteruskan ke model. Dipakai endpoint yang penolakannya lebih
+                merugikan daripada hasil yang kurang tepat; lihat catatan
+                `reject_dark` di services/image_gate.py.
     """
     t0 = time.perf_counter()
 
@@ -317,7 +323,16 @@ def assess_quality(image: np.ndarray,
     # punya skor blur rendah (tidak ada kontras untuk dideteksi tepinya).
     # Melaporkan "buram" padahal masalahnya gelap akan membuat pengguna
     # melakukan tindakan yang salah.
-    if brightness < DARK_REJECT:
+    if brightness < DARK_REJECT and not reject_dark:
+        # Gelap, tapi tetap diteruskan ke model. Catatannya TIDAK dibuang:
+        # ia ikut lewat `quality_note()` ke narasi, jadi pengguna tetap tahu
+        # jawabannya berasal dari foto yang kurang ideal.
+        issues.append("terlalu_gelap")
+        downgrade(QualityVerdict.POOR)
+        message_id = "kurang_cahaya"
+        message = ("Cahaya kurang, hasilnya mungkin kurang tepat. "
+                   "Nyalakan senter kalau bisa.")
+    elif brightness < DARK_REJECT:
         issues.append("terlalu_gelap")
         downgrade(QualityVerdict.REJECT)
         message_id = "terlalu_gelap"

@@ -110,17 +110,48 @@ PROFILES = {
         "blur_reject": 35.0,
         "blur_warn": 85.0,
         "min_side": 240,
+        # Lihat catatan "reject_dark" di bawah.
+        "reject_dark": False,
     },
     "describe": {
         "strict": False,
         "blur_reject": 22.0,
         "blur_warn": 70.0,
+        "reject_dark": False,
         # Paling longgar, konsisten dengan profil lainnya: gambaran kasar
         # sebuah ruangan masih berguna dari frame kecil, dan menolak terlalu
         # sering membuat fitur ini terasa rewel.
         "min_side": 200,
     },
 }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  reject_dark - kenapa server berhenti menolak foto gelap
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Dua endpoint yang tersisa (`find_object`, `describe`) sekarang MENERUSKAN
+# foto gelap ke YOLOE dan Moondream2 alih-alih menolaknya.
+#
+# Alasannya ada di sisi aplikasi: mobile sudah punya gerbang gelapnya sendiri
+# (`CameraCaptureService`, dipakai `_grabFrame` di `find_object_screen.dart`)
+# yang menawarkan senter sebelum satu byte pun dikirim. Foto yang sampai ke
+# sini berarti sudah lewat gerbang itu, jadi penolakan kedua di server cuma
+# menghentikan permintaan yang sudah disetujui pengguna, dengan kalimat yang
+# nyaris sama, sesudah dia menunggu perjalanan jaringan.
+#
+# Yang TIDAK ikut dibuang adalah catatannya. Foto gelap tetap turun ke POOR
+# dan tetap membawa `message` "Cahaya kurang, hasilnya mungkin kurang tepat",
+# yang mengalir ke narasi lewat `quality_note()`. Ini penting khusus untuk
+# `describe`: VLM tidak pernah menjawab "saya tidak bisa melihat", ia
+# mengarang deskripsi yang terdengar masuk akal dari frame hitam - dan
+# pengguna tunanetra tidak punya cara memeriksanya. Menghapus penolakan
+# tanpa menyisakan catatan berarti halusinasi itu sampai tanpa satu pun
+# tanda. Jadi yang dihapus penolakannya, bukan peringatannya.
+#
+# Profil "ocr" tetap `reject_dark` bawaan (True). Ia tidak dipakai router mana
+# pun, dan sebagai rujukan angka untuk sisi Flutter ia harus tetap
+# menggambarkan gerbang yang paling ketat.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -217,6 +248,7 @@ def gate(image_bytes: bytes, profile: str = "find_object",
         blur_warn=cfg["blur_warn"],
         strict=cfg["strict"],
         min_side=cfg.get("min_side", 240),
+        reject_dark=cfg.get("reject_dark", True),
     )
 
     logger.debug(
@@ -250,6 +282,12 @@ def quality_note(q: ImageQuality | None) -> str:
     if q is None or q.verdict in (QualityVerdict.GOOD,
                                   QualityVerdict.ACCEPTABLE):
         return ""
+    # "terlalu_gelap" bisa sampai ke sini sekarang: dengan `reject_dark=False`
+    # ia turun ke POOR alih-alih ditolak, dan justru di situ catatannya paling
+    # perlu - jawabannya tetap diberikan, jadi keraguannya harus ikut terdengar.
+    if "terlalu_gelap" in q.issues:
+        return ("Fotonya gelap, jadi hasilnya mungkin tidak tepat. "
+                "Nyalakan senter kalau bisa.")
     if "kurang_cahaya" in q.issues:
         return "Cahaya kurang, jadi hasilnya mungkin tidak tepat."
     if "agak_buram" in q.issues:

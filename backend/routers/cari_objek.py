@@ -15,6 +15,13 @@ PERUBAHAN DARI VERSI LAMA
        - "foto terlalu gelap"  -> nyalakan lampu / cari tempat terang
      Sekarang keduanya dibedakan dengan `reason` dan pesan yang berbeda.
 
+     CATATAN: khusus GELAP, gerbang ini tidak lagi menolak. Mobile sudah
+     punya gerbang gelapnya sendiri yang menawarkan senter sebelum foto
+     dikirim, jadi penolakan kedua di sini cuma membatalkan permintaan
+     yang sudah disetujui pengguna. Foto gelap tetap turun ke POOR dan
+     catatannya ikut ke `quality_note`. Lihat `reject_dark` di
+     services/image_gate.py.
+
   2. ENHANCEMENT KONSERVATIF
      Hanya koreksi eksposur (CLAHE) kalau gambarnya memang bermasalah.
      TIDAK ada sharpening agresif. YOLOE dilatih pada foto natural;

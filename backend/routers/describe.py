@@ -21,6 +21,14 @@ PERUBAHAN DARI VERSI LAMA
      yang agak kabur masih berguna, jadi kita hanya menolak yang
      benar-benar tidak terbaca.
 
+     CATATAN REVISI: gelap TIDAK lagi ditolak di sini (`reject_dark=False`
+     di services/image_gate.py) - fotonya diteruskan ke Moondream2. Bahaya
+     halusinasi yang ditulis di atas TIDAK hilang, jadi yang menggantikan
+     penolakan adalah catatannya: foto gelap turun ke POOR dan balasannya
+     selalu membawa `quality_note` "Fotonya gelap, jadi hasilnya mungkin
+     tidak tepat". Kalau catatan itu sampai dihapus dari narasi, penolakan
+     di sini harus dihidupkan lagi.
+
   2. ENHANCEMENT KONSERVATIF
      Sama alasannya dengan cari_objek: Moondream2 dilatih pada foto
      natural. Yang dilakukan cuma koreksi eksposur seperlunya.
