@@ -828,6 +828,155 @@ class CommandParser {
     return cleaned;
   }
 
+  /// Kata yang tidak menyebut benda maupun sifatnya, dan cuma membuat
+  /// terjemahan mesin melenceng.
+  ///
+  /// Ini lapisan tambahan di atas [fillerWords], bukan penggantinya. Yang
+  /// tersisa di sini spesifik untuk frasa benda, dan baru terasa saat
+  /// frasanya diserahkan ke penerjemah mesin:
+  ///
+  ///   "botol minum warna biru" → ML Kit → "blue color drinking bottle"
+  ///   "botol minum biru"       → ML Kit → "blue drinking bottle"
+  ///
+  /// Prompt kedua yang dimengerti encoder teks YOLOE. Kata "warna" benar
+  /// secara Bahasa Indonesia tapi jadi kata benda "color" di Inggris, dan
+  /// itu menggeser arti frasanya dari "botol yang biru" jadi "warna botol".
+  static const List<String> _searchNoiseWords = [
+    'warna', 'warnanya', 'berwarna',
+    'yang', 'yg',
+    'kesayangan', 'kesayanganku', 'favorit', 'favoritku',
+    'milik', 'miliknya', 'kepunyaan', 'punya',
+    'tadi', 'barusan', 'kemarin', 'sekarang',
+    'buat', 'untuk', 'sama', 'pakai', 'pake',
+  ];
+
+  /// Kata yang menandai BATAS akhir nama barang.
+  ///
+  /// Sesudahnya bukan lagi deskripsi bendanya, melainkan keterangan tempat
+  /// atau waktu - "tas merah **di** meja", "kunci **dekat** pintu". Encoder
+  /// teks YOLOE mencocokkan SELURUH frasa dengan isi gambar, jadi "red bag
+  /// on the table" mencari sesuatu yang serentak tas, merah, DAN meja.
+  /// Kalau meja yang dimaksud kebetulan tidak masuk frame, tasnya ikut
+  /// tidak ketemu - padahal tasnya ada.
+  ///
+  /// Dipotong, bukan dibuang kata per kata: yang di belakang penanda ini
+  /// hampir tidak pernah menambah informasi tentang bendanya.
+  static const List<String> _phraseCutMarkers = [
+    'di', 'didalam', 'diatas', 'dibawah', 'disebelah', 'didekat',
+    'dalam', 'atas', 'bawah', 'sebelah', 'dekat', 'deket', 'samping',
+    'depan', 'belakang', 'antara', 'sekitar',
+    'waktu', 'ketika', 'saat', 'pas',
+    // Kata kerja penyimpanan/kehilangan. Sesudahnya selalu keterangan, bukan
+    // bendanya: "kunci yang saya **taruh** di meja", "uang yang **jatuh**".
+    // Tanpa ini "taruh" ikut terbawa dan jadi "put" di prompt YOLOE.
+    'taruh', 'naruh', 'taro', 'naro', 'ditaruh', 'ditaro',
+    'simpan', 'nyimpan', 'nyimpen', 'disimpan',
+    'letakkan', 'meletakkan', 'diletakkan',
+    'lupa', 'ketinggalan', 'tertinggal', 'jatuh', 'kejatuhan',
+    'kebawa', 'terbawa', 'ketuker', 'tertukar',
+  ];
+
+  /// Kata yang menunjuk "benda" tanpa menyebut benda apa pun.
+  ///
+  /// Kalau yang tersisa sesudah semua penyaringan cuma ini, artinya pengguna
+  /// belum menyebutkan barangnya. Mengirimnya ke YOLOE berarti memindai kata
+  /// "itu" lalu melaporkan tidak ketemu - jawaban yang terdengar seperti
+  /// barangnya tidak ada, padahal pertanyaannya yang belum lengkap.
+  static const Set<String> _nonObjectWords = {
+    'barang', 'barangnya', 'objek', 'objeknya', 'benda', 'bendanya',
+    'itu', 'ini', 'apa', 'apapun', 'sesuatu', 'sesuatunya', 'anu',
+  };
+
+  /// Batas jumlah kata yang berangkat ke YOLOE.
+  ///
+  /// Frasa benda Bahasa Indonesia menaruh kata bendanya di DEPAN, lalu
+  /// sifatnya: "botol minum plastik biru" sudah empat kata dan itu sudah
+  /// sangat spesifik. Yang melewati batas ini bukan nama barang yang lebih
+  /// tepat, melainkan kalimat yang lolos dari penyaringan di atas - dan
+  /// setiap kata tambahan MEMPERSEMPIT hasil YOLOE, bukan memperjelasnya.
+  static const int _maxPhraseWords = 4;
+
+  /// Saring frasa benda sampai yang tersisa benar-benar cuma nama barang,
+  /// siap diterjemahkan lalu dikirim ke YOLOE.
+  ///
+  /// Sengaja dibuat MANDIRI dan idempoten - aman dijalankan pada teks yang
+  /// sudah bersih maupun pada ucapan mentah. Alasannya bukan kerapian:
+  /// `_target` bisa datang dari tiga jalur berbeda (perintah suara global,
+  /// tombol "Ganti barang" di layar, dan target tersimpan saat offline), dan
+  /// hanya dua di antaranya yang sudah lewat pengupas kata pembuka. Filter
+  /// yang mengandalkan pemanggilnya sudah bersih akan bocor tepat di jalur
+  /// ketiga, diam-diam.
+  ///
+  ///     'tolong carikan tas merah'        -> 'tas merah'
+  ///     'ganti barang jadi keyboard'      -> 'keyboard'
+  ///     'botol minum warna biru'          -> 'botol minum biru'
+  ///     'tas merah di atas meja tadi'     -> 'tas merah'
+  ///     'cariin dong barangnya'           -> ''      (belum menyebut benda)
+  ///
+  /// String kosong berarti **jangan kirim apa pun**: tidak ke penerjemah,
+  /// tidak ke YOLOE.
+  static String normalizeSearchPhrase(String raw) {
+    var norm = _normalize(raw);
+    if (norm.trim().isEmpty) return '';
+
+    // 1. Kupas kata pembuka - "cari", "cariin dong", "ganti barang jadi".
+    //
+    //    Yang diambil adalah sisa kalimat SESUDAH kata pembuka, bukan
+    //    kalimat yang kata pembukanya dihapus di tempat. Bedanya nyata pada
+    //    ucapan koreksi: "bukan itu, cariin keyboard". Menghapus "cariin"
+    //    saja menyisakan "bukan itu keyboard", dan "bukan" ikut berangkat ke
+    //    penerjemah lalu jadi "not" di prompt YOLOE. Mengambil sisa
+    //    sesudahnya menyisakan tepat "keyboard".
+    //
+    //    Berlapis karena satu kalimat bisa punya dua kata pembuka ("ganti,
+    //    sekarang cari keyboard"), dan dibatasi supaya kalimat yang isinya
+    //    HANYA kata pembuka berhenti sebagai kosong alih-alih berputar.
+    final openers = <String>[...changeTargetPrefixes, ...searchPrefixes]
+      ..sort((a, b) => b.length.compareTo(a.length));
+    for (var putaran = 0; putaran < 3; putaran++) {
+      var terkupas = false;
+      for (final prefix in openers) {
+        final needle = ' ${_normalize(prefix).trim()} ';
+        final idx = norm.indexOf(needle);
+        if (idx < 0) continue;
+        norm = _normalize(norm.substring(idx + needle.length - 1));
+        terkupas = true;
+        break;
+      }
+      if (!terkupas || norm.trim().isEmpty) break;
+    }
+
+    // 2. Basa-basi percakapan dan derau frasa benda.
+    for (final w in [..._sortedFillers, ..._searchNoiseWords]) {
+      final needle = ' ${_normalize(w).trim()} ';
+      while (norm.contains(needle)) {
+        norm = norm.replaceAll(needle, ' ');
+      }
+    }
+
+    var words = norm.split(' ').where((w) => w.isNotEmpty).toList();
+
+    // 3. Potong di penanda keterangan tempat/waktu.
+    //
+    //    Penanda di posisi PERTAMA berarti tidak ada nama barang sebelumnya
+    //    ("cari di meja"). Yang tersisa cuma keterangan tempat, dan
+    //    menerjemahkannya membuat YOLOE mencari mejanya - bukan barang yang
+    //    sebenarnya diminta, yang memang belum disebut.
+    final cut = words.indexWhere(_phraseCutMarkers.contains);
+    if (cut == 0) return '';
+    if (cut > 0) words = words.sublist(0, cut);
+
+    // 4. Buang kata yang tidak menunjuk benda apa pun.
+    words = words.where((w) => !_nonObjectWords.contains(w)).toList();
+
+    // 5. Batasi panjangnya.
+    if (words.length > _maxPhraseWords) {
+      words = words.sublist(0, _maxPhraseWords);
+    }
+
+    return words.join(' ');
+  }
+
   static String? _extractSearchTarget(String norm) {
     final sortedPrefixes = List<String>.from(searchPrefixes)
       ..sort((a, b) => b.length.compareTo(a.length));
