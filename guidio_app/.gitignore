@@ -29,6 +29,7 @@ migrate_working_dir/
 *.iws
 .idea/
 .vscode/
+devtools_options.yaml
 
 # Flutter / Dart Build & Package Artifacts
 .dart_tool/
