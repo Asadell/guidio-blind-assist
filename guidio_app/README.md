@@ -450,6 +450,68 @@ Pola cari-objek dinamis juga sengaja diletakkan sebelum kata tunggal: "cari
 uang yang jatuh" harus berarti mencari benda, bukan membuka Mode Kenali Uang
 hanya karena kata "uang" muncul di dalamnya.
 
+### Penyaringan frasa benda: `normalizeSearchPhrase()`
+
+Mode Cari Objek memakai YOLOE open-vocabulary, yang menerima **prompt teks
+bebas** lewat encoder teks MobileCLIP. Sifat itu yang membuat penyaringan di
+sini bukan soal kerapian: encoder mencocokkan **seluruh frasa** dengan isi
+gambar, bukan kata kuncinya saja. Prompt `please find my red bag` mencari
+sesuatu yang serentak cocok dengan "please", "find", DAN "bag" - dan tas yang
+sebenarnya ada tepat di depan pengguna dilaporkan tidak ketemu.
+
+Jadi setiap kata yang lolos **mempersempit** hasil, bukan memperjelasnya.
+Lima tahap, berurutan:
+
+| Tahap | Membuang | Contoh |
+|---|---|---|
+| 1 | Kata pembuka (`searchPrefixes` + `changeTargetPrefixes`) | `tolong carikan tas merah` → `tas merah` |
+| 2 | Basa-basi (`fillerWords`) dan derau frasa benda | `botol minum warna biru` → `botol minum biru` |
+| 3 | Potong di penanda tempat/waktu dan kata kerja simpan | `kunci yang saya taruh di meja` → `kunci` |
+| 4 | Kata yang tidak menunjuk benda apa pun | `barangnya` → *(kosong)* |
+| 5 | Batas empat kata | |
+
+Tahap 1 mengambil sisa kalimat **sesudah** kata pembuka, bukan menghapus kata
+pembukanya di tempat. Bedanya nyata pada ucapan koreksi: `bukan itu, cariin
+keyboard`. Menghapus "cariin" saja menyisakan `bukan itu keyboard`, dan "bukan"
+ikut jadi `not` di prompt YOLOE.
+
+String kosong berarti **jangan kirim apa pun** - pengguna belum menyebutkan
+barangnya, dan memindai kata "itu" cuma menghasilkan "tidak ketemu" yang
+terdengar seperti barangnya tidak ada.
+
+Fungsinya sengaja **mandiri dan idempoten**, tidak mengandalkan pemanggilnya
+sudah bersih. `_target` bisa datang dari tiga jalur - perintah suara global,
+tombol "Ganti barang" di layar, dan target tersimpan saat offline - dan hanya
+dua di antaranya yang sudah lewat pengupas kata pembuka.
+
+### Dari frasa Indonesia ke prompt YOLOE
+
+Hasil penyaringan diterjemahkan ML Kit on-device (`TranslationService.
+toEnglish`), lalu dikirim ke backend sebagai field **terpisah** `prompt_en` -
+`target` tetap Bahasa Indonesia karena nilainya yang dibacakan kembali ke
+pengguna ("Ada 2 tas merah, yang terdekat di kiri").
+
+Di backend, `resolve_prompt()` memakainya sebagai **lapis kedua**, bukan
+pengganti kamus:
+
+1. **Kamus kurasi** (`EXTRA_ID_TO_EN`) menang duluan. Isinya dipilih supaya
+   cocok dengan kosakata encoder teks YOLOE: `hape` → `cell phone`, bukan
+   `cellphone`; `gawai` → `cell phone`, bukan `gadget`.
+2. **Terjemahan ML Kit** untuk yang tidak ada di kamus. Di sinilah janji
+   open-vocabulary baru ditepati: `irus` → `ladle`, `cobek` → `mortar`.
+3. Tebakan substring, lalu frasa Indonesianya apa adanya.
+
+Sebelum lapis 2 ada, kata di luar kamus jatuh ke lapis 3 dan berakhir sebagai
+prompt **Bahasa Indonesia** yang dikirim ke encoder berbahasa Inggris - bukan
+pencarian yang kurang akurat, melainkan pencarian yang tidak pernah punya
+peluang. Pengguna cuma mendengar "tidak ketemu", tanpa satu pun petunjuk bahwa
+yang salah adalah promptnya, bukan barangnya.
+
+Terjemahannya dimulai saat target **ditetapkan**, bukan saat tombol kirim
+ditekan: di antara keduanya ada konfirmasi suara beberapa detik yang sudah
+dibayar. Kalau belum selesai dalam 2 detik saat tombol ditekan, `prompt_en`
+tidak dikirim dan backend memakai kamusnya - hasilnya lebih kasar, bukan gagal.
+
 ---
 
 ## 5. Narasi lokal
