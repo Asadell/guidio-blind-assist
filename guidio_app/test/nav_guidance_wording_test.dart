@@ -55,6 +55,8 @@ List<String> _ucapanUntuk(ZoneAnalysis zona) {
 }
 
 void main() {
+  _ujiTeksArahan();
+
   group('ZoneAnalysis.ttsMessage - arah bertingkat', () {
     test('geser nol berarti benar-benar lurus', () {
       final m = _zona(
@@ -183,6 +185,65 @@ void main() {
         expect(u, isNot(contains('ke kiri')));
         expect(u, isNot(contains('ke kanan')));
       }
+    });
+  });
+}
+
+/// ─────────────────────────────────────────────────────────────────────────
+/// ARAHAN JUGA HARUS ADA DALAM BENTUK TEKS
+///
+/// Sampai sekarang arahan mode ini hanya ada sebagai suara, jadi ia hilang
+/// sama sekali bagi siapa pun yang tidak sedang mendengar: pendamping awas,
+/// penguji lapangan, juri, dan pengguna low vision yang masih bisa membaca.
+///
+/// Yang dijaga di sini satu hal, dan itu yang paling mudah rusak: teks di
+/// layar dan kalimat yang terucap harus SELALU sama. Arahan yang diredam rem
+/// anti-banjir tidak boleh muncul di layar, karena layar akan menampilkan
+/// kalimat yang tidak pernah diucapkan.
+/// ─────────────────────────────────────────────────────────────────────────
+void _ujiTeksArahan() {
+  group('NavigationProvider.guidanceText', () {
+    test('kosong sebelum ada arahan apa pun', () {
+      expect(NavigationProvider().guidanceText, isEmpty);
+    });
+
+    test('berisi kalimat yang sama persis dengan yang diucapkan', () {
+      final ucapan = <String>[];
+      final p = NavigationProvider();
+      p.onSpeak = (teks, _) => ucapan.add(teks);
+      p.debugApplyResult(
+        _zona(
+          kiri: ZoneStatus.danger,
+          tengah: ZoneStatus.danger,
+          kanan: ZoneStatus.caution,
+          geser: -0.20,
+        ),
+        const [],
+      );
+
+      expect(ucapan, isNotEmpty);
+      expect(p.guidanceText, ucapan.last,
+          reason: 'teks di layar dan suara harus berasal dari satu titik');
+      expect(p.guidanceAt, isNotNull);
+    });
+
+    test('stopNavigation membuang arahan yang tertinggal', () {
+      final p = NavigationProvider();
+      p.onSpeak = (_, __) {};
+      p.debugApplyResult(
+        _zona(
+          kiri: ZoneStatus.safe,
+          tengah: ZoneStatus.safe,
+          kanan: ZoneStatus.safe,
+        ),
+        const [],
+      );
+      p.stopNavigation();
+
+      expect(p.guidanceText, isEmpty,
+          reason: 'kalimat yang menyuruh melangkah tidak boleh tertinggal di '
+              'mode yang sudah berhenti mengawasi');
+      expect(p.guidanceAt, isNull);
     });
   });
 }
