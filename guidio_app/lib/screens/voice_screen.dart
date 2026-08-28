@@ -423,7 +423,10 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const VoiceOrb(state: VoiceOrbState.idle),
               const SizedBox(height: AppSpacing.s4),
-              _pill('Ketuk lalu bicara'),
+              // Menunjuk tombol yang benar. "Ketuk lalu bicara" menggambarkan
+              // tombol Bicara di tengah, padahal aksi utama mode ini ada di
+              // tombol kiri bawah - satu ketukan, satu foto, satu deskripsi.
+              _pill('Tekan tombol kiri bawah untuk deskripsikan'),
             ]),
           ),
         ];
@@ -483,9 +486,23 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     final history = voice.history;
     if (history.isEmpty) return const SizedBox.shrink();
 
-    final lastUser = history.lastWhere((t) => t.isUser, orElse: () => history.last);
+    // ── Gelembung ucapan PENGGUNA dihilangkan ──
+    //
+    // Mode ini punya satu masukan: tombol kiri bawah, yang memotret lalu
+    // mendeskripsikan. Menampilkan kembali apa yang tertangkap dari mulut
+    // pengguna adalah pola aplikasi obrolan, dan di sini ia tidak menjawab
+    // pertanyaan siapa pun - yang ditunggu cuma satu hal, yaitu apa yang
+    // terlihat di depannya.
+    //
+    // Alasan lamanya ("supaya pengguna bisa memeriksa apakah suaranya
+    // tertangkap benar") tidak berlaku di layar ini: perintah suara sudah
+    // punya pil transkrip sendiri di atas tombol Bicara, hidup selama jarinya
+    // menempel, dan itu tempat yang jauh lebih tepat untuk memeriksanya -
+    // sebelum perintahnya dijalankan, bukan sesudah.
+    //
+    // Yang tersisa cuma jawabannya, dan itu yang memang dicari.
     final lastReply = history.lastWhere((t) => !t.isUser, orElse: () => history.last);
-    final replyIsNewer = history.lastIndexOf(lastReply) > history.lastIndexOf(lastUser);
+    if (lastReply.isUser) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -496,20 +513,11 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
         children: [
           ChatTranscript(
             turns: [
-              // Ucapan pengguna tetap ditampilkan, karena itu satu-satunya
-              // cara ia memeriksa apakah suaranya tertangkap dengan benar.
-              // Kalau yang terdengar meleset, di sinilah kelihatannya.
               ChatBubble(
-                speaker: ChatSpeaker.user,
-                text: lastUser.text,
-                isLatest: false,
+                speaker: ChatSpeaker.vinara,
+                text: lastReply.text,
+                isLatest: true,
               ),
-              if (replyIsNewer)
-                ChatBubble(
-                  speaker: ChatSpeaker.vinara,
-                  text: lastReply.text,
-                  isLatest: true,
-                ),
             ],
           ),
           if (_longAnswerOffer) ...[
