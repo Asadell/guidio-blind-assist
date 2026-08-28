@@ -45,13 +45,31 @@ class ZoneIndicator extends StatelessWidget {
     this.recommended = -1,
   });
 
+  /// Sisi yang disarankan, dalam kata. Null kalau tidak ada saran.
+  String? get _sisiDisarankan => switch (recommended) {
+        0 => 'kiri',
+        1 => 'tengah',
+        2 => 'kanan',
+        _ => null,
+      };
+
   String get _liveLabel {
     if ([left, center, right].every((s) => s == ZoneStatus.unknown)) {
       return 'Kondisi jalur belum diketahui';
     }
-    return 'Kondisi jalur: kiri ${left.label.toLowerCase()}, '
+    final kondisi = 'Kondisi jalur: kiri ${left.label.toLowerCase()}, '
         'tengah ${center.label.toLowerCase()}, '
         'kanan ${right.label.toLowerCase()}';
+
+    // Sarannya ikut dibacakan, bukan hanya digambar.
+    //
+    // Tiga status saja cuma MENILAI. Pada trotoar sempit ketiganya bisa
+    // berbunyi "bahaya, hati-hati, bahaya" sekaligus, dan pembacaan itu tidak
+    // memberi satu pun hal untuk dikerjakan - padahal sistem sudah tahu sisi
+    // mana yang masih bisa dilewati dan sudah menggambarnya sebagai chip
+    // berisian pekat. Yang terlihat mata harus terdengar juga.
+    final sisi = _sisiDisarankan;
+    return sisi == null ? kondisi : '$kondisi. Lewat $sisi';
   }
 
   @override
@@ -66,6 +84,9 @@ class ZoneIndicator extends StatelessWidget {
           Expanded(child: _ZoneChip(label: 'Tengah', status: center, recommended: recommended == 1)),
           const SizedBox(width: AppSpacing.s2),
           Expanded(child: _ZoneChip(label: 'Kanan', status: right, recommended: recommended == 2)),
+          // Chip yang disarankan ditandai panah di baris atasnya - lihat
+          // [_ZoneChip]. Tanpa itu, "Tengah HATI-HATI" berisian pekat terbaca
+          // sebagai peringatan, bukan sebagai anjuran lewat sana.
         ],
       ),
     );
@@ -92,7 +113,33 @@ class _ZoneChip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: AppTypography.caption(color: solid ? AppColors.onDark.withValues(alpha: .85) : AppColors.ink2)),
+            // Baris atas: nama sisi, didahului panah kalau inilah sisi yang
+            // disarankan. Panahnya duduk DI BARIS YANG SAMA, bukan sebagai
+            // baris ketiga: chip ini tingginya tetap 56 dp dan aplikasi
+            // mendukung ukuran teks 200%, jadi baris tambahan akan meluap
+            // persis di pengaturan yang paling dibutuhkan pengguna low vision.
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (solid) ...[
+                  Icon(Icons.arrow_forward_rounded,
+                      size: 12, color: AppColors.onDark.withValues(alpha: .85)),
+                  const SizedBox(width: 3),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption(
+                      color: solid
+                          ? AppColors.onDark.withValues(alpha: .85)
+                          : AppColors.ink2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 1),
             status == ZoneStatus.unknown
                 ? _UnknownDots()
