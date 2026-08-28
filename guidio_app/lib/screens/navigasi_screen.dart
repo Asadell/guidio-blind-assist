@@ -293,7 +293,23 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     // garis hitung mundurnya habis - dan garis yang berbohong soal kapan
     // kartunya pergi lebih buruk daripada tidak ada garis sama sekali.
     _holdSweeper = Timer.periodic(const Duration(milliseconds: 250), (_) {
-      if (!mounted || _heldObstacles.isEmpty) return;
+      if (!mounted) return;
+
+      // Pil arahan ikut disapu di sini.
+      //
+      // Kedaluwarsanya lewat begitu saja tanpa ada yang memberi tahu:
+      // provider hanya memberi kabar saat arahan BARU datang, sementara yang
+      // menghilangkan pil justru ketiadaan kabar. Tanpa sapuan ini, arahan
+      // terakhir menggantung di layar sampai ada frame berikutnya - dan kalau
+      // panduannya berhenti karena dijeda, frame itu tidak pernah datang.
+      final segarSekarang =
+          _arahanMasihSegar(context.read<NavigationProvider>());
+      if (segarSekarang != _arahanTerlihatTerakhir) {
+        _arahanTerlihatTerakhir = segarSekarang;
+        setState(() {});
+      }
+
+      if (_heldObstacles.isEmpty) return;
       final now = DateTime.now();
       final expired = _heldObstacles.entries
           .where((e) => now.difference(e.value.lastSeen) > _kObstacleHold)
@@ -302,6 +318,27 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       if (expired.isEmpty) return;
       setState(() => _heldObstacles.removeWhere((k, _) => expired.contains(k)));
     });
+  }
+
+  /// Berapa lama arahan bertahan di layar sesudah terakhir diperbarui.
+  ///
+  /// Loop navigasi berdetak dua kali per detik dan arahan diperbarui jauh
+  /// lebih sering daripada ini, jadi ambang ini tidak pernah terlewati selama
+  /// panduannya sehat. Ia baru bekerja saat panduannya BERHENTI - dijeda,
+  /// kehilangan frame, atau modelnya tersendat - dan di situ justru penting:
+  /// kalimat "Agak ke kiri" yang menggantung di layar menggambarkan tikungan
+  /// yang mungkin sudah dilewati pengguna beberapa langkah lalu.
+  static const _arahanKedaluwarsa = Duration(seconds: 6);
+
+  /// Kesegaran arahan pada sapuan terakhir. Dibandingkan tiap 250 ms supaya
+  /// `setState` hanya dipanggil saat pil benar-benar muncul atau menghilang,
+  /// bukan empat kali per detik selamanya.
+  bool _arahanTerlihatTerakhir = false;
+
+  bool _arahanMasihSegar(NavigationProvider nav) {
+    final at = nav.guidanceAt;
+    if (at == null || nav.guidanceText.isEmpty) return false;
+    return DateTime.now().difference(at) < _arahanKedaluwarsa;
   }
 
   /// Frame terakhir dari stream, dikodekan hanya saat benar-benar dikirim.
@@ -620,6 +657,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     // sementara kartu teks hanya perlu cukup lama untuk sempat dibaca.
     final obstacles = _stickyObstacles(nav.obstacles);
     final hasCriticalObstacle = obstacles.any((h) => h.detection.isCritical);
+    final arahanTerlihat = _arahanMasihSegar(nav);
 
     if (_debugOverride == 'NV-21') {
       // NV-21 - layar mengambil alih penuh, tidak ada BottomActionBar, jadi
@@ -761,7 +799,13 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             // `nav.pothole ||` DINONAKTIFKAN bersama kartunya di bawah -
             // lihat catatan di sana. Tanpa ini kolomnya tetap dipasang untuk
             // peringatan permukaan yang sudah tidak pernah digambar.
-            if (/* nav.pothole || */ obstacles.isNotEmpty || nav.segmentationImage != null)
+            // `arahanTerlihat` ikut jadi syarat: pil arahan tinggal di kolom
+            // yang sama, jadi kolomnya harus berdiri walau belum ada rintangan
+            // maupun hamparan. Arahan justru paling sering muncul sendirian -
+            // trotoar lapang tanpa satu pun rintangan tetap punya arah.
+            if (/* nav.pothole || */ arahanTerlihat ||
+                obstacles.isNotEmpty ||
+                nav.segmentationImage != null)
               Positioned(
                 left: AppSpacing.screenMargin,
                 right: AppSpacing.screenMargin,
@@ -813,6 +857,25 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
                                 ))
                             .toList(),
                       ),
+                    // Pil arahan duduk PALING BAWAH di kolom ini, tepat di
+                    // atas BottomActionBar.
+                    //
+                    // Tempat itu dipilih karena arahan adalah keluaran utama
+                    // mode ini - kalimat yang benar-benar memberi tahu harus
+                    // melangkah ke mana. Kartu rintangan menumpuk di ATASNYA,
+                    // jadi posisi arahan tidak bergeser saat rintangan datang
+                    // dan pergi. Bagi pengguna low vision yang membaca layar
+                    // sambil berjalan, tempat yang berpindah-pindah sama saja
+                    // dengan tidak ada.
+                    if (arahanTerlihat) ...[
+                      if (obstacles.isNotEmpty ||
+                          nav.segmentationImage != null)
+                        const SizedBox(height: AppSpacing.s2),
+                      _GuidancePill(
+                        text: nav.guidanceText,
+                        tier: nav.guidanceTier,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -938,6 +1001,88 @@ class _ZoneOverlay extends StatelessWidget {
           Expanded(child: ColoredBox(color: _color(center))),
           Expanded(child: ColoredBox(color: _color(right))),
         ],
+      ),
+    );
+  }
+}
+
+/// Pil arahan berjalan - kalimat yang sama persis dengan yang diucapkan.
+///
+/// ## Untuk siapa
+///
+/// Bukan untuk pengguna tunanetra: dia sudah mendengarnya, dan mendengarnya
+/// lebih dulu. Ini untuk mata yang lain di sekitar layar - pendamping awas
+/// yang membantu di persimpangan, penguji lapangan, juri yang menilai, dan
+/// pengguna low vision yang masih bisa membaca teks besar berkontras tinggi.
+///
+/// Sampai sekarang mereka melihat chip zona ("Kiri BAHAYA, Tengah AMAN") dan
+/// hamparan jalur, tapi kalimat yang benar-benar memberi tahu harus melangkah
+/// ke mana - "Agak ke kiri", "Jalur di depan tertutup. Ambil sebelah kanan" -
+/// tidak pernah muncul di layar sama sekali. Tiga status zona hanya MENILAI;
+/// kalimat inilah yang MENYURUH, dan justru itu yang hilang.
+///
+/// ## Kenapa TIDAK liveRegion
+///
+/// `AlertCard` memakai `liveRegion: true` supaya kemunculannya membangunkan
+/// TalkBack. Pil ini tidak boleh: isinya berubah tiap beberapa detik, dan
+/// setiap perubahan pada node semantik yang hidup memotong ucapan TalkBack
+/// yang sedang berjalan - termasuk arahan yang sama yang sedang dibacakan
+/// mesin suara aplikasi ini sendiri. Kalimatnya sudah sampai lewat telinga;
+/// yang ini murni untuk mata.
+class _GuidancePill extends StatelessWidget {
+  final String text;
+  final SpeechTier tier;
+
+  const _GuidancePill({required this.text, required this.tier});
+
+  /// Warna aksen mengikuti tier suara, jadi yang terlihat dan yang terdengar
+  /// membawa tingkat mendesak yang sama.
+  Color get _aksen => switch (tier) {
+        SpeechTier.critical => AppColors.criticalFill,
+        SpeechTier.warning => AppColors.warningFill,
+        SpeechTier.info => AppColors.positiveFill,
+      };
+
+  IconData get _ikon => switch (tier) {
+        SpeechTier.critical => Icons.report_problem_rounded,
+        SpeechTier.warning => Icons.warning_amber_rounded,
+        SpeechTier.info => Icons.navigation_rounded,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: text,
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: AppSpacing.s3,
+          ),
+          decoration: BoxDecoration(
+            // Scrim pekat, bukan isian berwarna: pil ini duduk di atas
+            // pratinjau kamera yang isinya tidak bisa ditebak, dan teks putih
+            // di atas warna vibrant gagal kontras (lihat catatan di
+            // `AppColors.positiveFill`). Warnanya masuk lewat ikon dan garis
+            // tepi, yang keduanya bidang besar dan boleh vibrant.
+            color: AppColors.scrimText,
+            borderRadius: AppRadius.card,
+            border: Border.all(color: _aksen, width: 2),
+          ),
+          child: Row(
+            children: [
+              Icon(_ikon, size: 22, color: _aksen),
+              const SizedBox(width: AppSpacing.s3),
+              Expanded(
+                child: Text(
+                  text,
+                  style: AppTypography.bodyStrong(color: AppColors.onDark)
+                      .copyWith(fontSize: 18, height: 24 / 18),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -269,6 +269,39 @@ class NavigationProvider extends ChangeNotifier {
   String _lastSpokenMessage = '';
   DateTime _lastSpokenAt = DateTime.fromMillisecondsSinceEpoch(0);
 
+  // ── Arahan yang sedang berlaku, untuk ditampilkan di layar ─────────────
+  //
+  // Sampai sekarang arahan mode ini hanya ada dalam bentuk suara. Itu
+  // membuatnya hilang sama sekali bagi siapa pun yang tidak sedang mendengar:
+  // pendamping awas yang membantu di persimpangan, penguji lapangan, juri
+  // yang menilai, dan pengguna low vision yang justru masih bisa membaca
+  // teks besar. Mereka melihat chip zona dan hamparan jalur, tapi kalimat
+  // yang benar-benar memberi tahu harus melangkah ke mana tidak pernah
+  // muncul di layar.
+  //
+  // Diisi HANYA di titik yang sama dengan `_speak`, supaya yang terbaca dan
+  // yang terdengar tidak pernah berbeda. Arahan yang diredam rem anti-banjir
+  // juga tidak muncul di layar - kalau tidak, layar akan menampilkan kalimat
+  // yang tidak pernah diucapkan.
+  String _guidanceText = '';
+  String get guidanceText => _guidanceText;
+
+  SpeechTier _guidanceTier = SpeechTier.info;
+  SpeechTier get guidanceTier => _guidanceTier;
+
+  /// Kapan [guidanceText] terakhir diperbarui. Layar memakainya untuk
+  /// menyembunyikan arahan yang sudah basi - arahan berjalan yang menggantung
+  /// di layar sesudah panduannya berhenti menggambarkan jalan yang sudah
+  /// dilewati.
+  DateTime? _guidanceAt;
+  DateTime? get guidanceAt => _guidanceAt;
+
+  void _catatArahan(String message, SpeechTier tier) {
+    _guidanceText = message;
+    _guidanceTier = tier;
+    _guidanceAt = DateTime.now();
+  }
+
   /// Pesan yang sedang menunggu konfirmasi frame berikutnya, dan sudah berapa
   /// frame berturut-turut ia bertahan. Dipakai [_emitGuidance] sebagai
   /// histeresis - lihat alasannya di sana.
@@ -942,6 +975,7 @@ class NavigationProvider extends ChangeNotifier {
     // takeover berjalan lebih dulu tanpa syarat, jadi ia tetap memotong
     // ucapan berjalan walau peringatannya kemudian diredam rem di atas.
     if (takeover) onTakeover?.call();
+    _catatArahan(message, tier);
     _speak(message, tier: tier);
   }
 
@@ -1055,7 +1089,13 @@ class NavigationProvider extends ChangeNotifier {
   /// Sengaja melewati anti-banjir [_announce]: ini permintaan eksplisit
   /// pengguna, bukan pesan otomatis yang berisiko menutupi suara lalu lintas.
   void repeatGuidance() {
-    _speak(zoneSummary(), tier: SpeechTier.warning);
+    final ringkasan = zoneSummary();
+    _catatArahan(ringkasan, SpeechTier.warning);
+    _speak(ringkasan, tier: SpeechTier.warning);
+    // "Ulangi" tidak lewat `_applyOnDeviceResult`, jadi tidak ada yang
+    // memberi tahu layar. Tanpa ini, teks arahan tetap menampilkan kalimat
+    // sebelumnya sementara yang terdengar sudah ringkasan zona.
+    _notify();
   }
 
   /// `actionStopWalking` - hentikan panduan tanpa keluar mode.
@@ -1104,6 +1144,11 @@ class NavigationProvider extends ChangeNotifier {
     _consecutiveTrusted = 0;
     _lastPhaseAnnounceAt = DateTime.fromMillisecondsSinceEpoch(0);
     _lastSpokenMessage = '';
+    // Arahan terakhir ikut dibuang. Kalau tidak, ia tertinggal di layar
+    // sebagai kalimat yang menyuruh melangkah, di mode yang sudah berhenti
+    // mengawasi apa pun.
+    _guidanceText = '';
+    _guidanceAt = null;
     _modelsReady   = false;
     _modelsLoading = false;
     // Hanya benderanya yang direset. `TFLiteService` sengaja TIDAK di-dispose:
