@@ -319,6 +319,26 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
   Future<CameraImage?> _grabCameraImage() async {
     if (!mounted) return _latestFrame;
     final cam = context.read<CameraProvider>();
+
+    // Tidak mengalir berarti tidak ada frame yang sah untuk diberikan.
+    //
+    // `_latestFrame` menyimpan frame terakhir apa adanya, dan begitu kamera
+    // dilepas - ke latar belakang, atau saat preset diganti - frame itu
+    // membeku. Loop navigasi tetap berdetak dua kali per detik, jadi tanpa
+    // penjagaan ini ia terus menyusun panduan dari pemandangan yang sudah
+    // lewat. Di log terlihat sebagai baris PIDNet yang angkanya persis sama
+    // berulang-ulang sesudah kamera dilepas.
+    //
+    // Untuk alat bantu jalan, panduan basi lebih berbahaya daripada tidak ada
+    // panduan: pengguna mendengar "jalan lurus" tentang trotoar yang sudah dia
+    // tinggalkan. Frame kosong membuat `_tickOnDevice` pulang lebih awal,
+    // tanpa suara, sampai frame sungguhan datang lagi.
+    //
+    // Penjagaan ini berdiri sendiri, tidak bergantung pada `onFramesInvalidated`
+    // sempat terpasang atau tidak - keadaan kamera yang menentukan, bukan
+    // urutan pemasangan handler antar layar.
+    if (!cam.isStreaming) return null;
+
     context.read<NavigationProvider>().updateCameraCondition(
           tooDark: cam.isDark,
           misaimed: cam.healthMessage,

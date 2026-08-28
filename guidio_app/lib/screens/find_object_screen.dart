@@ -163,6 +163,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   /// "barangnya memang tidak ada di sini". Tindakan yang tepat berbeda total
   /// - yang satu perlu memutar badan, yang lain perlu menyalakan lampu.
   Future<Uint8List?> _grabFrame() async {
+    // Aliran mati = frame simpanan sudah basi. Mengirim pemandangan lama ke
+    // YOLOE berarti melaporkan barang yang terlihat sebelum pengguna
+    // meninggalkan aplikasi. Lihat catatan panjang di
+    // `navigasi_screen._grabCameraImage`.
+    if (!mounted || !context.read<CameraProvider>().isStreaming) return null;
+
     final frame = _latestFrame;
     if (frame == null) return null;
 
