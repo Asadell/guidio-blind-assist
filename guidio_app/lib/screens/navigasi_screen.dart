@@ -277,6 +277,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       if (_hasCameraPermission) {
         final cam = context.read<CameraProvider>();
         cam.onFrameReady = (image) => _latestFrame = image;
+        // Frame simpanan dibuang saat kamera dilepas ke latar
+        // belakang - pemandangan lama tidak boleh dipakai lagi.
+        cam.onFramesInvalidated = () => _latestFrame = null;
         cam.startStream();
       }
     });
@@ -342,6 +345,7 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
     _nav.stopNavigation();
     _voice.clearModeHandlers();
     _cam.onFrameReady = null;
+    _cam.onFramesInvalidated = null;
     _cam.stopStream();
     super.dispose();
   }
@@ -360,6 +364,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
         final cam = context.read<CameraProvider>();
         await cam.initCamera(preset: CapturePreset.realtime);
         cam.onFrameReady = (image) => _latestFrame = image;
+        // Frame simpanan dibuang saat kamera dilepas ke latar
+        // belakang - pemandangan lama tidak boleh dipakai lagi.
+        cam.onFramesInvalidated = () => _latestFrame = null;
         cam.startStream();
       }
     }
@@ -373,6 +380,9 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
       final cam = context.read<CameraProvider>();
       await cam.initCamera(preset: CapturePreset.realtime);
       cam.onFrameReady = (image) => _latestFrame = image;
+      // Frame simpanan dibuang saat kamera dilepas ke latar belakang -
+      // pemandangan lama tidak boleh dipakai lagi.
+      cam.onFramesInvalidated = () => _latestFrame = null;
       cam.startStream();
     }
   }

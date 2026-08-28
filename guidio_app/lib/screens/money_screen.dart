@@ -226,6 +226,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     _money.pause();
     _voice.clearModeHandlers();
     _cam.onFrameReady = null;
+    _cam.onFramesInvalidated = null;
     _cam.stopStream();
     super.dispose();
   }

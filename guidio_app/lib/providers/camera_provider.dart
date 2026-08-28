@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vibration/vibration.dart';
@@ -16,7 +17,13 @@ import '../services/tflite_service.dart';
 /// - Mutex _capturing untuk race condition
 /// - On-device brightness check (plane Y) setiap frame
 /// - YUV420 → JPEG konversi yang benar via package 'image'
-class CameraProvider extends ChangeNotifier {
+class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
+  CameraProvider() {
+    // Siklus hidup diurus DI SINI, di pemilik kameranya, bukan di enam layar
+    // mode. Lihat catatan panjang di [didChangeAppLifecycleState].
+    WidgetsBinding.instance.addObserver(this);
+  }
+
   CameraController? _controller;
   bool _initialized = false;
   bool _streaming   = false;
@@ -555,10 +562,173 @@ class CameraProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cancelDarkWarningTimer();
     CameraHealthService.instance.stopListening();
     _controller?.dispose();
     super.dispose();
+  }
+
+  // ── Siklus hidup aplikasi ───────────────────────────────────────────────
+
+  /// Preset yang sedang dipakai saat aplikasi ditinggalkan, dan apakah
+  /// frame sedang mengalir. Keduanya yang dipulihkan saat kembali.
+  CapturePreset? _presetSebelumSuspend;
+  bool _mengalirSebelumSuspend = false;
+  bool _torchSebelumSuspend = false;
+  bool _suspended = false;
+
+  /// Sedang membangun ulang kamera sesudah kembali dari latar belakang.
+  /// Menahan panggilan kedua yang datang saat yang pertama belum selesai.
+  bool _memulihkan = false;
+
+  /// Kamera dilepas saat aplikasi ditinggalkan, dan dibangun ulang saat
+  /// kembali.
+  ///
+  /// ## Kenapa ini wajib ada, dan kenapa tempatnya di sini
+  ///
+  /// Android mengambil kembali kamera dari aplikasi yang tidak di depan.
+  /// Yang TIDAK terjadi dengan sendirinya adalah pemberitahuannya: `_streaming`
+  /// dan `_initialized` tetap `true`, `_controller` tetap ada, dan
+  /// `CameraPreview` tetap terpasang. Dari dalam kode, semuanya tampak sehat.
+  ///
+  /// Akibatnya persis bug yang dilaporkan: pengguna meninggalkan aplikasi
+  /// tanpa menutupnya, lalu kembali, dan mode Navigasi berhenti bekerja.
+  /// Layar tetap terlihat normal, tapi tidak ada satu frame pun yang datang.
+  /// Dua penjaga di awal metode yang menutup jalan keluarnya:
+  ///
+  ///   * `initCamera` pulang lebih awal karena `_initialized` masih true dan
+  ///     presetnya sama;
+  ///   * `startStream` pulang lebih awal karena `_streaming` masih true.
+  ///
+  /// Jadi memanggil keduanya lagi saat kembali - yang memang dilakukan
+  /// `TuntunScreen` - tidak memperbaiki apa pun. Keduanya no-op.
+  ///
+  /// Tempatnya di sini, bukan di layar mode, karena enam mode memakai kamera
+  /// yang sama dan hanya satu dari mereka yang sempat menuliskan penanganan
+  /// resume - itu pun yang tidak bekerja. Menyalinnya ke lima layar lain
+  /// berarti lima salinan yang bisa menyimpang satu per satu, dan mode yang
+  /// mati sesudah pengguna kembali adalah kegagalan yang paling sulit
+  /// disadari: tidak ada pesan galat, tidak ada layar yang berubah, cuma
+  /// aplikasi yang berhenti menjaga tanpa mengatakannya.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        unawaited(_lepasUntukLatarBelakang());
+      case AppLifecycleState.resumed:
+        unawaited(_bangunUlangSetelahKembali());
+    }
+  }
+
+  /// Dipanggil saat frame yang sudah tersimpan di layar TIDAK BOLEH dipakai
+  /// lagi - kamera dilepas, dan frame terakhir menggambarkan pemandangan
+  /// sebelum aplikasi ditinggalkan.
+  ///
+  /// Dua layar menyimpan frame terakhirnya sendiri (`_latestFrame` di
+  /// `navigasi_screen.dart` dan `find_object_screen.dart`). Tanpa
+  /// pemberitahuan ini, Mode Navigasi akan terus menyusun panduan dari
+  /// pemandangan yang membeku - dan pengguna yang baru kembali ke aplikasi
+  /// mendengar arahan tentang jalan yang sudah dia tinggalkan beberapa menit
+  /// lalu. Untuk alat bantu jalan, panduan yang basi lebih berbahaya
+  /// daripada panduan yang tidak ada.
+  void Function()? onFramesInvalidated;
+
+  Future<void> _lepasUntukLatarBelakang() async {
+    if (_suspended) return;
+    _suspended = true;
+
+    // `_activePreset` sengaja dibaca dengan cadangan. Kalau pengguna
+    // meninggalkan aplikasi lagi TEPAT saat pembangunan ulang sedang
+    // berjalan, presetnya sudah dinolkan di sana - dan kehilangan nilainya di
+    // sini berarti kamera tidak pernah dibangun ulang lagi sesudahnya.
+    _presetSebelumSuspend = _activePreset ?? _presetSebelumSuspend;
+    _mengalirSebelumSuspend = _streaming || _mengalirSebelumSuspend;
+    _torchSebelumSuspend = _isTorchOn;
+
+    if (_controller == null) return;
+
+    await stopStream();
+
+    // Diberitahukan SESUDAH aliran berhenti, supaya tidak ada frame baru yang
+    // menyusul mengisi ulang apa yang barusan dikosongkan.
+    onFramesInvalidated?.call();
+
+    final lama = _controller;
+    _controller = null;
+    _initialized = false;
+    _isTorchOn = false;
+    _cancelDarkWarningTimer();
+
+    // Diumumkan SEBELUM controller dibuang, lalu ditunggu satu frame - alasan
+    // yang sama dengan pergantian preset di [initCamera]: `CameraPreview` dan
+    // `CameraStage` melempar begitu controller yang mereka pegang di-dispose.
+    notifyListeners();
+    try {
+      await SchedulerBinding.instance.endOfFrame;
+    } catch (_) {
+      // Tidak ada binding (uji unit) - tidak ada pohon widget yang perlu
+      // digambar ulang, jadi tidak ada yang perlu ditunggu.
+    }
+    try {
+      await lama?.dispose();
+    } catch (e) {
+      debugPrint('[CameraProvider] dispose saat ke latar belakang: $e');
+    }
+    debugPrint('[CameraProvider] kamera dilepas, aplikasi ke latar belakang');
+  }
+
+  Future<void> _bangunUlangSetelahKembali() async {
+    if (!_suspended || _memulihkan) return;
+    _memulihkan = true;
+    try {
+      final preset = _presetSebelumSuspend;
+      _suspended = false;
+      if (preset == null) return;
+
+      // Izin bisa saja dicabut dari Pengaturan sementara aplikasi di latar
+      // belakang. Diperiksa TANPA meminta: memunculkan dialog izin di detik
+      // pengguna kembali ke aplikasi adalah kejutan, dan layar mode sudah
+      // punya kartu izinnya sendiri untuk keadaan itu.
+      if (!await Permission.camera.isGranted) {
+        debugPrint('[CameraProvider] izin kamera dicabut selama di latar '
+            'belakang - kamera tidak dibangun ulang');
+        _initialized = false;
+        notifyListeners();
+        return;
+      }
+
+      // `_activePreset` dinolkan supaya penjaga "sudah siap" di awal
+      // [initCamera] tidak memulangkan panggilan ini.
+      _activePreset = null;
+      _isTorchOn = _torchSebelumSuspend;
+      await initCamera(preset: preset);
+
+      // Aliran frame dinyalakan lagi kalau tadi memang mengalir.
+      //
+      // `initCamera` punya pemulihan alirannya sendiri, tapi ia membaca
+      // `_streaming` yang sudah dimatikan `stopStream` di atas. Jadi yang
+      // dipakai di sini catatan terpisah, bukan nilai yang sudah berubah.
+      if (_mengalirSebelumSuspend && _initialized) {
+        startStream();
+      }
+      debugPrint('[CameraProvider] kamera dibangun ulang '
+          '(preset=$preset, aliran=$_mengalirSebelumSuspend)');
+    } finally {
+      _memulihkan = false;
+    }
+
+    // Pengguna sempat pergi lagi selama pembangunan ulang berjalan. Tanpa
+    // pemeriksaan ini kameranya tetap hidup di latar belakang, karena
+    // `_lepasUntukLatarBelakang` tadi menemukan `_controller` masih null lalu
+    // pulang tanpa melepas apa pun.
+    if (_suspended) {
+      _suspended = false;
+      await _lepasUntukLatarBelakang();
+    }
   }
 }
 

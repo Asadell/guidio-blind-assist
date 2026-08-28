@@ -127,6 +127,9 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
         await cam.initCamera(preset: CapturePreset.capture);
         if (!mounted) return;
         cam.onFrameReady = (image) => _latestFrame = image;
+        // Frame simpanan dibuang saat kamera dilepas ke latar
+        // belakang - pemandangan lama tidak boleh dipakai lagi.
+        cam.onFramesInvalidated = () => _latestFrame = null;
         cam.startStream();
       }
     });
@@ -205,6 +208,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     _findObject.reset();
     _voice.clearModeHandlers();
     _cam.onFrameReady = null;
+    _cam.onFramesInvalidated = null;
     _cam.stopStream();
     super.dispose();
   }
