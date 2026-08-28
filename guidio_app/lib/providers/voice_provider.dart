@@ -11,6 +11,7 @@ import '../providers/detection_provider.dart';
 import '../providers/find_object_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/server_service.dart';
+import '../services/translation_service.dart';
 
 /// VoiceState - bagian 11 IMPLEMENTASI.md (AS-01..AS-25). Granular dari 4
 /// fase asli (idle/listening/processing/responding) supaya tiap sub-state
@@ -902,28 +903,43 @@ class VoiceProvider extends ChangeNotifier {
 
       _consecutiveFailures = 0;
 
-      // Caption dibacakan APA ADANYA dari Moondream2, tanpa disentuh.
+      // Caption Moondream2 diterjemahkan ke Bahasa Indonesia di perangkat.
       //
-      // Penerjemah kamus lokal sudah dilepas dari jalur ini. Ia menerjemahkan
-      // sebagian kalimat lalu menyerah pada sisanya, dan yang dihasilkan
-      // adalah campuran dua bahasa yang tidak konsisten dari satu foto ke
-      // foto berikutnya: kadang Indonesia, kadang Inggris, kadang setengah.
-      // Untuk pengguna yang mengandalkan telinga, tebakan yang tidak konsisten
-      // lebih sulit diikuti daripada satu bahasa yang tetap.
+      // Penerjemah kamus kata-per-kata buatan sendiri sudah dibuang dari
+      // repo ini. Ia menerjemahkan sebagian kalimat lalu menyerah pada
+      // sisanya, dan yang dihasilkan adalah campuran dua bahasa yang tidak
+      // konsisten dari satu foto ke foto berikutnya: kadang Indonesia,
+      // kadang Inggris, kadang setengah. Untuk pengguna yang mengandalkan
+      // telinga, tebakan yang tidak konsisten lebih sulit diikuti daripada
+      // satu bahasa yang tetap.
       //
-      // Konsekuensinya diterima dengan sadar: mode ini satu-satunya di seluruh
-      // aplikasi yang berbahasa Inggris. Karena itu penandanya dipertahankan.
-      final description = scene.descriptionEn;
+      // ML Kit Translate menyelesaikan justru bagian itu: kalimat utuh atau
+      // tidak sama sekali. `toIndonesian` mengembalikan null - tidak pernah
+      // separuh - kalau modelnya belum terunduh atau terjemahannya tidak
+      // layak, dan di jalur itu kita kembali persis ke perilaku lama:
+      // penanda "Dalam bahasa Inggris." plus caption aslinya.
+      final englishCaption = scene.descriptionEn;
+      final translated =
+          await TranslationService.instance.toIndonesian(englishCaption);
+      final speakInEnglish = translated == null;
+      final description = translated ?? englishCaption;
+
       _response = description;
       _setState(VoiceState.responded);
 
-      // Penanda ini BUKAN mengubah caption, dan bukan basa-basi.
+      // Penanda "Dalam bahasa Inggris." hanya diucapkan di jalur mundur,
+      // dan itu bukan basa-basi.
       //
-      // TTS berpindah locale ke en-US tepat sesudah kalimat ini. Tanpa
-      // aba-aba, pengguna tunanetra mendengar suaranya tiba-tiba berganti
-      // bahasa di tengah aplikasi yang seluruhnya Bahasa Indonesia, dan
-      // kesimpulan pertama yang wajar adalah aplikasinya rusak.
-      // Ketiganya lewat ANTREAN, bukan langsung ke mesin.
+      // Di jalur itu TTS berpindah locale ke en-US tepat sesudah kalimat ini.
+      // Tanpa aba-aba, pengguna tunanetra mendengar suaranya tiba-tiba
+      // berganti bahasa di tengah aplikasi yang seluruhnya Bahasa Indonesia,
+      // dan kesimpulan pertama yang wajar adalah aplikasinya rusak.
+      //
+      // Sebaliknya, kalau terjemahan berhasil, penanda itu HARUS hilang:
+      // mengumumkan "Dalam bahasa Inggris" lalu berbicara Indonesia adalah
+      // kebingungan yang kita ciptakan sendiri.
+      //
+      // Semuanya lewat ANTREAN, bukan langsung ke mesin.
       //
       // Dulu jalur ini memanggil `TTSService` langsung karena antrean belum
       // bisa membawa bahasa. Akibatnya deskripsi sepanjang belasan detik
@@ -936,14 +952,16 @@ class VoiceProvider extends ChangeNotifier {
       // Sebagai `assistant`, ketiganya kebal gerbang, kebal kedaluwarsa, dan
       // menahan gerbang sampai selesai. Bahaya kritis tetap boleh memotong,
       // tapi sekarang sisanya tetap di antrean dan tetap terucap sesudahnya.
-      await TtsQueue.instance.speak(
-        'Dalam bahasa Inggris.',
-        source: SpeechSource.assistant,
-      );
+      if (speakInEnglish) {
+        await TtsQueue.instance.speak(
+          'Dalam bahasa Inggris.',
+          source: SpeechSource.assistant,
+        );
+      }
       await TtsQueue.instance.speak(
         description,
         source: SpeechSource.assistant,
-        english: true,
+        english: speakInEnglish,
       );
       await _speakQualityNote(scene);
     } on CaptureRejected catch (rejected) {
