@@ -63,7 +63,15 @@ class TranslationService {
   final OnDeviceTranslatorModelManager _models =
       OnDeviceTranslatorModelManager();
 
-  OnDeviceTranslator? _translator;
+  /// Dua penerjemah, dua arah, TAPI model bahasanya sama.
+  ///
+  /// ML Kit menyimpan model per BAHASA, bukan per pasangan arah. Jadi begitu
+  /// `en` dan `id` terunduh untuk caption Moondream2, arah sebaliknya -
+  /// nama barang Indonesia jadi prompt Inggris untuk YOLOE - tidak menambah
+  /// satu byte pun unduhan. Itu alasan keduanya duduk di service yang sama
+  /// alih-alih dipisah per fitur.
+  OnDeviceTranslator? _enToId;
+  OnDeviceTranslator? _idToEn;
 
   /// Unduhan/persiapan yang sedang berjalan. Dipegang supaya dua pemanggil
   /// bersamaan ikut menunggu SATU unduhan, bukan memulai dua.
@@ -121,9 +129,13 @@ class TranslationService {
         }
       }
 
-      _translator ??= OnDeviceTranslator(
+      _enToId ??= OnDeviceTranslator(
         sourceLanguage: TranslateLanguage.english,
         targetLanguage: TranslateLanguage.indonesian,
+      );
+      _idToEn ??= OnDeviceTranslator(
+        sourceLanguage: TranslateLanguage.indonesian,
+        targetLanguage: TranslateLanguage.english,
       );
       _ready = true;
       _lastAttemptFailed = false;
@@ -143,13 +155,42 @@ class TranslationService {
   /// menyiapkan jalur mundur ke teks Inggrisnya; null di sini bukan kesalahan,
   /// melainkan jawaban jujur bahwa terjemahan tidak tersedia sekarang.
   Future<String?> toIndonesian(String english) async {
-    final source = english.trim();
+    return _translate(english, () => _enToId, rejectEcho: true);
+  }
+
+  /// Terjemahkan nama barang Bahasa Indonesia ke Inggris - dipakai Mode Cari
+  /// Objek untuk menyusun prompt teks YOLOE ("tas merah" → "red bag").
+  ///
+  /// YOLOE open-vocabulary menerima prompt teks bebas, tapi encoder teksnya
+  /// (MobileCLIP) dilatih pada Bahasa Inggris. Mengirim "termos" apa adanya
+  /// bukan menghasilkan pencarian yang buruk, melainkan pencarian yang
+  /// SALAH ARAH - dan pengguna cuma mendengar "tidak ketemu", tanpa satu pun
+  /// petunjuk bahwa yang gagal adalah promptnya, bukan barangnya.
+  ///
+  /// Sama seperti [toIndonesian], null berarti menyerah. Pemanggil kembali ke
+  /// kamus manual di backend, yang tetap jadi sumber utama untuk nama barang
+  /// sehari-hari.
+  ///
+  /// [rejectEcho] sengaja `false` di sini, berbeda dengan [toIndonesian].
+  /// Banyak nama barang memang sama di kedua bahasa - "laptop", "sofa",
+  /// "helm" - dan memulangkan null untuk itu berarti menolak terjemahan yang
+  /// justru sudah benar.
+  Future<String?> toEnglish(String indonesian) {
+    return _translate(indonesian, () => _idToEn, rejectEcho: false);
+  }
+
+  Future<String?> _translate(
+    String input,
+    OnDeviceTranslator? Function() pick, {
+    required bool rejectEcho,
+  }) async {
+    final source = input.trim();
     if (source.isEmpty) return null;
 
     if (!_ready) {
       // Kalau tidak ada persiapan yang berjalan dan yang terakhir gagal,
       // menunggu tidak akan mengubah apa pun. Menyerah sekarang supaya
-      // deskripsinya tetap keluar tepat waktu dalam bahasa Inggris.
+      // pemanggil tetap dapat jawaban tepat waktu lewat jalur mundurnya.
       final inFlight = _preparing;
       if (inFlight == null) {
         if (_lastAttemptFailed) return null;
@@ -162,7 +203,7 @@ class TranslationService {
       if (!okay || !_ready) return null;
     }
 
-    final translator = _translator;
+    final translator = pick();
     if (translator == null) return null;
 
     try {
@@ -173,11 +214,15 @@ class TranslationService {
       if (trimmed.isEmpty) return null;
 
       // ML Kit kadang memulangkan kalimat sumbernya apa adanya ketika ia
-      // tidak menemukan apa pun untuk diterjemahkan. Itu bukan terjemahan,
-      // dan membacakannya dengan locale id-ID membuat TTS mengeja kalimat
-      // Inggris dengan fonetik Indonesia - lebih sulit dipahami daripada
-      // kalau sejak awal dibacakan sebagai bahasa Inggris.
-      if (trimmed.toLowerCase() == source.toLowerCase()) return null;
+      // tidak menemukan apa pun untuk diterjemahkan. Untuk caption suasana
+      // itu bukan terjemahan: membacakannya dengan locale id-ID membuat TTS
+      // mengeja kalimat Inggris dengan fonetik Indonesia, lebih sulit
+      // dipahami daripada kalau sejak awal dibacakan sebagai bahasa Inggris.
+      //
+      // Untuk nama barang justru sebaliknya - lihat catatan di [toEnglish].
+      if (rejectEcho && trimmed.toLowerCase() == source.toLowerCase()) {
+        return null;
+      }
 
       return trimmed;
     } catch (e) {
@@ -191,7 +236,8 @@ class TranslationService {
   /// mewarisi kesiapan (atau kegagalan) kasus sebelumnya.
   @visibleForTesting
   void resetForTest() {
-    _translator = null;
+    _enToId = null;
+    _idToEn = null;
     _preparing = null;
     _ready = false;
     _lastAttemptFailed = false;
@@ -200,8 +246,10 @@ class TranslationService {
   /// Lepaskan penerjemah. Model yang sudah terunduh TIDAK ikut dihapus -
   /// itu milik perangkat dan dipakai lagi di sesi berikutnya.
   Future<void> dispose() async {
-    await _translator?.close();
-    _translator = null;
+    await _enToId?.close();
+    await _idToEn?.close();
+    _enToId = null;
+    _idToEn = null;
     _ready = false;
   }
 }
