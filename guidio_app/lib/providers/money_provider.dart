@@ -46,14 +46,14 @@ enum MoneyState {
   foreign,     // UG-18
 }
 
-/// Pola getar bagian 3.6 - `positive` (2×25ms) untuk bingkai pas,
+/// Pola getar bagian 3.6 - `positive` (2×25ms) untuk uang yang terlihat utuh,
 /// `moneyAck` (3×40ms) khusus UG-15 (dipicu dari layar, bukan dari sini).
 enum MoneyHaptic { positive }
 
 const _kNoCandidateHints = [
   'Dekatkan sedikit uangnya ke kamera',
   'Cari tempat yang lebih terang',
-  'Posisikan uang rata di tengah bingkai',
+  'Ratakan uangnya, jangan sampai tertekuk',
 ];
 
 const _kDenoms = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
@@ -191,9 +191,10 @@ class MoneyProvider extends ChangeNotifier {
   // hanya menambah ~1,2 detik penundaan dalam kasus terburuk.
   //
   // Trade-off yang diterima: user yang menggerakkan kamera cepat perlu sedikit
-  // lebih lama menunggu bingkai hijau. Manfaatnya: prediksi sesaat pada foto
-  // yang susah (50rb_a yang terdeteksi sebagai 10rb) tidak pernah membuat
-  // bingkai berubah hijau dan mendorong user menekan tombol snap.
+  // lebih lama menunggu panduan "Uang terlihat, tekan Kenali Uang".
+  // Manfaatnya: prediksi sesaat pada foto yang susah (50rb_a yang terdeteksi
+  // sebagai 10rb) tidak pernah memunculkan panduan itu dan mendorong user
+  // menekan tombol snap.
   static const int _kRequiredConsecutive = 3;
   int _consecutiveDetections = 0;
   int? _lastDetectedValue;
@@ -254,9 +255,14 @@ class MoneyProvider extends ChangeNotifier {
         _lastDetectedValue = result.valueIdr;
       }
 
-      // Bingkai hijau tetap dijaga ketat: hanya untuk hasil yang YAKIN dan
-      // sudah stabil N frame. Itu janji visual "posisi pas", dan janji itu
+      // State `fit` tetap dijaga ketat: hanya untuk hasil yang YAKIN dan
+      // sudah stabil N frame. Ia yang memunculkan panduan "Uang terlihat,
+      // tekan Kenali Uang" - sebuah janji visual "posisi pas", dan janji itu
       // tidak boleh diberikan pada tebakan berpagar.
+      //
+      // Dulu janji itu berupa bingkai panduan yang berubah hijau. Bingkainya
+      // sudah dihapus (kamera memotret seluruh gambar, tidak ada area yang
+      // harus dibidik), yang tersisa kalimat panduannya.
       //
       // Yang berubah: hasil berpagar tidak lagi memblokir apa pun. Dulu ia
       // memunculkan kartu "Belum yakin" yang menutup layar dan membuat

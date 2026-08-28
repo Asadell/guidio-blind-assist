@@ -116,6 +116,16 @@ class BottomActionBar extends StatelessWidget {
   /// Alasan tombol kiri nonaktif, diucapkan saat ditekan.
   final String? cameraDisabledReason;
 
+  /// Warna isian tombol kiri. `null` = netral (abu-abu `surfaceSunk`).
+  ///
+  /// Dipakai mode yang tombol kirinya adalah SAKLAR, bukan pemicu sekali
+  /// tekan: di mode itu rupa tombol harus mengabarkan keadaan yang sedang
+  /// berlaku. Mode Deteksi Objek memakainya karena labelnya ("Hentikan" /
+  /// "Lanjutkan") hanya sampai ke TalkBack - tombol ini tidak pernah
+  /// menggambar teks, jadi tanpa warna dan ikon yang berganti, menyala dan
+  /// mati terlihat persis sama.
+  final Color? cameraFill;
+
   /// DO-24 - izin mikrofon dicabut: nonaktifkan tombol Bicara sepenuhnya.
   final bool micEnabled;
 
@@ -136,6 +146,7 @@ class BottomActionBar extends StatelessWidget {
     super.key,
     required this.cameraLabel,
     this.cameraIcon = Icons.camera_alt_outlined,
+    this.cameraFill,
     this.onCameraPressed,
     this.cameraEnabled = true,
     this.cameraDisabledReason,
@@ -190,6 +201,7 @@ class BottomActionBar extends StatelessWidget {
             child: _SquareButton(
               icon: cameraIcon,
               label: cameraLabel,
+              fill: cameraFill,
               // Tanpa handler = tidak aktif. Tidak ada lagi `?? () {}` yang
               // membuat tombol tampak hidup lalu diam saat ditekan.
               enabled: sideButtonsEnabled && onCameraPressed != null,
@@ -412,6 +424,10 @@ class _SquareButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
+  /// Isian latar. `null` = netral. Diabaikan saat tombol nonaktif: tombol
+  /// mati yang berwarna mencolok mengundang tekanan yang tidak akan dijawab.
+  final Color? fill;
+
   /// Alasan tombol nonaktif - diucapkan saat ditekan, bukan didiamkan.
   final String? disabledReason;
 
@@ -421,6 +437,7 @@ class _SquareButton extends StatelessWidget {
     required this.onTap,
     this.enabled = true,
     this.disabledReason,
+    this.fill,
   });
 
   /// Menekan tombol nonaktif TIDAK boleh hening.
@@ -453,18 +470,23 @@ class _SquareButton extends StatelessWidget {
         child: InkWell(
           onTap: enabled ? onTap : _explainDisabled,
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
             width: AppSizes.minTouchTarget,
             height: AppSizes.minTouchTarget,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSunk,
+              color: enabled ? (fill ?? AppColors.surfaceSunk) : AppColors.surfaceSunk,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: ExcludeSemantics(
               child: Icon(
                 icon,
                 size: 26,
-                color: enabled ? AppColors.ink1 : AppColors.disabledInk,
+                color: !enabled
+                    ? AppColors.disabledInk
+                    : fill == null
+                        ? AppColors.ink1
+                        : AppColors.onDark,
               ),
             ),
           ),

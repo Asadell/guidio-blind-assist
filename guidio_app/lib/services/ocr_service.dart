@@ -179,7 +179,29 @@ class OcrService {
       // ResultPanel/long punya heading nyata, bukan satu blok "Hasil baca"
       // untuk seluruh halaman seperti waktu memakai OCR server.
       final heading = _asHeading(lines.first);
-      final body = lines.length > 1 ? lines.sublist(1) : lines;
+
+      // Baris pertama TIDAK lagi dibuang dari isi.
+      //
+      // Dulu ia dipotong ke `heading` lalu dikeluarkan dari `body`, dengan
+      // asumsi ia tetap terlihat sebagai judul blok di kartu hasil. Judul itu
+      // sekarang dinonaktifkan (lihat `ocr_long_result_panel.dart`), jadi
+      // asumsinya tidak berlaku lagi: membuangnya berarti baris pertama tiap
+      // blok - sering justru barisnya yang paling penting, nama, harga, atau
+      // judul halaman - hilang dari layar tanpa ada yang menyadarinya.
+      //
+      // Ia juga tidak pernah ikut dibacakan. TTS hanya membaca `sentences`
+      // (`_speak()` di `ocr_screen.dart`), jadi selama ini baris pertama
+      // setiap blok memang tidak pernah terdengar sama sekali - kerugian yang
+      // paling besar justru untuk pengguna yang tidak bisa melihat judulnya.
+      // Sekarang ia ikut terbaca.
+      //
+      // `heading` sengaja tetap dihitung supaya judulnya bisa dinyalakan lagi
+      // hanya dengan melepas komentar. Kalau itu dilakukan, baris di bawah
+      // ini harus dikembalikan juga, kalau tidak baris pertama muncul dua
+      // kali.
+      //
+      // final body = lines.length > 1 ? lines.sublist(1) : lines;
+      final body = lines;
       final sentences = _splitSentences(body.join(' '));
 
       blocks.add(OcrTextBlock(

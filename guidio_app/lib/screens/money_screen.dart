@@ -45,7 +45,7 @@ extension _DebugMeta on MoneyDebugState {
   String get title => switch (this) {
         MoneyDebugState.ug01 => 'Idle',
         MoneyDebugState.ug02 => 'Masuk sebagian',
-        MoneyDebugState.ug03 => 'Pas di bingkai',
+        MoneyDebugState.ug03 => 'Uang terlihat utuh',
         MoneyDebugState.ug04 => 'Memproses',
         MoneyDebugState.ug05 => 'Terdeteksi yakin (Rp50.000)',
         MoneyDebugState.ug06 => 'Ragu',
@@ -67,9 +67,20 @@ enum _CardPlacement { center, bottomSlot }
 /// Deskripsi render untuk satu momen layar - dihasilkan baik dari
 /// [MoneyProvider] (otomatis) maupun dari [MoneyDebugState] (paksa manual).
 class _RenderSpec {
-  final FrameFit? frame; // null = bingkai disembunyikan (UG-05/09/11)
-  final bool frameDefaultCaption;
-  final String? pillOverride;
+  /// Satu baris panduan di atas BottomActionBar.
+  ///
+  /// Menggantikan trio `frame` / `frameDefaultCaption` / `pillOverride` yang
+  /// tertinggal setelah GuideFrame dihapus. Ketiganya masih diisi rajin oleh
+  /// [_specForState] tapi tidak ada satu pun yang dibaca `build` lagi, jadi
+  /// seluruh panduan mode ini - "Miringkan sedikit", "Dekatkan sedikit
+  /// uangnya", rotasi [MoneyProvider.noCandidateHint] yang berganti tiap 5
+  /// detik - hilang dari layar tanpa ada yang menghapusnya dengan sengaja.
+  ///
+  /// Kalimatnya ditulis ulang tanpa kata "bingkai": tidak ada lagi bingkai
+  /// panduan di layar ini, kamera memotret seluruh gambar. Menyuruh pengguna
+  /// menaruh uang "di dalam bingkai" berarti menyuruhnya mencari sesuatu yang
+  /// tidak ada, lalu menunggu tanda yang tidak akan pernah muncul.
+  final String? hint;
   final bool badgeBusy;
   final Widget? card;
   final _CardPlacement cardPlacement;
@@ -77,9 +88,7 @@ class _RenderSpec {
   final bool healthToastDark;
 
   const _RenderSpec({
-    this.frame,
-    this.frameDefaultCaption = false,
-    this.pillOverride,
+    this.hint,
     this.badgeBusy = false,
     this.card,
     this.cardPlacement = _CardPlacement.bottomSlot,
@@ -90,6 +99,43 @@ class _RenderSpec {
 
 const _moneyAckPattern = [0, 40, 60, 40, 60, 40];
 const _positivePattern = [0, 25, 45, 25];
+
+/// Panduan satu baris di atas BottomActionBar.
+///
+/// Bentuknya sengaja pill gelap tanpa ikon dan tanpa tombol: ia bukan hasil,
+/// bukan peringatan, dan tidak menuntut apa pun. Kalimatnya berganti mengikuti
+/// keadaan, jadi ia TIDAK dipasang sebagai `liveRegion` - mode ini sudah
+/// membacakan panduannya sendiri lewat TTS, dan node semantik yang berubah
+/// tiap beberapa detik akan memotong ucapan itu di tengah jalan.
+class _HintPill extends StatelessWidget {
+  final String text;
+  const _HintPill({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: text,
+      child: ExcludeSemantics(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: AppSpacing.s3,
+          ),
+          decoration: const BoxDecoration(
+            color: AppColors.scrimText,
+            borderRadius: AppRadius.pillShape,
+          ),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: AppTypography.body(color: AppColors.onDark),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
   // ── Rujukan provider untuk dispose() ──────────────────────────────────
@@ -406,6 +452,20 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
               ),
           ],
 
+          // Panduan satu baris. Hanya saat tidak ada kartu di slot bawah -
+          // keduanya menempati tempat yang sama, dan kartu selalu membawa
+          // kabar yang lebih penting daripada panduan mengarahkan kamera.
+          if (spec?.hint != null && spec?.card == null)
+            Positioned(
+              left: AppSpacing.screenMargin,
+              right: AppSpacing.screenMargin,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
+              child: MediaQuery(
+                data: media.copyWith(textScaler: fontScaleDemo ? const TextScaler.linear(2.0) : media.textScaler),
+                child: _HintPill(text: spec!.hint!),
+              ),
+            ),
+
           if (showTorchSlot)
             Positioned(
               left: 0, right: 0,
@@ -453,26 +513,21 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     switch (p.state) {
       case MoneyState.idle:
         return const _RenderSpec(
-          frame: FrameFit.empty,
-          pillOverride: 'Letakkan uang di dalam bingkai',
+          hint: 'Arahkan kamera ke uang, lalu tekan Kenali Uang',
           cardPlacement: _CardPlacement.bottomSlot,
         );
       case MoneyState.noCandidate:
-        return _RenderSpec(frame: FrameFit.empty, pillOverride: p.noCandidateHint);
+        return _RenderSpec(hint: p.noCandidateHint);
       case MoneyState.partial:
-        return const _RenderSpec(frame: FrameFit.partial, frameDefaultCaption: true);
+        return const _RenderSpec(hint: 'Uangnya belum terlihat utuh, mundur sedikit');
       case MoneyState.folded:
-        return const _RenderSpec(
-          frame: FrameFit.tooClose,
-          pillOverride: 'Ratakan uang, ada bagian di luar bingkai',
-        );
+        return const _RenderSpec(hint: 'Ratakan uangnya, ada bagian yang tertekuk');
       case MoneyState.fit:
-        return const _RenderSpec(frame: FrameFit.fit, frameDefaultCaption: true);
+        return const _RenderSpec(hint: 'Uang terlihat, tekan Kenali Uang');
       case MoneyState.glare:
-        return const _RenderSpec(frame: FrameFit.fit, pillOverride: 'Miringkan sedikit');
+        return const _RenderSpec(hint: 'Miringkan sedikit, ada pantulan cahaya');
       case MoneyState.dark:
         return const _RenderSpec(
-          frame: FrameFit.fit,
           healthToastDark: true,
           card: AlertCard(
             tier: AlertTier.warning,
@@ -481,7 +536,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           ),
         );
       case MoneyState.processing:
-        return const _RenderSpec(frame: FrameFit.fit, badgeBusy: true);
+        return const _RenderSpec(badgeBusy: true);
       case MoneyState.detected:
         return _RenderSpec(
           card: NominalCard(
@@ -498,12 +553,10 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         // tombolnya tetap bisa ditekan, dan tetap menjawab dengan nominal
         // berpagar.
         return const _RenderSpec(
-          frame: FrameFit.partial,
-          pillOverride: 'Uang terlihat, tekan tombol untuk membaca nominal',
+          hint: 'Uang terlihat, tekan tombol untuk membaca nominal',
         );
       case MoneyState.notMoney:
         return _RenderSpec(
-          frame: FrameFit.empty,
           card: AlertCard(
             tier: AlertTier.info,
             title: 'Ini sepertinya ${p.notMoneyLabel}',
@@ -512,7 +565,6 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         );
       case MoneyState.foreign:
         return const _RenderSpec(
-          frame: FrameFit.empty,
           card: AlertCard(
             tier: AlertTier.warning,
             title: 'Uang asing atau rusak',
@@ -527,13 +579,13 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
   _RenderSpec _specForDebug(MoneyDebugState d) {
     switch (d) {
       case MoneyDebugState.ug01:
-        return const _RenderSpec(frame: FrameFit.empty, pillOverride: 'Letakkan uang di dalam bingkai');
+        return const _RenderSpec(hint: 'Arahkan kamera ke uang, lalu tekan Kenali Uang');
       case MoneyDebugState.ug02:
-        return const _RenderSpec(frame: FrameFit.partial, frameDefaultCaption: true);
+        return const _RenderSpec(hint: 'Uangnya belum terlihat utuh, mundur sedikit');
       case MoneyDebugState.ug03:
-        return const _RenderSpec(frame: FrameFit.fit, frameDefaultCaption: true);
+        return const _RenderSpec(hint: 'Uang terlihat, tekan Kenali Uang');
       case MoneyDebugState.ug04:
-        return const _RenderSpec(frame: FrameFit.fit, badgeBusy: true);
+        return const _RenderSpec(badgeBusy: true);
       case MoneyDebugState.ug05:
         return _RenderSpec(card: NominalCard(amount: 50000, onReplay: () => _replay(50000)));
       case MoneyDebugState.ug06:
@@ -541,7 +593,6 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         // menjawab. Panel debug harus menampilkan yang sama dengan produksi,
         // kalau tidak ia berhenti berguna untuk memeriksa keadaan ini.
         return _RenderSpec(
-          frame: FrameFit.partial,
           card: NominalCard(
             amount: 50000,
             certain: false,
@@ -550,21 +601,16 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         );
       case MoneyDebugState.ug07:
         return const _RenderSpec(
-          frame: FrameFit.empty,
           card: AlertCard(tier: AlertTier.info, title: 'Ini sepertinya kartu', description: 'Bukan uang.'),
         );
       case MoneyDebugState.ug08:
-        return const _RenderSpec(frame: FrameFit.empty, pillOverride: 'Cari tempat yang lebih terang');
+        return const _RenderSpec(hint: 'Cari tempat yang lebih terang');
       case MoneyDebugState.ug10:
-        return const _RenderSpec(
-          frame: FrameFit.tooClose,
-          pillOverride: 'Ratakan uang, ada bagian di luar bingkai',
-        );
+        return const _RenderSpec(hint: 'Ratakan uangnya, ada bagian yang tertekuk');
       case MoneyDebugState.ug12a:
-        return const _RenderSpec(frame: FrameFit.fit, pillOverride: 'Miringkan sedikit');
+        return const _RenderSpec(hint: 'Miringkan sedikit, ada pantulan cahaya');
       case MoneyDebugState.ug12b:
         return const _RenderSpec(
-          frame: FrameFit.fit,
           healthToastDark: true,
           card: AlertCard(
             tier: AlertTier.warning,
@@ -587,7 +633,6 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         return _RenderSpec(card: NominalCard(amount: 75000, onReplay: () => _replay(75000)));
       case MoneyDebugState.ug18:
         return const _RenderSpec(
-          frame: FrameFit.empty,
           card: AlertCard(
             tier: AlertTier.warning,
             title: 'Uang asing atau rusak',

@@ -277,7 +277,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         // BT-11 - instruksi jarak konkret, bukan "tidak ada teks".
         setState(() => _fail = _FailKind.zeroText);
         await context.read<TtsProvider>().speak(
-              'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal, pastikan tulisan rata di tengah.',
+              'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal, pastikan seluruh tulisan masuk ke layar.',
               tier: SpeechTier.warning,
             );
         return;

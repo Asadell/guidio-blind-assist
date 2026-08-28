@@ -81,6 +81,10 @@ class NavigationProvider extends ChangeNotifier {
   ZoneStatus get center => _center;
   ZoneStatus get right => _right;
 
+  // Sengaja tidak `final`: satu-satunya penulisnya sedang dikomentari (lihat
+  // catatan di `_applyOnDeviceResult`), dan menjadikannya final berarti menyalakan fitur
+  // ini lagi tidak cukup dengan melepas komentar.
+  // ignore: prefer_final_fields
   bool _pothole = false;
   bool get pothole => _pothole;
   final double _potholeSteps = 3;
@@ -690,9 +694,23 @@ class NavigationProvider extends ChangeNotifier {
     }
 
     _obstacles = obstacles;
-    _pothole = obstacles.any((d) =>
-        (d.labelEn == 'lubang' || d.labelEn == 'got_terbuka') &&
-        d.dangerLevel == 'critical');
+    // Peringatan permukaan tidak rata DINONAKTIFKAN atas permintaan, bukan
+    // dihapus. Dengan baris ini dikomentari, `_pothole` tetap false selamanya,
+    // jadi kartu "Permukaan tidak rata" tidak pernah muncul dan TalkBack tidak
+    // pernah membacakannya.
+    //
+    // Yang TIDAK ikut dimatikan: deteksi `lubang` dan `got_terbuka` itu
+    // sendiri. Keduanya tetap masuk daftar rintangan dan tetap diperingatkan
+    // lewat narasi rintangan biasa. Yang dimatikan hanya kartu ringkasan
+    // permukaannya. Mematikan deteksinya berarti pengguna tunanetra berjalan
+    // ke arah lubang tanpa satu pun peringatan, dan itu di luar yang diminta.
+    //
+    // Menyalakan lagi: lepas komentar di sini dan pada dua tempat di
+    // `navigasi_screen.dart` yang membaca `nav.pothole`.
+    //
+    // _pothole = obstacles.any((d) =>
+    //     (d.labelEn == 'lubang' || d.labelEn == 'got_terbuka') &&
+    //     d.dangerLevel == 'critical');
 
     final guidance = _composeGuidance(zones, obstacles);
     _emitGuidance(guidance.$1, guidance.$2,

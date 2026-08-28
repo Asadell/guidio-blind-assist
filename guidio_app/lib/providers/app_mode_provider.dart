@@ -20,7 +20,7 @@ extension AppModeLabel on AppMode {
   /// Satu kalimat "apa yang bisa dilakukan" - diumumkan saat masuk mode.
   String get shortIntro => switch (this) {
         AppMode.tuntun     => 'Arahkan ponsel ke depan, saya akan menyebut rintangan di jalurmu.',
-        AppMode.money      => 'Letakkan uang di dalam bingkai, saya akan menyebut nominalnya.',
+        AppMode.money      => 'Arahkan kamera ke uang, lalu tekan tombol kiri bawah. Saya akan menyebut nominalnya.',
         AppMode.ocr        => 'Arahkan ponsel ke tulisan, lalu ambil gambar.',
         // JANGAN menjanjikan tujuan/GPS di sini. Kalimat lama berbunyi
         // "Sebutkan atau ketik tujuanmu, saya akan menuntun jalan." padahal

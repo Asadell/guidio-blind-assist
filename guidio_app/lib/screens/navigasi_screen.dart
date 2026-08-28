@@ -728,7 +728,10 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
             // Urutannya dari bawah: rintangan paling dekat ke ibu jari,
             // peringatan permukaan di atasnya, legenda paling atas karena ia
             // cuma kunci warna.
-            if (nav.pothole || obstacles.isNotEmpty || nav.segmentationImage != null)
+            // `nav.pothole ||` DINONAKTIFKAN bersama kartunya di bawah -
+            // lihat catatan di sana. Tanpa ini kolomnya tetap dipasang untuk
+            // peringatan permukaan yang sudah tidak pernah digambar.
+            if (/* nav.pothole || */ obstacles.isNotEmpty || nav.segmentationImage != null)
               Positioned(
                 left: AppSpacing.screenMargin,
                 right: AppSpacing.screenMargin,
@@ -747,15 +750,30 @@ class _NavigasiScreenState extends State<NavigasiScreen> with WidgetsBindingObse
                       ),
                       const SizedBox(height: AppSpacing.s2),
                     ],
-                    if (nav.pothole) ...[
-                      AlertCard(
-                        tier: AlertTier.warning,
-                        title: 'Permukaan tidak rata',
-                        description:
-                            'Sekitar ${nav.potholeSteps.toStringAsFixed(0)} langkah di depan',
-                      ),
-                      const SizedBox(height: AppSpacing.s2),
-                    ],
+                    // ── Peringatan permukaan tidak rata: DINONAKTIFKAN ──
+                    //
+                    // Dimatikan atas permintaan, BUKAN dihapus. Kartunya tidak
+                    // digambar dan karena itu tidak berbunyi juga: `AlertCard`
+                    // dipasang `liveRegion: true`, jadi kemunculannya sendiri
+                    // yang membuat TalkBack membacakan "Permukaan tidak rata,
+                    // sekitar 3 langkah di depan". Menyembunyikan kartunya
+                    // saja sudah menghilangkan pop-up dan suaranya sekaligus.
+                    //
+                    // Sumber datanya, `_pothole` di `navigation_provider.dart`,
+                    // ikut dinonaktifkan di tempatnya supaya tidak ada jalur
+                    // lain yang bisa menghidupkannya kembali diam-diam.
+                    // Menyalakan lagi = lepas komentar di kedua tempat itu dan
+                    // pada `nav.pothole ||` di syarat kolom di atas.
+                    //
+                    // if (nav.pothole) ...[
+                    //   AlertCard(
+                    //     tier: AlertTier.warning,
+                    //     title: 'Permukaan tidak rata',
+                    //     description:
+                    //         'Sekitar ${nav.potholeSteps.toStringAsFixed(0)} langkah di depan',
+                    //   ),
+                    //   const SizedBox(height: AppSpacing.s2),
+                    // ],
                     if (obstacles.isNotEmpty)
                       AlertCardStack(
                         cards: obstacles

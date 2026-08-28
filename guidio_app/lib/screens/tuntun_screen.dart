@@ -90,6 +90,15 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   /// tiap 30 detik, supaya tidak ada yang berjalan menyangka sudah dijaga.
   bool _detectionActive = false;
 
+  /// Deteksi pernah berjalan sekali di sesi layar ini.
+  ///
+  /// Yang dijaga cuma satu kata, tapi kata itu sebuah klaim: "Lanjutkan" dan
+  /// "Deteksi dilanjutkan" berarti ada sesuatu yang tadi berjalan lalu
+  /// berhenti. Saat aplikasi baru dibuka tidak pernah ada yang berjalan, dan
+  /// pengguna yang mendengar "dilanjutkan" di tekanan pertamanya wajar
+  /// menyimpulkan dia tanpa sadar sempat mematikannya.
+  bool _pernahJalan = false;
+
   final List<_GhostDetection> _ghosts = [];
   List<Detection> _prevCritical = [];
 
@@ -136,8 +145,11 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       // sama persis dengan menekan tombol kiri.
       final voice = context.read<VoiceProvider>();
       voice.onPrimaryAction = _toggleDetection;
-      voice.primaryActionLabel = () =>
-          _detectionActive ? 'menjeda deteksi' : 'melanjutkan deteksi';
+      voice.primaryActionLabel = () => _detectionActive
+          ? 'menjeda deteksi'
+          : _pernahJalan
+              ? 'melanjutkan deteksi'
+              : 'menyalakan deteksi';
       voice.onRepeatLast = _repeatLastDetection;
 
       // Model gagal muat = mode ini tidak punya cadangan apa pun. Katakan,
@@ -308,6 +320,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
   void _startDetection({String announce = 'Mode deteksi aktif'}) {
     _pausedReminder?.cancel();
     _pausedReminder = null;
+    _pernahJalan = true;
 
     // Satu kalimat pembuka SEBELUM masa tenang dimulai.
     //
@@ -370,7 +383,9 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
       // masa tenang yang baru dibuka menahan tier Warning, jadi kalimat ini
       // dulu akan hilang tanpa jejak persis di momen pengguna paling perlu
       // konfirmasi bahwa tombolnya bekerja.
-      _startDetection(announce: 'Deteksi dilanjutkan');
+      _startDetection(
+        announce: _pernahJalan ? 'Deteksi dilanjutkan' : 'Deteksi aktif',
+      );
       setState(() => _detectionActive = true);
       HapticService.instance.info();
     }
@@ -477,6 +492,20 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
           else
             const ColoredBox(color: AppColors.cameraVoid),
 
+          // Peredup saat deteksi mati.
+          //
+          // Ini pembeda yang tidak mungkin terlewat: seluruh layar berubah
+          // terang-gelap, bukan satu label kecil yang berganti kata. Ia
+          // sengaja tidak membawa teks (lihat `AppColors.scrimDim`) - kalimat
+          // penjelasnya ada di DetectionStatusPill, satu tempat saja, supaya
+          // tidak ada dua sumber yang bisa saling bertentangan.
+          if (_hasCameraPermission && !_detectionActive)
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: ColoredBox(color: AppColors.scrimDim),
+              ),
+            ),
+
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
           Positioned(
@@ -484,6 +513,21 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
             left: AppSpacing.screenMargin,
             child: ModeBadge(mode: AppMode.tuntun, busy: warmingUp, onDebugActivate: _openDebugSheet),
           ),
+
+          // Satu-satunya penanda menyala/mati yang selalu ada di layar ini.
+          // Ikut hadir saat izin kamera belum diberikan pun tidak berguna,
+          // jadi ia menempel pada syarat yang sama dengan preview.
+          if (_hasCameraPermission)
+            Positioned(
+              top: topInset + secondaryChipTopOffset(hasBanner: hasBanner),
+              left: AppSpacing.screenMargin,
+              child: DetectionStatusPill(
+                active: _detectionActive,
+                objectCount: dets.length,
+                lastInferenceAt: det.lastInferenceAt,
+                unavailable: det.isUnavailable,
+              ),
+            ),
 
           if (_speaking && !warmingUp)
             Positioned(
@@ -521,7 +565,22 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
             left: 0, right: 0, bottom: 0,
             child: BottomActionBar(
               micEnabled: !micDisabled,
-              cameraLabel: _detectionActive ? 'Hentikan' : 'Lanjutkan',
+              cameraLabel: _detectionActive
+                  ? 'Hentikan'
+                  : _pernahJalan
+                      ? 'Lanjutkan'
+                      : 'Mulai',
+              // Ikon dan warna ikut berganti. Label tombol ini tidak pernah
+              // digambar - ia hanya dibacakan TalkBack - jadi tanpa keduanya
+              // tombol yang sudah ditekan terlihat sama persis dengan tombol
+              // yang belum. Merah saat mengawasi mengikuti tombol Bicara,
+              // yang juga merah selama mikrofon hidup.
+              cameraIcon: _detectionActive
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
+              cameraFill: _detectionActive
+                  ? AppColors.criticalFill
+                  : AppColors.positiveFill,
               onCameraPressed: _hasCameraPermission ? _toggleDetection : null,
               cameraEnabled: _hasCameraPermission,
               cameraDisabledReason: 'izin kamera belum diberikan',

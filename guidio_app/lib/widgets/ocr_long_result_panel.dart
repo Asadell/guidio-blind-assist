@@ -198,19 +198,40 @@ class OcrLongResultPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(block.heading.toUpperCase(),
-                  style: AppTypography.caption(color: AppColors.ink2).copyWith(fontWeight: FontWeight.w700)),
-            ),
-            if (block.language != null) ...[
-              const SizedBox(width: AppSpacing.s2),
-              _languagePill(block.language!),
-            ],
-          ],
-        ),
-        const SizedBox(height: 4),
+        // ── Judul blok (heading): DINONAKTIFKAN ────────────────────────
+        //
+        // Dimatikan atas permintaan, BUKAN dihapus. Kartu hasil sekarang
+        // hanya menampilkan isi kalimat.
+        //
+        // Satu hal yang WAJIB ikut kalau ini dinyalakan lagi: baris pertama
+        // tiap blok tadinya cuma hidup di `heading` dan sengaja dibuang dari
+        // `sentences` (`OcrService._toResult`). Karena judulnya tidak lagi
+        // digambar, pembuangan itu ikut dinonaktifkan di sana - kalau tidak,
+        // baris pertama tiap blok lenyap dari layar. Menyalakan judul lagi
+        // tanpa mengembalikan pembuangannya akan membuat baris itu muncul
+        // dua kali: sekali sebagai judul, sekali di dalam kalimat.
+        //
+        // Row(
+        //   children: [
+        //     Expanded(
+        //       child: Text(block.heading.toUpperCase(),
+        //           style: AppTypography.caption(color: AppColors.ink2).copyWith(fontWeight: FontWeight.w700)),
+        //     ),
+        //     if (block.language != null) ...[
+        //       const SizedBox(width: AppSpacing.s2),
+        //       _languagePill(block.language!),
+        //     ],
+        //   ],
+        // ),
+        // const SizedBox(height: 4),
+
+        // Pil bahasa TIDAK ikut dimatikan: ia menandai blok berbahasa lain,
+        // bukan bagian dari judul. Ia dulu menumpang di baris judul, jadi
+        // sekarang berdiri sendiri di kanan.
+        if (block.language != null) ...[
+          Align(alignment: Alignment.centerRight, child: _languagePill(block.language!)),
+          const SizedBox(height: 4),
+        ],
         if (!block.ok)
           Text('Bagian ini tidak terbaca.', style: AppTypography.body(color: AppColors.disabledInk))
         else
