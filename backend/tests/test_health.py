@@ -75,3 +75,49 @@ class TestCapabilities:
         assert "server_time" in body
         # Cek format ISO 8601 kasar
         assert "T" in body["server_time"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Regresi: /api/capabilities pernah selalu melaporkan Deskripsi Suasana
+#  setengah mati
+#
+#  `routers/support.py` dan `/health` membaca kesiapan Moondream lewat
+#  `getattr(moondream, "available", False)`, padahal `MoonDreamService` tidak
+#  pernah punya properti `available`. `getattr` menelan itu tanpa suara dan
+#  menghasilkan False selamanya, jadi mode Deskripsi Suasana selalu tampil
+#  `limited` dengan catatan "deskripsi suasana butuh server" - di server yang
+#  justru sedang terhubung dan sanggup melayaninya.
+#
+#  Tes ini mengunci dua hal sekaligus: propertinya ada, dan artinya benar.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_moondream_punya_properti_available():
+    """`available` WAJIB ada. Tanpa ini `getattr` diam-diam jatuh ke False."""
+    from services.moondream_service import MoonDreamService
+
+    assert hasattr(MoonDreamService, "available"), (
+        "MoonDreamService.available hilang - /api/capabilities akan kembali "
+        "melaporkan Deskripsi Suasana limited selamanya."
+    )
+
+
+def test_moondream_available_sebelum_dimuat():
+    """Lazy-load bukan alasan melaporkan diri setengah mati.
+
+    Bobotnya ~2 GB dan sengaja baru dimuat saat permintaan pertama. Server
+    yang belum pernah dipakai tetap sanggup melayani, jadi jawabannya True.
+    """
+    from services.moondream_service import MoonDreamService
+
+    m = MoonDreamService()
+    assert m.loaded is False
+    assert m.available is True
+
+
+def test_moondream_available_false_setelah_gagal_muat():
+    """Yang membuatnya False cuma percobaan muat yang sudah pernah gagal."""
+    from services.moondream_service import MoonDreamService
+
+    m = MoonDreamService()
+    m._load_failed = True
+    assert m.available is False
