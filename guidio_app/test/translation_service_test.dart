@@ -87,6 +87,40 @@ void main() {
     });
   });
 
+  group('arah sebaliknya: nama barang id → en (Mode Cari Objek)', () {
+    test('frasa benda jadi prompt Inggris', () async {
+      installFake(translation: 'red bag');
+      expect(await TranslationService.instance.toEnglish('tas merah'),
+          'red bag');
+    });
+
+    test('kata yang sama di dua bahasa TIDAK ditolak', () async {
+      // Kebalikan aturan di `toIndonesian`. "laptop", "sofa", "helm" memang
+      // sama di kedua bahasa; memulangkan null untuk itu berarti menolak
+      // terjemahan yang justru sudah benar, lalu YOLOE kehilangan prompt
+      // yang sebenarnya sudah siap pakai.
+      installFake(translation: 'laptop');
+      expect(await TranslationService.instance.toEnglish('laptop'), 'laptop');
+    });
+
+    test('tidak menambah unduhan model', () async {
+      // Model ML Kit disimpan per BAHASA, bukan per arah. Kedua arah memakai
+      // pasangan en+id yang sama, jadi Mode Cari Objek tidak membebani
+      // pengguna dengan unduhan kedua.
+      final log = <String>[];
+      installFake(downloaded: false, log: log);
+      await TranslationService.instance.toIndonesian('a red car');
+      final afterFirst = log.length;
+      await TranslationService.instance.toEnglish('tas merah');
+      // Hanya satu panggilan tambahan: terjemahannya sendiri.
+      expect(log.length, afterFirst + 1);
+    });
+
+    test('menyerah kalau model tidak tersedia', () async {
+      expect(await TranslationService.instance.toEnglish('tas merah'), isNull);
+    });
+  });
+
   group('menyerah dengan jujur (pemanggil jatuh ke Bahasa Inggris)', () {
     test('plugin tidak terpasang sama sekali', () async {
       // Tanpa mock handler, MethodChannel melempar MissingPluginException.
