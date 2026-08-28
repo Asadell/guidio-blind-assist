@@ -136,7 +136,24 @@ async def describe_scene(
     else:
         image_bytes = raw
 
-    # ── 3. Inferensi dengan timeout ──
+    # ── 3. Pastikan model siap SEBELUM jam inferensi mulai ──
+    #
+    # Pemuatan model ~20 detik dan batas waktu di bawah 25 detik. Kalau
+    # keduanya dihitung dalam jam yang sama, permintaan pertama sesudah server
+    # menyala menghabiskan hampir seluruh anggarannya untuk menunggu bobot
+    # model lalu gagal, persis seperti di log:
+    #
+    #     20:47:49  [describe] timeout setelah 25.0s
+    #     20:47:55  [Moondream2] Model siap di cuda
+    #     20:48:06  permintaan kedua berhasil dalam 2401 ms
+    #
+    # Sejak model dipanaskan saat startup (`main.py`), baris ini hampir selalu
+    # pulang seketika. Ia tetap ada sebagai jaring: kalau permintaan datang
+    # saat pemanasan belum selesai, ia MENUNGGU pemuatannya alih-alih
+    # mengurangi jatah inferensi.
+    await moondream.ensure_ready()
+
+    # ── 4. Inferensi dengan timeout ──
     try:
         caption_en = await asyncio.wait_for(
             moondream.describe(image_bytes, length=length),

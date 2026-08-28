@@ -124,6 +124,47 @@ class MoonDreamService:
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, self._load_sync)
 
+    async def ensure_ready(self) -> bool:
+        """Pastikan model sudah di memori, tanpa mengirim gambar apa pun.
+
+        Dipisahkan dari [describe] supaya pemanggil bisa MENUNGGU PEMUATAN
+        di luar batas waktu inferensinya. Bedanya menentukan berhasil atau
+        tidaknya permintaan pertama:
+
+        Pemuatan makan ~20 detik di RTX 3050, sementara batas waktu endpoint
+        25 detik. Kalau keduanya dihitung dalam satu jam yang sama, permintaan
+        pertama menghabiskan hampir seluruh anggarannya untuk menunggu bobot
+        model dan kehabisan waktu sebelum satu piksel pun sempat diproses.
+        Terekam apa adanya di log:
+
+            20:47:24  gerbang kualitas lolos
+            20:47:35  [Moondream2] Memuat model ...
+            20:47:49  [describe] timeout setelah 25.0s     <- permintaan gagal
+            20:47:55  [Moondream2] Model siap di cuda       <- 6 detik terlambat
+            20:48:06  permintaan kedua berhasil dalam 2401 ms
+
+        Permintaan pertama tidak gagal karena fotonya, dan tidak gagal karena
+        modelnya lambat. Ia gagal karena membayar biaya pemanasan yang
+        seharusnya tidak pernah ditanggung siapa pun.
+        """
+        return await self._ensure_loaded()
+
+    async def warm_up(self) -> bool:
+        """Muat model di latar belakang, dipanggil saat server menyala.
+
+        Tidak menahan startup: `/health` dan endpoint lain tetap melayani
+        selama bobotnya dibaca. Yang dikejar cuma satu - saat foto pertama
+        datang, model sudah menunggu, bukan baru mulai bangun.
+        """
+        logger.info("[Moondream2] Pemanasan di latar belakang dimulai.")
+        ok = await self._ensure_loaded()
+        if not ok:
+            logger.warning(
+                "[Moondream2] Pemanasan gagal. Permintaan pertama akan "
+                "mencoba memuat lagi."
+            )
+        return ok
+
     async def describe(
         self,
         image_bytes: bytes,

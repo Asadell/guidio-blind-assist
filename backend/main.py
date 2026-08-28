@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
@@ -43,17 +44,36 @@ async def lifespan(app: FastAPI):
     app.state.find_object_service = FindObjectService()
     logger.info("[FindObject] Service terdaftar (lazy-load model YOLOE).")
 
-    # Scene Description - Moondream2 dimuat malas saat request pertama.
-    # Model ~2GB, tidak pantas menahan startup. RTX 3050 4GB VRAM cukup
+    # Scene Description - Moondream2. Model ~2GB, RTX 3050 4GB VRAM cukup
     # untuk FP16 (~1.2GB efektif setelah kuantisasi runtime).
     app.state.moondream_service = MoonDreamService(
         device=os.getenv("MOONDREAM_DEVICE", "auto")
     )
-    logger.info("[Moondream2] Service terdaftar (lazy-load, belum dimuat).")
+
+    # ── Dipanaskan di latar belakang, tidak lagi menunggu request pertama ──
+    #
+    # Pemuatannya makan ~20 detik, dan selama itu ditanggung permintaan
+    # pertama, permintaan itu hampir pasti gagal: batas waktu endpoint 25
+    # detik, jadi hampir seluruh anggarannya habis untuk menunggu bobot model.
+    # Persis yang terjadi di log - permintaan pertama timeout, model siap 6
+    # detik kemudian, permintaan kedua selesai dalam 2,4 detik.
+    #
+    # `create_task` menjaga startup tetap seketika: `/health` dan endpoint
+    # lain melayani seperti biasa selama bobotnya dibaca. Yang berubah cuma
+    # satu - saat foto pertama datang, model sudah menunggu.
+    #
+    # Kegagalan pemanasan bukan alasan menggagalkan startup: `describe` tetap
+    # mencoba memuat sendiri, dan lima mode lain tidak menyentuh model ini
+    # sama sekali.
+    warmup = asyncio.create_task(app.state.moondream_service.warm_up())
+    logger.info("[Moondream2] Service terdaftar, pemanasan berjalan.")
 
     logger.success("=== Vinara Backend siap ===")
     yield
     logger.info("Shutdown.")
+    # Server yang dimatikan saat pemanasan belum selesai tidak boleh
+    # meninggalkan task menggantung.
+    warmup.cancel()
 
 
 app = FastAPI(
