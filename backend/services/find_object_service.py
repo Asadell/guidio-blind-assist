@@ -72,10 +72,39 @@ class FindObjectService:
 
     # ── Terjemahan target ────────────────────────────────────────────────
 
-    def resolve_prompt(self, target_id: str, label_map: dict[str, str]) -> str:
+    def resolve_prompt(
+        self,
+        target_id: str,
+        label_map: dict[str, str],
+        client_prompt_en: str | None = None,
+    ) -> str:
         """Ubah nama barang Bahasa Indonesia (beserta warna/kata sifat) jadi prompt Inggris untuk YOLOE.
 
         `label_map` = {label_local: label_en} dari tabel object_labels.
+
+        `client_prompt_en` adalah terjemahan ML Kit on-device dari aplikasi
+        ("tas merah" -> "red bag"). Nilainya dipakai sebagai LAPIS TENGAH,
+        bukan pengganti kamus:
+
+          1. Kamus kurasi (EXTRA_ID_TO_EN / label_map) - menang duluan.
+             Isinya dipilih supaya cocok dengan nama kelas yang dikenal
+             encoder teks YOLOE. "hape" -> "cell phone", bukan "cellphone";
+             "gawai" -> "cell phone", bukan "gadget". Penerjemah umum tidak
+             tahu batasan itu dan tidak seharusnya menebaknya.
+
+          2. Terjemahan ML Kit - untuk yang TIDAK ada di kamus. Di sinilah
+             janji open-vocabulary YOLOE baru benar-benar ditepati: "termos",
+             "spatula", "cobek" tidak akan pernah muat di kamus buatan tangan,
+             tapi ketiganya punya terjemahan Inggris yang wajar.
+
+          3. Tebakan substring, lalu frasa Indonesianya apa adanya.
+
+        Urutan 1-2 itu yang penting. Sebelum ada lapis 2, kata di luar kamus
+        jatuh ke lapis 3 dan berakhir sebagai prompt Bahasa INDONESIA yang
+        dikirim ke encoder teks berbahasa Inggris. Itu bukan pencarian yang
+        kurang akurat, melainkan pencarian yang tidak pernah punya peluang -
+        dan pengguna cuma mendengar "tidak ketemu", tanpa satu pun petunjuk
+        bahwa yang salah adalah promptnya, bukan barangnya.
         """
         raw_key = target_id.strip().lower()
 
@@ -127,6 +156,14 @@ class FindObjectService:
         elif obj_phrase in label_map:
             obj_en = label_map[obj_phrase]
         else:
+            # Kamus tidak kenal bendanya. Terjemahan ML Kit dipakai UTUH di
+            # sini, bukan disambung dengan `found_color_en` di bawah: yang
+            # diterjemahkan aplikasi adalah frasa lengkapnya ("tas merah" ->
+            # "red bag"), jadi warnanya sudah ada di dalamnya. Menyambungnya
+            # lagi menghasilkan "red red bag".
+            if client_prompt_en:
+                return client_prompt_en
+
             sorted_extra = sorted(EXTRA_ID_TO_EN.keys(), key=len, reverse=True)
             for id_word in sorted_extra:
                 if id_word in obj_phrase:
@@ -140,7 +177,10 @@ class FindObjectService:
                         break
 
         if not obj_en:
-            obj_en = obj_phrase if obj_phrase else key
+            # Lapis terakhir. `obj_phrase` di sini masih Bahasa Indonesia dan
+            # praktis tidak akan cocok dengan apa pun - dipertahankan hanya
+            # supaya fungsi ini selalu mengembalikan sesuatu.
+            obj_en = client_prompt_en or (obj_phrase if obj_phrase else key)
 
         if found_color_en:
             return f"{found_color_en} {obj_en}".strip()

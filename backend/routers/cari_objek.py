@@ -155,6 +155,52 @@ def _clean_target(raw: str) -> str:
     return cleaned[:_MAX_TARGET_LEN].strip()
 
 
+# Kata Inggris yang bukan nama benda. Kalau ini muncul di `prompt_en`,
+# artinya penyaringan di aplikasi bocor - biasanya versi aplikasi lama yang
+# menerjemahkan kalimat utuh alih-alih frasa bendanya saja.
+#
+# YOLOE mencocokkan SELURUH frasa prompt dengan isi gambar, jadi "please find
+# my red bag" bukan sekadar prompt yang lebih panjang: ia mencari sesuatu yang
+# serentak cocok dengan "please", "find", DAN "bag". Hasilnya bukan tas.
+_PROMPT_EN_STOPWORDS = {
+    "find", "finds", "finding", "search", "searching", "locate", "look",
+    "looking", "seek", "detect", "scan", "show", "please", "help", "where",
+    "whereis", "lost", "missing", "i", "me", "my", "mine", "your", "our",
+    "can", "you", "want", "need", "get", "give", "tell", "let",
+    "the", "a", "an", "is", "are", "was", "were", "of", "for", "to", "that",
+    "this", "it", "its", "thing", "things", "item", "items", "object",
+    "objects", "something", "anything",
+}
+
+# Sama dengan batas di sisi aplikasi (`CommandParser._maxPhraseWords`).
+# Disamakan dengan sengaja: keduanya menjaga hal yang sama, dan batas yang
+# berbeda membuat perilaku bergantung pada versi aplikasi yang dipakai.
+_MAX_PROMPT_WORDS = 4
+
+
+def _clean_prompt_en(raw: str | None) -> str | None:
+    """Rapikan prompt Inggris dari aplikasi (hasil terjemahan ML Kit).
+
+    Mengembalikan None kalau tidak ada yang layak dipakai - dan itu BUKAN
+    kegagalan: `resolve_prompt` lalu memakai kamus manualnya, persis seperti
+    sebelum ML Kit ada.
+
+    Kenapa dibersihkan lagi padahal aplikasi sudah menyaring: nilai ini
+    dikirim klien dan berakhir di `model.set_classes()`. Server tidak boleh
+    bergantung pada versi aplikasi tertentu untuk kebersihannya sendiri.
+    """
+    cleaned = _clean_target(raw or "")
+    if not cleaned:
+        return None
+
+    words = [w for w in cleaned.lower().split(" ") if w]
+    words = [w for w in words if w not in _PROMPT_EN_STOPWORDS]
+    if not words:
+        return None
+
+    return " ".join(words[:_MAX_PROMPT_WORDS])
+
+
 def _clean_conf(raw: float | None) -> float | None:
     """
     Kurung ambang keyakinan ke rentang yang berarti.
@@ -200,6 +246,11 @@ async def cari_objek(
     request: Request,
     target: str = Form(..., description="Nama barang, mis. 'dompet'"),
     file: UploadFile = File(..., description="Frame kamera JPEG"),
+    prompt_en: str | None = Form(
+        None,
+        description="Terjemahan Inggris dari aplikasi (ML Kit), mis. 'red bag'. "
+                    "Opsional - tanpa ini server memakai kamus manual.",
+    ),
     conf: float | None = Form(None),
     enhance: bool = Form(True, description="Koreksi eksposur otomatis"),
 ):
@@ -262,8 +313,11 @@ async def cari_objek(
 
     # ── 3. Inferensi ──
     svc = request.app.state.find_object_service
-    prompt_en = svc.resolve_prompt(target, _get_label_map())
-    result = svc.find(frame, prompt_en, target.strip().lower(), conf=conf)
+    client_prompt_en = _clean_prompt_en(prompt_en)
+    resolved_prompt = svc.resolve_prompt(
+        target, _get_label_map(), client_prompt_en=client_prompt_en
+    )
+    result = svc.find(frame, resolved_prompt, target.strip().lower(), conf=conf)
 
     # ── 4. Penalti confidence berbasis kualitas ──
     #
@@ -294,7 +348,8 @@ async def cari_objek(
     result["elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
 
     logger.info(
-        f"[cari-objek] target='{target}' prompt='{prompt_en}' "
+        f"[cari-objek] target='{target}' prompt='{resolved_prompt}' "
+        f"mlkit={'ya' if client_prompt_en else 'tidak'} "
         f"found={result.get('found')} n={result.get('total_match')} "
         f"kualitas={quality.verdict.value if quality else 'n/a'} "
         f"{result['elapsed_ms']:.0f}ms"
