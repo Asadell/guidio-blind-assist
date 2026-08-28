@@ -21,13 +21,16 @@ PERUBAHAN DARI VERSI LAMA
      yang agak kabur masih berguna, jadi kita hanya menolak yang
      benar-benar tidak terbaca.
 
-     CATATAN REVISI: gelap TIDAK lagi ditolak di sini (`reject_dark=False`
-     di services/image_gate.py) - fotonya diteruskan ke Moondream2. Bahaya
-     halusinasi yang ditulis di atas TIDAK hilang, jadi yang menggantikan
-     penolakan adalah catatannya: foto gelap turun ke POOR dan balasannya
-     selalu membawa `quality_note` "Fotonya gelap, jadi hasilnya mungkin
-     tidak tepat". Kalau catatan itu sampai dihapus dari narasi, penolakan
-     di sini harus dihidupkan lagi.
+     CATATAN REVISI: gerbang kualitas di sini SUDAH TIDAK MENOLAK APA PUN
+     (`reject_quality=False` di services/image_gate.py). Buram, gelap,
+     silau, resolusi kecil - semuanya diteruskan ke Moondream2. Yang masih
+     menolak cuma unggahan yang bukan gambar dan dua batas sumber daya.
+
+     Bahaya halusinasi yang ditulis di atas TIDAK hilang, jadi yang
+     menggantikan penolakan adalah catatannya: foto bermasalah tetap turun
+     ke POOR dan balasannya membawa `quality_note` ("Fotonya gelap, jadi
+     hasilnya mungkin tidak tepat"). Kalau catatan itu sampai dihapus dari
+     narasi, gerbangnya harus dihidupkan lagi.
 
   2. ENHANCEMENT KONSERVATIF
      Sama alasannya dengan cari_objek: Moondream2 dilatih pada foto
@@ -116,7 +119,20 @@ async def describe_scene(
 
     raw = await image.read()
 
-    # ── 1. Gerbang kualitas ──
+    # ── 1. Gerbang: batas sumber daya saja, bukan penilaian kualitas ──
+    #
+    # Profil "describe" dipasang `reject_quality: False`, jadi foto buram,
+    # gelap, silau, atau kecil TETAP diteruskan ke Moondream2. Yang tersisa
+    # sebagai penolakan cuma dua batas yang menjaga server tetap hidup:
+    # unggahan raksasa dan kanvas bom-dekode. Rinciannya di
+    # `services/image_gate.py`.
+    #
+    # `gambar_rusak` dan `gambar_kosong` juga masih menolak, dan itu BUKAN
+    # pengecualian dari aturan di atas: byte yang tidak bisa didekode sama
+    # sekali bukan foto berkualitas rendah, melainkan unggahan yang gagal.
+    # PIL di dalam Moondream2 akan gagal membukanya juga, jadi meneruskannya
+    # cuma menukar penolakan yang cepat dan jujur dengan penolakan yang sama
+    # beberapa detik kemudian - sesudah membangunkan VLM untuk apa-apa.
     g = gate(raw, profile="describe", endpoint="describe")
     if not g.ok:
         return g.to_error_payload({
@@ -128,6 +144,11 @@ async def describe_scene(
     quality = g.quality
 
     # ── 2. Enhancement konservatif ──
+    #
+    # Bukan penyaring, melainkan pemercepat: `enhance_for_vision` mengecilkan
+    # sisi terpanjang ke 1024 dan hanya mengoreksi eksposur kalau memang
+    # bermasalah. Foto 12 MP yang dikirim mentah justru membuat inferensinya
+    # lebih lama, jadi langkah ini dipertahankan.
     steps: dict = {}
     if enhance:
         frame, steps = enhance_for_vision(frame, quality=quality,

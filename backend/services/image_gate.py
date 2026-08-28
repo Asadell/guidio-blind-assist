@@ -118,6 +118,8 @@ PROFILES = {
         "blur_reject": 22.0,
         "blur_warn": 70.0,
         "reject_dark": False,
+        # Lihat catatan "reject_quality" di bawah.
+        "reject_quality": False,
         # Paling longgar, konsisten dengan profil lainnya: gambaran kasar
         # sebuah ruangan masih berguna dari frame kecil, dan menolak terlalu
         # sering membuat fitur ini terasa rewel.
@@ -152,6 +154,31 @@ PROFILES = {
 # Profil "ocr" tetap `reject_dark` bawaan (True). Ia tidak dipakai router mana
 # pun, dan sebagai rujukan angka untuk sisi Flutter ia harus tetap
 # menggambarkan gerbang yang paling ketat.
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  reject_quality - kenapa `describe` tidak lagi menolak foto apa pun
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# `reject_dark` menutup satu penolakan; ini menutup sisanya - buram, silau,
+# resolusi kecil, dan verdict POOR. Foto apa pun yang berhasil dibaca
+# diteruskan ke Moondream2.
+#
+# Alasannya soal biaya, bukan soal kualitas foto. Setiap penolakan berarti
+# pengguna tunanetra sudah mengangkat ponsel, menunggu jepretan, menunggu
+# perjalanan jaringan - lalu diberi tahu untuk mengulang semuanya, tanpa
+# pernah tahu apakah percobaan berikutnya akan lebih baik. Dia tidak bisa
+# melihat fotonya untuk memutuskan. Model yang menjawab "sepertinya ruangan
+# dengan meja" dari foto agak buram memberi jauh lebih banyak daripada
+# gerbang yang menjawab "coba lagi".
+#
+# Yang TIDAK ikut dilepas adalah dua batas sumber daya: unggahan raksasa dan
+# kanvas bom-dekode. Keduanya bukan penilaian kualitas - mereka menjaga
+# server tetap hidup, dan server yang mati mematikan fitur ini untuk semua
+# orang sekaligus.
+#
+# Catatan kualitasnya tetap ikut ke balasan lewat `quality_note()`, jadi
+# jawaban dari foto pas-pasan tetap membawa keraguannya sendiri.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -257,7 +284,11 @@ def gate(image_bytes: bytes, profile: str = "find_object",
         f"({q.elapsed_ms:.1f}ms)"
     )
 
-    if q.should_reject:
+    if q.should_reject and not cfg.get("reject_quality", True):
+        logger.info(
+            f"[{tag}] kualitas {q.message_id} DILEWATI, gambar tetap diteruskan"
+        )
+    elif q.should_reject:
         logger.info(f"[{tag}] gambar ditolak: {q.message_id} {q.issues}")
         return GateResult(
             ok=False, frame=frame, quality=q,
