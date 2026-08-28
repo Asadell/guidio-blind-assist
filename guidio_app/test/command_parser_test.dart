@@ -263,4 +263,51 @@ void main() {
       }
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Ganti barang di Mode Cari Objek
+  //
+  //  Tombol lebar di mode itu berlabel "Ganti barang", jadi kalimat pertama
+  //  yang keluar dari pengguna hampir selalu memakai kata itu. Sebelum
+  //  `extractFindObjectTarget` ada, seluruh kalimat dipakai apa adanya
+  //  sebagai nama barang: "ganti barang jadi keyboard" dikirim mentah ke
+  //  YOLOE, tidak pernah ketemu, dan ganti barang praktis tidak berfungsi.
+  // ═══════════════════════════════════════════════════════════════════════
+  group('CommandParser.extractFindObjectTarget', () {
+    const kasus = <String, String?>{
+      // Nama barang telanjang - bentuk paling umum saat tombol ditahan.
+      'keyboard': 'keyboard',
+      'botol': 'botol',
+
+      // Kata pembuka pencarian yang sudah dikenal.
+      'cari keyboard': 'keyboard',
+      'tolong cariin kunci motor dong': 'kunci motor',
+
+      // Kata pembuka GANTI - inti perbaikan ini.
+      'ganti barang jadi keyboard': 'keyboard',
+      'ganti barang ke keyboard': 'keyboard',
+      'ganti ke keyboard': 'keyboard',
+      'ganti keyboard': 'keyboard',
+      'ubah jadi dompet': 'dompet',
+
+      // Berlapis: koreksi lalu perintah cari.
+      'bukan itu, cariin keyboard': 'keyboard',
+      'sekarang cari botol minum': 'botol minum',
+
+      // Tidak ada nama barang di dalamnya. Harus null, BUKAN dipakai apa
+      // adanya - target "ganti barang" akan dipindai lalu dilaporkan tidak
+      // ketemu, dan pengguna menyimpulkan barangnya yang tidak ada.
+      'ganti barang': null,
+      'ganti': null,
+      'ganti barang jadi': null,
+      'barang': null,
+      '': null,
+    };
+
+    kasus.forEach((ucapan, harapan) {
+      test('"$ucapan" -> ${harapan ?? "null"}', () {
+        expect(CommandParser.extractFindObjectTarget(ucapan), harapan);
+      });
+    });
+  });
 }
