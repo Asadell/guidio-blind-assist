@@ -3,7 +3,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/voice/command_parser.dart';
 import '../services/server_service.dart';
+import '../services/translation_service.dart';
 import '../core/speech/tts_queue.dart' show SpeechTier;
 
 /// State machine Mode Cari Objek.
@@ -40,6 +42,25 @@ class FindObjectProvider extends ChangeNotifier {
 
   String? _target;
   String? get target => _target;
+
+  /// Prompt Inggris hasil ML Kit untuk [_target]. Null berarti terjemahan
+  /// belum selesai atau tidak tersedia - dan itu BUKAN kegagalan: backend
+  /// masih punya kamus manualnya sendiri.
+  String? _targetEn;
+  String? get targetEn => _targetEn;
+
+  /// Terjemahan yang sedang berjalan untuk target aktif.
+  Future<void>? _translating;
+
+  /// Batas menunggu terjemahan saat tombol kirim ditekan.
+  ///
+  /// Terjemahannya dimulai di [setTarget], jauh sebelum ini - pengguna masih
+  /// mendengarkan konfirmasi "Mencari tas merah, tekan tombol kirim" selama
+  /// beberapa detik. Jadi dalam pemakaian normal batas ini tidak pernah
+  /// tersentuh. Ia ada untuk kasus pengguna menekan tombol seketika saat
+  /// model ML Kit kebetulan baru diunduh: pencarian yang telat dua detik
+  /// jauh lebih baik daripada pencarian yang menggantung.
+  static const Duration _translateBudget = Duration(seconds: 2);
 
   /// CO-14 - target yang disimpan saat offline, dipakai lagi begitu pulih.
   String? _savedTarget;
@@ -149,6 +170,15 @@ class FindObjectProvider extends ChangeNotifier {
   void setTarget(String newTarget) {
     final isChange = _target != null && _target != newTarget;
     _target = newTarget;
+    _targetEn = null;
+    // Diterjemahkan SEKARANG, bukan saat tombol kirim ditekan.
+    //
+    // Antara dua momen itu ada konfirmasi suara sepanjang beberapa detik
+    // ("Mencari tas merah. Tekan tombol kirim untuk memindai"), dan itu
+    // waktu yang sudah dibayar - dipakai atau tidak. Menunda terjemahan ke
+    // saat tombol ditekan berarti menambahkan penundaannya ke satu-satunya
+    // momen di alur ini yang pengguna benar-benar menunggu hasil.
+    _translating = _resolveEnglishPrompt(newTarget);
     _matchCount = 1;
     _lastKnownPosition = null;
     _notFoundCount = 0;
@@ -161,6 +191,38 @@ class FindObjectProvider extends ChangeNotifier {
           : 'Mencari $newTarget. Tekan tombol kirim untuk memindai.',
       tier: SpeechTier.info,
     );
+  }
+
+  /// Susun prompt Inggris untuk YOLOE lewat ML Kit on-device.
+  ///
+  /// Yang diterjemahkan HANYA frasa bendanya - "tolong carikan tas merah"
+  /// sudah dipotong jadi "tas merah" oleh `CommandParser`, lalu dibersihkan
+  /// sekali lagi oleh `normalizeSearchPhrase`. Menerjemahkan kalimat utuh
+  /// akan menghasilkan prompt seperti "please find my red bag", dan encoder
+  /// teks YOLOE mencocokkan SELURUH frasa itu dengan isi gambar - kata
+  /// "please" dan "find" ikut jadi bagian dari yang dicari.
+  Future<void> _resolveEnglishPrompt(String target) async {
+    // Seluruh badan fungsi dijaga try/catch karena Future ini SENGAJA tidak
+    // ditunggu di [setTarget] - ia berjalan sendiri selama konfirmasi suara
+    // dibacakan. Exception di dalam future yang tidak ditunggu naik sebagai
+    // unhandled zone error, dan itu menjatuhkan aplikasi karena satu prompt
+    // yang gagal diterjemahkan - padahal pencariannya masih sanggup jalan
+    // dengan kamus di backend.
+    try {
+      final phrase = CommandParser.normalizeSearchPhrase(target);
+      if (phrase.isEmpty) return;
+
+      final en = await TranslationService.instance.toEnglish(phrase);
+
+      // Pengguna bisa mengganti barang saat terjemahan masih jalan. Tanpa
+      // penjaga ini, "tas merah" yang datang telat menimpa "dompet" yang baru
+      // diminta - dan pencariannya mencari benda yang salah tanpa satu pun
+      // tanda di suara maupun di layar.
+      if (_target != target) return;
+      _targetEn = en;
+    } catch (e) {
+      debugPrint('[FindObject] terjemahan prompt gagal: $e');
+    }
   }
 
   void retrySavedTarget() {
@@ -211,7 +273,13 @@ class FindObjectProvider extends ChangeNotifier {
         return;
       }
 
-      final res = await ServerService.instance.cariObjek(jpeg, target);
+      // Terjemahan hampir selalu sudah selesai di sini; batasnya cuma jaring
+      // pengaman. Kalau lewat, `_targetEn` tetap null dan backend memakai
+      // kamus manualnya - hasilnya lebih kasar, bukan gagal.
+      await _translating?.timeout(_translateBudget, onTimeout: () {});
+
+      final res = await ServerService.instance
+          .cariObjek(jpeg, target, promptEn: _targetEn);
       _isScanning = false;
       _handleResponse(res, target);
     } catch (e) {
@@ -331,6 +399,8 @@ class FindObjectProvider extends ChangeNotifier {
   void reset() {
     _stepTimer?.cancel();
     _target = null;
+    _targetEn = null;
+    _translating = null;
     _serverMessage = '';
     _isScanning = false;
     _notFoundCount = 0;

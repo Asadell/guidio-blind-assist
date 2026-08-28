@@ -71,13 +71,35 @@ class ServerService {
   ///
   /// `found: false` dengan reason `not_in_frame` adalah kondisi NORMAL (CO-10)
   /// - pengguna cukup arahkan kamera ke tempat lain lalu tekan kirim lagi.
-  Future<Map<String, dynamic>> cariObjek(Uint8List jpegBytes, String target) =>
+  /// Cari satu barang di satu frame lewat YOLOE.
+  ///
+  /// [target] tetap Bahasa Indonesia: nilainya dipakai backend untuk menyusun
+  /// kalimat yang DIBACAKAN kembali ke pengguna ("Ada 2 tas merah, yang
+  /// terdekat di kiri"). Menggantinya dengan versi Inggris akan membuat
+  /// aplikasi berbicara dua bahasa dalam satu kalimat.
+  ///
+  /// [promptEn] adalah frasa yang sama sesudah diterjemahkan ML Kit di
+  /// perangkat ("red bag"), khusus untuk encoder teks YOLOE. Dikirim sebagai
+  /// field TERPISAH, bukan menggantikan [target], justru supaya kedua peran
+  /// itu tidak tertukar.
+  ///
+  /// Null berarti terjemahan tidak tersedia - backend lalu memakai kamus
+  /// manualnya sendiri, persis seperti sebelum ML Kit masuk.
+  Future<Map<String, dynamic>> cariObjek(
+    Uint8List jpegBytes,
+    String target, {
+    String? promptEn,
+  }) =>
       _api.postMultipart(
         '/api/cari-objek',
         bytes: jpegBytes,
         fileField: 'file',
         filename: 'frame.jpg',
-        fields: {'target': target},
+        fields: {
+          'target': target,
+          if (promptEn != null && promptEn.trim().isNotEmpty)
+            'prompt_en': promptEn.trim(),
+        },
         op: ApiOp.frame,
       );
 
