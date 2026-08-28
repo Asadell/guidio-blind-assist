@@ -400,12 +400,42 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
 
   void _submitHeard(String heard) {
     _finalWaitTimer?.cancel();
-    final command = CommandParser.parse(heard);
-    final target = command.intent == VoiceIntent.findObjectTarget
-        ? command.argument
-        : heard;
     if (mounted) setState(() => _heardPartial = '');
-    context.read<FindObjectProvider>().submitHeardText(heard, parsedTarget: target);
+
+    // Perintah ganti mode tidak boleh jadi nama barang.
+    //
+    // Tombol ini cuma menampung nama barang, tapi pengguna yang menyerah
+    // mencari sering mengucapkan "pindah ke navigasi" ke tombol mana pun yang
+    // sedang dipegangnya. Tanpa penjagaan ini kalimat itu jadi target harfiah,
+    // dipindai, dan dilaporkan tidak ketemu - jawaban yang membuatnya
+    // menyimpulkan perintah pindah mode pun sudah rusak.
+    final command = CommandParser.parse(heard);
+    if (command.intent?.isModeChange ?? false) {
+      TtsQueue.instance.speak(
+        'Tombol ini untuk menyebut barang. Untuk pindah mode, pakai tombol '
+        'bicara di tengah.',
+        tier: SpeechTier.info,
+        source: SpeechSource.assistant,
+      );
+      return;
+    }
+
+    // Seluruh ucapan di tombol ini memang dimaksudkan sebagai nama barang,
+    // jadi yang dipakai bukan hasil [CommandParser.parse] - ia mengembalikan
+    // intent kosong untuk "keyboard" - melainkan pengupas kata pembuka.
+    //
+    // Sebelumnya kalimat yang tidak diawali kata seperti "cari" dipakai APA
+    // ADANYA. Itu yang membuat ganti barang tidak pernah bekerja: tombolnya
+    // sendiri berlabel "Ganti barang", jadi pengguna mengucapkan "ganti
+    // barang jadi keyboard", dan seluruh kalimat itu yang dikirim ke YOLOE
+    // sebagai nama barang.
+    final target = CommandParser.extractFindObjectTarget(heard);
+
+    // `null` diteruskan sebagai string kosong: provider menjawabnya dengan
+    // "Cari apa?" lalu kembali ke idle. Itu jauh lebih baik daripada memasang
+    // kalimat pembuka sebagai target dan memindai sesuatu yang tidak ada.
+    context.read<FindObjectProvider>()
+        .submitHeardText(heard, parsedTarget: target ?? '');
   }
 
   /// Dipanggil saat tombol kiri (📷 / "Kirim") ditekan.

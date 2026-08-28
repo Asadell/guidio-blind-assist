@@ -411,6 +411,78 @@ class CommandParser {
     'keliatan ga',
   ];
 
+  /// Kata pembuka "ganti barang" di Mode Cari Objek.
+  ///
+  /// Bedanya dengan [searchPrefixes]: yang ini bukan cara MEMULAI pencarian,
+  /// melainkan cara MENGGANTI barang yang sedang dicari. Tombol lebar di mode
+  /// itu berlabel "Ganti barang", jadi kalimat pertama yang keluar dari
+  /// pengguna hampir selalu memakai kata-kata ini - dan sebelum daftar ini
+  /// ada, seluruh kalimatnya dipakai apa adanya sebagai nama barang. Ucapan
+  /// "ganti barang jadi keyboard" berakhir sebagai target harfiah "ganti
+  /// barang jadi keyboard", dikirim mentah ke YOLOE, dan tidak pernah ketemu.
+  ///
+  /// Diurutkan dari yang terpanjang saat dipakai, supaya "ganti barang jadi"
+  /// menang atas "ganti" dan sisa kalimatnya tidak ikut terbawa.
+  static const List<String> changeTargetPrefixes = [
+    // --- Ganti target, bentuk lengkap ---
+    'ganti barang jadi',
+    'ganti barang ke',
+    'ganti barang menjadi',
+    'ganti barangnya jadi',
+    'ganti barangnya ke',
+    'ganti target jadi',
+    'ganti target ke',
+    'ganti objek jadi',
+    'ganti objek ke',
+    'ganti cari',
+    'ganti carikan',
+
+    // --- Ganti target, bentuk pendek ---
+    'ganti barangnya',
+    'ganti barang',
+    'ganti target',
+    'ganti objek',
+    'ganti menjadi',
+    'ganti dengan',
+    'ganti jadi',
+    'ganti ke',
+    'gantian',
+    'ganti',
+
+    // --- Ubah / tukar ---
+    'ubah barang jadi',
+    'ubah barang ke',
+    'ubah barangnya',
+    'ubah barang',
+    'ubah menjadi',
+    'ubah jadi',
+    'ubah ke',
+    'ubah',
+    'tukar jadi',
+    'tukar ke',
+    'tukar',
+
+    // --- Koreksi: "bukan itu, yang saya cari ..." ---
+    'bukan itu tapi',
+    'bukan itu',
+    'bukan yang itu',
+    'salah bukan itu',
+    'bukan',
+    'salah',
+
+    // --- Beralih ke barang lain ---
+    'sekarang cari',
+    'sekarang carikan',
+    'sekarang',
+    'gantinya',
+    'lanjut cari',
+    'terus cari',
+    'berikutnya',
+    'yang lain',
+    'barang lain',
+    'objek lain',
+  ];
+
   static const List<String> fillerWords = [
     // --- Kata ganti orang / kepemilikan ---
     'saya punya',
@@ -692,6 +764,70 @@ class CommandParser {
 
   /// Ambil nama barang sesudah prefiks pencarian, lalu buang kata pengisi.
   /// Mengembalikan null kalau tidak ada prefiks atau sisanya kosong.
+  /// Nama barang dari satu ucapan di Mode Cari Objek.
+  ///
+  /// Dipakai tombol "Sebutkan barang" / "Ganti barang", yang berbeda dari
+  /// tombol perintah suara di tengah: di sini SELURUH ucapan memang
+  /// dimaksudkan sebagai nama barang, bukan perintah. Karena itu ia tidak
+  /// lewat [parse] penuh - "keyboard" saja harus sah, padahal [parse]
+  /// mengembalikan intent kosong untuknya.
+  ///
+  /// Yang dikerjakannya cuma satu: membuang kata pembuka sampai yang tersisa
+  /// benar-benar nama barang.
+  ///
+  ///     'keyboard'                     -> 'keyboard'
+  ///     'cari keyboard'                -> 'keyboard'
+  ///     'ganti barang jadi keyboard'   -> 'keyboard'
+  ///     'bukan itu, cariin keyboard'   -> 'keyboard'
+  ///     'ganti barang'                 -> null
+  ///
+  /// `null` berarti tidak ada nama barang di dalamnya. Itu jawaban yang
+  /// BERGUNA, bukan kegagalan: pemanggil menjawabnya dengan "Cari apa?" dan
+  /// menunggu, alih-alih memasang kalimat pembuka sebagai nama barang lalu
+  /// memindai sesuatu yang tidak pernah ada.
+  static String? extractFindObjectTarget(String rawText) {
+    var norm = _normalize(rawText);
+    if (norm.trim().isEmpty) return null;
+
+    // Kupas kata pembuka berlapis: "ganti, sekarang cari keyboard" punya dua.
+    // Dibatasi supaya kalimat yang isinya HANYA kata pembuka berhenti sebagai
+    // kosong, bukan berputar.
+    final sorted = List<String>.from(changeTargetPrefixes)
+      ..sort((a, b) => b.length.compareTo(a.length));
+    for (var putaran = 0; putaran < 3; putaran++) {
+      var terkupas = false;
+      for (final prefix in sorted) {
+        final needle = ' ${_normalize(prefix).trim()} ';
+        if (!norm.startsWith(needle)) continue;
+        norm = _normalize(norm.substring(needle.length - 1));
+        terkupas = true;
+        break;
+      }
+      if (!terkupas || norm.trim().isEmpty) break;
+    }
+
+    if (norm.trim().isEmpty) return null;
+
+    // Sisanya bisa saja masih berbentuk "cari keyboard" - itu urusan
+    // [_extractSearchTarget], yang sudah tahu semua cara orang menyebutnya.
+    final viaPrefix = _extractSearchTarget(norm);
+    if (viaPrefix != null) return viaPrefix;
+
+    var cleaned = norm.trim();
+    for (final filler in _sortedFillers) {
+      cleaned = cleaned.replaceAll(RegExp('\\b${RegExp.escape(filler)}\\b'), ' ');
+    }
+    cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    // Kata yang tidak menunjuk benda apa pun. Memakainya sebagai target
+    // berarti memindai "itu" dan melaporkan tidak ketemu.
+    const kosong = {'', 'barang', 'barangnya', 'objek', 'objeknya', 'benda',
+      'bendanya', 'itu', 'ini', 'apa', 'apapun', 'sesuatu'};
+    if (kosong.contains(cleaned)) return null;
+
+    return cleaned;
+  }
+
   static String? _extractSearchTarget(String norm) {
     final sortedPrefixes = List<String>.from(searchPrefixes)
       ..sort((a, b) => b.length.compareTo(a.length));
