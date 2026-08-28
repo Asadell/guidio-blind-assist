@@ -59,6 +59,22 @@ dependencies:
   # Font - IBM Plex Sans / IBM Plex Mono (design system Vinara)
   google_mlkit_text_recognition: ^0.16.0
 
+  # Terjemahan Inggris → Indonesia ON-DEVICE untuk caption Moondream2.
+  #
+  # Moondream2 di backend hanya bisa berbahasa Inggris, dan mode Deskripsi
+  # Suasana dulunya satu-satunya mode yang menjawab dalam bahasa yang tidak
+  # dimengerti target penggunanya. ML Kit Translate menutup jarak itu tanpa
+  # melanggar prinsip yang dipegang proyek ini: offline penuh sesudah model
+  # terunduh, tidak lewat server, dan tidak mengarang seperti LLM.
+  #
+  # VERSI SENGAJA DIKUNCI DI 0.14.x, BUKAN 0.15.1 (rilis terbaru).
+  # 0.15.x menuntut Dart SDK >= 3.12; toolchain proyek ini Dart 3.10.4
+  # (Flutter 3.38.5), jadi `flutter pub get` akan gagal resolusi. 0.14.0
+  # memakai google_mlkit_commons ^0.12.0 - persis versi yang sudah terkunci
+  # oleh google_mlkit_text_recognition di atas, jadi tidak ada konflik.
+  # Naikkan ke ^0.15.1 setelah Flutter/Dart proyek ikut naik.
+  google_mlkit_translation: ^0.14.0
+
 
 dev_dependencies:
   flutter_test:
