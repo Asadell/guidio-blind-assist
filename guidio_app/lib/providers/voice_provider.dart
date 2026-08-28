@@ -869,7 +869,22 @@ class VoiceProvider extends ChangeNotifier {
     try {
       await _camera.initCamera(preset: CapturePreset.capture);
 
-      final jpeg = await _camera.captureJpeg();
+      // Gerbang kualitas di sisi ponsel DIMATIKAN untuk jalur ini.
+      //
+      // Fotonya selalu dikirim. Dulu `captureJpeg` menilai ketajaman dan
+      // cahaya lebih dulu, dan foto yang tidak lolos berhenti di sini tanpa
+      // pernah sampai ke Moondream2 - lengkap dengan percobaan ulang yang
+      // membuat satu permintaan memakan beberapa detik sebelum akhirnya
+      // menyerah. Untuk pengguna, itu terasa seperti aplikasi yang menolak
+      // bekerja tanpa sebab yang bisa dia perbaiki.
+      //
+      // Kejujurannya tidak ikut hilang, hanya pindah tempat: server tetap
+      // menilai kualitas foto dan mengirim catatannya kembali, dan catatan
+      // itu dibacakan `_speakQualityNote` di akhir jawaban ("Fotonya gelap,
+      // jadi hasilnya mungkin tidak tepat"). Jadi deskripsi dari foto buruk
+      // tetap datang dengan keraguannya, bukan sebagai kepastian - yang
+      // hilang cuma penolakannya.
+      final jpeg = await _camera.captureJpeg(gateQuality: false);
       final scene = await ServerService.instance.describeScene(jpeg);
 
       if (!scene.hasDescription) {
@@ -932,15 +947,15 @@ class VoiceProvider extends ChangeNotifier {
       );
       await _speakQualityNote(scene);
     } on CaptureRejected catch (rejected) {
-      // Foto ditolak sebelum dikirim. Instruksi perbaikannya sudah dibacakan
-      // saat penolakan terjadi, jadi state cukup dikembalikan tanpa pesan
-      // tambahan.
+      // Jaring pengaman, bukan jalur biasa.
       //
-      // Menolak di sini bukan sekadar menghemat kuota. Moondream2 tidak
-      // pernah mengatakan "saya tidak bisa melihat" - dari foto gelap gulita
-      // pun dia menghasilkan deskripsi yang terdengar meyakinkan. Untuk
-      // pengguna yang tidak bisa memverifikasi sendiri, deskripsi halusinasi
-      // jauh lebih berbahaya daripada penolakan yang jujur.
+      // Dengan `gateQuality: false` di atas, penilaian kualitas tidak lagi
+      // menolak apa pun, jadi cabang ini praktis tidak pernah tercapai. Ia
+      // dipertahankan karena `CameraCaptureService` masih bisa melemparnya
+      // untuk sebab lain - kamera yang tidak mengembalikan satu frame pun,
+      // misalnya - dan menghapusnya berarti kegagalan itu naik sebagai
+      // exception mentah ke `catch` di bawah, yang kalimatnya jauh lebih
+      // tidak berguna bagi pengguna.
       debugPrint('[VoiceProvider] foto ditolak: $rejected');
       _response = rejected.message;
       _setState(VoiceState.responded);
