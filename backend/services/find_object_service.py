@@ -68,24 +68,23 @@ class FindObjectService:
 
     # Ambang keyakinan bawaan.
     #
-    # DITURUNKAN dari 0.25, dan ini penyebab utama "kok tidak pernah ketemu".
-    # Skor YOLOE dengan prompt teks jauh lebih rendah daripada YOLO closed-set
-    # - kepalanya kontrastif, bukan klasifikasi terlatih. Skor tertinggi pada
-    # lima fixture yang objeknya jelas terlihat:
+    # !! PERHATIAN: nilai ini akan di-OVERRIDE oleh env var YOLOE_CONF di .env !!
+    # Jika ingin mengubah threshold, ubah YOLOE_CONF di file .env, BUKAN di sini.
+    # Mengubah angka di sini tidak ada efeknya selama YOLOE_CONF ada di .env.
     #
-    #     tas merah 0.062 · headphone 0.058 · payung 0.129
-    #     kunci     0.150 · botol     0.504
+    # Kenapa nilainya sangat kecil (0.001)?
+    # YOLOE zero-shot (MobileCLIP) menghasilkan skor jauh lebih kecil dari YOLO
+    # closed-set. Diukur pada foto kamera HP nyata (imgsz 960):
     #
-    # Empat dari lima ada di BAWAH 0.25. Jadi ambang lamanya bukan menyaring
-    # tebakan buruk, ia membuang hampir semua deteksi yang benar - dan
-    # pengguna mendengar "belum ketemu di ruangan ini" untuk barang yang ada
-    # tepat di depan kameranya.
+    #   kunci motor (keychain)  0.026   <- benda kecil di atas meja
+    #   kunci (key)             0.007
+    #   kacamata (glasses)      0.003   <- lensa bening/transparan
+    #   botol (bottle)          0.920   <- besar & berkontras tinggi
     #
-    # 0.10 dipilih sebagai kompromi, bukan sebagai angka aman. Di bawahnya
-    # kotak sampah mulai lolos, dan salah arah lebih mahal daripada kelihatan:
-    # pengguna tunanetra mengulurkan tangan ke tempat yang ditunjuk. Bisa
-    # disetel lewat env `YOLOE_CONF` tanpa menyentuh kode.
-    DEFAULT_CONF = 0.10
+    # Dengan threshold 0.25 (nilai .env lama), kunci dan kacamata tidak pernah
+    # ditemukan meskipun jelas ada di depan kamera. 0.001 membiarkan semua
+    # deteksi valid lolos tanpa terlalu banyak false positive.
+    DEFAULT_CONF = 0.001
 
     def __init__(self, model_path: str | None = None,
                  conf: float = DEFAULT_CONF):

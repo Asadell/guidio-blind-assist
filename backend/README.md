@@ -126,6 +126,36 @@ Inggris memakai tabel bawaan.
 Model dimuat **saat permintaan pertama**, bukan saat startup. Panggilan pertama
 memakan sekitar 2 detik, sesudahnya cepat.
 
+#### Mengapa `YOLOE_CONF` di `.env` sangat kecil (0.001)?
+
+> **Satu-satunya tempat yang benar untuk mengubah threshold adalah `YOLOE_CONF`
+> di file `.env`. Nilai di `DEFAULT_CONF` dalam kode akan di-override oleh
+> `.env` selama server berjalan, sehingga mengedit kode tidak ada efeknya.**
+
+YOLOE menggunakan **MobileCLIP text encoder** yang bekerja secara kontrastif —
+ia tidak mengklasifikasikan ke kelas yang sudah dilatih, melainkan mengukur
+kesamaan antara embedding gambar dan embedding teks prompt. Hasilnya, skor
+"confidence" yang dihasilkan jauh lebih kecil dari YOLO closed-set biasa.
+
+Pengukuran pada foto kamera HP nyata (`imgsz=960`, gambar standar lab):
+
+| Benda            | Prompt         | Skor tertinggi |
+|------------------|----------------|----------------|
+| Botol plastik    | `bottle`       | **0.920**      |
+| Kunci motor      | `keychain`     | **0.026**      |
+| Kunci            | `key`          | **0.007**      |
+| Kacamata bening  | `glasses`      | **0.003**      |
+
+Dengan threshold lama `YOLOE_CONF=0.25`, kunci dan kacamata **tidak pernah
+ditemukan** meskipun jelas terlihat di foto — karena skor tertinggi mereka di
+bawah ambang. Pengguna hanya mendengar *"belum terlihat, coba putar badan"*
+untuk benda yang ada tepat di depan kameranya.
+
+Nilai `0.001` membiarkan semua deteksi valid lolos. False positive memang
+lebih mungkin, tapi untuk pengguna tunanetra **salah arah lebih bisa
+dikoreksi** (coba lagi dari posisi berbeda) daripada tidak pernah mendapat
+informasi posisi sama sekali.
+
 ### Deskripsi suasana: Moondream2
 
 `POST /api/describe` mengembalikan `description_en`, caption Bahasa Inggris

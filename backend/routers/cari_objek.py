@@ -235,7 +235,7 @@ def _clean_conf(raw: float | None) -> float | None:
         return None
     if v != v:                      # NaN tidak sama dengan dirinya sendiri
         return None
-    return min(max(v, 0.01), 0.99)
+    return min(max(v, 0.001), 0.99)
 
 
 @router.get("/cari-objek/targets")
