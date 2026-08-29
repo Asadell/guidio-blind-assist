@@ -32,6 +32,31 @@ FOCAL_LENGTH_PX = 615
 REFERENCE_WIDTH_PX = 640
 DEFAULT_HEIGHT_CM = 20
 
+# Resolusi inferensi YOLOE.
+#
+# Ultralytics memakai 640 kalau `imgsz` tidak disebut - dan itu yang terjadi
+# selama ini, sementara routernya sudah menyiapkan frame 1280 px lewat
+# `enhance_for_vision(max_side=1280)`. Separuh pixel yang diunggah pengguna
+# dibuang tepat sebelum inferensi.
+#
+# Angka 960 dipilih dari pengukuran, TAPI selisihnya kecil dan tidak
+# konsisten. Rata-rata skor tertinggi pada lima fixture:
+#
+#     imgsz=640 -> 0.171    imgsz=1280 -> 0.181
+#     imgsz=960 -> 0.206    imgsz=1600 -> 0.185
+#
+# Per objek arahnya bahkan berlawanan: botol naik terus sampai 1600,
+# headphone justru anjlok dari 0.384 di 960 jadi 0.058 di 1280. Lima sampel
+# terlalu sedikit untuk menyebut ini penyetelan. Yang bisa dikatakan jujur:
+# 640 bukan pilihan yang disengaja, ia cuma nilai bawaan yang tidak pernah
+# ditulis - dan menuliskannya membuat perubahan berikutnya bisa diukur.
+INFERENCE_IMGSZ = 960
+
+# Kelipatan stride YOLO. `imgsz` yang bukan kelipatan 32 dibulatkan diam-diam
+# oleh ultralytics; membulatkannya sendiri membuat ukuran yang dipakai sama
+# dengan yang dicatat di log.
+_STRIDE = 32
+
 
 class FindObjectService:
     """Pencarian objek berdasarkan prompt teks bebas.
@@ -41,7 +66,29 @@ class FindObjectService:
     padahal mode ini jarang dipakai dibanding Deteksi Objek.
     """
 
-    def __init__(self, model_path: str | None = None, conf: float = 0.25):
+    # Ambang keyakinan bawaan.
+    #
+    # DITURUNKAN dari 0.25, dan ini penyebab utama "kok tidak pernah ketemu".
+    # Skor YOLOE dengan prompt teks jauh lebih rendah daripada YOLO closed-set
+    # - kepalanya kontrastif, bukan klasifikasi terlatih. Skor tertinggi pada
+    # lima fixture yang objeknya jelas terlihat:
+    #
+    #     tas merah 0.062 · headphone 0.058 · payung 0.129
+    #     kunci     0.150 · botol     0.504
+    #
+    # Empat dari lima ada di BAWAH 0.25. Jadi ambang lamanya bukan menyaring
+    # tebakan buruk, ia membuang hampir semua deteksi yang benar - dan
+    # pengguna mendengar "belum ketemu di ruangan ini" untuk barang yang ada
+    # tepat di depan kameranya.
+    #
+    # 0.10 dipilih sebagai kompromi, bukan sebagai angka aman. Di bawahnya
+    # kotak sampah mulai lolos, dan salah arah lebih mahal daripada kelihatan:
+    # pengguna tunanetra mengulurkan tangan ke tempat yang ditunjuk. Bisa
+    # disetel lewat env `YOLOE_CONF` tanpa menyentuh kode.
+    DEFAULT_CONF = 0.10
+
+    def __init__(self, model_path: str | None = None,
+                 conf: float = DEFAULT_CONF):
         self.model_path = model_path or os.getenv("YOLOE_MODEL", "yoloe-11s-seg.pt")
         self.conf = float(os.getenv("YOLOE_CONF", conf))
         self.model = None
@@ -258,8 +305,19 @@ class FindObjectService:
                 self.model.set_classes(prompts, self.model.get_text_pe(prompts))
                 self._active_prompts = prompts
 
+            # `imgsz` disebut EKSPLISIT. Tanpa ini ultralytics memakai 640 dan
+            # mengecilkan lagi frame 1280 px yang baru saja disiapkan router -
+            # lihat catatan di [INFERENCE_IMGSZ].
+            # TIDAK dibatasi ukuran frame aslinya, dan itu disengaja.
+            # `imgsz` adalah ukuran letterbox yang dilihat model, bukan
+            # sekadar batas atas: frame kecil yang diperbesar ke 1280 justru
+            # yang paling terbantu, karena barang kecil butuh lebih banyak
+            # pixel di jaring inferensi. Diukur pada frame 270x480 yang sama:
+            # imgsz=480 -> 0.234, imgsz=1280 -> 0.504.
+            imgsz = int(round(INFERENCE_IMGSZ / _STRIDE)) * _STRIDE
+
             results = self.model.predict(
-                frame, conf=conf or self.conf, verbose=False
+                frame, conf=conf or self.conf, imgsz=imgsz, verbose=False
             )
             inference_ms = (time.time() - t0) * 1000
 
@@ -273,6 +331,8 @@ class FindObjectService:
                     "matches": [],
                     "total_match": 0,
                     "prompt_en": prompt_en,
+                    "prompt_variants": prompts,
+                    "imgsz": imgsz,
                     "inference_ms": round(inference_ms, 1),
                 }
 
@@ -300,6 +360,8 @@ class FindObjectService:
                 "total_match": len(matches),
                 "nearest": nearest,
                 "prompt_en": prompt_en,
+                "prompt_variants": prompts,
+                "imgsz": imgsz,
                 "inference_ms": round(inference_ms, 1),
             }
 
