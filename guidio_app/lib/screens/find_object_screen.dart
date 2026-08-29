@@ -180,11 +180,27 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   ///   melewatkan beberapa frame UI kalau dikerjakan di thread utama, dan
   ///   gejalanya adalah preview yang tersendat persis saat pengguna membidik.
   ///
-  /// Frame yang tidak layak DITOLAK di sini, sebelum jadi unggahan. Ini bukan
-  /// sekadar hemat kuota: YOLOE membalas `found=false` untuk frame gelap
-  /// gulita, dan dari telinga pengguna itu terdengar sama persis dengan
-  /// "barangnya memang tidak ada di sini". Tindakan yang tepat berbeda total
-  /// - yang satu perlu memutar badan, yang lain perlu menyalakan lampu.
+  /// Frame terakhir, dikirim APA ADANYA.
+  ///
+  /// Penilaian ketajaman dan cahaya sudah DILEPAS dari sini, mengikuti jalur
+  /// Deskripsi Suasana yang lebih dulu melepasnya.
+  ///
+  /// Gerbang lamanya punya alasan yang masuk akal di atas kertas: YOLOE
+  /// membalas `found=false` untuk frame gelap gulita, dan di telinga pengguna
+  /// itu terdengar sama persis dengan "barangnya memang tidak ada di sini",
+  /// padahal tindakan yang tepat berbeda total.
+  ///
+  /// Yang tidak masuk akal adalah harganya. Pengguna tunanetra sudah
+  /// mengangkat ponsel, mengarahkannya ke sekeliling, dan menekan tombol -
+  /// lalu ditolak sebelum satu byte pun terkirim, dan disuruh mengulang
+  /// semuanya tanpa bisa melihat fotonya untuk tahu apa yang harus diperbaiki.
+  /// Percobaan kedua tidak lebih terinformasi daripada yang pertama.
+  ///
+  /// Pembedaannya tidak hilang, hanya pindah ke tempat yang tidak membatalkan
+  /// apa pun: server menilai kualitas foto dan mengirimkan `quality_note`
+  /// ("Fotonya gelap, jadi hasilnya mungkin tidak tepat") bersama hasilnya.
+  /// Jadi jawaban dari foto buruk tetap datang dengan keraguannya - yang
+  /// hilang cuma penolakannya.
   Future<Uint8List?> _grabFrame() async {
     // Aliran mati = frame simpanan sudah basi. Mengirim pemandangan lama ke
     // YOLOE berarti melaporkan barang yang terlihat sebelum pengguna
@@ -195,18 +211,6 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     final frame = _latestFrame;
     if (frame == null) return null;
 
-    final sharp =
-        await CameraCaptureService.instance.assessCameraImage(frame);
-    if (sharp != null) {
-      final verdict = CameraCaptureService.instance.verdictFor(sharp);
-      if (!verdict.isUsable) {
-        _rejectedCaptureMessage =
-            CameraCaptureService.instance.messageFor(verdict);
-        return null;
-      }
-    }
-    _rejectedCaptureMessage = null;
-
     return FrameCodec.encodeForUpload(
       frame,
       maxEdge: UploadPreset.findObject.maxEdge,
@@ -214,10 +218,16 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     );
   }
 
-  /// Alasan frame terakhir ditolak, kalau ada. Dibaca [FindObjectProvider]
-  /// supaya pesan yang dibacakan menyebut masalah yang sebenarnya alih-alih
-  /// selalu menuduh gelap.
-  String? _rejectedCaptureMessage;
+  /// Alasan frame terakhir tidak bisa diambil.
+  ///
+  /// Sejak penilaian kualitas dilepas dari [_grabFrame], satu-satunya sebab
+  /// frame null adalah kamera yang belum siap atau aliran yang sudah mati -
+  /// bukan lagi soal gelap atau buram. Pesannya harus menyebut sebab yang
+  /// benar: menyuruh menyalakan senter untuk kamera yang belum menyala adalah
+  /// instruksi yang tidak akan pernah berhasil, dan pengguna tunanetra tidak
+  /// punya cara mengetahui bahwa dia sedang menuruti saran yang salah.
+  String? get _rejectedCaptureMessage =>
+      'Kamera belum siap. Tunggu sebentar lalu tekan lagi.';
 
   @override
   void dispose() {
