@@ -166,8 +166,17 @@ class TestDescribeTidakMenolakKualitas:
 
         assert g.ok is True, "foto gelap tidak boleh ditolak di jalur describe"
 
-    def test_profil_lain_tetap_ketat(self):
-        """Kelonggaran ini KHUSUS describe, bukan pelemahan gerbang."""
+    def test_find_object_ikut_meneruskan_foto_buram(self):
+        """`find_object` menyusul `describe`, dengan alasan yang sama.
+
+        Test ini dulu berbunyi kebalikannya - ia menjaga agar `find_object`
+        TETAP menolak, sebagai bukti bahwa kelonggaran `describe` bukan
+        pelemahan gerbang secara umum. Yang berubah bukan penilaian itu,
+        melainkan cakupannya: kedua endpoint ternyata membayar ongkos yang
+        sama. Satu tekan tombol, satu foto, satu jawaban - dan pengguna
+        tunanetra tidak bisa melihat fotonya untuk tahu apa yang harus
+        diperbaiki pada percobaan berikutnya.
+        """
         import cv2
         import numpy as np
 
@@ -176,7 +185,28 @@ class TestDescribeTidakMenolakKualitas:
         buram = cv2.GaussianBlur(np.full((480, 640, 3), 90, np.uint8), (31, 31), 0)
         raw = self._jpeg(buram)
 
-        assert gate(raw, profile="find_object", endpoint="test").ok is False
+        g = gate(raw, profile="find_object", endpoint="test")
+        assert g.ok is True, "foto buram tidak boleh ditolak di jalur cari-objek"
+        # Penilaiannya TIDAK ikut hilang - ia yang jadi `quality_note` di
+        # balasan, supaya jawaban dari foto buruk tetap membawa keraguannya.
+        assert g.quality is not None
+
+    def test_ocr_tetap_ketat(self):
+        """Kelonggaran ini bukan pelemahan gerbang secara umum.
+
+        `ocr` menuntut pixel jauh lebih banyak daripada dua yang lain: huruf
+        kecil adalah hal pertama yang hilang saat gambar buram, dan teks yang
+        salah dibaca lebih berbahaya daripada teks yang tidak terbaca -
+        pengguna tidak punya cara memverifikasinya.
+        """
+        import cv2
+        import numpy as np
+
+        from services.image_gate import gate
+
+        buram = cv2.GaussianBlur(np.full((480, 640, 3), 90, np.uint8), (31, 31), 0)
+        raw = self._jpeg(buram)
+
         assert gate(raw, profile="ocr", endpoint="test").ok is False
 
 
