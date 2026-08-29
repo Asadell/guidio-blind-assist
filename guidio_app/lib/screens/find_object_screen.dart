@@ -149,11 +149,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
         final cam = context.read<CameraProvider>();
         await cam.initCamera(preset: CapturePreset.capture);
         if (!mounted) return;
-        cam.onFrameReady = (image) => _latestFrame = image;
-        // Frame simpanan dibuang saat kamera dilepas ke latar
-        // belakang - pemandangan lama tidak boleh dipakai lagi.
-        cam.onFramesInvalidated = () => _latestFrame = null;
-        cam.startStream();
+        // Aliran TIDAK dinyalakan. Mode ini tidak menjalankan inferensi per
+        // frame - satu ketukan tombol berarti satu foto - dan pratinjau di
+        // layar digambar `CameraPreview` langsung dari controller, bukan dari
+        // aliran ini. Sejak `_grabFrame` memakai `captureJpeg`, aliran ini
+        // tidak punya satu pun pembaca; yang tersisa hanyalah biayanya, dan
+        // biaya itu terasa sebagai panas di tangan pengguna.
       }
     });
   }
@@ -161,12 +162,6 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   /// Status koneksi frame sebelumnya - dipakai mendeteksi transisi
   /// offline→online untuk menepati janji CO-14.
   bool _wasOffline = false;
-
-  /// Frame terakhir dari stream kamera. Disimpan mentah dan baru dikodekan
-  /// saat benar-benar akan dikirim - mengodekan tiap frame kamera padahal
-  /// hanya sebagian kecil yang terkirim adalah pemborosan CPU dan baterai
-  /// yang langsung terasa sebagai panas di tangan pengguna.
-  CameraImage? _latestFrame;
 
   /// Ambil frame terakhir untuk dikirim, setelah dinilai ketajamannya.
   ///
@@ -206,13 +201,34 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     // YOLOE berarti melaporkan barang yang terlihat sebelum pengguna
     // meninggalkan aplikasi. Lihat catatan panjang di
     // `navigasi_screen._grabCameraImage`.
-    if (!mounted || !context.read<CameraProvider>().isStreaming) return null;
+    if (!mounted) return null;
+    final cam = context.read<CameraProvider>();
+    if (!cam.isInitialized) return null;
 
-    final frame = _latestFrame;
-    if (frame == null) return null;
+    // FOTO SUNGGUHAN, bukan frame dari aliran pratinjau.
+    //
+    // Ini perbaikan yang dituntun angka, bukan dugaan. Di log server, empat
+    // unggahan berturut-turut dari jalur lama mendapat skor ketajaman
+    // 12,3 - 14,9 - 2,6 - 4,0. Foto normal ada di 100-375. Yang setara dengan
+    // skor 2,6 adalah gambar yang diburamkan dengan kernel Gauss 15 px: bukan
+    // "agak kurang tajam", melainkan tidak terbaca. Kacamata berbingkai kawat
+    // tipis mustahil ditemukan di gambar seperti itu, dan yang dilaporkan ke
+    // pengguna adalah "belum ketemu di ruangan ini" - seolah barangnya yang
+    // tidak ada.
+    //
+    // `captureJpeg` melewati `CameraCaptureService.captureSharpest`, yang
+    // mengunci fokus dan eksposur, MENUNGGU keduanya konvergen, lalu mengambil
+    // beberapa frame dan memilih yang paling tajam. Frame aliran tidak pernah
+    // mendapat satu pun dari itu - ia diambil kapan saja, termasuk persis saat
+    // lensa masih bergerak mencari fokus.
+    //
+    // `gateQuality: false` mempertahankan keputusan sebelumnya: foto tetap
+    // dikirim apa pun hasil penilaiannya. Yang berubah bukan siapa yang boleh
+    // menolak, melainkan kualitas foto yang dikirim.
+    final jpeg = await cam.captureJpeg(gateQuality: false);
 
-    return FrameCodec.encodeForUpload(
-      frame,
+    return FrameCodec.recompressJpeg(
+      jpeg,
       maxEdge: UploadPreset.findObject.maxEdge,
       quality: UploadPreset.findObject.quality,
     );
@@ -246,6 +262,10 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     _findObject.isOffline = null;
     _findObject.reset();
     _voice.clearModeHandlers();
+    // Aliran tidak pernah dinyalakan mode ini, tapi `stopStream` tetap
+    // dipanggil: layar ini bisa dimasuki dari mode aliran (Deteksi, Navigasi)
+    // yang meninggalkan alirannya hidup, dan meneruskannya ke mode berikutnya
+    // berarti inferensi per frame terus berjalan tanpa satu pun pembaca.
     _cam.onFrameReady = null;
     _cam.onFramesInvalidated = null;
     _cam.stopStream();
@@ -265,7 +285,6 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       if (granted) {
         final cam = context.read<CameraProvider>();
         await cam.initCamera(preset: CapturePreset.capture);
-        cam.startStream();
       }
     }
   }
@@ -277,7 +296,6 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       setState(() => _hasCameraPermission = true);
       final cam = context.read<CameraProvider>();
       await cam.initCamera(preset: CapturePreset.capture);
-      cam.startStream();
     }
   }
 
