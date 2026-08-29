@@ -186,6 +186,46 @@ class FindObjectService:
             return f"{found_color_en} {obj_en}".strip()
         return obj_en
 
+    # ── Varian prompt ────────────────────────────────────────────────────
+
+    @staticmethod
+    def prompt_variants(prompt_en: str) -> list[str]:
+        """Frasa lengkap PLUS kata bendanya saja.
+
+        Encoder teks YOLOE (MobileCLIP) jauh lebih kuat pada nama kelas
+        pendek daripada frasa deskriptif, dan selisihnya besar. Diukur pada
+        fixture yang sama, imgsz 1280:
+
+            "bottle"          -> 0.504
+            "drinking bottle" -> 0.328
+            "bottle of water" -> 0.206
+            "plastic bottle"  -> 0.167
+            "water bottle"    -> 0.084
+
+        Enam kali lipat antara ujung terbaik dan terburuk, untuk botol yang
+        sama di foto yang sama. Dan "water bottle" - yang terburuk - persis
+        yang dihasilkan kamus kurasi untuk "botol minum".
+
+        Jadi kata bendanya dikirim SEBAGAI KELAS TAMBAHAN, bukan sebagai
+        pengganti. Kepala YOLOE bersifat kontrastif: menambah kelas tidak
+        menurunkan skor kelas lain, ia cuma menambah kemungkinan salah satu
+        mengenali. Diverifikasi - `["water bottle", "bottle"]` mengembalikan
+        0.504 yang sama dengan `["bottle"]` sendirian.
+
+        Sifat warna sengaja TIDAK dibuang di sini. "red bag" yang gagal lalu
+        ditolong "bag" tetap menemukan tasnya; membuang warnanya sejak awal
+        berarti melaporkan tas siapa pun sebagai tas merah yang dicari.
+        """
+        phrase = " ".join(prompt_en.lower().split())
+        if not phrase:
+            return []
+
+        variants = [phrase]
+        head = phrase.rsplit(" ", 1)[-1]
+        if head and head != phrase:
+            variants.append(head)
+        return variants
+
     # ── Inferensi ────────────────────────────────────────────────────────
 
     def find(
@@ -213,9 +253,10 @@ class FindObjectService:
 
         try:
             t0 = time.time()
-            if self._active_prompts != [prompt_en]:
-                self.model.set_classes([prompt_en], self.model.get_text_pe([prompt_en]))
-                self._active_prompts = [prompt_en]
+            prompts = self.prompt_variants(prompt_en)
+            if self._active_prompts != prompts:
+                self.model.set_classes(prompts, self.model.get_text_pe(prompts))
+                self._active_prompts = prompts
 
             results = self.model.predict(
                 frame, conf=conf or self.conf, verbose=False
