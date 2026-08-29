@@ -47,18 +47,13 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: AppColors.ink1,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(color: AppColors.actionFill, shape: BoxShape.circle),
-              child: const Icon(Icons.remove_red_eye_rounded, color: AppColors.onDark, size: 36),
-            ),
-            const SizedBox(height: AppSpacing.s5),
-            Text('Vinara', style: AppTypography.headline(color: AppColors.onDark)),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s6),
+          child: Image.asset(
+            'assets/icons/app_splash_screen.png',
+            fit: BoxFit.contain,
+            width: 280,
+          ),
         ),
       ),
     );
