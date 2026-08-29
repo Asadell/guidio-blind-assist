@@ -129,7 +129,48 @@ class AppModeProvider extends ChangeNotifier {
   /// mendahuluinya. Mode default (Deteksi Objek) yang aktif sejak boot tanpa
   /// lewat [setMode] ikut lewat sini juga, supaya DO-29 "verbositas lengkap 3
   /// pemakaian pertama" tetap berlaku untuknya.
-  Future<void> announceEntry(AppMode mode) async {
+  /// Susun kalimat pengumuman masuk mode.
+  ///
+  /// Dipisah dari [announceEntry] supaya bisa diuji tanpa mesin TTS. Yang
+  /// diuji bukan formatnya, melainkan satu aturan yang pernah salah dan
+  /// akibatnya tidak terlihat dari kode: saat [introOverride] ada, kalimat
+  /// pembuka bawaan mode TIDAK BOLEH ikut terucap. Keduanya bicara tentang
+  /// hal yang sama dan saling bertentangan - "Mencari kacamata" lalu
+  /// "Sebutkan barang yang kamu cari".
+  @visibleForTesting
+  static String composeEntryAnnouncement({
+    required AppMode mode,
+    String? prefix,
+    String? introOverride,
+    required bool withIntro,
+  }) =>
+      [
+        if (prefix != null) prefix,
+        '${mode.label} aktif.',
+        if (introOverride != null)
+          introOverride
+        else if (withIntro)
+          mode.shortIntro,
+      ].join(' ');
+
+  /// [introOverride] menggantikan [AppMode.shortIntro] dan SELALU diucapkan,
+  /// tanpa lewat penyaringan verbositas.
+  ///
+  /// Ada karena `shortIntro` menggambarkan mode yang KOSONG, dan itu bisa
+  /// berubah jadi salah. Mode Cari Objek memperkenalkan diri dengan "Sebutkan
+  /// barang yang kamu cari" - kalimat yang benar saat modenya dibuka dari
+  /// lembar Pilih Mode, tapi keliru total saat dimasuki lewat perintah
+  /// "carikan kacamata": pengguna baru saja menyebutkan barangnya, dan
+  /// aplikasi menjawab dengan menyuruhnya menyebutkan barangnya.
+  ///
+  /// Untuk pengguna yang seluruh antarmukanya suara, itu bukan kalimat
+  /// pembuka yang kurang pas - itu satu-satunya tanda yang dia punya tentang
+  /// apa yang sedang terjadi, dan tandanya menunjuk arah yang salah.
+  ///
+  /// Tidak ikut disaring verbositas karena isinya bukan panduan umum yang
+  /// boleh dilewati sesudah tiga kali pakai, melainkan keadaan saat ini:
+  /// barang apa yang sedang dicari dan tombol mana yang harus ditekan.
+  Future<void> announceEntry(AppMode mode, {String? introOverride}) async {
     if (mode != _mode) return; // layar basi (dispose berpapasan) - jangan bicara
     final prefix = _pendingPrefix;
     _pendingPrefix = null;
@@ -146,11 +187,12 @@ class AppModeProvider extends ChangeNotifier {
       Verbosity.detail => true,
     };
 
-    final announcement = [
-      if (prefix != null) prefix,
-      '${mode.label} aktif.',
-      if (withIntro) mode.shortIntro,
-    ].join(' ');
+    final announcement = composeEntryAnnouncement(
+      mode: mode,
+      prefix: prefix,
+      introOverride: introOverride,
+      withIntro: withIntro,
+    );
     // Lewat antrean, tier Warning: pengumuman "di mana saya sekarang" tidak
     // boleh dibuang sebagai Info basi, tapi juga tidak boleh menahan
     // peringatan bahaya yang datang saat mode baru terpasang.

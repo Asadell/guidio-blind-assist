@@ -89,9 +89,32 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // Prinsip 6 "umumkan saat tiba" - sesudah layar terpasang.
-      context.read<AppModeProvider>().announceEntry(AppMode.findObject);
       final provider = context.read<FindObjectProvider>();
+
+      // Prinsip 6 "umumkan saat tiba" - sesudah layar terpasang.
+      //
+      // Kalau target sudah ada, pengumumannya menyebut target itu dan tombol
+      // yang harus ditekan, BUKAN kalimat pembuka bawaan mode ini. Layar ini
+      // bisa dimasuki dari dua arah yang sangat berbeda:
+      //
+      //   - lembar Pilih Mode, tanpa target  -> "Sebutkan barang yang kamu
+      //     cari" adalah kalimat yang tepat
+      //   - perintah "carikan kacamata"      -> kalimat itu keliru; pengguna
+      //     baru saja menyebutkannya
+      //
+      // Yang kedua yang selama ini salah: pengguna mengucapkan "carikan
+      // kacamata", layar menampilkan "Mencari kacamata", tapi yang terdengar
+      // cuma "Cari Objek aktif. Sebutkan barang yang kamu cari." Layarnya
+      // benar; suaranya - satu-satunya yang bisa diakses pengguna tunanetra -
+      // tidak.
+      final target = provider.target;
+      context.read<AppModeProvider>().announceEntry(
+            AppMode.findObject,
+            introOverride: target == null
+                ? null
+                : 'Mencari $target, tekan tombol kiri bawah '
+                    'untuk memindai sekitarmu.',
+          );
       provider.onSpeak = (text, tier) => context.read<TtsProvider>().speak(text, tier: tier);
       provider.onDirectionHaptic = _fireDirectionHaptic;
       // Server tidak menjawab sama saja tidak bisa mencari - periksa sebelum

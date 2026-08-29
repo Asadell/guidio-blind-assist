@@ -167,7 +167,19 @@ class FindObjectProvider extends ChangeNotifier {
 
   // ------------------------------------------------------------------ CO-04
 
-  void setTarget(String newTarget) {
+  /// [announce] dimatikan saat pemanggil sudah punya suaranya sendiri.
+  ///
+  /// `VoiceProvider._handleFindObjectTarget` memakai itu, dan bukan demi
+  /// kerapian. Ia memanggil `setTarget` SEBELUM layar ini terpasang, jadi
+  /// `onSpeak` masih null dan pengumuman di bawah hilang tanpa jejak - lalu
+  /// `announceEntry` mengucapkan versinya sendiri sesudah layar hidup. Dua
+  /// kalimat untuk satu kejadian, dan yang terdengar justru bukan yang
+  /// ditulis di sini.
+  ///
+  /// Membiarkan keduanya menyala begitu layar sudah terpasang (mis. mengganti
+  /// barang lewat mic dari dalam mode ini) menghasilkan masalah kebalikannya:
+  /// pengguna mendengar barang yang sama disebut dua kali berturut-turut.
+  void setTarget(String newTarget, {bool announce = true}) {
     final isChange = _target != null && _target != newTarget;
     _target = newTarget;
     _targetEn = null;
@@ -185,10 +197,12 @@ class FindObjectProvider extends ChangeNotifier {
     _isScanning = false;
     _set(FindObjectState.targetActive);
 
+    if (!announce) return;
     _speak(
       isChange
-          ? 'Ganti, sekarang mencari $newTarget. Tekan tombol kirim untuk memindai.'
-          : 'Mencari $newTarget. Tekan tombol kirim untuk memindai.',
+          ? 'Ganti, sekarang mencari $newTarget. '
+              'Tekan tombol kiri bawah untuk memindai.'
+          : 'Mencari $newTarget. Tekan tombol kiri bawah untuk memindai.',
       tier: SpeechTier.info,
     );
   }
@@ -264,10 +278,17 @@ class FindObjectProvider extends ChangeNotifier {
     try {
       final jpeg = await grab();
       if (jpeg == null) {
+        // Sejak penilaian kualitas dilepas dari `_grabFrame`, frame null
+        // TIDAK lagi berarti fotonya jelek - artinya kameranya belum siap
+        // atau alirannya sudah mati. Pesan bawaannya ikut berubah: menyuruh
+        // menyalakan senter untuk kamera yang belum menyala adalah instruksi
+        // yang tidak akan pernah berhasil, dan pengguna tunanetra tidak punya
+        // cara mengetahui bahwa dia menuruti saran yang salah.
         _isScanning = false;
         _set(FindObjectState.tooDark);
         _speak(
-          frameRejectReason?.call() ?? 'Terlalu gelap. Nyalakan lampu.',
+          frameRejectReason?.call() ??
+              'Kamera belum siap. Tunggu sebentar lalu tekan lagi.',
           tier: SpeechTier.warning,
         );
         return;

@@ -1207,14 +1207,38 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
-    _findObject.setTarget(target);
-    final changed = await _appMode.setMode(AppMode.findObject, spokenPrefix: 'Baik, mencari $target.');
+    // `announce: false` - suaranya diurus di sini, satu kalimat untuk satu
+    // kejadian. Lihat catatan di [FindObjectProvider.setTarget].
+    _findObject.setTarget(target, announce: false);
+
+    // Prefiksnya sengaja TIDAK menyebut targetnya.
+    //
+    // `announceEntry` di FindObjectScreen sudah menyebutnya, dan ia yang
+    // harus - dari sana kalimatnya tetap benar walau modenya dimasuki lewat
+    // lembar Pilih Mode, tanpa prefiks sama sekali. Menyebutkannya di kedua
+    // tempat menghasilkan "Baik, mencari kacamata. Cari Objek aktif. Mencari
+    // kacamata..." - satu barang, dua kali, dalam satu tarikan napas.
+    final changed = await _appMode.setMode(
+      AppMode.findObject,
+      spokenPrefix: 'Baik.',
+    );
     if (changed) {
+      // Sisanya diucapkan `announceEntry` di FindObjectScreen sesudah layarnya
+      // terpasang: "Baik. Cari Objek aktif. Mencari kacamata, tekan tombol
+      // kiri bawah untuk memindai sekitarmu."
       _consecutiveFailures = 0;
       _setState(VoiceState.responded);
       onNavigateBack?.call();
     } else {
-      await _respond('Sudah di mode Cari Objek. Target diperbarui ke $target.', save: false);
+      // Sudah di mode ini, jadi tidak ada `announceEntry` yang akan datang -
+      // kalimat lengkapnya harus keluar dari sini. Tombolnya ikut disebut:
+      // mengganti barang tanpa memberi tahu cara memindainya meninggalkan
+      // pengguna dengan target baru dan tidak ada isyarat untuk melanjutkan.
+      await _respond(
+        'Sekarang mencari $target. '
+        'Tekan tombol kiri bawah untuk memindai sekitarmu.',
+        save: false,
+      );
       onNavigateBack?.call();
     }
   }
