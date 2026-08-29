@@ -310,4 +310,74 @@ void main() {
       });
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Perintah mencari SELALU sampai ke Mode Cari Objek
+  // ═══════════════════════════════════════════════════════════════════════
+  //
+  // Kegagalan di sini punya gejala yang khas dan menyesatkan: Vinara tidak
+  // diam, ia MENAWARKAN mode lain. "Maksudmu deteksi objek, atau navigasi?"
+  // untuk kalimat yang menyebut kata "mencari" dengan jelas. Pengguna
+  // tunanetra tidak punya layar untuk melihat bahwa Mode Cari Objek ada dan
+  // sedang dilewati, jadi dia menyimpulkan fiturnya tidak ada.
+  group('routing perintah mencari', () {
+    group('bentuk berimbuhan sampai ke findObjectTarget', () {
+      const kasus = {
+        'saya mau mencari botol saya': 'botol',
+        'mencari kacamata': 'kacamata',
+        'mencarikan saya botol minum': 'botol minum',
+        'dicari dompet': 'dompet',
+        'menemukan kunci motor': 'kunci motor',
+        'ketemuin tas merah': 'tas merah',
+        'nyariin hp': 'hp',
+        'pengen cari payung': 'payung',
+        'lagi mencari tongkat': 'tongkat',
+      };
+      kasus.forEach((ucapan, target) {
+        test('"$ucapan" -> $target', () {
+          final c = CommandParser.parse(ucapan);
+          expect(c.intent, VoiceIntent.findObjectTarget, reason: ucapan);
+          expect(c.argument, target);
+        });
+      });
+    });
+
+    group('kata kerjanya ada, barangnya belum - buka modenya', () {
+      // Bukan tebakan: modenya menyambut dengan "Cari apa?" dan menunggu,
+      // persis pertanyaan yang memang belum terjawab.
+      for (final ucapan in ['cari', 'cari barang', 'cari objek', 'mencari', 'carikan']) {
+        test('"$ucapan" -> modeFindObject', () {
+          expect(CommandParser.parse(ucapan).intent, VoiceIntent.modeFindObject);
+        });
+      }
+    });
+
+    group('tidak menelan intent lain', () {
+      const kasus = {
+        'mode navigasi': VoiceIntent.modeNavigation,
+        'deteksi objek': VoiceIntent.modeDetection,
+        'uang': VoiceIntent.modeMoney,
+        'baca teks': VoiceIntent.modeReadText,
+        'pengaturan': VoiceIntent.modeSettings,
+        'stop navigasi': VoiceIntent.actionStopWalking,
+        'kembali': VoiceIntent.actionGoBack,
+        // "saya di mana" memakai kata yang juga ada di daftar frasa
+        // kehilangan. Layer 2b sengaja memeriksa pola KATA KERJA saja, bukan
+        // seluruh `searchPrefixes`, supaya pertanyaan ini tidak ikut tertelan.
+        'saya di mana': VoiceIntent.helpWhereAmI,
+      };
+      kasus.forEach((ucapan, intent) {
+        test('"$ucapan" tetap $intent', () {
+          expect(CommandParser.parse(ucapan).intent, intent);
+        });
+      });
+    });
+
+    test('"cari uang yang jatuh" mencari benda, bukan Mode Kenali Uang', () {
+      final c = CommandParser.parse('cari uang yang jatuh');
+      expect(c.intent, VoiceIntent.findObjectTarget);
+      // Keterangan "yang jatuh" dipangkas sebelum berangkat ke YOLOE.
+      expect(CommandParser.normalizeSearchPhrase(c.argument!), 'uang');
+    });
+  });
 }
