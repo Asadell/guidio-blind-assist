@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -52,13 +54,15 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
         _step = _Step.camera;
         _resolving = false;
       });
-      _announceStep();
+      // Memotong: apa pun yang masih dibacakan berasal dari panduan yang
+      // sudah ditinggalkan pengguna.
+      _announceStep(interrupt: true);
     } else if (!mic) {
       setState(() {
         _step = _Step.microphone;
         _resolving = false;
       });
-      _announceStep();
+      _announceStep(interrupt: true);
     } else {
       widget.onDone();
     }
@@ -84,14 +88,22 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
         : await Permission.microphone.isGranted;
     if (granted) {
       setState(() => _permanentlyDenied = false);
-      await TTSService.instance.speak('Izin diberikan. Melanjutkan.');
+      unawaited(TTSService.instance
+          .speak('Izin diberikan. Melanjutkan.', interrupt: true));
       _advance();
     }
   }
 
-  void _announceStep() {
+  /// [interrupt] hanya saat MASUK layar ini, bukan saat berpindah langkah.
+  ///
+  /// Masuk berarti apa pun yang masih dibacakan berasal dari panduan yang
+  /// sudah ditinggalkan - potong. Berpindah langkah berarti "Izin diberikan."
+  /// baru saja diucapkan dan masih berlaku - kalimat ini menyusul di
+  /// belakangnya, tidak menimpanya.
+  void _announceStep({bool interrupt = false}) {
     final label = _step == _Step.camera ? 'kamera' : 'mikrofon';
-    TTSService.instance.speak('Vinara butuh izin $label untuk berfungsi.');
+    TTSService.instance
+        .speak('Vinara butuh izin $label untuk berfungsi.', interrupt: interrupt);
   }
 
   Future<void> _request() async {
@@ -102,17 +114,35 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     setState(() => _requesting = false);
 
     if (status.isGranted) {
-      await TTSService.instance.speak('Izin diberikan.');
+      // TIDAK di-`await`, dan itu inti perbaikannya.
+      //
+      // `TTSService.speak` merantai tiap ucapan di belakang ucapan sebelumnya
+      // lalu mengembalikan Future yang baru selesai saat GILIRANNYA habis
+      // diucapkan. Menunggunya sebelum `_advance()` berarti perpindahan
+      // langkah dibayar dengan seluruh sisa antrean suara - dan antrean itu
+      // bisa panjang justru pada pengguna yang paling cepat: mengetuk
+      // "Lanjut" tiga kali di panduan menumpuk tiga narasi, lalu izin kamera
+      // diberikan, lalu layar ini DIAM DI LANGKAH KAMERA sampai semuanya
+      // habis dibacakan. Dari sisi pengguna, tombol yang barusan dia tekan
+      // tidak melakukan apa-apa.
+      //
+      // Yang menentukan posisi pengguna adalah izin yang sudah diberikan,
+      // bukan panjang kalimat yang sedang dibacakan.
+      unawaited(TTSService.instance.speak('Izin diberikan.', interrupt: true));
       _advance();
     } else if (status.isPermanentlyDenied) {
       setState(() => _permanentlyDenied = true);
       // IZ-04 - empat langkah bernomor, dibacakan satu per satu, bertahap.
-      await TTSService.instance.speak(
+      // Memotong: instruksi pemulihan tidak boleh mengantre di belakang
+      // narasi panduan yang sudah tidak relevan.
+      unawaited(TTSService.instance.speak(
         'Izin ditolak permanen. Empat langkah untuk menyalakannya kembali. '
         'Langkah satu: buka Pengaturan ponsel.',
-      );
+        interrupt: true,
+      ));
     } else {
-      await TTSService.instance.speak('Izin belum diberikan. Coba lagi kapan saja.');
+      unawaited(TTSService.instance
+          .speak('Izin belum diberikan. Coba lagi kapan saja.', interrupt: true));
     }
   }
 
@@ -161,21 +191,29 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   /// yang tinggal ditukar kembali ke baris yang sudah tertulis di sana.
   // ignore: unused_element
   Future<void> _skipMicrophone() async {
-    await TTSService.instance.speak(
+    unawaited(TTSService.instance.speak(
       'Melanjutkan tanpa mikrofon. Perintah suara mati, mode tetap bisa '
       'dipilih lewat tombol Pilih mode.',
-    );
+      interrupt: true,
+    ));
     widget.onDone();
   }
 
   /// IZ-04 - dibacakan bertahap. Membacakan empat langkah sekaligus tidak
   /// mungkin diikuti.
+  ///
+  /// Pengaturan dibuka SEKARANG, tanpa menunggu kalimatnya habis. Mesin TTS
+  /// terus berbicara di atas aplikasi Pengaturan, jadi tidak ada yang hilang -
+  /// yang hilang kalau ditunggu justru sambungan sebab-akibatnya: pengguna
+  /// menekan tombol, lalu enam detik tidak terjadi apa-apa, dan satu-satunya
+  /// kesimpulan yang tersedia baginya adalah tombolnya tidak berfungsi.
   Future<void> _openSystemSettings(bool isCamera) async {
-    await TTSService.instance.speak(
+    unawaited(TTSService.instance.speak(
       'Langkah dua: cari menu Izin aplikasi. '
       'Langkah tiga: aktifkan izin ${isCamera ? 'Kamera' : 'Mikrofon'}. '
       'Langkah empat: kembali ke Vinara.',
-    );
+      interrupt: true,
+    ));
     await openAppSettings();
   }
 
