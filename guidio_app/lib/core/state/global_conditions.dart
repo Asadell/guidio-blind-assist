@@ -97,7 +97,7 @@ class GlobalConditionsProvider extends ChangeNotifier {
   /// milidetik", lalu menekan "Simpan alamat". Di detik itu dia sudah punya
   /// bukti yang lebih segar daripada apa pun yang dipegang kelas ini, dan
   /// tetap harus menunggu sampai polling menyusul sebelum Cari Objek dan
-  /// Deskripsi Suasana berhenti ditandai mati.
+  /// Deskripsi Sekitar berhenti ditandai mati.
   ///
   /// Menunggu itu tidak sekadar lambat, ia membingungkan: aplikasi baru saja
   /// mengucapkan "Terhubung", lalu lembar Pilih Mode masih berkata "Tidak

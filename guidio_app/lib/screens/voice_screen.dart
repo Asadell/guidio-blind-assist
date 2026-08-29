@@ -615,7 +615,7 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
 
   Widget _bubblePanel(double bottomInset, Widget child) {
     // Slot 'Kembali' sudah dihapus, tapi slot Berhenti/Lanjut menggantikannya
-    // saat deskripsi suasana sedang berjalan. Aturan zona di
+    // saat deskripsi sekitar sedang berjalan. Aturan zona di
     // `ContextualActionSlot` jelas: konten di atas slot yang menggeser diri,
     // bukan slotnya yang mengalah - kalau tidak, panel percakapan menutupi
     // satu-satunya tombol yang bisa menghentikan narasi.

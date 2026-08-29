@@ -96,7 +96,7 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
   ///   tiga kali lebih banyak pixel per frame dibanding 640x480, dan di HP
   ///   mid-low selisih itu terasa langsung sebagai frame yang terlewat - di
   ///   mode yang justru menyangkut keselamatan.
-  /// - **Mode foto** (baca teks, deskripsi suasana, cari objek) mengambil
+  /// - **Mode foto** (baca teks, deskripsi sekitar, cari objek) mengambil
   ///   satu gambar lalu berhenti. Di sini resolusi menentukan batas atas
   ///   kualitas hasilnya, dan 640x480 memang tidak menyisakan cukup pixel
   ///   untuk huruf kecil: berapa pun tajamnya foto itu, teksnya tetap tidak

@@ -22,7 +22,7 @@ import 'contextual_action_slot.dart';
 /// obat yang tidak terbaca, nominal yang tidak terkenali, barang yang tidak
 /// terlihat.
 ///
-/// Mode Navigasi dan Deskripsi Suasana sengaja tidak memakainya. Keduanya
+/// Mode Navigasi dan Deskripsi Sekitar sengaja tidak memakainya. Keduanya
 /// dipakai sambil berjalan, dan satu slot tambahan di atas bar menggeser
 /// kartu peringatan yang justru paling perlu terbaca cepat di sana. Lampu di
 /// dua mode itu tetap bisa diatur lewat perintah suara, yang berlaku di

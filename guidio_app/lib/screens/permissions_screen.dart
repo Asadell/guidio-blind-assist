@@ -278,7 +278,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
               title: isCamera ? 'Izin kamera' : 'Izin mikrofon',
               reason: isCamera
                   ? 'Kamera dipakai untuk mendeteksi rintangan, membaca teks, mengenali uang, dan mencari barang.'
-                  : 'Mikrofon dipakai untuk perintah suara dan Deskripsi Suasana. Fitur lain tetap berjalan penuh tanpa mikrofon.',
+                  : 'Mikrofon dipakai untuk perintah suara dan Deskripsi Sekitar. Fitur lain tetap berjalan penuh tanpa mikrofon.',
             ),
           ),
         ),

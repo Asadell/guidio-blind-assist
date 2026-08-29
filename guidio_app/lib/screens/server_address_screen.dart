@@ -127,7 +127,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
     // dicapai lewat `/health` yang benar-benar menjawab dari alamat ini.
     // Jadi di baris ini kita memegang bukti terbaru yang ada di seluruh
     // aplikasi, sementara dua tempat yang menentukan hidup-matinya Cari Objek
-    // dan Deskripsi Suasana masih memegang jawaban lama:
+    // dan Deskripsi Sekitar masih memegang jawaban lama:
     //
     //   * `GlobalConditionsProvider` baru memeriksa ulang tiap 15 detik;
     //   * `CapabilitiesProvider` menahan jawabannya 45 detik, dan bahkan
@@ -230,7 +230,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                 const SizedBox(height: AppSpacing.s1),
                 // PG-08a - penjelasan server bawaan.
                 Text(
-                  'Vinara memakai server bawaan untuk Baca Teks, Deskripsi Suasana, Cari Objek, dan segmentasi jalur. '
+                  'Vinara memakai server bawaan untuk Baca Teks, Deskripsi Sekitar, Cari Objek, dan segmentasi jalur. '
                   'Ganti alamat ini hanya kalau kamu menjalankan server sendiri.',
                   style: AppTypography.body(color: AppColors.ink2),
                 ),

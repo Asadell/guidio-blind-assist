@@ -13,7 +13,7 @@ extension AppModeLabel on AppMode {
         AppMode.money      => 'Kenali Uang',
         AppMode.ocr        => 'Baca Teks',
         AppMode.navigasi   => 'Navigasi',
-        AppMode.voice      => 'Deskripsi Suasana',
+        AppMode.voice      => 'Deskripsi Sekitar',
         AppMode.findObject => 'Cari Objek',
       };
 
@@ -73,7 +73,7 @@ extension AppModeLabel on AppMode {
   ///
   /// **Cari Objek** memakai YOLOE open-vocabulary yang hanya ada di server.
   ///
-  /// **Deskripsi Suasana** memakai Moondream2, juga hanya di server. Ia sempat
+  /// **Deskripsi Sekitar** memakai Moondream2, juga hanya di server. Ia sempat
   /// tidak masuk daftar ini karena `voice_provider` juga mengurus perintah
   /// suara lokal - tapi perintah suara itu dijalankan lewat tombol Bicara yang
   /// ada di SETIAP mode, bukan lewat masuk ke mode ini. Yang khas dari mode

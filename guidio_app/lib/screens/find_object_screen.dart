@@ -178,7 +178,7 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   /// Frame terakhir, dikirim APA ADANYA.
   ///
   /// Penilaian ketajaman dan cahaya sudah DILEPAS dari sini, mengikuti jalur
-  /// Deskripsi Suasana yang lebih dulu melepasnya.
+  /// Deskripsi Sekitar yang lebih dulu melepasnya.
   ///
   /// Gerbang lamanya punya alasan yang masuk akal di atas kertas: YOLOE
   /// membalas `found=false` untuk frame gelap gulita, dan di telinga pengguna

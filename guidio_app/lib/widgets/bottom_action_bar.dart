@@ -89,7 +89,7 @@ import 'mode_picker_sheet.dart';
 /// | Kenali Uang   | "Kenali Uang"                | 1 tap = 1 analisis       |
 /// | Baca Teks     | "Baca teks" → "Jeda bacaan"  | Kontekstual              |
 /// | Navigasi      | "Matikan Suara" / "Nyalakan" | Bisu/nyala suara panduan |
-/// | Deskripsi Suasana | "Deskripsikan"           | Kirim foto ke VLM server |
+/// | Deskripsi Sekitar | "Deskripsikan"           | Kirim foto ke VLM server |
 /// | Cari Objek    | "Kirim - cari [X]"           | Scan                     |
 ///
 /// Aturan pendukung: label berupa kata kerja + objek maksimal 3 kata (TalkBack
@@ -97,7 +97,7 @@ import 'mode_picker_sheet.dart';
 /// ditekan, dan setiap tekan memberi getar konfirmasi.
 ///
 /// [cameraLabel] sengaja **wajib**. Nilai bawaan lamanya "Ambil gambar" membuat
-/// dua mode (Navigasi dan Deskripsi Suasana) menampilkan tombol aktif yang dibacakan
+/// dua mode (Navigasi dan Deskripsi Sekitar) menampilkan tombol aktif yang dibacakan
 /// TalkBack sebagai "Ambil gambar, tombol" padahal menekannya tidak melakukan
 /// apa pun - label yang berbohong, dan jalan buntu yang hening.
 class BottomActionBar extends StatelessWidget {
@@ -108,7 +108,7 @@ class BottomActionBar extends StatelessWidget {
   /// Ikon tombol kiri. Bawaannya kamera, karena di sebagian besar mode aksi
   /// utamanya memang memotret atau menyalakan pengawasan.
   ///
-  /// Mode Deskripsi Suasana memakai ikon cari-gambar: aksinya memang
+  /// Mode Deskripsi Sekitar memakai ikon cari-gambar: aksinya memang
   /// memotret, tapi hasilnya deskripsi, bukan foto yang disimpan. Ikon yang keliru di
   /// posisi tetap justru lebih membingungkan daripada tidak ada ikon.
   final IconData cameraIcon;

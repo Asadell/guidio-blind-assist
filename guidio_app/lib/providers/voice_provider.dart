@@ -592,7 +592,7 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
-    // Perintah deskripsi suasana - Moondream2 via server.
+    // Perintah deskripsi sekitar - Moondream2 via server.
     if (command.intent == VoiceIntent.describeScene) {
       await _handleDescribeScene();
       return;
@@ -827,9 +827,9 @@ class VoiceProvider extends ChangeNotifier {
   /// Menambahkan LLM penerjemah bukan jalan keluarnya: itu mengembalikan tepat
   /// tiga masalah yang sudah dibuang dari proyek ini, yaitu lambat, bisa
   /// berhalusinasi, dan butuh server.
-  /// Ambil foto dan minta deskripsi suasana ke VLM di server.
+  /// Ambil foto dan minta deskripsi sekitar ke VLM di server.
   ///
-  /// Pintu masuk publik untuk tombol kiri Mode Deskripsi Suasana. Isinya sama
+  /// Pintu masuk publik untuk tombol kiri Mode Deskripsi Sekitar. Isinya sama
   /// persis dengan yang dijalankan perintah suara "deskripsikan", jadi tombol
   /// dan ucapan tidak pernah bercabang jadi dua perilaku yang berbeda.
   ///
@@ -838,7 +838,7 @@ class VoiceProvider extends ChangeNotifier {
   /// tanpa diminta berarti mengirim foto sekitar pengguna ke jaringan setiap
   /// kali ia tidak sengaja membuka mode ini.
   // ═══════════════════════════════════════════════════════════════════════
-  //  Deskripsi suasana: satu kirim, satu deskripsi
+  //  Deskripsi sekitar: satu kirim, satu deskripsi
   // ═══════════════════════════════════════════════════════════════════════
   //
   // Mode ini punya siklus yang jauh lebih panjang daripada perintah suara
@@ -911,7 +911,7 @@ class VoiceProvider extends ChangeNotifier {
   /// terdengar. Mesin TTS tidak menyimpan posisi baca yang bisa diandalkan di
   /// semua perangkat, dan menebaknya berarti kadang melompati kalimat -
   /// kesalahan yang tidak bisa disadari pengguna yang tidak melihat layar.
-  /// Deskripsi suasana hanya satu sampai dua kalimat, jadi mengulang dari awal
+  /// Deskripsi sekitar hanya satu sampai dua kalimat, jadi mengulang dari awal
   /// justru jawaban yang paling bisa dipercaya.
   Future<void> toggleSceneNarration() async {
     if (_sceneNarrating) {
@@ -1017,7 +1017,7 @@ class VoiceProvider extends ChangeNotifier {
       return;
     }
 
-    // Naikkan resolusi dulu. Deskripsi suasana dipanggil dari mode suara, yang
+    // Naikkan resolusi dulu. Deskripsi sekitar dipanggil dari mode suara, yang
     // bisa dimasuki dari mode aliran mana pun - dan di sana kameranya masih
     // 640x480. Mengirim foto sekecil itu ke Moondream2 membuang detail yang
     // justru menentukan isi deskripsinya.

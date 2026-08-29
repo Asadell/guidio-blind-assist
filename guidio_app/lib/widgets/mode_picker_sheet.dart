@@ -53,7 +53,7 @@ void showModePickerSheet(BuildContext context) {
 
 /// Mode yang muncul sebagai pilihan di lembar ini.
 ///
-/// Keenam-enamnya ikut, termasuk Deskripsi Suasana.
+/// Keenam-enamnya ikut, termasuk Deskripsi Sekitar.
 ///
 /// Ia sempat dikeluarkan dengan alasan tombol Bicara di tengah sudah jadi
 /// pintu masuknya. Alasan itu tidak berlaku lagi setelah tombol Bicara dan

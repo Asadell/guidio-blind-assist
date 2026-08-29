@@ -48,7 +48,7 @@ class _QueuedSpeech {
 
   /// Diucapkan dengan locale en-US, lalu mesin dikembalikan ke Indonesia.
   ///
-  /// Ada di sini, bukan cuma di [TTSService], supaya deskripsi suasana dari
+  /// Ada di sini, bukan cuma di [TTSService], supaya deskripsi sekitar dari
   /// Moondream2 bisa lewat antrean seperti ucapan lain. Sebelumnya jalur itu
   /// memanggil `TTSService.speakEnglish` langsung justru KARENA antrean tidak
   /// bisa membawa bahasa - dan bypass itu yang membuatnya lolos dari seluruh
@@ -79,7 +79,7 @@ class _QueuedSpeech {
   /// menunggu - dan kalau jawabannya dibuang karena antreannya kebetulan
   /// panjang, yang dia dapat adalah kesenyapan tanpa penjelasan.
   ///
-  /// Ini bukan kasus teoretis: deskripsi suasana Moondream2 bisa memakan
+  /// Ini bukan kasus teoretis: deskripsi sekitar Moondream2 bisa memakan
   /// belasan detik, sementara [infoMaxAge] cuma 2 detik. Catatan kualitas yang
   /// mengantre di belakangnya akan SELALU dibuang tanpa aturan ini - dan
   /// catatan itu justru yang memberi tahu pengguna bahwa fotonya kurang bagus.

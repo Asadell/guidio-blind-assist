@@ -3,7 +3,7 @@
 /// LATAR
 /// -----
 /// Moondream2 di backend hanya berbahasa Inggris. Sebelum berkas ini ada,
-/// mode Deskripsi Suasana adalah satu-satunya mode di seluruh Vinara yang
+/// mode Deskripsi Sekitar adalah satu-satunya mode di seluruh Vinara yang
 /// menjawab dalam bahasa yang tidak bisa diasumsikan dimengerti target
 /// penggunanya - tunanetra di pasar dan warung Indonesia - dan aplikasi
 /// menambal itu dengan penanda lisan "Dalam bahasa Inggris." sebelum

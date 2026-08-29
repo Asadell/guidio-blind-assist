@@ -19,7 +19,7 @@ void main() async {
   // Init TTS di awal
   await TTSService.instance.init();
 
-  // Model terjemahan Inggris → Indonesia (mode Deskripsi Suasana) diunduh di
+  // Model terjemahan Inggris → Indonesia (mode Deskripsi Sekitar) diunduh di
   // LATAR, sengaja tanpa `await`.
   //
   // Unduhan pertamanya sekitar 30 MB per bahasa dan hanya terjadi sekali
@@ -28,7 +28,7 @@ void main() async {
   // pembukaan pertama, pada fitur yang bahkan mungkin tidak dia pakai hari itu.
   //
   // Selama unduhannya belum selesai, `toIndonesian` mengembalikan null dan
-  // mode Deskripsi Suasana jatuh ke jalur lamanya (caption Bahasa Inggris
+  // mode Deskripsi Sekitar jatuh ke jalur lamanya (caption Bahasa Inggris
   // dengan penanda lisan). Jadi keterlambatan di sini menurunkan kualitas
   // jawaban, tidak pernah mematikan fiturnya.
   unawaited(TranslationService.instance.prewarm());

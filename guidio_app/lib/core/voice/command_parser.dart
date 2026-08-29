@@ -76,6 +76,12 @@ class CommandParser {
       'jalan mana', 'mode jalan', 'arahan jalur', 'jalur mana',
     ],
     VoiceIntent.modeAssistant: [
+      // Nama modenya kini "Deskripsi Sekitar", tapi frasa lama TETAP
+      // dikenali. Label di layar bisa diganti sepihak; kebiasaan bicara
+      // pengguna tidak. Membuang "suasana" berarti perintah yang kemarin
+      // bekerja hari ini dijawab "belum saya kenali" - dan pengguna
+      // tunanetra tidak punya layar untuk melihat bahwa namanya berubah.
+      'deskripsi sekitar', 'deskripsikan sekitar', 'mode deskripsi sekitar',
       'deskripsi suasana', 'deskripsikan suasana', 'mode deskripsi suasana',
       'asisten', 'tanya', 'mode suara',
       'halo guidio', 'hei guidio', 'oy guidio', 'guidio', 'jarvis', 'hei jarvis', 'halo jarvis',
@@ -162,6 +168,7 @@ class CommandParser {
       // --- Frasa resmi / formal ---
       'deskripsikan yang ada di depan saya sekarang',
       'tolong jelaskan pemandangan di depan',
+      'berikan deskripsi sekitar tempat ini',
       'berikan deskripsi suasana tempat ini',
       'sebutkan objek dan keadaan di sekitar saya',
       'gambarkan kondisi di depan saya',
@@ -1190,7 +1197,7 @@ extension VoiceIntentSpokenLabel on VoiceIntent {
         VoiceIntent.modeReadText => 'baca teks',
         VoiceIntent.modeDetection => 'deteksi objek',
         VoiceIntent.modeNavigation => 'navigasi',
-        VoiceIntent.modeAssistant => 'deskripsi suasana',
+        VoiceIntent.modeAssistant => 'deskripsi sekitar',
         VoiceIntent.modeFindObject => 'cari objek',
         VoiceIntent.modeSettings => 'pengaturan',
         VoiceIntent.actionCapture => 'ambil gambar',

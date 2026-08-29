@@ -7,7 +7,7 @@ import '../services/server_service.dart';
 ///
 /// Sejak jalur deteksi via WebSocket dihapus, tidak ada lagi "engine yang
 /// dipilih": Mode Deteksi Objek selalu on-device. Server hanya dibutuhkan
-/// untuk yang memang tidak ada di perangkat (Cari Objek, Deskripsi Suasana,
+/// untuk yang memang tidak ada di perangkat (Cari Objek, Deskripsi Sekitar,
 /// dan segmentasi jalur sebagai cadangan), jadi kesiapannya diperiksa lewat
 /// `/health` - bukan dengan membuka soket deteksi yang tidak akan dipakai.
 class InferenceProvider extends ChangeNotifier {
