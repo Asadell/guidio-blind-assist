@@ -262,6 +262,49 @@ class CommandParser {
   };
 
   static const List<String> searchPrefixes = [
+    // --- Bentuk berimbuhan me- (BAKU, dan yang paling sering diucapkan) ---
+    //
+    // Ini pernah HILANG sama sekali dari daftar, dan akibatnya bukan sekadar
+    // satu ucapan yang meleset. "Saya mau mencari botol saya" tidak cocok
+    // dengan satu pun frasa di seluruh kamus, jadi `parse` mengembalikan
+    // intent kosong dan Vinara jatuh ke tebakan kemiripan kata - lalu
+    // bertanya "Maksudmu deteksi objek, atau navigasi?" untuk kalimat yang
+    // menyebut kata "mencari" dengan jelas.
+    //
+    // Untuk pengguna tunanetra, ditawari dua mode yang sama-sama salah lebih
+    // buruk daripada tidak dimengerti: dia tidak punya layar untuk melihat
+    // bahwa Mode Cari Objek ada dan sedang dilewati.
+    'mencari',
+    'mencarikan',
+    'menemukan',
+    'mencari-cari',
+    'menyari',
+    'nemuin',
+    'nemu',
+    'ketemuin',
+
+    // --- Bentuk berniat ("saya mau ...", "pengen ...") ---
+    //
+    // Diletakkan sebagai frasa utuh, bukan mengandalkan "cari" saja, supaya
+    // yang terpotong benar-benar sampai kata kerjanya. Tanpa ini "mau cari
+    // botol" tetap ketemu lewat "cari", tapi "mau mencari botol" tidak.
+    'mau cari',
+    'mau carikan',
+    'mau mencari',
+    'mau nyari',
+    'ingin cari',
+    'ingin mencari',
+    'pengen cari',
+    'pengen mencari',
+    'pengen nyari',
+    'pingin cari',
+    'pingin nyari',
+    'kepengen cari',
+    'lagi cari',
+    'lagi mencari',
+    'sedang mencari',
+    'butuh cari',
+
     // --- Frasa resmi ---
     'cari',
     'carikan',
@@ -722,6 +765,33 @@ class CommandParser {
     }
 
     // =========================================================================
+    // [Layer 2b] - Kata kerja mencari terdengar, barangnya belum disebut.
+    //
+    // "cari barang", "cari", "mencari" - tidak satu pun punya nama benda yang
+    // bisa dipakai, jadi Layer 2 menolaknya. Tapi maksudnya sama sekali tidak
+    // kabur: pengguna sedang minta MENCARI.
+    //
+    // Tanpa cabang ini kalimat-kalimat itu jatuh sampai ke tebakan kemiripan
+    // kata, dan Vinara menawarkan "deteksi objek, atau navigasi?" - dua mode
+    // yang sama-sama bukan yang diminta. `_phrases[modeFindObject]` sengaja
+    // TIDAK ikut `_sortedPhrases` (mode ini ditangani dinamis lewat
+    // `searchPrefixes`), jadi bahkan frasa harfiah "cari barang" yang tertulis
+    // di sana tidak pernah punya kesempatan cocok di Layer 1 maupun Layer 3.
+    //
+    // Membuka modenya adalah jawaban yang benar, bukan tebakan: Mode Cari
+    // Objek menyambut dengan "Cari apa?" dan menunggu - persis pertanyaan yang
+    // memang belum terjawab.
+    //
+    // Diperiksa dengan pola kata kerja, BUKAN seluruh `searchPrefixes`. Daftar
+    // itu memuat frasa kehilangan seperti "dimana" dan "mana", dan
+    // memperlakukannya sebagai perintah mencari akan menelan pertanyaan yang
+    // artinya lain sama sekali.
+    // =========================================================================
+    if (norm.split(' ').any((w) => w.isNotEmpty && _searchVerb.hasMatch(w))) {
+      return VoiceCommand(rawText: rawText, intent: VoiceIntent.modeFindObject);
+    }
+
+    // =========================================================================
     // [Layer 3] - Kata tunggal ("uang", "deteksi", "navigasi", "asisten").
     // =========================================================================
     for (final entry in _sortedPhrases) {
@@ -946,6 +1016,10 @@ class CommandParser {
       if (!terkupas || norm.trim().isEmpty) break;
     }
 
+    // 1b. Bentuk imbuhan yang tidak ada di daftar harfiah.
+    final viaVerb = _afterSearchVerb(norm);
+    if (viaVerb != null) norm = _normalize(viaVerb);
+
     // 2. Basa-basi percakapan dan derau frasa benda.
     for (final w in [..._sortedFillers, ..._searchNoiseWords]) {
       final needle = ' ${_normalize(w).trim()} ';
@@ -977,6 +1051,38 @@ class CommandParser {
     return words.join(' ');
   }
 
+  /// Kata kerja "mencari" dalam segala imbuhannya.
+  ///
+  /// [searchPrefixes] adalah daftar frasa harfiah, dan daftar harfiah untuk
+  /// bahasa yang berimbuhan seperti Bahasa Indonesia tidak akan pernah
+  /// lengkap. Yang hilang darinya bukan kasus pinggiran: "mencari" - bentuk
+  /// paling baku dari kata itu - pernah TIDAK ADA di sana, dan setiap kalimat
+  /// yang memakainya berakhir di tebakan kemiripan kata yang menawarkan mode
+  /// yang sama sekali berbeda.
+  ///
+  /// Pola ini jaring pengaman untuk bentuk yang belum terdaftar. Ia dicoba
+  /// SESUDAH daftar harfiah, bukan menggantikannya: daftar itu tahu frasa
+  /// panjang ("bantuin dong cariin") yang tidak bisa diungkapkan sebagai satu
+  /// kata, dan pencocokan terpanjang di sana yang menjaga sisa kalimatnya
+  /// tidak ikut terbawa.
+  ///
+  ///     cari · carikan · cariin · carilah · mencari · mencarikan · dicari
+  ///     nyari · nyariin · menyari
+  ///     temukan · temuin · menemukan · nemuin · ketemuin
+  static final RegExp _searchVerb = RegExp(
+    r'^(?:di|me|men|meng|nge|ke)?'
+    r'(?:cari|ncari|nyari|temu|nemu)'
+    r'(?:kan|in|i|lah|nya)?$',
+  );
+
+  /// Sisa kalimat sesudah kata kerja mencari, atau null kalau tidak ada.
+  static String? _afterSearchVerb(String norm) {
+    final words = norm.split(' ').where((w) => w.isNotEmpty).toList();
+    final idx = words.indexWhere(_searchVerb.hasMatch);
+    if (idx < 0 || idx == words.length - 1) return null;
+    return words.sublist(idx + 1).join(' ');
+  }
+
   static String? _extractSearchTarget(String norm) {
     final sortedPrefixes = List<String>.from(searchPrefixes)
       ..sort((a, b) => b.length.compareTo(a.length));
@@ -997,7 +1103,18 @@ class CommandParser {
       if (cleaned.isEmpty || cleaned == 'objek' || cleaned == 'barang') continue;
       return cleaned;
     }
-    return null;
+
+    // Daftar harfiah tidak kenal bentuk imbuhannya - coba polanya.
+    final viaVerb = _afterSearchVerb(norm);
+    if (viaVerb == null) return null;
+
+    var cleaned = viaVerb;
+    for (final filler in _sortedFillers) {
+      cleaned = cleaned.replaceAll(RegExp('\\b${RegExp.escape(filler)}\\b'), ' ');
+    }
+    cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.isEmpty || cleaned == 'objek' || cleaned == 'barang') return null;
+    return cleaned;
   }
 
   static List<String>? _sortedFillersCache;
