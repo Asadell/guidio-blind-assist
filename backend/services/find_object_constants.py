@@ -12,6 +12,17 @@ Berisi tiga dictionary utama:
 # 0. SEARCH_PREFIXES & FILLER_WORDS (Pembersih Perintah Suara)
 # =========================================================================
 SEARCH_PREFIXES: set[str] = {
+    # --- Bentuk berimbuhan me- (baku) ---
+    # Pernah hilang seluruhnya dari daftar ini maupun dari kembarannya di
+    # aplikasi (`CommandParser.searchPrefixes`). Akibatnya di aplikasi jauh
+    # lebih parah - "saya mau mencari botol" tidak dikenali sebagai perintah
+    # mencari sama sekali - tapi di sini pun bocornya nyata: kata "mencari"
+    # ikut terbawa ke `resolve_prompt` dan berakhir di prompt YOLOE.
+    "mencari", "mencarikan", "menemukan", "mencari-cari", "menyari",
+    "nemuin", "nemu", "ketemuin",
+    "mau cari", "mau mencari", "mau nyari", "ingin cari", "ingin mencari",
+    "pengen cari", "pengen mencari", "pengen nyari", "pingin cari",
+    "lagi mencari", "sedang mencari", "butuh cari",
     "cari", "carikan", "carilah", "tolong cari", "tolong carikan", "mohon cari",
     "mohon carikan", "bantu cari", "bantu carikan", "coba cari", "coba carikan",
     "silakan cari", "silakan carikan", "temukan", "temuin", "tunjukin", "tunjukkan",
