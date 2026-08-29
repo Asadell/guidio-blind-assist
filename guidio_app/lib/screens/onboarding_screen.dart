@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/tts_service.dart';
@@ -46,38 +48,72 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   int _index = 0;
 
+  /// Narasi halaman yang menunggu transisi 240 ms selesai.
+  ///
+  /// Dibatalkan setiap kali pengguna maju lagi. Tanpa itu, mengetuk "Lanjut"
+  /// dua kali dalam 240 ms meninggalkan satu timer basi yang tetap berbunyi
+  /// sesudah halamannya berganti.
+  Timer? _announceTimer;
+
   @override
   void initState() {
     super.initState();
     _announce();
   }
 
+  @override
+  void dispose() {
+    _announceTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Narasi halaman ini, MEMOTONG narasi halaman sebelumnya.
+  ///
+  /// `interrupt: true` bukan pilihan gaya. `TTSService.speak` merantai setiap
+  /// ucapan di belakang ucapan sebelumnya, jadi tanpa pemotongan, mengetuk
+  /// "Lanjut" tiga kali dengan cepat menumpuk tiga narasi panjang yang harus
+  /// habis satu per satu - dan tumpukan itu terbawa keluar dari layar ini,
+  /// ke layar izin, sampai ke keputusan pindah langkah di sana.
+  ///
+  /// Narasi halaman yang sudah ditinggalkan tidak lagi menggambarkan apa pun
+  /// yang ada di layar. Bagi pengguna tunanetra itu lebih buruk daripada
+  /// diam: satu-satunya sumber informasinya sedang menjelaskan halaman lain.
   void _announce() {
     final step = _steps[_index];
-    TTSService.instance.speak('${step.title}. ${step.body}');
+    TTSService.instance.speak('${step.title}. ${step.body}', interrupt: true);
   }
 
   void _next() {
+    _announceTimer?.cancel();
     if (_index < _steps.length - 1) {
       setState(() => _index++);
       // Transisi 240ms, narasi ditunda (OB-04).
-      Future.delayed(const Duration(milliseconds: 240), _announce);
+      _announceTimer =
+          Timer(const Duration(milliseconds: 240), () {
+        if (mounted) _announce();
+      });
     } else {
-      _finish();
+      _finish('Panduan selesai.');
     }
   }
 
   void _skip() {
     final skipped = _steps.length - 1 - _index;
-    TTSService.instance.speak(
-      skipped > 0
-          ? 'Panduan dilewati. Bisa diulang kapan saja dari Pengaturan.'
-          : 'Panduan selesai.',
-    );
-    _finish();
+    _finish(skipped > 0
+        ? 'Panduan dilewati. Bisa diulang kapan saja dari Pengaturan.'
+        : 'Panduan selesai.');
   }
 
-  void _finish() => widget.onDone();
+  /// Tutup panduan dan pindah SEKARANG.
+  ///
+  /// `onDone` dipanggil tanpa menunggu [message] selesai diucapkan. Yang
+  /// menentukan posisi pengguna adalah ketukannya, bukan panjang kalimat yang
+  /// sedang dibacakan - kalimatnya menyusul di layar berikutnya.
+  void _finish(String message) {
+    _announceTimer?.cancel();
+    TTSService.instance.speak(message, interrupt: true);
+    widget.onDone();
+  }
 
   @override
   Widget build(BuildContext context) {
