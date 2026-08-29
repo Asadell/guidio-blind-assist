@@ -330,6 +330,33 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
           else
             ..._buildContent(context, voice, bottomInset),
 
+          // Berhenti / Lanjut - kendali atas narasi yang sedang berjalan.
+          //
+          // Ditaruh di `ContextualActionSlot`, BUKAN sebagai tombol keempat di
+          // BottomActionBar. Kekekalan posisi tiga tombol itu satu-satunya
+          // peta yang dimiliki pengguna yang tidak melihat layar; menambah
+          // tombol di sana menggeser semuanya dan membuat peta itu berbohong.
+          //
+          // Slot ini muncul HANYA saat ada narasi yang bisa dikendalikan, dan
+          // hilang begitu deskripsinya habis dibacakan - tombol yang tinggal
+          // tapi tidak melakukan apa-apa lebih membingungkan daripada tombol
+          // yang tidak ada.
+          if (voice.hasSceneNarration)
+            Positioned(
+              left: 0, right: 0,
+              bottom: bottomInset + AppSizes.bottomActionBarHeight,
+              child: ContextualActionSlot(
+                message: voice.scenePaused
+                    ? 'Deskripsi dihentikan'
+                    : 'Sedang membacakan deskripsi',
+                primaryLabel: voice.scenePaused ? 'Lanjut' : 'Berhenti',
+                primaryIcon: voice.scenePaused
+                    ? Icons.play_arrow_rounded
+                    : Icons.stop_rounded,
+                onPrimary: _toggleNarration,
+              ),
+            ),
+
           Positioned(
             left: 0, right: 0, bottom: 0,
             // Tombol kiri di mode ini = KIRIM foto ke VLM.
@@ -350,8 +377,19 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
               cameraLabel: 'Deskripsikan',
               cameraIcon: Icons.image_search_rounded,
               onCameraPressed: _describeScene,
-              cameraEnabled: !voice.isProcessing,
-              cameraDisabledReason: 'sedang memproses',
+              // `isProcessing` saja TIDAK cukup, dan itu bukan detail.
+              //
+              // `VoiceState` kembali ke `responded` tepat sebelum antrean
+              // suara diisi, jadi selama belasan detik deskripsinya dibacakan,
+              // `isProcessing` sudah false lagi. Tombol ini menyala kembali di
+              // tengah narasi, foto kedua terkirim, dan kalimat yang sedang
+              // didengar pengguna terpotong tanpa penjelasan.
+              //
+              // `canDescribeScene` menutup dua-duanya: sedang memproses ATAU
+              // sedang membacakan.
+              cameraEnabled: voice.canDescribeScene && !voice.isProcessing,
+              cameraDisabledReason:
+                  voice.describeDisabledReason ?? 'sedang memproses',
               micEnabled: _hasMicPermission,
               // Tidak ada lagi penimpa listening/processing: tombol Bicara
               // membaca `VoiceProvider` sendiri, dan di layar inilah sumbernya
@@ -371,6 +409,15 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
   /// memicunya, jadi keduanya tidak pernah berbeda perilaku.
   void _describeScene() {
     context.read<VoiceProvider>().describeSceneNow();
+  }
+
+  /// Hentikan narasi yang sedang berjalan, atau bacakan lagi dari awal.
+  ///
+  /// Menghentikan juga yang membuka kembali tombol kiri: pengguna yang ingin
+  /// pindah ke suasana lain tidak perlu menunggu deskripsi lama habis
+  /// dibacakan sampai kalimat terakhir.
+  void _toggleNarration() {
+    unawaited(context.read<VoiceProvider>().toggleSceneNarration());
   }
 
   Widget? _resolveBanner(GlobalConditionsProvider global) {
@@ -567,9 +614,14 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
   }
 
   Widget _bubblePanel(double bottomInset, Widget child) {
-    // Slot 'Kembali' sudah dihapus, jadi tidak ada lagi yang menumpang di atas
-    // BottomActionBar dan tidak ada yang perlu digeser.
-    const slotExtra = 0.0;
+    // Slot 'Kembali' sudah dihapus, tapi slot Berhenti/Lanjut menggantikannya
+    // saat deskripsi suasana sedang berjalan. Aturan zona di
+    // `ContextualActionSlot` jelas: konten di atas slot yang menggeser diri,
+    // bukan slotnya yang mengalah - kalau tidak, panel percakapan menutupi
+    // satu-satunya tombol yang bisa menghentikan narasi.
+    final slotExtra = context.watch<VoiceProvider>().hasSceneNarration
+        ? ContextualActionSlot.slotHeightWithMsg
+        : 0.0;
     return Positioned(
       left: AppSpacing.screenMargin, right: AppSpacing.screenMargin,
       bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2 + slotExtra,
