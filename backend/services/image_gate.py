@@ -112,6 +112,10 @@ PROFILES = {
         "min_side": 240,
         # Lihat catatan "reject_dark" di bawah.
         "reject_dark": False,
+        # Menyusul `describe`, dengan alasan yang sama persis - lihat catatan
+        # "reject_quality" di bawah. Satu tekan tombol = satu pencarian, tanpa
+        # gerbang yang bisa membatalkannya di tengah jalan.
+        "reject_quality": False,
     },
     "describe": {
         "strict": False,
@@ -157,12 +161,13 @@ PROFILES = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  reject_quality - kenapa `describe` tidak lagi menolak foto apa pun
+#  reject_quality - kenapa `describe` dan `find_object` tidak lagi menolak
 # ═══════════════════════════════════════════════════════════════════════════════
 #
 # `reject_dark` menutup satu penolakan; ini menutup sisanya - buram, silau,
 # resolusi kecil, dan verdict POOR. Foto apa pun yang berhasil dibaca
-# diteruskan ke Moondream2.
+# diteruskan ke modelnya: Moondream2 untuk `describe`, YOLOE untuk
+# `find_object`.
 #
 # Alasannya soal biaya, bukan soal kualitas foto. Setiap penolakan berarti
 # pengguna tunanetra sudah mengangkat ponsel, menunggu jepretan, menunggu
@@ -179,6 +184,14 @@ PROFILES = {
 #
 # Catatan kualitasnya tetap ikut ke balasan lewat `quality_note()`, jadi
 # jawaban dari foto pas-pasan tetap membawa keraguannya sendiri.
+#
+# Untuk `find_object` ada satu hal yang berubah artinya, dan itu disengaja.
+# Gerbang ini dulu dipasang justru untuk MEMBEDAKAN dua hal yang terdengar
+# sama di telinga: "barangnya tidak ada di sini" dan "fotonya tidak terbaca".
+# Sekarang keduanya sama-sama pulang sebagai `not_in_frame` - tapi yang
+# gelap membawa `quality_note` "Fotonya gelap, jadi hasilnya mungkin tidak
+# tepat", dan itu yang menggantikan pembedaannya. Kalau catatan itu sampai
+# dihapus dari narasi, gerbang ini harus dihidupkan lagi.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

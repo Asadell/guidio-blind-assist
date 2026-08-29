@@ -15,12 +15,24 @@ PERUBAHAN DARI VERSI LAMA
        - "foto terlalu gelap"  -> nyalakan lampu / cari tempat terang
      Sekarang keduanya dibedakan dengan `reason` dan pesan yang berbeda.
 
-     CATATAN: khusus GELAP, gerbang ini tidak lagi menolak. Mobile sudah
-     punya gerbang gelapnya sendiri yang menawarkan senter sebelum foto
-     dikirim, jadi penolakan kedua di sini cuma membatalkan permintaan
-     yang sudah disetujui pengguna. Foto gelap tetap turun ke POOR dan
-     catatannya ikut ke `quality_note`. Lihat `reject_dark` di
-     services/image_gate.py.
+     CATATAN REVISI: gerbang ini TIDAK LAGI MENOLAK APA PUN. Bukan cuma
+     gelap - buram, silau, dan resolusi kecil ikut diteruskan
+     (`reject_quality=False` di services/image_gate.py, profil
+     `find_object`). Yang tersisa dari gerbang ini hanya dekode gambar,
+     penilaian kualitas untuk catatan narasi, dan dua batas sumber daya.
+
+     Alasannya sama dengan `describe`: satu tekan tombol = satu pencarian.
+     Setiap penolakan berarti pengguna tunanetra sudah mengangkat ponsel,
+     mengarahkannya, dan menekan tombol - lalu disuruh mengulang semuanya
+     tanpa bisa melihat fotonya untuk tahu apa yang salah. Mobile pun sudah
+     berhenti menyaring di sisinya (`_grabFrame` di
+     find_object_screen.dart), jadi penolakan di sini akan jadi satu-satunya
+     yang membatalkan permintaan yang sudah disetujui pengguna.
+
+     Yang menggantikan pembedaannya adalah `quality_note`: foto gelap tetap
+     turun ke POOR dan balasannya membawa "Fotonya gelap, jadi hasilnya
+     mungkin tidak tepat". Kalau catatan itu dihapus dari narasi, penolakan
+     di sini harus dihidupkan lagi.
 
   2. ENHANCEMENT KONSERVATIF
      Hanya koreksi eksposur (CLAHE) kalau gambarnya memang bermasalah.
