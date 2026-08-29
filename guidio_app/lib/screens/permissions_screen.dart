@@ -142,6 +142,24 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   /// menepati janji itu: menolak sekali (bukan permanen) meninggalkan
   /// pengguna di layar dengan satu tombol "Izinkan mikrofon" dan tidak ada
   /// jalan maju. Untuk pengguna tunanetra itu jalan buntu total.
+  ///
+  /// ── SEDANG TIDAK DIPASANG DI UI (permintaan eksplisit) ──────────────────
+  ///
+  /// Kedua tombol yang memanggilnya di [build] sudah dikomentari, jadi fungsi
+  /// ini utuh tapi tidak punya pemanggil. Yang perlu diketahui sebelum
+  /// keadaan ini dibiarkan lama:
+  ///
+  /// `PermissionsScreen` adalah SATU-SATUNYA gerbang menuju aplikasi -
+  /// `MainScreen` menahan `_BootStage.permissions` sampai `onDone` dipanggil,
+  /// dan layar ini tidak punya tombol kembali. Tanpa tombol lewat, pengguna
+  /// yang menolak izin mikrofon SEKALI saja (penolakan biasa, bukan permanen)
+  /// tinggal di layar ini dengan satu tombol "Izinkan mikrofon" dan tidak ada
+  /// jalan maju sama sekali. Menolak cuma satu ketukan jauhnya, dan pengguna
+  /// tunanetra tidak punya layar untuk menemukan jalan keluarnya sendiri.
+  ///
+  /// Kalau nanti tombolnya perlu dihidupkan lagi, ada dua tempat di [build]
+  /// yang tinggal ditukar kembali ke baris yang sudah tertulis di sana.
+  // ignore: unused_element
   Future<void> _skipMicrophone() async {
     await TTSService.instance.speak(
       'Melanjutkan tanpa mikrofon. Perintah suara mati, mode tetap bisa '
@@ -179,10 +197,17 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
         primaryLabel: 'Buka Pengaturan ponsel',
         primaryIcon: Icons.settings_outlined,
         onPrimary: () => _openSystemSettings(isCamera),
-        secondaryLabel: isCamera ? 'Ulangi langkah ini' : 'Lanjut tanpa mikrofon',
+        // TOMBOL "Lanjut tanpa mikrofon" DISEMBUNYIKAN - lihat catatan di
+        // atas [_skipMicrophone] sebelum membiarkannya begini.
+        secondaryLabel: isCamera ? 'Ulangi langkah ini' : null,
         onSecondary: isCamera
             ? () => TTSService.instance.speak('Mengulangi langkah ini.')
-            : _skipMicrophone,
+            : null,
+        // Versi yang menampilkannya:
+        // secondaryLabel: isCamera ? 'Ulangi langkah ini' : 'Lanjut tanpa mikrofon',
+        // onSecondary: isCamera
+        //     ? () => TTSService.instance.speak('Mengulangi langkah ini.')
+        //     : _skipMicrophone,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -199,8 +224,13 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
       primaryDisabled: _requesting,
       primaryDisabledReason: _requesting ? 'Menunggu jawabanmu' : null,
       onPrimary: _request,
-      secondaryLabel: isCamera ? null : 'Lanjut tanpa mikrofon',
-      onSecondary: isCamera ? null : _skipMicrophone,
+      // TOMBOL "Lanjut tanpa mikrofon" DISEMBUNYIKAN - lihat catatan di atas
+      // [_skipMicrophone] sebelum membiarkannya begini.
+      secondaryLabel: null,
+      onSecondary: null,
+      // Versi yang menampilkannya:
+      // secondaryLabel: isCamera ? null : 'Lanjut tanpa mikrofon',
+      // onSecondary: isCamera ? null : _skipMicrophone,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
