@@ -231,3 +231,62 @@ class TestPromptEnEndpoint:
             data={"target": "tas merah", "prompt_en": "red bag"},
         )
         assert r.json()["target"] == "tas merah"
+
+
+class TestPromptVariants:
+    """Kata benda dikirim sebagai kelas TAMBAHAN, bukan pengganti.
+
+    Encoder teks YOLOE jauh lebih kuat pada nama kelas pendek daripada frasa
+    deskriptif. Diukur pada fixture botol minum, imgsz 1280:
+
+        "bottle" 0.504 · "drinking bottle" 0.328 · "water bottle" 0.084
+
+    Enam kali lipat untuk botol yang sama di foto yang sama - dan "water
+    bottle", yang terburuk, persis yang dihasilkan kamus untuk "botol minum".
+    """
+
+    def _variants(self, prompt):
+        from services.find_object_service import FindObjectService
+        return FindObjectService.prompt_variants(prompt)
+
+    def test_frasa_lengkap_selalu_pertama(self):
+        # Urutannya menentukan: frasa lengkap yang paling spesifik, dan
+        # kalau ia yang menang, itu jawaban yang lebih tepat.
+        assert self._variants("water bottle")[0] == "water bottle"
+
+    def test_kata_benda_ikut_sebagai_kelas_kedua(self):
+        assert self._variants("water bottle") == ["water bottle", "bottle"]
+        assert self._variants("red bag") == ["red bag", "bag"]
+        assert self._variants("cell phone") == ["cell phone", "phone"]
+
+    def test_satu_kata_tidak_digandakan(self):
+        # Menyetel kelas yang sama dua kali cuma membuang komputasi encoder.
+        assert self._variants("wallet") == ["wallet"]
+        assert self._variants("key") == ["key"]
+
+    def test_dirapikan(self):
+        assert self._variants("  Red   Bag  ") == ["red bag", "bag"]
+        assert self._variants("") == []
+        assert self._variants("   ") == []
+
+    def test_warna_tidak_dibuang_dari_frasa_lengkap(self):
+        # "red bag" yang gagal lalu ditolong "bag" tetap menemukan tasnya.
+        # Membuang warnanya sejak awal berarti melaporkan tas siapa pun
+        # sebagai tas merah yang dicari.
+        assert "red bag" in self._variants("red bag")
+
+
+class TestAmbangKeyakinan:
+    def test_bawaan_jauh_di_bawah_0_25(self):
+        """0.25 membuang hampir semua deteksi yang benar.
+
+        Skor tertinggi pada lima fixture yang objeknya jelas terlihat:
+        tas merah 0.062 · headphone 0.058 · payung 0.129 · kunci 0.150 ·
+        botol 0.504. Empat dari lima di bawah 0.25 - jadi ambang lamanya
+        bukan menyaring tebakan buruk, ia menyaring jawabannya.
+        """
+        from services.find_object_service import FindObjectService
+        assert FindObjectService.DEFAULT_CONF < 0.25
+        # Tapi juga tidak nol: salah arah membuat pengguna tunanetra
+        # mengulurkan tangan ke tempat yang kosong.
+        assert FindObjectService.DEFAULT_CONF >= 0.05
