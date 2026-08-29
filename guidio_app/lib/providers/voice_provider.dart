@@ -837,9 +837,174 @@ class VoiceProvider extends ChangeNotifier {
   /// mengunggah satu foto dan membangunkan Moondream2, dan menjalankannya
   /// tanpa diminta berarti mengirim foto sekitar pengguna ke jaringan setiap
   /// kali ia tidak sengaja membuka mode ini.
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Deskripsi suasana: satu kirim, satu deskripsi
+  // ═══════════════════════════════════════════════════════════════════════
+  //
+  // Mode ini punya siklus yang jauh lebih panjang daripada perintah suara
+  // biasa: foto → unggah → Moondream2 → terjemah → dibacakan belasan detik.
+  // Selama itu berlangsung, mengirim foto kedua bukan mempercepat apa pun -
+  // ia membuang deskripsi yang sedang dibacakan di tengah kalimat, dan
+  // pengguna yang tidak melihat layar cuma mendengar suaranya berhenti
+  // mendadak lalu diganti kalimat yang tidak dia minta.
+  //
+  // Karena itu tombolnya dijaga di DUA lapis: `VoiceState` tidak cukup.
+  // `_setState(VoiceState.responded)` terjadi tepat sebelum antrean suara
+  // diisi, jadi `isProcessing` sudah kembali false sementara deskripsinya
+  // baru mulai dibacakan - dan itu persis celah yang membuat tombol kiri
+  // bisa ditekan lagi di tengah narasi.
+
+  /// Teks deskripsi terakhir, disimpan supaya bisa dibacakan ulang sesudah
+  /// dihentikan. Null berarti belum ada deskripsi sama sekali.
+  String? _sceneNarration;
+  bool _sceneNarrationEnglish = false;
+  String _sceneQualityNote = '';
+
+  /// Sedang memotret dan menunggu jawaban server.
+  bool _sceneBusy = false;
+
+  /// Deskripsinya sedang dibacakan.
+  bool _sceneNarrating = false;
+
+  /// Dihentikan pengguna dan menunggu dilanjutkan.
+  bool _scenePaused = false;
+
+  /// Pengawas selesainya narasi.
+  ///
+  /// Dipakai polling, BUKAN callback dari `TtsQueue`. Antrean suara itu
+  /// arbiter keselamatan - ia yang memutuskan peringatan bahaya boleh
+  /// memotong apa - dan menambah jalur pemberitahuan baru ke dalamnya berarti
+  /// menambah tempat baru untuk salah. Satu timer 250 ms yang hanya hidup
+  /// selama narasi berlangsung membaca keadaan dari luar tanpa menyentuh
+  /// arbitrasenya sama sekali.
+  Timer? _sceneWatch;
+
+  /// Sedang memotret / menunggu server.
+  bool get isDescribingScene => _sceneBusy;
+
+  /// Deskripsi sedang dibacakan.
+  bool get isNarratingScene => _sceneNarrating;
+
+  /// Narasi dihentikan pengguna dan bisa dilanjutkan.
+  bool get scenePaused => _scenePaused;
+
+  /// Tombol Berhenti/Lanjut layak ditampilkan.
+  bool get hasSceneNarration =>
+      _sceneNarration != null && (_sceneNarrating || _scenePaused);
+
+  /// Boleh mengirim foto baru.
+  ///
+  /// Saat dijeda JUSTRU boleh: itu cara pengguna berpindah ke suasana baru
+  /// tanpa harus menunggu deskripsi lama selesai dibacakan sampai habis.
+  bool get canDescribeScene => !_sceneBusy && !_sceneNarrating;
+
+  /// Alasan tombol kiri sedang mati - dibacakan pembaca layar.
+  String? get describeDisabledReason {
+    if (_sceneBusy) return 'sedang memproses';
+    if (_sceneNarrating) return 'sedang membacakan, tekan Berhenti dulu';
+    return null;
+  }
+
+  /// Tombol Berhenti / Lanjut.
+  ///
+  /// "Lanjut" mengulang deskripsinya dari AWAL, bukan dari kata terakhir yang
+  /// terdengar. Mesin TTS tidak menyimpan posisi baca yang bisa diandalkan di
+  /// semua perangkat, dan menebaknya berarti kadang melompati kalimat -
+  /// kesalahan yang tidak bisa disadari pengguna yang tidak melihat layar.
+  /// Deskripsi suasana hanya satu sampai dua kalimat, jadi mengulang dari awal
+  /// justru jawaban yang paling bisa dipercaya.
+  Future<void> toggleSceneNarration() async {
+    if (_sceneNarrating) {
+      _sceneWatch?.cancel();
+      _sceneWatch = null;
+      _sceneNarrating = false;
+      _scenePaused = true;
+      notifyListeners();
+      await TtsQueue.instance.stop();
+      return;
+    }
+
+    if (!_scenePaused || _sceneNarration == null) return;
+    _scenePaused = false;
+    await _narrateScene();
+  }
+
+  /// Masukkan deskripsi ke antrean lalu awasi sampai benar-benar habis.
+  Future<void> _narrateScene() async {
+    final text = _sceneNarration;
+    if (text == null) return;
+
+    _sceneNarrating = true;
+    notifyListeners();
+
+    if (_sceneNarrationEnglish) {
+      await TtsQueue.instance.speak(
+        'Dalam bahasa Inggris.',
+        source: SpeechSource.assistant,
+      );
+    }
+    await TtsQueue.instance.speak(
+      text,
+      source: SpeechSource.assistant,
+      english: _sceneNarrationEnglish,
+    );
+    if (_sceneQualityNote.trim().isNotEmpty) {
+      await TtsQueue.instance.speak(
+        _sceneQualityNote,
+        source: SpeechSource.assistant,
+      );
+    }
+
+    _watchNarration();
+  }
+
+  void _watchNarration() {
+    _sceneWatch?.cancel();
+    _sceneWatch = Timer.periodic(const Duration(milliseconds: 250), (t) {
+      // Dijeda pengguna: `toggleSceneNarration` sudah membereskan semuanya.
+      if (!_sceneNarrating) {
+        t.cancel();
+        _sceneWatch = null;
+        return;
+      }
+      if (TtsQueue.instance.isSpeaking) return;
+
+      // Selesai wajar. Deskripsinya dilupakan supaya tombol Berhenti/Lanjut
+      // ikut hilang: tidak ada lagi yang bisa dihentikan, dan menyisakan
+      // tombol yang tidak melakukan apa-apa lebih membingungkan daripada
+      // tidak ada tombol sama sekali.
+      t.cancel();
+      _sceneWatch = null;
+      _sceneNarrating = false;
+      _scenePaused = false;
+      _sceneNarration = null;
+      notifyListeners();
+    });
+  }
+
   Future<void> describeSceneNow() => _handleDescribeScene();
 
   Future<void> _handleDescribeScene() async {
+    // Gerbang masuk, bukan sekadar tombol yang dimatikan di layar.
+    //
+    // Jalur ini punya DUA pemicu - tombol kiri dan perintah suara
+    // "deskripsikan" - dan mematikan tombolnya saja meninggalkan pintu kedua
+    // terbuka lebar. Penjaganya harus di sini, di satu tempat yang dilewati
+    // keduanya.
+    if (!canDescribeScene) return;
+
+    _sceneBusy = true;
+    // Deskripsi lama dibuang SEKARANG, sebelum yang baru diminta. Kalau
+    // pengguna menekan foto saat narasi lama dijeda, yang dijeda itu tidak
+    // boleh hidup lagi sesudahnya - dia sudah pindah ke suasana lain.
+    _sceneWatch?.cancel();
+    _sceneWatch = null;
+    _sceneNarration = null;
+    _sceneQualityNote = '';
+    _scenePaused = false;
+    _sceneNarrating = false;
+    notifyListeners();
+
     _setState(VoiceState.processingLlm);
     // Lewat `_speakResponse`, bukan `onSpeak?.call` langsung. `onSpeak` hanya
     // dipasang VoiceScreen; dipanggil dari mode lain lewat perintah suara
@@ -952,18 +1117,10 @@ class VoiceProvider extends ChangeNotifier {
       // Sebagai `assistant`, ketiganya kebal gerbang, kebal kedaluwarsa, dan
       // menahan gerbang sampai selesai. Bahaya kritis tetap boleh memotong,
       // tapi sekarang sisanya tetap di antrean dan tetap terucap sesudahnya.
-      if (speakInEnglish) {
-        await TtsQueue.instance.speak(
-          'Dalam bahasa Inggris.',
-          source: SpeechSource.assistant,
-        );
-      }
-      await TtsQueue.instance.speak(
-        description,
-        source: SpeechSource.assistant,
-        english: speakInEnglish,
-      );
-      await _speakQualityNote(scene);
+      _sceneNarration = description;
+      _sceneNarrationEnglish = speakInEnglish;
+      _sceneQualityNote = scene.message.trim();
+      await _narrateScene();
     } on CaptureRejected catch (rejected) {
       // Jaring pengaman, bukan jalur biasa.
       //
@@ -981,6 +1138,13 @@ class VoiceProvider extends ChangeNotifier {
       debugPrint('[VoiceProvider] _handleDescribeScene error: $e');
       await _handleLocal('Gagal mendeskripsikan suasana. Coba lagi.');
     } finally {
+      // Dilepas di sini, bukan sesudah narasi selesai: sejak `_narrateScene`
+      // berjalan, yang menjaga tombol kiri adalah `_sceneNarrating`. Menahan
+      // `_sceneBusy` sampai narasi habis berarti tombol Berhenti tidak pernah
+      // punya kesempatan mengembalikan kendali ke pengguna.
+      _sceneBusy = false;
+      notifyListeners();
+
       // Di `finally`, bukan di akhir jalur sukses: foto yang ditolak gerbang
       // kualitas adalah hasil yang PALING sering terjadi di tempat gelap, dan
       // meninggalkan kamera pada preset foto persis setelah itu berarti mode
@@ -991,23 +1155,19 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// Bacakan catatan kualitas dari server, kalau ada.
-  ///
-  /// Diucapkan SESUDAH deskripsinya dan sebagai utterance terpisah, dengan
-  /// locale Bahasa Indonesia - deskripsinya sendiri mungkin baru dibacakan
-  /// dalam Bahasa Inggris, dan menyambung dua bahasa dalam satu utterance
-  /// membuat TTS mengucapkan salah satunya dengan fonetik yang keliru.
-  ///
-  /// Ini soal kejujuran sistem: kalau modelnya menjawab dari foto yang
-  /// kurang bagus, pengguna berhak tahu supaya bisa memutuskan sendiri
-  /// apakah mau memfoto ulang. Dia tidak punya cara lain memverifikasinya.
-  Future<void> _speakQualityNote(SceneDescription scene) async {
-    if (scene.message.trim().isEmpty) return;
-    await TtsQueue.instance.speak(
-      scene.message,
-      source: SpeechSource.assistant,
-    );
-  }
+  // Catatan kualitas server ("Fotonya gelap, jadi hasilnya mungkin tidak
+  // tepat") sekarang ikut disimpan di `_sceneQualityNote` dan diucapkan
+  // `_narrateScene` sebagai utterance ketiga.
+  //
+  // Digabung ke sana, bukan dibiarkan berdiri sendiri, karena ia bagian dari
+  // jawaban yang sama: kalau pengguna menghentikan lalu melanjutkan narasi,
+  // keraguan itu harus ikut terdengar lagi. Dipisah, pengguna mendengar
+  // deskripsi dari foto gelap sebagai kepastian pada pemutaran kedua.
+  //
+  // Tetap utterance TERPISAH dari deskripsinya, dengan locale Bahasa
+  // Indonesia: deskripsinya sendiri mungkin dibacakan dalam Bahasa Inggris,
+  // dan menyambung dua bahasa dalam satu utterance membuat TTS mengucapkan
+  // salah satunya dengan fonetik yang keliru.
 
 
 
@@ -1173,6 +1333,11 @@ class VoiceProvider extends ChangeNotifier {
     onAdjustSpeechRate = null;
     clearModeHandlers();
     _holdCapTimer?.cancel();
+    // Pengawas narasi berdetak tiap 250 ms dan memanggil `notifyListeners`.
+    // Dibiarkan hidup sesudah provider mati, ia memanggil listener di objek
+    // yang sudah dibuang - satu-satunya jejaknya di rilis adalah kebocoran
+    // yang tidak pernah kelihatan.
+    _sceneWatch?.cancel();
     _stt.cancel();
     // Sesi yang mati bersama providernya tidak akan pernah menutup gerbangnya
     // sendiri. Penjaga waktu memang menangkapnya, tapi 30 detik hening bagi
