@@ -59,6 +59,7 @@ app.*.map.json
 android/.gradle/
 android/build/
 android/captures/
+problems-report.html
 
 # iOS Generated & Pods
 **/ios/Flutter/.last_build_id
