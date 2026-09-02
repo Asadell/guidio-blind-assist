@@ -4,7 +4,7 @@ import '../services/tts_service.dart';
 import '../theme/index.dart';
 
 /// SP-01 - Splash. Logo tampil, narasi TTS mulai di milidetik pertama,
-/// durasi maksimum 900 ms sebelum lanjut ke langkah berikutnya.
+/// durasi maksimum 2000 ms sebelum lanjut ke langkah berikutnya.
 class SplashScreen extends StatefulWidget {
   final VoidCallback onDone;
   const SplashScreen({super.key, required this.onDone});
@@ -32,10 +32,10 @@ class _SplashScreenState extends State<SplashScreen> {
       TTSService.instance.speak(warning);
     }
 
-    // Splash tidak boleh menutup di tengah peringatan. 900 ms cukup untuk
+    // Splash tidak boleh menutup di tengah peringatan. 2000 ms cukup untuk
     // "Vinara. Menyiapkan"; kalimat peringatannya jauh lebih panjang.
     Future.delayed(
-      Duration(milliseconds: warning == null ? 900 : 7000),
+      Duration(milliseconds: warning == null ? 2000 : 7000),
       () {
         if (mounted) widget.onDone();
       },
@@ -45,7 +45,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.ink1,
+      backgroundColor: Colors.white,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s6),
