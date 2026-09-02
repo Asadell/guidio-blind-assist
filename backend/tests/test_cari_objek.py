@@ -285,8 +285,26 @@ class TestAmbangKeyakinan:
         botol 0.504. Empat dari lima di bawah 0.25 - jadi ambang lamanya
         bukan menyaring tebakan buruk, ia menyaring jawabannya.
         """
-        from services.find_object_service import FindObjectService
+        from services.find_object_service import (
+            MIN_REPORT_CONF,
+            FindObjectService,
+        )
         assert FindObjectService.DEFAULT_CONF < 0.25
-        # Tapi juga tidak nol: salah arah membuat pengguna tunanetra
-        # mengulurkan tangan ke tempat yang kosong.
-        assert FindObjectService.DEFAULT_CONF >= 0.05
+
+        # Kekhawatiran "jangan nol" di bawah ini TETAP berlaku - pengguna
+        # tunanetra yang mengulurkan tangan ke tempat kosong adalah kegagalan
+        # yang nyata. Yang berubah hanya SIAPA yang menjaganya.
+        #
+        # Dulu penjaganya `DEFAULT_CONF`, dan itu menaruh dua tugas berbeda
+        # pada satu angka: "kotak mana yang boleh dibentuk" dan "kapan berani
+        # bilang ketemu". Keduanya menarik ke arah berlawanan - benda kecil
+        # yang nyata perlu ambang serendah mungkin, sedangkan laporan yang
+        # jujur perlu ambang setinggi mungkin - jadi satu angka tidak akan
+        # pernah bisa memuaskan keduanya, dan yang dikorbankan selama ini
+        # adalah benda kecilnya.
+        #
+        # Sekarang tugasnya dipisah: `DEFAULT_CONF` membentuk kotak,
+        # `MIN_REPORT_CONF` memutuskan layak lapor. Diukur pada lima fixture,
+        # deteksi benar terendah 0.019 dan deteksi palsu tertinggi 0.002,
+        # jadi ambang lapornya harus duduk di antara keduanya.
+        assert 0.002 < MIN_REPORT_CONF < 0.019
