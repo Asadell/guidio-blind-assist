@@ -57,6 +57,89 @@ INFERENCE_IMGSZ = 960
 # dengan yang dicatat di log.
 _STRIDE = 32
 
+# ── Penyatuan deteksi ──────────────────────────────────────────────────────
+#
+# MASALAHNYA. Dengan `conf=0.001`, satu benda menghasilkan BANYAK kotak, bukan
+# satu. Diukur pada fixture di `test/object_find/`, yang tiap fotonya cuma
+# berisi SATU benda sasaran:
+#
+#     tas merah      -> 16 kotak      headphone      -> 19 kotak
+#     kunci motor    ->  6 kotak      payung kuning  ->  7 kotak
+#     botol minum    -> 63 kotak
+#
+# Kotak-kotak itu bukan benda lain. Mereka menempel pada bagian-bagian benda
+# yang sama - tali tas, kantung depan, gagang, zipper - dan NMS bawaan tidak
+# membuangnya karena IoU-nya rendah: kotak kecil di dalam kotak besar hanya
+# menutupi sedikit bagian dari yang besar.
+#
+# KENAPA INI BUKAN SEKADAR ANGKA JELEK. Jumlah itu DIBACAKAN ke pengguna:
+# "Ada 16 tas merah". Untuk orang yang tidak bisa memeriksa dengan mata,
+# kalimat itu bukan pembulatan yang meleset, melainkan keterangan palsu tentang
+# ruangan di depannya - dan satu-satunya sumber informasinya adalah kalimat
+# tersebut. Menyebut satu tas sebagai enam belas tas lebih buruk daripada tidak
+# menyebut jumlah sama sekali.
+#
+# CARA MENGUKUR TUMPANG TINDIH. Bukan IoU, melainkan irisan dibagi luas kotak
+# yang LEBIH KECIL. Kotak "gagang tas" yang sepenuhnya berada di dalam kotak
+# "tas" punya IoU kecil (karena penyebutnya luas gabungan), tapi nilai ini
+# mendekati 1. Itulah bentuk tumpang tindih yang sebenarnya terjadi di sini.
+CONTAINMENT_RATIO = 0.55
+
+# Kotak digabung, BUKAN dibuang, dan gabungannya memakai kotak terluas.
+#
+# Kalau yang dipertahankan adalah kotak dengan keyakinan tertinggi, jaraknya
+# jadi salah: pada `test_01`, kotak berkeyakinan tertinggi (0.047) hanya
+# membungkus bagian tengah tas, sedangkan kotak yang membungkus tas utuh
+# keyakinannya 0.014. Jarak dihitung dari TINGGI kotak, jadi memilih yang
+# tengah membuat tas terdengar lebih jauh daripada yang sebenarnya - dan
+# instruksi "ulurkan tangan" ikut salah.
+#
+# Keyakinan yang dilaporkan tetap yang TERTINGGI di dalam kelompok: itu ukuran
+# seberapa yakin model bahwa bendanya ada, dan itu tidak berkurang hanya karena
+# kotaknya diperlebar.
+
+# Ambang keyakinan RELATIF terhadap deteksi terbaik di frame yang sama.
+#
+# Ambang mutlak tidak bisa dipakai di sini, dan itu bukan pilihan gaya:
+# keyakinan YOLOE zero-shot berbeda dua kali lipat ORDE antar benda pada frame
+# yang sama-sama bagus - botol 0.591, kunci 0.019. Ambang mutlak yang cukup
+# tinggi untuk membersihkan botol akan menghapus kunci sepenuhnya, dan itu
+# persis kesalahan `YOLOE_CONF=0.25` yang dulu sudah diperbaiki.
+#
+# Ambang relatif menghindari jebakan itu. Ia bertanya "seberapa lemah deteksi
+# ini DIBANDINGKAN yang terbaik di foto yang sama", pertanyaan yang jawabannya
+# tidak bergantung pada jenis bendanya.
+RELATIVE_CONF_FLOOR = 0.25
+
+# Ambang MUTLAK untuk berani bilang "ketemu".
+#
+# Berbeda peran dari `YOLOE_CONF`. `YOLOE_CONF=0.001` mengatur kotak mana yang
+# BOLEH dihitung; angka di sini mengatur apakah hasilnya layak DILAPORKAN
+# sebagai temuan. Keduanya sengaja dipisah: menaikkan `YOLOE_CONF` membuang
+# kotak lemah milik benda yang benar-benar ada, sedangkan pemisahan ini
+# membiarkan kotak itu tetap terbentuk lalu menilai kekuatannya di akhir.
+#
+# Kenapa perlu. Kata Bahasa Indonesia yang lolos ke encoder teks berbahasa
+# Inggris menghasilkan embedding tanpa makna, dan embedding tanpa makna tetap
+# mencocoki SESUATU. Diukur pada foto dapur yang sama:
+#
+#     prompt "pesawat"  -> 4 kotak, conf 0.001-0.002, found=True   (salah)
+#     prompt "airplane" -> 0 kotak,                   found=False  (benar)
+#
+# Jadi laporan "ketemu" yang palsu itu bukan kesalahan model. Modelnya benar;
+# yang dikirim ke sana yang bukan Bahasa Inggris.
+#
+# Kenapa 0.01. Jaraknya lebar di kedua sisi, diukur pada lima fixture:
+#
+#     deteksi BENAR terendah  : 0.019  (kunci motor)
+#     deteksi PALSU tertinggi : 0.002  (prompt "pesawat")
+#
+# Nilai ini duduk di tengah, kira-kira 2x di atas yang palsu dan 2x di bawah
+# yang benar. Lima fixture jelas bukan dasar yang kuat untuk menyetel angka,
+# jadi ia bisa diubah lewat `YOLOE_MIN_REPORT_CONF` tanpa menyentuh kode -
+# dan angka di sini adalah titik awal yang bisa diukur, bukan hasil akhir.
+MIN_REPORT_CONF = float(os.getenv("YOLOE_MIN_REPORT_CONF", "0.01"))
+
 
 class FindObjectService:
     """Pencarian objek berdasarkan prompt teks bebas.
@@ -272,6 +355,79 @@ class FindObjectService:
             variants.append(head)
         return variants
 
+    # ── Penyatuan deteksi ────────────────────────────────────────────────
+
+    @staticmethod
+    def _containment(a: dict, b: dict) -> float:
+        """Luas irisan dibagi luas kotak yang lebih kecil.
+
+        Lihat catatan di [CONTAINMENT_RATIO] soal kenapa bukan IoU.
+        """
+        ix1 = max(a["x1"], b["x1"])
+        iy1 = max(a["y1"], b["y1"])
+        ix2 = min(a["x2"], b["x2"])
+        iy2 = min(a["y2"], b["y2"])
+        iw = ix2 - ix1
+        ih = iy2 - iy1
+        if iw <= 0 or ih <= 0:
+            return 0.0
+
+        area_a = max(1, (a["x2"] - a["x1"]) * (a["y2"] - a["y1"]))
+        area_b = max(1, (b["x2"] - b["x1"]) * (b["y2"] - b["y1"]))
+        return (iw * ih) / min(area_a, area_b)
+
+    @classmethod
+    def merge_detections(cls, raw: list[dict]) -> list[dict]:
+        """Satukan kotak yang menempel pada benda yang sama.
+
+        Dua langkah, dan urutannya penting:
+
+        1. Buang deteksi yang terlalu lemah DIBANDINGKAN yang terbaik di frame
+           ini (lihat [RELATIVE_CONF_FLOOR]). Dilakukan lebih dulu supaya
+           kotak sampah tidak ikut memperlebar kotak gabungan di langkah dua.
+
+        2. Kelompokkan sisanya berdasarkan tumpang tindih, lalu wakili tiap
+           kelompok dengan kotak GABUNGAN dan keyakinan TERTINGGI di dalamnya.
+
+        Kotaknya diurutkan dari yang terluas supaya kotak induk yang membentuk
+        kelompok, bukan potongan kecil yang kebetulan lebih yakin. Penyerapan
+        bersifat transitif dalam satu lintasan: begitu sebuah kotak masuk
+        kelompok, kotak gabungannya melebar, dan potongan berikutnya diukur
+        terhadap gabungan yang sudah melebar itu.
+        """
+        if not raw:
+            return []
+
+        top = max(d["confidence"] for d in raw)
+        floor = top * RELATIVE_CONF_FLOOR
+        kept = [d for d in raw if d["confidence"] >= floor]
+        if not kept:
+            kept = [max(raw, key=lambda d: d["confidence"])]
+
+        def area(d: dict) -> int:
+            b = d["bbox"]
+            return max(1, (b["x2"] - b["x1"]) * (b["y2"] - b["y1"]))
+
+        kept.sort(key=area, reverse=True)
+
+        groups: list[dict] = []
+        for det in kept:
+            for g in groups:
+                if cls._containment(g["bbox"], det["bbox"]) >= CONTAINMENT_RATIO:
+                    gb, db = g["bbox"], det["bbox"]
+                    gb["x1"] = min(gb["x1"], db["x1"])
+                    gb["y1"] = min(gb["y1"], db["y1"])
+                    gb["x2"] = max(gb["x2"], db["x2"])
+                    gb["y2"] = max(gb["y2"], db["y2"])
+                    g["confidence"] = max(g["confidence"], det["confidence"])
+                    g["merged_from"] += 1
+                    break
+            else:
+                det["merged_from"] = 1
+                groups.append(det)
+
+        return groups
+
     # ── Inferensi ────────────────────────────────────────────────────────
 
     def find(
@@ -315,8 +471,19 @@ class FindObjectService:
             # imgsz=480 -> 0.234, imgsz=1280 -> 0.504.
             imgsz = int(round(INFERENCE_IMGSZ / _STRIDE)) * _STRIDE
 
+            # `agnostic_nms=True` menyatukan kotak LINTAS kelas.
+            #
+            # Prompt dikirim sebagai beberapa kelas sekaligus - `["red bag",
+            # "bag"]` - dan NMS bawaan bekerja per kelas. Tas yang sama
+            # dikenali oleh kedua kelas itu lolos sebagai DUA kotak, lalu
+            # dihitung sebagai dua tas. Yang dicari pengguna cuma satu benda,
+            # jadi kelasnya tidak boleh memisahkan hitungannya.
             results = self.model.predict(
-                frame, conf=conf or self.conf, imgsz=imgsz, verbose=False
+                frame,
+                conf=conf or self.conf,
+                imgsz=imgsz,
+                agnostic_nms=True,
+                verbose=False,
             )
             inference_ms = (time.time() - t0) * 1000
 
@@ -335,18 +502,52 @@ class FindObjectService:
                     "inference_ms": round(inference_ms, 1),
                 }
 
-            matches = []
+            raw = []
             for box in boxes:
                 x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
-                box_h = max(y2 - y1, 1)
-                dist = self._estimate_distance(prompt_en, box_h, w)
-                matches.append({
+                raw.append({
                     "confidence": round(float(box.conf[0]), 3),
-                    "distance_meter": round(dist, 2),
-                    "direction": self._direction((x1 + x2) / 2, w),
-                    "vertical": self._vertical((y1 + y2) / 2, h),
                     "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
                 })
+
+            # Kotak disatukan SEBELUM jarak dihitung, bukan sesudah. Jarak
+            # diturunkan dari tinggi kotak, dan tinggi kotak baru benar
+            # setelah potongan-potongan benda yang sama digabung jadi satu.
+            merged = self.merge_detections(raw)
+
+            matches = []
+            for det in merged:
+                b = det["bbox"]
+                box_h = max(b["y2"] - b["y1"], 1)
+                dist = self._estimate_distance(prompt_en, box_h, w)
+                matches.append({
+                    "confidence": det["confidence"],
+                    "distance_meter": round(dist, 2),
+                    "direction": self._direction((b["x1"] + b["x2"]) / 2, w),
+                    "vertical": self._vertical((b["y1"] + b["y2"]) / 2, h),
+                    "bbox": b,
+                    "merged_from": det.get("merged_from", 1),
+                })
+
+            # Semua kotak terlalu lemah untuk dipercaya. Jawabannya SAMA
+            # dengan tidak ada kotak sama sekali - "belum terlihat, coba putar
+            # badan" - karena bagi pengguna kedua keadaan itu memang sama:
+            # bendanya tidak ada di depannya. Melaporkan tebakan 0.002 sebagai
+            # temuan justru menyuruh dia mengulurkan tangan ke tempat kosong.
+            best = max(m["confidence"] for m in matches)
+            if best < MIN_REPORT_CONF:
+                return {
+                    "found": False,
+                    "reason": "not_in_frame",
+                    "message": f"{target_id} belum terlihat. Coba putar badan pelan-pelan.",
+                    "matches": [],
+                    "total_match": 0,
+                    "prompt_en": prompt_en,
+                    "prompt_variants": prompts,
+                    "imgsz": imgsz,
+                    "best_conf": best,
+                    "inference_ms": round(inference_ms, 1),
+                }
 
             matches.sort(key=lambda m: m["distance_meter"])
             nearest = matches[0]
