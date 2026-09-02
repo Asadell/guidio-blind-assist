@@ -66,13 +66,36 @@ cp .env.example .env  # isi kredensial PostgreSQL bila dipakai
 venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
+> **Sesudah menyalin `.env.example`, ubah `YOLOE_CONF` menjadi `0.001`.**
+> Berkas contoh itu masih berisi nilai lama `0.25`, yang membuat Cari Objek
+> gagal menemukan benda berskor rendah tanpa satu pun galat. Alasan lengkapnya
+> di bagian 2.
+>
+> Kunci lain di `.env.example` (`YOLO_MODEL`, `SEGMENTATION_MODEL`,
+> `MONEY_MODEL`, `ANTHROPIC_API_KEY`) adalah sisa dari fitur yang sudah pindah
+> on-device atau dibuang. Tidak ada satu pun yang dibaca kode yang tersisa.
+> Yang benar-benar dipakai: `YOLOE_MODEL`, `YOLOE_CONF`, `MOONDREAM_DEVICE`,
+> dan kredensial PostgreSQL.
+
 Log startup yang benar:
 
 ```
 [FindObject] Service terdaftar (lazy-load model YOLOE).
-[Moondream2] Service terdaftar (lazy-load, belum dimuat).
+[Moondream2] Service terdaftar, pemanasan berjalan.
 === Vinara Backend siap ===
 ```
+
+**Moondream2 dipanaskan di latar belakang saat startup**, tidak lagi menunggu
+permintaan pertama. Pemuatannya makan sekitar 20 detik, dan selama itu
+ditanggung permintaan pertama, permintaan itu hampir pasti gagal: batas waktu
+endpoint 25 detik, jadi hampir seluruh anggarannya habis untuk menunggu bobot
+model. Persis yang terjadi di log lama, permintaan pertama timeout dan model
+baru siap 6 detik sesudahnya.
+
+Pemanasan dijalankan lewat `asyncio.create_task`, jadi startup tetap seketika
+dan `/health` melayani seperti biasa selama bobotnya dibaca. Kegagalan
+pemanasan bukan alasan menggagalkan startup: `describe` tetap mencoba memuat
+sendiri lewat `ensure_ready()`.
 
 Tidak akan ada log `[Qwen]`, `[YOLO]` server, `[OCR]`, atau `[Tesseract]`.
 Kalau muncul, berarti ada berkas lama yang tertinggal.
@@ -91,7 +114,7 @@ menyentuh basis data sama sekali.
 | Deteksi Objek | **Flutter** (SSD MobileNet TFLite) | tidak ada |
 | Kenali Uang | **Flutter** (MobileNetV2 TFLite) | tidak ada |
 | Baca Teks | **Flutter** (Google ML Kit) | tidak ada |
-| Navigasi jalur | **Flutter** (PIDNet-S + YOLO11n TFLite) | tidak ada |
+| Navigasi jalur | **Flutter** (PIDNet-S + YOLO11n FP16 + YOLO11n INT8 + SSD COCO) | tidak ada |
 | Intent parsing | **Flutter** (`CommandParser`, offline) | tidak ada |
 | Narasi deteksi | **Flutter** (`NarrationScheduler`, offline) | tidak ada |
 | Cari Objek | **Server** (YOLOE) | `POST /api/cari-objek` |
@@ -121,7 +144,23 @@ pengguna dan bisa apa saja: "dompet", "kunci motor", "tas merah".
 
 YOLOE menerima **prompt teks bebas**, jadi bisa mencari benda yang tidak pernah
 diajarkan secara khusus. Nama barang Bahasa Indonesia diterjemahkan dulu ke
-Inggris memakai tabel bawaan.
+Inggris oleh `resolve_prompt()`, dalam tiga lapis berurutan:
+
+1. **Kamus kurasi** (`EXTRA_ID_TO_EN` di `services/find_object_constants.py`)
+   menang duluan. Isinya dipilih supaya cocok dengan kosakata encoder teks
+   YOLOE: `hape` menjadi `cell phone`, bukan `cellphone`.
+2. **Field `prompt_en` dari aplikasi**, hasil terjemahan ML Kit on-device, untuk
+   kata yang tidak ada di kamus. Di sinilah janji open-vocabulary baru ditepati:
+   `irus` menjadi `ladle`, `cobek` menjadi `mortar`.
+3. Tebakan substring, lalu frasa Indonesianya apa adanya.
+
+Sebelum lapis 2 ada, kata di luar kamus jatuh ke lapis 3 dan berakhir sebagai
+prompt **Bahasa Indonesia** yang dikirim ke encoder berbahasa Inggris. Itu bukan
+pencarian yang kurang akurat, melainkan pencarian yang tidak pernah punya
+peluang, dan pengguna cuma mendengar "tidak ketemu".
+
+`prompt_en` bersifat opsional. Kalau aplikasi tidak mengirimkannya, server jatuh
+ke kamusnya sendiri: hasilnya lebih kasar, bukan gagal.
 
 Model dimuat **saat permintaan pertama**, bukan saat startup. Panggilan pertama
 memakan sekitar 2 detik, sesudahnya cepat.
@@ -131,8 +170,14 @@ memakan sekitar 2 detik, sesudahnya cepat.
 > **Satu-satunya tempat yang benar untuk mengubah threshold adalah `YOLOE_CONF`
 > di file `.env`. Nilai di `DEFAULT_CONF` dalam kode akan di-override oleh
 > `.env` selama server berjalan, sehingga mengedit kode tidak ada efeknya.**
+>
+> **Perhatian saat memasang dari nol:** `.env.example` masih berisi
+> `YOLOE_CONF=0.25`, nilai lama yang justru bermasalah. Sesudah
+> `cp .env.example .env`, ubah menjadi `0.001`. Kalau tidak, Cari Objek akan
+> gagal menemukan benda berskor rendah persis seperti yang dijelaskan di bawah,
+> dan tidak ada satu pun galat yang menandainya.
 
-YOLOE menggunakan **MobileCLIP text encoder** yang bekerja secara kontrastif —
+YOLOE menggunakan **MobileCLIP text encoder** yang bekerja secara kontrastif:
 ia tidak mengklasifikasikan ke kelas yang sudah dilatih, melainkan mengukur
 kesamaan antara embedding gambar dan embedding teks prompt. Hasilnya, skor
 "confidence" yang dihasilkan jauh lebih kecil dari YOLO closed-set biasa.
@@ -147,7 +192,7 @@ Pengukuran pada foto kamera HP nyata (`imgsz=960`, gambar standar lab):
 | Kacamata bening  | `glasses`      | **0.003**      |
 
 Dengan threshold lama `YOLOE_CONF=0.25`, kunci dan kacamata **tidak pernah
-ditemukan** meskipun jelas terlihat di foto — karena skor tertinggi mereka di
+ditemukan** meskipun jelas terlihat di foto, karena skor tertinggi mereka di
 bawah ambang. Pengguna hanya mendengar *"belum terlihat, coba putar badan"*
 untuk benda yang ada tepat di depan kameranya.
 
@@ -160,27 +205,64 @@ informasi posisi sama sekali.
 
 `POST /api/describe` mengembalikan `description_en`, caption Bahasa Inggris
 langsung dari Moondream2. **Flutter menerjemahkannya secara lokal** lewat
-`scene_translator.dart` sebelum dibacakan; kalau cakupan kamusnya terlalu
-rendah, kalimat Inggrisnya dibacakan apa adanya dengan penanda singkat lebih
-dulu. Tidak ada LLM penerjemah di alur ini, di sisi mana pun.
+`services/translation_service.dart`, yang memakai Google ML Kit On-Device
+Translation. Kalau modelnya belum siap atau terjemahannya tidak layak, kalimat
+Inggrisnya dibacakan apa adanya dengan penanda singkat lebih dulu. Tidak ada
+LLM penerjemah di alur ini, di sisi mana pun.
 
-### Kenapa gerbang kualitas gambar penting
+> Pendahulunya, `core/voice/scene_translator.dart`, adalah kamus kata-per-kata
+> buatan sendiri dan **sudah dihapus** dari repo. Kalau dokumen lama menyebut
+> berkas itu, yang berlaku sekarang adalah `translation_service.dart`.
+
+### Gerbang kualitas gambar: sekarang mencatat, bukan menolak
 
 Kedua endpoint melewatkan gambar ke `services/image_gate.py` sebelum menyentuh
-model. Ini bukan sekadar menghemat komputasi.
+model. Yang dikerjakan gerbang itu **sudah berubah**, dan perubahannya perlu
+dimengerti sebelum menyetel ambang apa pun di sana.
 
-VLM **tidak pernah mengatakan "saya tidak bisa melihat"**. Dari foto gelap
-gulita pun Moondream2 menghasilkan deskripsi yang terdengar meyakinkan, seperti
-"a dimly lit room with furniture". Untuk pengguna tunanetra yang tidak bisa
-memverifikasi sendiri, deskripsi halusinasi jauh lebih berbahaya daripada
-penolakan yang jujur.
+Kedua profil yang masih dipakai router, `find_object` dan `describe`, sekarang
+dipasang `reject_dark: False` **dan** `reject_quality: False`. Foto buram,
+gelap, silau, atau beresolusi kecil **tetap diteruskan** ke YOLOE dan
+Moondream2.
 
-Hal yang sama berlaku untuk Cari Objek: YOLOE membalas `found=false` untuk frame
-gelap gulita, dan dari telinga pengguna itu terdengar **sama persis** dengan
-"barangnya memang tidak ada di sini". Tindakan yang tepat berbeda total: yang
-satu perlu memutar badan, yang lain perlu menyalakan lampu. Karena itu balasan
-gerbang menyertakan `retry_suggested`, dan aplikasi memperlakukan keduanya
-berbeda.
+Alasannya soal biaya, bukan soal kualitas foto. Setiap penolakan berarti
+pengguna tunanetra sudah mengangkat ponsel, menunggu jepretan, menunggu
+perjalanan jaringan, lalu diberi tahu untuk mengulang semuanya, tanpa pernah
+tahu apakah percobaan berikutnya akan lebih baik. Dia tidak bisa melihat
+fotonya untuk memutuskan. Untuk kasus gelap, mobile juga sudah punya gerbangnya
+sendiri (`CameraCaptureService`, dipakai `_grabFrame` di
+`find_object_screen.dart`) yang menawarkan senter sebelum satu byte pun
+dikirim, jadi penolakan kedua di server cuma menghentikan permintaan yang sudah
+disetujui pengguna.
+
+**Yang TIDAK ikut dibuang adalah catatannya.** Foto bermasalah tetap turun ke
+POOR dan balasannya membawa `quality_note` ("Fotonya gelap, jadi hasilnya
+mungkin tidak tepat"), yang mengalir ke narasi. Ini penting khusus untuk
+`describe`: VLM **tidak pernah mengatakan "saya tidak bisa melihat"**. Dari
+foto gelap gulita pun Moondream2 menghasilkan deskripsi yang terdengar
+meyakinkan, seperti "a dimly lit room with furniture", dan pengguna tunanetra
+tidak punya cara memeriksanya. Menghapus penolakan tanpa menyisakan catatan
+berarti halusinasi itu sampai tanpa satu pun tanda. **Kalau `quality_note`
+sampai dihapus dari narasi, gerbangnya harus dihidupkan lagi.**
+
+Untuk `find_object` ada satu hal yang berubah artinya, dan itu disengaja.
+Gerbang ini dulu dipasang justru untuk membedakan dua hal yang terdengar sama
+di telinga: "barangnya tidak ada di sini" dan "fotonya tidak terbaca". Sekarang
+keduanya sama-sama pulang sebagai `not_in_frame`, dan yang membedakannya adalah
+`quality_note` tadi.
+
+Yang masih ditolak tinggal empat, dan tidak satu pun penilaian kualitas:
+
+| `reason` | Kenapa tetap ditolak |
+|---|---|
+| `gambar_kosong` | Unggahan gagal, bukan foto jelek |
+| `gambar_rusak` | Byte yang tidak bisa didekode. PIL di dalam Moondream2 akan gagal juga, jadi meneruskannya cuma menukar penolakan cepat dengan penolakan yang sama beberapa detik kemudian |
+| `gambar_terlalu_besar` | Batas 16 MB, menjaga memori saat berkas masuk |
+| `resolusi_terlalu_besar` | Batas 40 MP setelah dekode. Menahan "decode bomb": PNG beberapa ratus kilobyte bisa berisi kanvas 30.000 x 30.000 yang menjadi ~2,7 GB di memori dan menjatuhkan seluruh proses |
+
+Profil `ocr` di berkas itu **dipertahankan meski tidak ada endpoint OCR**. Ia
+jadi rujukan angka saat menyetel gerbang ketajaman di sisi Flutter, supaya
+kedua sisi mengukur hal yang sama dengan ambang yang sengaja dijaga sejajar.
 
 ---
 
@@ -198,22 +280,39 @@ Deskripsikan suasana kamera via Moondream2.
 > jaringan. Fitur itu tidak pernah berhasil sekali pun sampai diperbaiki.
 
 ```bash
-curl -X POST http://localhost:8000/api/describe \
-     -F "image=@foto.jpg" -F "length=short"
+curl -X POST http://localhost:8000/api/describe -F "image=@foto.jpg"
 ```
 
 Berhasil:
 
 ```json
 {
+  "ok": true,
+  "found": true,
   "description_en": "A person walking on a sidewalk near a parked bicycle.",
-  "model": "moondream2",
-  "length": "short",
-  "message": ""
+  "quality_note": "",
+  "message": "",
+  "image_quality": {"verdict": "good"},
+  "preprocessing": {},
+  "elapsed_ms": 2401.3
 }
 ```
 
-Ditolak gerbang kualitas:
+Caption ada tapi tidak berguna (`"a photo"`, `"an image"`, atau lebih pendek
+dari 12 karakter):
+
+```json
+{
+  "ok": true,
+  "found": false,
+  "reason": "deskripsi_tidak_jelas",
+  "error": "deskripsi_tidak_jelas",
+  "description_en": "a photo",
+  "message": "Suasananya tidak bisa dikenali dengan jelas. Fotonya gelap, jadi hasilnya mungkin tidak tepat."
+}
+```
+
+Ditolak gerbang:
 
 ```json
 {
@@ -221,7 +320,9 @@ Ditolak gerbang kualitas:
   "reason": "gambar_rusak",
   "message": "Gambar tidak terbaca. Coba ambil ulang.",
   "retry_suggested": true,
-  "description_en": ""
+  "image_quality": null,
+  "description_en": "",
+  "error": "gambar_rusak"
 }
 ```
 
@@ -229,8 +330,17 @@ Ditolak gerbang kualitas:
 instruksi untuk pengguna, bukan hasil model. `description_en` tetap Bahasa
 Inggris sesuai keputusan desain: penerjemahan dikerjakan di sisi Flutter.
 
-Parameter: `image` (wajib), `length` (`short` atau `normal`), `enhance`
-(bawaan `true`), `timeout` (bawaan 25 detik).
+Parameter:
+
+| Field | Bawaan | Catatan |
+|---|---|---|
+| `image` | wajib | **Namanya `image`, bukan `file`** |
+| `length` | `normal` | `short` menghasilkan caption gaya alt-text satu baris, dan pada foto yang ramai ia berhenti di tengah kalimat. Deskripsi yang berhenti di tengah adalah kegagalan paling menyesatkan bagi pengguna tunanetra: terdengar seperti jawaban lengkap, jadi tidak ada alasan untuk bertanya lagi |
+| `enhance` | `true` | Mengecilkan sisi terpanjang ke 1024 dan mengoreksi eksposur seperlunya. Bukan penyaring, melainkan pemercepat |
+| `timeout` | `25.0` | Detik. Pemuatan model **tidak** dihitung di dalamnya: `ensure_ready()` dipanggil sebelum jam inferensi mulai |
+
+Aplikasi tidak mengirim `length` sama sekali, jadi yang berlaku di jalur nyata
+adalah `normal`.
 
 ### `POST /api/cari-objek`
 
@@ -240,6 +350,16 @@ Kirim `target` (nama barang Bahasa Indonesia) dan `file` (gambar JPEG).
 curl -X POST http://localhost:8000/api/cari-objek \
      -F "target=dompet" -F "file=@foto.jpg"
 ```
+
+Parameter:
+
+| Field | Bawaan | Catatan |
+|---|---|---|
+| `target` | wajib | Nama barang Bahasa Indonesia. **Dibersihkan lebih dulu** (`_clean_target`), karena nilainya dikembalikan di balasan dan ikut menyusun kalimat yang dibacakan TTS |
+| `file` | wajib | Frame kamera JPEG. **Namanya `file`, bukan `image`**, kebalikan dari `/api/describe` |
+| `prompt_en` | opsional | Terjemahan Inggris dari ML Kit di aplikasi, mis. `red bag`. Dipakai sebagai lapis kedua `resolve_prompt()` |
+| `conf` | opsional | Menimpa `YOLOE_CONF` untuk satu permintaan |
+| `enhance` | `true` | Koreksi eksposur otomatis |
 
 ```json
 {
@@ -265,7 +385,12 @@ curl -X POST http://localhost:8000/api/cari-objek \
 | `target_kosong` | Nama barang kosong setelah dibersihkan | Minta pengguna menyebutkan barangnya |
 | `model_unavailable` | Model YOLOE gagal dimuat | Katakan ini bukan salah kameranya |
 | `server_error` | Inferensi gagal di server | Katakan ini bukan salah kameranya |
-| apa pun dengan `retry_suggested: true` | Masalah kualitas gambar | Perbaiki kondisi foto, **jangan** suruh memutar badan |
+| apa pun dengan `retry_suggested: true` | Unggahan gagal atau melewati batas sumber daya | Perbaiki kondisi pengambilan, **jangan** suruh memutar badan |
+
+Deteksi dari foto jelek tidak sama andalnya dengan deteksi dari foto bagus,
+walau angka mentahnya sama. Karena itu `confidence` tiap match dikalikan
+`quality.confidence_penalty`, dan angka aslinya disimpan di `confidence_raw`
+supaya penaltinya terlihat, bukan tersembunyi.
 
 `GET /api/cari-objek/targets` mengembalikan daftar barang yang dikenali:
 
@@ -288,9 +413,17 @@ curl -X POST http://localhost:8000/api/cari-objek \
 }
 ```
 
-`describe: false` sebelum panggilan pertama itu **normal**: Moondream2 dimuat
-malas. Aplikasi memakai `server_time_ms` untuk membacakan waktu tempuh di layar
+`describe: false` **hanya normal di detik-detik awal**, selama pemanasan latar
+belakang belum selesai (sekitar 20 detik sesudah startup). Kalau ia masih
+`false` beberapa menit setelah server menyala, pemanasannya gagal dan
+alasannya ada di log.
+
+Aplikasi memakai `server_time_ms` untuk membacakan waktu tempuh di layar
 Pengaturan.
+
+> `/health` mengembalikan `"version": "3.0.0"`, sementara `FastAPI(version=...)`
+> di `main.py` masih `"2.0.0"`, jadi `/docs` menampilkan angka yang berbeda.
+> Keduanya di kode, bukan di dokumen ini.
 
 ### `GET /api/capabilities`
 
@@ -372,6 +505,7 @@ backend/
 ├── main.py                  Titik masuk, 3 router + /health
 ├── requirements.txt         Dependensi (lihat catatan di dalamnya)
 ├── .env / .env.example      Konfigurasi
+├── export_tflite.py         Skrip sekali pakai, bukan bagian server
 ├── db/
 │   ├── database.py          Koneksi PostgreSQL, aman kalau DB mati
 │   ├── schema.sql           Definisi tabel
@@ -382,14 +516,17 @@ backend/
 │   └── support.py           GET /api/capabilities
 ├── services/
 │   ├── find_object_service.py   YOLOE prompt teks
-│   ├── moondream_service.py     Deskripsi suasana (VLM)
-│   ├── image_gate.py            Gerbang kualitas gambar
+│   ├── moondream_service.py     Deskripsi suasana (VLM), warm_up + ensure_ready
+│   ├── image_gate.py            Gerbang gambar: batas sumber daya, catatan kualitas
 │   ├── find_object_constants.py Kamus nama barang ID ke EN
 │   └── repository.py            Akses basis data
 ├── utils/
-│   └── image_utils.py       Konversi dan koreksi eksposur
+│   └── image_utils.py       Konversi, penilaian kualitas, koreksi eksposur
 ├── tests/                   pytest, lihat bagian 9
-└── _archive/routers/        Router lama, fiturnya sudah pindah on-device
+└── _archive/
+    ├── routers/             Router lama, fiturnya sudah pindah on-device
+    ├── services/            Service pendampingnya (OCR, uang, YOLO, segmentasi)
+    └── utils/               Pipeline OCR lama
 ```
 
 > Tidak ada berkas LLM di folder ini. `narasi.py` dan `qwen_service.py` telah
@@ -399,8 +536,11 @@ backend/
 
 ## 7. Keterbatasan yang perlu diketahui
 
-1. **Moondream2 diunduh saat panggilan pertama** (~1,85 GB). Panggilan pertama
-   bisa memakan beberapa menit; sesudahnya dari cache.
+1. **Moondream2 diunduh saat startup pertama** (~1,85 GB), lewat pemanasan
+   latar belakang. Startup pertama di mesin baru bisa memakan beberapa menit
+   sebelum `describe` siap; sesudahnya dari cache dan hanya ~20 detik.
+   Server tetap melayani `/health`, `/api/capabilities`, dan `/api/cari-objek`
+   selama itu.
 
 2. **Moondream2 menjawab dalam Bahasa Inggris**, dan itu disengaja. Tidak ada
    LLM penerjemah di backend. Penerjemahan dikerjakan lokal di Flutter.
@@ -470,14 +610,28 @@ python -m pytest tests/ -v
 ```
 backend/tests/
 ├── conftest.py              Fixture bersama (TestClient, gambar navigasi, gambar objek)
-├── fixtures/
-│   ├── navigation/          5 gambar hazard (got, lubang, tiang, motor+orang, tangga)
-│   └── object_find/         5 gambar benda (tas, kunci, botol, headphone, payung)
 ├── test_health.py           GET /health + GET /api/capabilities
 ├── test_cari_objek.py       POST /api/cari-objek + GET /targets
 ├── test_describe.py         POST /api/describe (Moondream2 VLM)
-└── test_hardening.py        Input rusak, ukuran ekstrem, field salah
+├── test_hardening.py        Input rusak, ukuran ekstrem, field salah
+├── test_api_endpoints.py    Sapuan endpoint lewat HTTP, butuh server menyala
+└── run_yoloe_results2.py    Skrip eksplorasi YOLOE, bukan test pytest
 ```
+
+**Gambar fixture-nya tidak ada di folder ini.** `conftest.py` mencari
+`backend/tests/fixtures/` lebih dulu, dan karena folder itu tidak ada ia jatuh
+ke `../guidio_app/test/fixtures/`:
+
+```
+guidio_app/test/fixtures/
+├── navigation/    5 gambar hazard (got, lubang, tiang, motor+orang, tangga)
+└── object_find/   5 gambar benda (tas, kunci, botol, headphone, payung)
+```
+
+Satu sumber gambar untuk dua sisi, jadi backend dan mobile tidak pernah menguji
+dua himpunan yang diam-diam menyimpang. Versi lama `conftest.py` naik dua
+tingkat dan menunjuk direktori yang tidak ada, sehingga **seluruh** tes berbasis
+gambar tersembunyi di balik skip: hijau, tapi tidak menguji apa pun.
 
 ### Catatan: simulasi kamera HP
 
@@ -508,15 +662,21 @@ lingkungan itu, ketiadaannya adalah kegagalan, bukan skip. Lihat
 `guidio_app/README.md` bagian 14 untuk penerapannya.
 
 Untuk backend, dependensi yang sah untuk di-skip cuma satu: model Moondream
-yang belum warm.
+yang belum selesai dipanaskan. Sejak pemanasan dipindah ke startup, jendela itu
+jauh lebih sempit, tapi `TestClient` menyalakan aplikasi sendiri, jadi
+`test_describe.py` tetap bisa mulai sebelum bobotnya siap.
 
 ```bash
-# Terminal 1
-uvicorn main:app --host 0.0.0.0 --port 8000
+# Cukup satu terminal, TestClient tidak butuh server terpisah
+python -m pytest tests/ -v
 
-# Terminal 2, setelah request pertama selesai
+# Kalau test_describe di-skip karena model belum siap, hangatkan dulu:
+uvicorn main:app --host 0.0.0.0 --port 8000   # tunggu log "[Moondream2] Model siap"
 python -m pytest tests/test_describe.py -v
 ```
+
+`tests/test_api_endpoints.py` adalah pengecualian: ia memukul server lewat HTTP
+sungguhan, jadi ia butuh `uvicorn` yang sudah menyala di terminal lain.
 
 ---
 
