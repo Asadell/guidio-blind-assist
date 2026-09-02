@@ -120,7 +120,7 @@ boleh ada orang yang berjalan menyangka dirinya sedang dijaga.
 | **Deteksi Objek** (bawaan) | Peringatan rintangan, dinyalakan lewat tombol kiri | Tidak, sepenuhnya on-device |
 | **Kenali Uang** | Sebut nominal uang kertas rupiah | Tidak, sepenuhnya on-device |
 | **Baca Teks** | OCR menu, rambu, label obat | Tidak, ML Kit on-device |
-| **Navigasi** | Arahan jalur trotoar 3 zona | Tidak, tiga model on-device |
+| **Navigasi** | Arahan jalur trotoar 3 zona | Tidak, empat model on-device |
 | **Asisten Suara** | Perintah suara dan tanya sekitar | Sebagian, hanya deskripsi suasana |
 | **Cari Objek** | Temukan barang yang disebut lewat suara | Ya, satu-satunya mode yang mati offline |
 
@@ -141,12 +141,14 @@ Ini pembagian yang paling penting dipahami sebelum membaca kode mana pun.
   bersinyal buruk seperti pasar dan warung.
 - **Baca teks.** Google ML Kit Text Recognition berjalan di ponsel. Label obat
   dan struk belanja tidak boleh menunggu sinyal.
-- **Navigasi jalur.** Tiga model TFLite berjalan paralel dari satu frame yang
-  sama: PIDNet-S (segmentasi 3 zona), YOLO11n custom (enam kelas bahaya
-  jalanan), dan SSD MobileNet COCO yang disaring ke 15 kelas yang bisa
-  menghalangi langkah. Lihat bagian 5 soal kenapa tiga, bukan dua.
+- **Navigasi jalur.** Empat model TFLite berjalan paralel dari satu frame yang
+  sama: PIDNet-S (segmentasi 3 zona), YOLO11n custom FP16 (enam kelas bahaya
+  jalanan), YOLO11n INT8 (enam kelas yang sama, tata letak NCHW, menambal
+  `tiang` yang tidak pernah menyala di varian FP16), dan SSD MobileNet COCO
+  yang disaring ke 15 kelas yang bisa menghalangi langkah. Lihat bagian 5 soal
+  kenapa empat, bukan dua.
 - **Perintah suara (intent parsing).** `CommandParser` di Flutter mencocokkan
-  20 intent baku dari ratusan variasi ucapan secara offline, 0 ms.
+  24 intent baku dari ratusan variasi ucapan secara offline, 0 ms.
 - **Narasi deteksi.** `NarrationScheduler` menyusun kalimat dari hasil deteksi
   secara lokal, tanpa LLM dan tanpa jaringan.
 
@@ -175,17 +177,18 @@ hilang dan meneruskan yang masih hidup.
 │             (300x300, ~4 MB)         DetectionFilter                 │
 │                                      NarrationScheduler ──▶ TTS+Getar│
 │                                                                      │
-│  Kamera ──▶ MobileNetV2 TFLite ────▶ NominalCard ──▶ TTS             │
-│             (224x224, uang rupiah)   (ambang keyakinan 0,85)         │
+│  Kamera ──▶ MobileNetV2 INT8 ──────▶ NominalCard ──▶ TTS             │
+│             (224x224, uang rupiah)   (nada lugas / berpagar)         │
 │                                                                      │
 │  Kamera ──▶ PIDNet-S ──────────────▶ ZoneIndicator ──▶ TTS+Getar     │
-│         ├─▶ YOLO11n custom (6 kelas) ┐                               │
-│         └─▶ SSD MobileNet COCO       ├▶ mergeNavObstacles            │
-│             (disaring ke 15 kelas)   ┘  (anti sebutan ganda)         │
+│         ├─▶ YOLO11n FP16 (6 kelas)  ┐                                │
+│         ├─▶ YOLO11n INT8 (6 kelas)  ├▶ mergeNavObstacles             │
+│         └─▶ SSD MobileNet COCO      ┘  (anti sebutan ganda)          │
+│             (disaring ke 15 kelas)                                   │
 │                                                                      │
 │  Kamera ──▶ ML Kit Text Recognition ──▶ blok teks ──▶ TTS            │
 │                                                                      │
-│  Suara ──▶ CommandParser (offline) ──▶ 20 intent baku, ~0 ms         │
+│  Suara ──▶ CommandParser (offline) ──▶ 24 intent baku, ~0 ms         │
 │                                                                      │
 │  TtsQueue bertingkat: Critical memotong semua, Warning memotong      │
 │  Info, Info dibuang bila menunggu lebih dari 2 detik                 │
@@ -226,11 +229,17 @@ waktu memisahkan satu kalimat dari kalimat berikutnya.
 
 **3. VLM (Moondream2) untuk deskripsi suasana.**
 Saat pengguna bertanya "apa yang ada di depanku", Moondream2 menghasilkan
-caption Bahasa Inggris. Flutter menerjemahkannya **secara lokal** lewat
-`scene_translator.dart`: kamus ditambah aturan urutan kata, 0 ms, offline,
-tanpa LLM. Kalau cakupan kamusnya terlalu rendah, penerjemah menyerah dan
-kalimat Inggrisnya dibacakan, didahului penanda singkat "Dalam bahasa Inggris."
-supaya pengguna tahu bahasanya berganti dan tidak menyangka aplikasinya rusak.
+caption Bahasa Inggris. Flutter menerjemahkannya **di perangkat** lewat
+`services/translation_service.dart`, yang memakai Google ML Kit On-Device
+Translation: offline saat dipakai, tanpa LLM, dan tidak mengarang isi baru.
+Kalau modelnya belum siap atau terjemahannya tidak layak, `toIndonesian`
+mengembalikan null (tidak pernah setengah kalimat) dan kalimat Inggrisnya
+dibacakan, didahului penanda singkat "Dalam bahasa Inggris." supaya pengguna
+tahu bahasanya berganti dan tidak menyangka aplikasinya rusak.
+
+Pendahulunya, `core/voice/scene_translator.dart`, adalah kamus kata-per-kata
+buatan sendiri dan sudah dihapus. Cakupannya tidak konsisten, dan pengguna yang
+mengandalkan telinga tidak punya cara menebak versi mana yang sedang dia dengar.
 
 **4. Intent parsing berlapis di Flutter.**
 `CommandParser` mencoba berurutan: prefiks transisi mode natural, frasa
@@ -245,9 +254,19 @@ Critical lain yang belum selesai**. Peringatan yang diulang dari awal
 terus-menerus tidak pernah selesai diucapkan sekali pun, dan peringatan yang
 tidak pernah utuh bukan peringatan.
 
-**6. Nominal uang tidak pernah ditebak.**
-Di bawah ambang keyakinan 0,85, yang muncul hanya instruksi perbaikan, bukan
-angka.
+**6. Nominal uang selalu disebut, tapi tidak selalu dengan nada yakin.**
+Ini berubah dari versi sebelumnya, yang menolak menjawab di bawah ambang.
+Penolakan itu terdengar seperti pengaman, tapi di lapangan justru mematikan
+fiturnya: kasus paling biasa, uang di meja difoto sambil berdiri, berakhir
+buntu di kartu peringatan tanpa jalan keluar, dan pengguna yang tidak melihat
+layar tidak punya cara menebak apa yang kurang.
+
+Sekarang nominalnya selalu keluar, dan `MoneyResult.certain` yang membedakan
+nadanya: lolos gerbang dibacakan lugas ("Lima puluh ribu rupiah"), tidak lolos
+wajib berpagar ("Sepertinya lima puluh ribu rupiah") plus ajakan mengecek
+ulang. Gerbangnya dua jalur: keyakinan >= 0,85, atau margin ke juara dua >= 0,50
+dengan keyakinan >= 0,80. Risikonya dipindah, bukan dihapus, dan lapisan atas
+tidak boleh mengabaikan `certain`.
 
 **7. Sistem tidak pernah mengaku melihat saat sedang tidak melihat.**
 Di Mode Navigasi, klaim positif "jalur aman, jalan lurus" ditahan kalau frame
@@ -289,12 +308,12 @@ bertahan tiga frame. Saat ponsel terdeteksi banyak bergoyang, penghalusan
 diperlambat dan ambangnya dinaikkan: sinyal yang berisik diperlakukan sebagai
 sinyal yang berisik.
 
-### Kenapa Mode Navigasi memakai tiga model, bukan dua
+### Kenapa Mode Navigasi memakai empat model, bukan dua
 
-`YoloNavigasiService` dilatih khusus untuk enam kelas bahaya jalanan Indonesia.
-Itu satu-satunya sumber untuk `lubang`, `got_terbuka`, dan `tangga`: tidak ada
-padanannya di COCO, dan justru ketiganya yang paling berbahaya karena tidak
-terasa tongkat sampai sudah dekat.
+`YoloNavigasiService` (FP16, `yolo11n_navigasi.tflite`) dilatih khusus untuk
+enam kelas bahaya jalanan Indonesia. Itu satu-satunya sumber untuk `lubang`,
+`got_terbuka`, dan `tangga`: tidak ada padanannya di COCO, dan justru ketiganya
+yang paling berbahaya karena tidak terasa tongkat sampai sudah dekat.
 
 Tapi model itu lemah persis pada kelas yang berlimpah di dataset umum. Diuji
 lewat `test/run_corridor_test.py` pada fixture `04_motor_dan_orang.png`, dua
@@ -304,6 +323,24 @@ custom melaporkan nol motor dan nol orang.
 SSD MobileNet COCO tidak akan pernah tahu apa itu got terbuka, tapi `person`
 dan `motorcycle` adalah dua kelas dengan contoh terbanyak di seluruh COCO.
 Masing-masing menutup lubang yang tidak bisa ditutup yang lain.
+
+Lapis keempat, `YoloNavInt8Service` (`yolo11n.tflite`, INT8, NCHW
+`[1,3,640,640]`), menambal satu kelas yang tidak tertutup keduanya: `tiang`.
+Kelas itu tidak ada di COCO sebagai benda tunggal, dan varian FP16 tidak pernah
+memunculkannya sama sekali. Pada fixture `03_tiang_listrik.png` selisihnya
+telanjang: FP16 memberi skor puncak 0,0000, INT8 memberi 0,3777. Tiang justru
+golongan paling berbahaya bagi pengguna tongkat, karena tongkat melewatinya
+tanpa menyentuh dan kepala yang menemukannya.
+
+Karena tata letak tensornya berbeda, lapis keempat punya service sendiri: ia
+menerima tensor NHWC yang sama lalu mentransposenya ke NCHW, dan menolak memuat
+model yang bukan NCHW. Duplikat antara lapis FP16 dan INT8 dibuang berdasarkan
+IoU >= 0,45 sebelum digabung dengan COCO.
+
+Keempatnya **wajib termuat** sebelum mode ini menyala. Sebelumnya lapis COCO dan
+INT8 opsional, dan akibatnya satu mode memakai nama yang sama untuk dua tingkat
+perlindungan yang berbeda jauh tanpa pengguna pernah diberi tahu yang mana yang
+sedang aktif.
 
 Hanya 15 dari 80 kelas COCO yang lolos saringan, dan hanya benda yang bisa
 menghalangi atau membahayakan langkah. Menyebut "botol" atau "ponsel" saat
@@ -338,8 +375,8 @@ yang jadi sasarannya.
 
 ### Ponsel lama yang tidak mengejar
 
-Tiga model per frame di ponsel lima tahun bisa berkali lipat lebih lambat. Yang
-berbahaya bukan lambatnya, melainkan diamnya: arahan tetap diucapkan dengan
+Empat model per frame di ponsel lima tahun bisa berkali lipat lebih lambat.
+Yang berbahaya bukan lambatnya, melainkan diamnya: arahan tetap diucapkan dengan
 nada yakin dari pemandangan beberapa detik lalu, sementara pengguna sudah
 melangkah melewatinya.
 
@@ -381,16 +418,17 @@ deteksi yang datang tanpa diminta delapan kali per detik.
 |---|---|
 | Aplikasi mobile | Flutter (Dart), Provider, Android |
 | Deteksi on-device | SSD MobileNet, TFLite, 300x300 |
-| Pengenalan uang on-device | MobileNetV2 transfer learning, TFLite, 224x224, 7 kelas |
+| Pengenalan uang on-device | MobileNetV2 transfer learning, TFLite INT8, 224x224, 7 kelas |
 | Segmentasi jalur on-device | PIDNet-S, TFLite, 3 zona |
-| Rintangan navigasi on-device | YOLO11n custom, TFLite, 6 kelas |
+| Rintangan navigasi on-device | YOLO11n custom FP16, TFLite NHWC, 6 kelas |
 | Lapis ketiga navigasi | SSD MobileNet COCO, disaring ke 15 kelas |
+| Lapis keempat navigasi | YOLO11n INT8, TFLite NCHW, 6 kelas, penambal `tiang` |
 | Perbaikan kontras kamera lama | Peregangan titik hitam, selektif per frame |
 | Baca teks on-device | Google ML Kit Text Recognition |
 | Pelacakan objek | SORT, ditulis murni dengan Dart |
 | Intent parsing | `CommandParser` lokal, berlapis, 0 ms offline |
 | Penjadwalan narasi | `NarrationScheduler` lokal, beranggaran kata |
-| Terjemahan caption | `scene_translator.dart` lokal, kamus + aturan urutan kata |
+| Terjemahan caption | Google ML Kit On-Device Translation (`translation_service.dart`) |
 | Pencarian objek (server) | YOLOE open-vocabulary, prompt teks |
 | Deskripsi suasana (server) | Moondream2 (~2B, VLM, GPU lokal, output English) |
 | Ucapan | `speech_to_text` dan `flutter_tts`, default `id-ID` |
@@ -413,28 +451,29 @@ project/
 │   ├── README.md                  Panduan mobile, model, sistem desain, testing
 │   ├── lib/
 │   │   ├── core/
-│   │   │   ├── voice/             CommandParser, NarrationScheduler, scene_translator
+│   │   │   ├── voice/             CommandParser, NarrationScheduler, intents, voice_log
 │   │   │   ├── speech/            TtsQueue bertingkat
 │   │   │   ├── layout/            Token zona layar
-│   │   │   ├── net/               ApiClient, FramePacer
+│   │   │   ├── net/               ApiClient + FramePacer, frame_codec
 │   │   │   └── state/             Penggabungan kondisi global
+│   │   ├── models/                Tipe hasil deteksi bersama
 │   │   ├── theme/                 Warna, tipografi, spasi, tema
 │   │   ├── widgets/               Komponen sistem desain
 │   │   ├── providers/             State per mode dan kondisi global
-│   │   ├── services/              TFLite deteksi/uang/PIDNet/YOLO, ML Kit, TTS
+│   │   ├── services/              TFLite deteksi/uang/PIDNet/YOLO x2, ML Kit, TTS, terjemahan
 │   │   ├── screens/               6 mode, splash, panduan, izin, pengaturan
 │   │   └── mock/                  Data tiruan untuk menguji state tanpa model
-│   ├── test/                      Uji Flutter, lihat guidio_app/README.md bagian 14
-│   ├── tool/                      setup_tflite_linux.sh (runtime TFLite untuk host)
-│   ├── blobs/                     Pustaka native TFLite, tidak ikut ke APK
-│   └── assets/models/             4 model yang benar-benar dibundel, lihat bagian 10
+│   ├── test/                      Uji Flutter + fixtures bersama, lihat guidio_app/README.md bagian 14
+│   ├── tool/                      setup_tflite_linux.sh, eval_rupiah_litert.py
+│   ├── blobs/                     Pustaka native TFLite untuk host, tidak ikut ke APK
+│   └── assets/models/             5 model yang benar-benar dibundel, lihat bagian 10
 └── backend/                       Server FastAPI
     ├── README.md                  Panduan backend dan rujukan endpoint
     ├── db/                        Skema PostgreSQL dan data rujukan
     ├── routers/                   3 router aktif
-    ├── services/                  YOLOE, Moondream2, gerbang kualitas gambar
-    ├── tests/                     pytest
-    └── _archive/                  Router lama yang fiturnya sudah pindah on-device
+    ├── services/                  YOLOE, Moondream2, gerbang gambar
+    ├── tests/                     pytest, fixtures-nya menumpang guidio_app/test/fixtures
+    └── _archive/                  Router, service, dan util lama yang sudah pindah on-device
 ```
 
 ---
@@ -547,19 +586,24 @@ tanpa satu pun manfaat.
 
 | Berkas | Ukuran | Dipakai oleh |
 |---|---|---|
-| `ssd_mobilenet.tflite` | ~4,0 MB | Deteksi rintangan |
+| `ssd_mobilenet.tflite` | ~4,0 MB | Deteksi rintangan, sekaligus lapis COCO navigasi |
 | `labelmap.txt` | ~1 KB | Label COCO |
-| `rupiah_classifier_fp16.tflite` | ~4,6 MB | Kenali Uang, 7 pecahan |
+| `rupiah_classifier_int8.tflite` | ~2,8 MB | Kenali Uang, 7 pecahan |
 | `pidnet_s_3zona.tflite` | ~2,5 MB | Segmentasi jalur 3 zona |
-| `yolo11n_navigasi.tflite` | ~10,1 MB | Rintangan navigasi, 6 kelas |
-| **Total di APK** | **~21,2 MB** | |
+| `yolo11n_navigasi.tflite` | ~10,1 MB | Rintangan navigasi FP16, 6 kelas |
+| `yolo11n.tflite` | ~2,9 MB | Rintangan navigasi INT8 NCHW, lapis keempat |
+| **Total di APK** | **~22,3 MB** | |
 
-Berkas lain di `assets/models/` (`uang_rupiah.tflite`,
-`rupiah_classifier_int8.tflite`, `yolo11n.tflite`, `pidnet_s_3zona_fp16.tflite`,
+Berkas lain di `assets/models/` (`rupiah_classifier_fp16.tflite`,
+`uang_rupiah.tflite`, `pidnet_s_3zona_fp16.tflite`, `yolo11n_e100_*.tflite`,
 `yoloe_find.onnx`, dan berkas `.onnx` lainnya) **tidak dibundel**. Semuanya
-arsip atau percobaan. Menambah berkas ke folder itu tidak otomatis
-membundelnya; tambahkan barisnya di `pubspec.yaml` hanya kalau kode benar-benar
-memuatnya.
+arsip, varian yang tidak dimuat kode, atau percobaan.
+
+Menambah berkas ke folder itu tidak otomatis membundelnya, dan **mencabutnya
+juga tidak otomatis aman**. `yolo11n.tflite` pernah dicabut dari daftar, dan
+pencabutan itu diam-diam melumpuhkan lapis keempat: `rootBundle.load` gagal,
+`_int8Ready` tetap false, dan pipeline yang dikira empat lapis cuma tiga tanpa
+galat, tanpa log, tanpa perbedaan yang terlihat di layar.
 
 ### Kebutuhan di sisi laptop
 
@@ -596,22 +640,33 @@ Tidak ada LLM yang perlu dimuat di GPU atau CPU.
   frame tidak layak jadi dasar arahan.
 - Pencarian objek dengan prompt teks bebas.
 - Deskripsi suasana via kamera, diterjemahkan lokal ke Bahasa Indonesia.
-- Intent parsing lokal: 20 intent, ratusan variasi ucapan multi-bahasa dan
+- Intent parsing lokal: 24 intent, ratusan variasi ucapan multi-bahasa dan
   dialek, berjalan offline.
-- Pengaman uang yang terbukti bekerja: di bawah keyakinan 0,85 aplikasi tidak
-  menyebutkan nominal sama sekali.
+- Pengaman uang berupa nada jawaban: nominal yang tidak lolos gerbang keyakinan
+  wajib dibacakan berpagar ("Sepertinya ..."), bukan lugas.
 
 ### Masih terbatas, dan ini yang paling penting diketahui
 
-**Model uang sering tidak memberi jawaban.** Skor lab-nya 97,98%, tapi angka
-itu diukur pada crop rapat hasil bounding box, bukan pada frame kamera. Diukur
-lewat jalur aplikasi yang sebenarnya (`flutter test test/money_pipeline_test.dart`),
-dari 5 gambar uji hanya **1 yang tembus ambang 0,85**, dan tebakan teratasnya
-benar hanya 3 dari 5. Pada sisanya aplikasi bilang "belum yakin". Yang salah
-adalah cara model dilatih, bukan bobotnya: dataset training tidak pernah memuat
-uang yang kecil di dalam bidang. Rinciannya di `guidio_app/README.md` bagian 3.
+**Model uang belum tangguh pada framing kamera, dan angkanya belum bisa diukur
+dari host Linux.** Skor lab-nya 97,98%, tapi angka itu diukur pada crop rapat
+hasil bounding box, bukan pada frame kamera. Yang salah adalah cara model
+dilatih, bukan bobotnya: dataset training tidak pernah memuat uang yang kecil
+di dalam bidang.
 
-**Empat dari enam kelas YOLO navigasi tidak pernah menyala.** Ini temuan
+Sejak model yang dibundel berganti ke varian INT8, `flutter test` di Linux
+**tidak lagi bisa mengukurnya sama sekali**. Runtime desktop di `blobs/`
+berasal dari `tflite_flutter_plugin` v0.5.0 (2021) dan tidak sanggup
+menjalankan model terkuantisasi: ia memuatnya tanpa mengeluh lalu mengembalikan
+distribusi rata 1/7 untuk masukan apa pun. Kelima fixture pulang sebagai
+Rp1.000 dengan keyakinan 14,5%, yaitu chance level, dan itu bukan pengukuran
+model. Android memakai LiteRT 1.4.0 dan menjalankan model yang sama dengan
+benar.
+
+Angka yang mewakili ponsel diukur lewat `guidio_app/tool/eval_rupiah_litert.py`
+(LiteRT modern di Python) atau langsung di perangkat. Rinciannya di
+`guidio_app/README.md` bagian 3.
+
+**Empat dari enam kelas YOLO navigasi FP16 tidak pernah menyala.** Ini temuan
 terpenting yang masih terbuka, dan ia bukan soal data maupun kamera.
 
 Diukur langsung pada keluaran mentah model di 11 gambar, `yolo11n_navigasi.tflite`
@@ -630,17 +685,27 @@ Datasetnya justru berlimpah untuk kelas-kelas itu: `tiang` punya **4205 contoh
 latih**, terbanyak dari semua kelas, dan model tidak pernah bisa memunculkannya.
 Jadi ini cacat training atau ekspor, bukan kekurangan data.
 
-Model lama `yolo11n.tflite` justru sehat, keenam kelasnya hidup, dan ia benar
-mendeteksi `tiang` pada fixture yang gagal total di model baru. Ia NCHW
-sehingga ditolak `YoloNavigasiService` yang menyusun NHWC. **Periksa ulang
-proses ekspor sebelum melakukan retrain apa pun.**
+Model lama `yolo11n.tflite` justru sehat, dan ia benar mendeteksi `tiang` pada
+fixture yang gagal total di model baru (0,3777 lawan 0,0000). Bentuknya NCHW
+sehingga dulu ditolak `YoloNavigasiService` yang menyusun NHWC.
+
+**Itu sudah ditambal, tapi tambalannya bukan perbaikan.** Model lama itu
+sekarang dimuat `YoloNavInt8Service` sebagai lapis keempat, service terpisah
+yang mentranspose tensornya sendiri ke NCHW. Jadi `tiang` hidup lagi di Mode
+Navigasi. Yang belum beres tetap belum beres: `got_terbuka`, `orang`, dan
+`motor` masih mati di varian FP16, dan **proses ekspornya harus diperiksa ulang
+sebelum melakukan retrain apa pun.**
 
 Konsekuensi yang perlu diketahui: sampai ini beres, lapis SSD COCO adalah
-satu-satunya sumber deteksi orang dan motor di Mode Navigasi, dan PIDNet-S
-adalah lapis pengaman yang sesungguhnya, bukan YOLO. Perbaikan kontras kamera
-lama juga belum bisa dinilai adil, karena model yang rusak memberi respons
-erratic. Ukur ulang dengan `test/run_corridor_test.py --enhance off` setelah
-ekspornya diperbaiki.
+satu-satunya sumber deteksi orang dan motor di Mode Navigasi, `got_terbuka`
+tidak punya sumber sama sekali, dan PIDNet-S adalah lapis pengaman yang
+sesungguhnya. Perbaikan kontras kamera lama juga belum bisa dinilai adil,
+karena model yang rusak memberi respons erratic. Ukur ulang dengan
+`test/run_corridor_test.py --enhance off` setelah ekspornya diperbaiki.
+
+Uji navigasi di `test/model_inference_test.dart` hanya menguji varian FP16.
+Lapis INT8 yang menambalnya belum punya uji sendiri, jadi kalau berkasnya
+tercabut lagi dari `pubspec.yaml`, tidak ada satu pun test yang merah.
 
 **Navigasi belum memakai GPS.** Kolom tujuan menyimpan apa yang diketik, tapi
 tidak ada penuntun rute. Kalimat pembuka mode sengaja tidak menjanjikannya.
