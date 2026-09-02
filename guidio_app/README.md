@@ -11,8 +11,8 @@ Enam hal ini berjalan penuh di dalam ponsel **tanpa internet sama sekali**:
 | Peringatan rintangan | `services/tflite_service.dart` |
 | Pengenalan uang | `services/money_tflite_service.dart` |
 | Baca teks (ML Kit) | `services/ocr_service.dart` |
-| Navigasi jalur 3 zona (tiga model) | `services/pidnet_service.dart`, `services/yolo_navigasi_service.dart`, `services/tflite_service.dart` |
-| Intent parsing (20 mode + aksi) | `core/voice/command_parser.dart` |
+| Navigasi jalur 3 zona (empat model) | `services/pidnet_service.dart`, `services/yolo_navigasi_service.dart`, `services/yolo_nav_int8_service.dart`, `services/tflite_service.dart` |
+| Intent parsing (24 intent baku) | `core/voice/command_parser.dart` |
 | Penjadwalan dan penyusunan narasi | `core/voice/narration_scheduler.dart` |
 
 Hanya dua hal yang butuh server: **Cari Objek** (YOLOE) dan **deskripsi
@@ -24,7 +24,7 @@ suasana** (Moondream2). Sisanya tidak pernah memanggil backend sama sekali.
 
 1. [Cara kerja singkat](#1-cara-kerja-singkat)
 2. [Enam mode dan layarnya](#2-enam-mode-dan-layarnya)
-3. [Empat model AI di dalam ponsel](#3-empat-model-ai-di-dalam-ponsel)
+3. [Lima model AI di dalam ponsel](#3-lima-model-ai-di-dalam-ponsel)
 4. [Intent parsing lokal: CommandParser](#4-intent-parsing-lokal-commandparser)
 5. [Narasi lokal](#5-narasi-lokal)
 6. [Sistem desain: token dan komponen](#6-sistem-desain-token-dan-komponen)
@@ -97,7 +97,7 @@ informasi keselamatan.
 | Deteksi Objek | `screens/tuntun_screen.dart` | Tidak |
 | Kenali Uang | `screens/money_screen.dart` | Tidak |
 | Baca Teks | `screens/ocr_screen.dart` | Tidak, ML Kit on-device |
-| Navigasi | `screens/navigasi_screen.dart` | Tidak, tiga model on-device |
+| Navigasi | `screens/navigasi_screen.dart` | Tidak, empat model on-device |
 | Asisten Suara | `screens/voice_screen.dart` | Sebagian, hanya deskripsi suasana |
 | Cari Objek | `screens/find_object_screen.dart` | Ya, satu-satunya yang mati offline |
 
@@ -141,7 +141,7 @@ menguji dugaannya adalah menekan lagi.
 
 ---
 
-## 3. Empat model AI di dalam ponsel
+## 3. Lima model AI di dalam ponsel
 
 Daftar aset di `pubspec.yaml` menyebut model **satu per satu**, bukan seluruh
 direktori. Ini disengaja: `- assets/models/` akan ikut membundel semua yang
@@ -151,11 +151,17 @@ tanpa satu pun manfaat.
 
 | Berkas | Ukuran | Dipakai oleh |
 |---|---|---|
-| `ssd_mobilenet.tflite` | ~4,0 MB | Deteksi rintangan |
-| `rupiah_classifier_fp16.tflite` | ~4,6 MB | Kenali Uang, 7 pecahan |
+| `ssd_mobilenet.tflite` | ~4,0 MB | Deteksi rintangan, sekaligus lapis COCO Mode Navigasi |
+| `rupiah_classifier_int8.tflite` | ~2,8 MB | Kenali Uang, 7 pecahan |
 | `pidnet_s_3zona.tflite` | ~2,5 MB | Segmentasi jalur 3 zona |
-| `yolo11n_navigasi.tflite` | ~10,1 MB | Rintangan navigasi, 6 kelas |
-| **Total di APK** | **~21,2 MB** | ditambah `labelmap.txt` |
+| `yolo11n_navigasi.tflite` | ~10,1 MB | Rintangan navigasi FP16, 6 kelas |
+| `yolo11n.tflite` | ~2,9 MB | Rintangan navigasi INT8 NCHW, lapis keempat |
+| **Total di APK** | **~22,3 MB** | ditambah `labelmap.txt` |
+
+> Model uang yang dibundel adalah varian **INT8**, bukan FP16. Itu rekomendasi
+> repo pelatihannya sendiri (`scripts/02_export_tflite.py`, kunci
+> `recommended_for_flutter`). Bobot dan aktivasinya INT8 tapi I/O-nya tetap
+> float32, jadi praproses di Dart tidak berubah sama sekali.
 
 > Baca Teks tidak punya berkas model di daftar ini: Google ML Kit membawa
 > mesinnya sendiri lewat Play Services.
@@ -164,15 +170,24 @@ tanpa satu pun manfaat.
 
 | Berkas | Kenapa tidak ikut |
 |---|---|
-| `yolo11n.tflite` | Bentuk inputnya NCHW `[1,3,640,640]`, sementara `YoloNavigasiService` menyusun NHWC `[1,640,640,3]`. Interpreter menolaknya dan deteksi rintangan mengembalikan daftar kosong **pada setiap frame tanpa tanda apa pun** |
 | `pidnet_s_3zona_fp16.tflite` | Tensor masukannya FLOAT16 sementara seluruh pipeline menghasilkan FLOAT32, jadi ia tidak akan pernah bisa dipakai. Dulu ia dicoba lebih dulu dan hanya dilewati kalau berkasnya hilang, sehingga segmentasi jalur gagal di setiap frame tanpa satu pun tanda di layar |
-| `uang_rupiah.tflite`, `rupiah_classifier_int8.tflite` | Arsip model uang lama |
-| `yoloe_find.onnx`, `pidnet_s*.onnx` | Sisa percobaan, tidak dimuat kode mana pun |
+| `rupiah_classifier_fp16.tflite`, `uang_rupiah.tflite` | Varian dan arsip model uang yang tidak dimuat `MoneyTFLiteService` |
+| `rupiah_labels.txt` | Urutan kelas sudah tetap di `MoneyTFLiteService.classValues`, tidak ada yang memuatnya lewat `rootBundle`. Disimpan sebagai rujukan saat mengganti model |
+| `yoloe_find.onnx`, `pidnet_s*.onnx`, `yolo11n_e100_*.tflite` | Sisa percobaan, tidak dimuat kode mana pun |
 
-Dua baris pertama tabel itu adalah kelas kegagalan yang sama, dan keduanya
-pernah terjadi: model salah bentuk **tidak melempar error**, ia cuma
-mengembalikan hasil kosong selamanya. `PidnetService.tryLoad` sekarang
-membuktikan tiap varian dengan inferensi percobaan sebelum menerimanya.
+Model salah bentuk **tidak melempar error**, ia cuma mengembalikan hasil
+kosong selamanya, dan itu sudah pernah terjadi di sini. `PidnetService.tryLoad`
+sekarang membuktikan tiap varian dengan inferensi percobaan sebelum
+menerimanya.
+
+> **Catatan sejarah `yolo11n.tflite`.** Berkas ini pernah dicabut dari
+> `pubspec.yaml` dengan alasan yang benar pada masanya: bentuknya NCHW
+> `[1,3,640,640]` sementara `YoloNavigasiService` menyusun NHWC
+> `[1,640,640,3]`, jadi interpreter menolaknya. Sekarang ia dimuat
+> `YoloNavInt8Service`, service terpisah yang memang dibangun untuk tata letak
+> NCHW dan justru **menolak** model yang bukan NCHW. Selama berkasnya tidak
+> terdaftar di `pubspec.yaml`, `rootBundle.load` gagal, `_int8Ready` tetap
+> false, dan pipeline yang dikira empat lapis diam-diam cuma tiga.
 
 ### Model deteksi rintangan
 
@@ -184,23 +199,36 @@ membuktikan tiap varian dengan inferensi percobaan sebelum menerimanya.
 | Laju | `FramePacer` 120 ms, sekitar 8 fps |
 | Dijalankan di | `IsolateInterpreter`, supaya layar tidak macet |
 
-### Mode Navigasi memakai TIGA model, bukan dua
+### Mode Navigasi memakai EMPAT model, bukan tiga
 
 | Lapis | Model | Yang hanya bisa dilihat lapis ini |
 |---|---|---|
-| Jalur | PIDNet-S | Zona kiri, tengah, kanan; permukaan layak jalan |
-| Bahaya jalanan | YOLO11n custom | `lubang`, `got_terbuka`, `tangga` |
-| Benda umum | SSD MobileNet COCO | `orang`, `motor`, mobil, sepeda, anjing, perabot jalan |
+| 1. Jalur | PIDNet-S | Zona kiri, tengah, kanan; permukaan layak jalan |
+| 2. Bahaya jalanan | YOLO11n custom FP16 (`yolo11n_navigasi.tflite`) | `lubang`, `got_terbuka`, `tangga` |
+| 3. Benda umum | SSD MobileNet COCO | `orang`, `motor`, mobil, sepeda, anjing, perabot jalan |
+| 4. Bahaya jalanan INT8 | YOLO11n INT8 NCHW (`yolo11n.tflite`) | `tiang`, yang tidak pernah menyala di lapis 2 |
 
-Ketiganya jalan paralel dari **satu frame yang sama**. Frame yang sama itu
+Keempatnya jalan paralel dari **satu frame yang sama**. Frame yang sama itu
 syarat, bukan penghematan: kalau salah satunya terlambat satu frame, pengguna
 bisa mendengar "jalur tengah aman" bersamaan dengan "ada motor di depan" dari
 pemandangan yang sudah lewat.
 
-Lapis COCO **tidak ikut menentukan** `_modelsReady`. Kalau SSD gagal dimuat,
-panduan jalur dan enam kelas custom tetap jalan penuh. Menjatuhkan seluruh mode
-karena lapisan tambahan gagal berarti menukar fungsi yang masih sehat dengan
-layar mati.
+**Keempat lapis wajib.** `_modelsReady` baru true kalau keempatnya termuat, dan
+kalau ada yang gagal `NavigationProvider` menyebutkan lapis mana lewat log.
+Sebelumnya lapis 3 dan 4 opsional dan modenya tetap menyala dengan dua lapis.
+Niatnya baik, tapi akibatnya satu mode memakai nama yang sama untuk dua tingkat
+perlindungan yang berbeda jauh, tanpa pengguna pernah diberi tahu yang mana
+yang sedang aktif. Lapis 4 khusus mengurus rintangan vertikal tipis seperti
+tiang listrik dan tiang rambu, justru golongan yang paling berbahaya: tongkat
+melewatinya tanpa menyentuh, lalu kepala yang menemukannya.
+
+Lapis 3 memakai singleton `TFLiteService` yang sama dengan Mode Deteksi Objek.
+Kalau modelnya sudah termuat dari sana, tidak ada interpreter kedua yang
+dibangun: di HP 4 GB dua interpreter menganggur sudah terasa.
+
+Duplikat antara lapis 2 dan lapis 4 dibuang berdasarkan IoU >= 0,45, lalu
+hasilnya digabung lagi dengan lapis COCO. Dua kali `mergeNavObstacles`, satu
+aturan prioritas bahaya.
 
 Hanya 15 dari 80 kelas COCO yang lolos saringan `kCocoNavRelevant`, dan hanya
 benda yang bisa menghalangi atau membahayakan langkah. Menyebut "botol" atau
@@ -217,9 +245,11 @@ karena kelasnya tidak berpadanan.
 | Hal | Nilai |
 |---|---|
 | Segmentasi | PIDNet-S, 3 zona (kiri, tengah, kanan) |
-| Rintangan | YOLO11n, 6 kelas: lubang, got_terbuka, tangga, orang, motor, tiang |
+| Rintangan FP16 | YOLO11n NHWC `[1,640,640,3]`, 6 kelas: lubang, got_terbuka, tangga, orang, motor, tiang |
+| Rintangan INT8 | YOLO11n NCHW `[1,3,640,640]`, 6 kelas yang sama, keluaran `[1,10,8400]` |
 | Laju | Timer 500 ms ditahan `FramePacer` 700 ms, efektif sekitar 1,4 fps |
-| Ambang | `lubang` dan `got_terbuka` 5%; kelas lain 30% |
+| Ambang FP16 | `lubang` dan `got_terbuka` 5%; kelas lain 30% |
+| Ambang INT8 | 25% untuk semua kelas, NMS IoU 0,45 |
 
 Kalau YOLO tidak mendeteksi apa pun, PIDNet-S tetap jadi lapis pengaman lewat
 penurunan rasio area walkable. Lihat bagian 14 soal seberapa sering itu yang
@@ -229,48 +259,69 @@ benar-benar terjadi.
 
 | Hal | Nilai |
 |---|---|
-| Berkas | `assets/models/rupiah_classifier_fp16.tflite` |
+| Berkas | `assets/models/rupiah_classifier_int8.tflite` |
 | Arsitektur | MobileNetV2 transfer learning (repo `rupiah_vision_revised`) |
+| Kuantisasi | INT8 untuk bobot dan aktivasi, I/O tetap float32 |
 | Ukuran masukan | 224 x 224 piksel, float32 **rentang -1..1** |
 | Resize | **letterbox** (`resize_with_pad`), bukan peregangan |
-| Praproses aplikasi | center-crop 0,7 dari frame, lalu letterbox |
+| Praproses aplikasi | **frame utuh**, tanpa crop, lalu letterbox |
+| Keluaran | softmax, bukan logit |
 | Jumlah kelas | 7 pecahan, emisi 2016 dan 2022 |
+| Ambang yakin | `confidenceThreshold` 0,85 |
+| Jalur margin | `marginThreshold` 0,50 dengan `marginPathMinConfidence` 0,80 |
 | Test accuracy (lab) | 97,98% pada test set internal |
 
-> `rupiah_classifier_int8.tflite` dan `uang_rupiah.tflite` di folder yang sama
-> **tidak dibundel** ke APK. Keduanya arsip model lama.
+> `rupiah_classifier_fp16.tflite` dan `uang_rupiah.tflite` di folder yang sama
+> **tidak dibundel** ke APK. `MoneyTFLiteService` hanya memuat varian int8.
+
+#### Frame dikirim utuh, tanpa center-crop
+
+Versi sebelumnya hanya menganalisis 70 persen area tengah, dengan asumsi
+pengguna menaruh uang pas di dalam bingkai panduan. Asumsi itu tidak berlaku
+untuk pengguna tunanetra: mereka tidak bisa melihat bingkai itu, jadi lembar
+yang sedikit bergeser kehilangan tepi, justru tempat angka nominal berada, dan
+model menjawab salah atau ragu tanpa satu pun tanda bahwa penyebabnya cuma
+framing.
+
+Jalur kamera (`classifyCameraImage`) dan jalur JPEG (`classifyJpeg`) sekarang
+sama-sama memakai gambar utuh. Kesepakatan keduanya dijaga kelompok C di
+`test/money_pipeline_test.dart`.
 
 #### Angka lab tidak sama dengan angka lapangan
 
 Test accuracy 97,98% diukur pada test set yang isinya **crop rapat** hasil
 bounding box: lembar uang mengisi lebih dari 80 persen bidang, rasionya sekitar
-2:1 mendatar. Frame kamera sungguhan tidak pernah seperti itu.
+2:1 mendatar. Frame kamera sungguhan tidak pernah seperti itu. Pergeseran
+distribusi skala dan framing itulah yang menahan mode ini, bukan bobot yang
+rusak; perbaikannya ada di `new_training/rupiah_vision_revised` (simulasi
+framing kamera lewat `--frame-prob` dan `--bg-dir`), bukan di sisi aplikasi.
 
-Angka di bawah ini diukur lewat `flutter test test/money_pipeline_test.dart`,
-memakai `classifyCameraImage` yang sama persis dengan yang dipakai aplikasi:
+**Angka lapangannya tidak bisa diukur dari `flutter test` di Linux.** Runtime
+desktop di `blobs/` berasal dari `tflite_flutter_plugin` v0.5.0 (2021) dan
+tidak sanggup menjalankan model INT8: ia memuatnya tanpa mengeluh lalu
+mengembalikan distribusi **rata 1/7 untuk masukan apa pun**. Gambar hitam polos
+dan gambar putih polos menghasilkan tujuh angka 0,1445 yang identik. Android
+memakai LiteRT 1.4.0 lewat `tflite_flutter` 0.12.1 dan menjalankan model yang
+sama dengan benar.
 
-| Fixture | Nominal asli | Tebakan teratas | Keyakinan | Selisih ke juara dua |
-|---|---|---|---|---|
-| `money_new2/5rb.png` | 5.000 | 5.000 | 90,6% | 87,6 |
-| `money_new2/10rb.png` | 10.000 | 10.000 | 82,0% | 71,0 |
-| `money_new2/20rb.png` | 20.000 | 20.000 | 64,7% | 55,2 |
-| `money_new/5000.png` | 5.000 | **20.000** | 42,6% | 23,1 |
-| `money_new/10000.png` | 10.000 | **50.000** | 35,6% | 2,2 |
+Karena itu `money_pipeline_test.dart` punya satu uji prasyarat bernama *runtime
+bisa menjalankan model terkuantisasi* yang **gagal**, bukan skip, di host
+Linux. Merahnya benar: tanpa uji itu seluruh kelompok B akan terbaca sebagai
+"model rusak" padahal yang tidak sanggup adalah runtimenya.
 
-Bacanya: tebakan teratas benar 3 dari 5, tapi hanya 1 dari 5 yang tembus ambang
-0,85. Artinya pada empat gambar sisanya aplikasi bilang "belum yakin" dan
-**tidak menyebutkan nominal apa pun**. Pengaman bekerja, tapi modenya sering
-tidak memberi jawaban.
+Untuk mengukur angka yang benar-benar mewakili ponsel, pakai LiteRT modern:
 
-Dua fixture `money_new/` adalah tangkapan layar ponsel 720x1560: lembar uang
-cuma sekitar 13 persen bidang, lebih dari separuh tensor jadi bantalan hitam
-karena rasio portretnya, dan gelembung petunjuk di layar menutupi tengah uang.
-Pada `10000.png` selisih ke juara dua cuma 2,2 poin, yang berarti model memang
-sedang menebak, bukan mengenali.
+```bash
+python3 -m venv .venv && .venv/bin/pip install ai-edge-litert pillow numpy
+.venv/bin/python tool/eval_rupiah_litert.py          # meniru jalur kamera
+.venv/bin/python tool/eval_rupiah_litert.py jpeg     # meniru jalur JPEG
+```
 
-Penyebabnya pergeseran distribusi skala dan framing, bukan bobot yang rusak.
-Perbaikannya ada di `new_training/rupiah_vision_revised` (simulasi framing
-kamera lewat `--frame-prob` dan `--bg-dir`), bukan di sisi aplikasi.
+Praproses dan gerbang di skrip itu **disalin persis** dari
+`lib/services/money_tflite_service.dart`. Kalau salah satunya diubah, ubah
+keduanya; kalau tidak, skrip itu mengukur pipeline yang tidak pernah dijalankan
+siapa pun. Versi Dart-nya ada di `test/rupiah_kamera_e2e_test.dart` dan akan
+jalan sendiri begitu runtime desktopnya diperbarui atau saat diuji on-device.
 
 Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scripts/02_export_tflite.py`):
 
@@ -283,10 +334,36 @@ Urutan kelas **wajib** persis seperti saat model dilatih (`CLASS_ORDER` di `scri
 > **bukan** 0..255. Nilai yang salah tidak memunculkan error apa pun, prediksinya
 > hanya diam-diam salah. Periksa ulang jika model diganti.
 
-**Aturan yang tidak bisa ditawar:** kalau keyakinan model di bawah 0,85,
-aplikasi **tidak menampilkan angka sama sekali**, hanya instruksi perbaikan.
-Menyebut nominal yang salah kepada orang yang tidak bisa memeriksa sendiri
-berarti kerugian uang nyata.
+#### Aturan jawaban: SELALU menjawab, TIDAK selalu dengan nada yakin
+
+Ini berubah, dan perubahannya penting dimengerti sebelum menyentuh
+`MoneyResult`.
+
+Versi sebelumnya **menolak menjawab** di bawah ambang: nominalnya dibuang dan
+yang keluar cuma instruksi "Belum yakin, dekatkan sedikit". Di atas kertas itu
+terdengar seperti pengaman. Di lapangan justru itu yang mematikan fiturnya:
+kasus paling biasa, uang tergeletak di meja lalu difoto sambil berdiri,
+berakhir buntu di kartu peringatan tanpa jalan keluar, dan pengguna yang tidak
+melihat layar tidak punya cara menebak apa yang kurang.
+
+Sekarang `_runInference` **selalu** mengembalikan nominal, dan
+`MoneyResult.certain` yang membedakan dua nada jawaban:
+
+| `certain` | Kapan | Nada yang wajib dipakai |
+|---|---|---|
+| `true` | keyakinan >= 0,85, **atau** margin ke juara dua >= 0,50 dengan keyakinan >= 0,80 | lugas: "Lima puluh ribu rupiah" |
+| `false` | selain itu | berpagar: "Sepertinya lima puluh ribu rupiah", plus ajakan mengecek ulang |
+
+`detected == false` sekarang **hanya** berarti tidak ada hasil sama sekali:
+model belum siap, atau frame-nya gagal dibaca. Keraguan model tidak lagi muncul
+sebagai `detected == false`.
+
+**Risikonya tidak dihapus, hanya dipindah, dan itu disengaja.** Nominal di
+bawah ambang memang masih bisa salah. Yang menahannya sekarang bukan diam,
+melainkan kata "sepertinya". Lapisan atas **tidak boleh** mengabaikan
+`MoneyResult.certain`: membacakan hasil berpagar dengan nada lugas
+mengembalikan persis bahaya yang dulu ditahan oleh penolakan menjawab, yaitu
+menyebut nominal keliru kepada orang yang tidak bisa memeriksa sendiri.
 
 ---
 
@@ -298,14 +375,20 @@ besar yang berulang memicu GC pause, dan karena antrean suara dijadwalkan dari
 thread UI, GC pause muncul sebagai TTS yang tersendat. Bagi pengguna tunanetra
 suara yang patah lebih merusak daripada gambar yang patah.
 
-Empat jalur inferensi kini memakai pola yang sama:
+Kelima jalur inferensi kini memakai pola yang sama:
 
 | Service | Buffer masukan | Interpreter |
 |---|---|---|
 | `tflite_service` (SSD rintangan) | `Uint8List` datar | `IsolateInterpreter` |
 | `yolo_navigasi_service` | datar | `IsolateInterpreter` |
+| `yolo_nav_int8_service` | `Float32List` datar, ditranspose NHWC ke NCHW di tempat | `IsolateInterpreter` |
 | `pidnet_service` | datar | `IsolateInterpreter` |
 | `money_tflite_service` | `Float32List` datar | `IsolateInterpreter` |
+
+`yolo_nav_int8_service` menerima tensor NHWC yang sama dengan lapis FP16 lalu
+mentransposenya sendiri ke NCHW, memakai buffer yang dipakai ulang antar frame
+alih-alih mengalokasi yang baru. Jadi `NavFrameConverter` tetap satu lintasan
+untuk kedua lapis YOLO, bukan dua.
 
 Service uang adalah yang terakhir menyusul. Sebelumnya ia membangun
 `List<List<List<List<double>>>>`, yaitu **50.401 objek List dan 150.528 double
@@ -351,7 +434,7 @@ ini, lima foto kamera sehat semuanya dilewati dan skor deteksi tidak berubah
 sama sekali.
 
 Dipakai di dua tempat sekaligus, `nav_frame_converter.dart` dan
-`tflite_service.dart`, supaya ketiga model navigasi melihat frame yang identik.
+`tflite_service.dart`, supaya keempat model navigasi melihat frame yang identik.
 Diuji di `test/luma_contrast_test.dart`.
 
 > Peregangan linier, bukan CLAHE. CLAHE butuh histogram per ubin dan buffer
@@ -368,6 +451,12 @@ sementara pengguna sudah melangkah melewatinya.
 ukur rata-rata bergerak, matikan lapis COCO di atas 1200 ms, baru beri tahu
 pengguna di atas 2500 ms. Yang dikorbankan COCO, bukan PIDNet atau YOLO, karena
 hanya COCO yang menambah cakupan tanpa menopang mode ini.
+
+Ini tidak bertabrakan dengan aturan "keempat lapis wajib" di bagian 3. Yang
+wajib adalah **termuat saat mode dinyalakan**; yang dimatikan pengawas ini
+adalah **pemanggilan per frame** sesudah mode berjalan dan terbukti tidak
+mengejar. Menolak menyalakan mode karena satu lapis tidak ada, dan menurunkan
+beban karena ponselnya kewalahan, adalah dua keputusan berbeda.
 
 Efek sampingnya menutup kebutuhan sensor termal: saat ponsel panas dan
 prosesornya diturunkan, durasi siklus naik dan mekanisme yang sama bekerja.
@@ -406,7 +495,8 @@ Nilai apa pun di bawah `0x4000` akan ditolak Play Store untuk target Android 15+
 
 `lib/core/voice/command_parser.dart`
 
-Mencocokkan ucapan pengguna ke 20 intent baku **sepenuhnya offline, 0 ms**.
+Mencocokkan ucapan pengguna ke 24 intent baku (enum `VoiceIntent`)
+**sepenuhnya offline, 0 ms**.
 Menggantikan `POST /api/intent` untuk seluruh kasus yang bisa diselesaikan
 secara lokal.
 
@@ -651,11 +741,12 @@ Berada di `lib/widgets/`:
 
 `ModeBadge`, `AlertCard`, `BottomActionBar`, `FullScreenButton`,
 `ModePickerSheet`, `VoiceOrb`, `StatusBanner`, `ZoneIndicator`,
-`ResultPanel`, `CameraHealthToast`, `GuideFrame`, `ChatBubble`,
-`NominalCard`, `TargetChip`, `SpeakingIndicator`, `PermissionCard`,
-`CameraStage`, `DetectionOverlay`, `SegmentationOverlay`, `DetectionCard`,
-`DistancePill`, `TierIcon`, `ContextualActionSlot`, `PageActionZone`,
-`OcrLongResultPanel`, `OcrDebugSheet`.
+`ResultPanel`, `CameraHealthToast`, `ChatBubble`, `NominalCard`,
+`TargetChip`, `SpeakingIndicator`, `PermissionCard`, `CameraStage`,
+`DetectionOverlay`, `SegmentationOverlay`, `DetectionCard`,
+`DetectionStatusPill`, `DistancePill`, `TierIcon`, `ContextualActionSlot`,
+`PageActionZone`, `OcrLongResultPanel`, `OcrDebugSheet`, `SheetHeader`,
+`TorchSlot`, `HoldToTalkGesture`, `HoldToTalkButton`.
 
 `CameraStage` layak disebut khusus: preview kamera dan hamparannya wajib
 berbagi persegi yang sama persis. `CameraPreview` menjaga rasio kamera dan
@@ -758,39 +849,48 @@ menurun, dan target sentuh membesar dari 48 menjadi 56 dp.
 lib/
 ├── main.dart                 Titik masuk, mendaftarkan seluruh provider
 ├── core/
-│   ├── layout/               Ukuran zona dan aturan pergeseran
-│   ├── speech/               Antrean suara bertingkat (TtsQueue)
-│   ├── state/                Penggabungan kondisi global jadi satu banner
-│   ├── net/                  ApiClient, FramePacer
+│   ├── layout/               zone_contract.dart, ukuran zona dan aturan pergeseran
+│   ├── speech/               tts_queue.dart, antrean suara bertingkat
+│   ├── state/                global_conditions.dart, kondisi global jadi satu banner
+│   ├── net/
+│   │   ├── api_client.dart           Klien HTTP + FramePacer
+│   │   └── frame_codec.dart          Encoding frame sebelum dikirim
 │   └── voice/
-│       ├── intents.dart              Enum VoiceIntent (20 intent baku)
+│       ├── intents.dart              Enum VoiceIntent (24 intent baku)
 │       ├── command_parser.dart       Pencocokan ucapan offline, berlapis
 │       ├── narration_scheduler.dart  Kapan bicara + anggaran kata (AKTIF)
-│       └── narration_engine.dart     Narasi bergaya panjang (tidak dipanggil)
+│       ├── narration_engine.dart     Narasi bergaya panjang (tidak dipanggil)
+│       └── voice_log.dart            Jejak ucapan untuk penyelidikan
+├── models/                   detection.dart, tipe hasil deteksi bersama
 ├── theme/                    Warna, tipografi, jarak, tema
 ├── widgets/                  Komponen sistem desain
 ├── providers/                State per mode, pengaturan, kondisi global
 ├── services/
 │   ├── tflite_service.dart       Deteksi rintangan on-device (SSD MobileNet)
-│   ├── money_tflite_service.dart Pengenalan uang on-device (MobileNetV2)
+│   ├── money_tflite_service.dart Pengenalan uang on-device (MobileNetV2 INT8)
 │   ├── pidnet_service.dart       Segmentasi jalur 3 zona on-device
-│   ├── yolo_navigasi_service.dart Rintangan navigasi on-device (YOLO11n custom)
+│   ├── yolo_navigasi_service.dart Rintangan navigasi FP16 NHWC (lapis 2)
+│   ├── yolo_nav_int8_service.dart Rintangan navigasi INT8 NCHW (lapis 4)
 │   ├── nav_obstacle_merger.dart  Saring COCO + gabung tanpa sebutan ganda
 │   ├── device_pace_watch.dart    Turunkan beban saat ponsel tidak mengejar
 │   ├── luma_contrast.dart        Perbaikan kontras selektif kamera lama
-│   ├── nav_frame_converter.dart  Satu lintasan isolate untuk kedua tensor nav
+│   ├── nav_frame_converter.dart  Satu lintasan isolate untuk tensor nav
 │   ├── ocr_service.dart          Baca teks on-device (ML Kit)
-│   ├── camera_capture_service.dart Kunci fokus, pilih frame tertajam, tolak buram
+│   ├── camera_capture_service.dart Kunci fokus, pilih frame tertajam, gerbang gelap
 │   ├── camera_health_service.dart  Orientasi dan guncangan dari accelerometer
-│   ├── server_service.dart       Dua panggilan backend yang tersisa
+│   ├── camera_intrinsics.dart    Panjang fokus untuk perkiraan jarak
+│   ├── server_service.dart       Panggilan backend yang tersisa
 │   ├── tts_service.dart          Mesin suara, ucapan diserialkan
-│   ├── translation_service.dart  Terjemah caption Moondream ke Indonesia (ML Kit)
+│   ├── translation_service.dart  Terjemah dua arah lewat ML Kit on-device
 │   ├── detection_filter.dart     Penyaring anti banjir suara
 │   ├── object_tracker.dart       Pelacak SORT, penghalus jarak
 │   └── haptic_service.dart       Pola getar
-├── screens/                  6 mode + splash, panduan, izin, pengaturan
+├── screens/                  6 mode + splash, panduan, izin, pengaturan, alamat server
 └── mock/                     Data tiruan untuk panel debug
 ```
+
+`TranslationService` dipakai dua arah: `toIndonesian` untuk caption Moondream2,
+`toEnglish` untuk menyusun `prompt_en` Mode Cari Objek.
 
 > `object_label_map.dart` sudah **dihapus**. Ia tidak pernah punya satu pun
 > import aktif.
@@ -817,9 +917,13 @@ Panduan uji manual langkah demi langkah, lengkap dengan apa yang harus
 diucapkan dan apa yang seharusnya terdengar, ada di
 [`../VERIFIKASI_FITUR.md`](../VERIFIKASI_FITUR.md).
 
-Alamat server bawaan adalah `10.0.2.2:8000` (emulator Android). **Untuk HP
-fisik**, ubah lewat layar Pengaturan: ucapkan "pengaturan" atau ketuk Pilih
-Mode → Pengaturan.
+Alamat server bawaan adalah `127.0.0.1:8000` (`kDefaultServerHost` di
+`services/server_service.dart`), yaitu server yang berjalan di perangkat yang
+sama. **Untuk emulator maupun HP fisik**, ubah lewat layar Pengaturan: ucapkan
+"pengaturan" atau ketuk Pilih Mode lalu Pengaturan.
+
+Alamat yang pernah disimpan **selalu menang** atas nilai bawaan, jadi mengubah
+konstanta itu hanya berpengaruh pada pemasangan baru.
 
 ### Delapan pengaturan yang tersimpan permanen
 
@@ -886,7 +990,8 @@ flutter install
 
 | Situasi | Alamat yang diisi |
 |---|---|
-| Emulator Android di laptop | `10.0.2.2:8000` (bawaan) |
+| Backend di perangkat yang sama | `127.0.0.1:8000` (bawaan) |
+| Emulator Android di laptop | `10.0.2.2:8000` |
 | HP fisik, WiFi sama dengan laptop | IP laptop, contoh: `192.168.1.5:8000` |
 | HP fisik, sambung USB + ADB reverse | `localhost:8000` |
 
@@ -912,11 +1017,17 @@ repo ini berstatus skip sejak awal. Begitu pustakanya dipasang, empat uji
 navigasi langsung merah, padahal sebelumnya tidak pernah ada satu pun tanda
 peringatan.
 
-Karena itu `test/money_pipeline_test.dart` punya satu uji prasyarat yang
-**gagal**, bukan skip, ketika runtime TFLite tidak ada. Untuk sengaja
-melewatinya (misalnya CI yang memang hanya memeriksa lint), pakai
+Karena itu `test/money_pipeline_test.dart` punya uji prasyarat yang **gagal**,
+bukan skip, ketika runtime TFLite tidak ada. Untuk sengaja melewatinya
+(misalnya CI yang memang hanya memeriksa lint), pakai
 `GUIDIO_ALLOW_SKIP_TFLITE=1`, dengan kesadaran penuh bahwa suite itu tidak
 memvalidasi model sama sekali.
+
+Ada prasyarat kedua yang lebih baru, *runtime bisa menjalankan model
+terkuantisasi*, dan di host Linux ia **memang merah**. Runtime desktop di
+`blobs/` tidak sanggup menjalankan model INT8 yang sekarang dibundel; lihat
+bagian 3. Merahnya itu yang menjaga kelompok B tidak salah dibaca sebagai
+"model rusak".
 
 ### Menyiapkan runtime TFLite (sekali per instalasi Flutter)
 
@@ -955,31 +1066,49 @@ indeks kroma yang hanya muncul di perangkat asli tetap tertangkap.
 
 Empat kelompok:
 
-| Kelompok | Yang dijaga | Status sekarang |
+| Kelompok | Yang dijaga | Status di host Linux |
 |---|---|---|
-| **A. KEAMANAN** | Tidak pernah yakin tapi salah. Di bawah ambang, `valueIdr` wajib `null` dan pengguna wajib dapat instruksi | 5/5 hijau |
-| **B. KEMAMPUAN** | Tebakan teratas harus benar, dan keyakinan harus tembus 0,85 | **4/10 merah** |
+| **A. KEAMANAN** | Tidak pernah yakin tapi salah. Nominal yang tidak lolos gerbang tidak boleh dibacakan dengan nada lugas | 5/5 hijau |
+| **B. KEMAMPUAN** | Tebakan teratas harus benar, dan nominalnya harus lolos gerbang yakin | **10/10 merah** |
 | **C. PARITAS** | Jalur kamera dan jalur JPEG harus sepakat | 5/5 hijau |
 | **D. KONTRAK** | Urutan kelas cocok dengan `rupiah_class_info.json`, ground-truth fixture bisa diurai | 2/2 hijau |
 
-Kelompok B adalah **ratchet yang sengaja dibiarkan merah**. Merahnya adalah
-informasi: pipeline uang belum layak dipakai pengguna. Jangan dilonggarkan
-supaya hijau. Yang dinaikkan adalah modelnya, lihat bagian 3.
+Kelompok B adalah **ratchet yang sengaja dibiarkan merah**. Jangan dilonggarkan
+supaya hijau. Tapi bacalah merahnya dengan benar: di host Linux ia merah karena
+**dua** sebab yang bertumpuk, dan cuma satu yang soal model.
+
+1. Runtime desktop tidak bisa menjalankan model INT8, jadi kelima fixture
+   pulang sebagai Rp1.000 dengan keyakinan 14,5 persen, yaitu chance level
+   untuk 7 kelas. Ini bukan pengukuran model.
+2. Modelnya sendiri memang belum tangguh pada framing kamera. Itu diukur di
+   Android atau lewat `tool/eval_rupiah_litert.py`, bukan di sini.
+
+Yang dinaikkan adalah modelnya, lihat bagian 3.
 
 Kelompok C bukan formalitas. Kedua jalur masuk punya praproses terpisah dan
 pernah memakai aturan crop yang berbeda, sehingga lembar yang sama bisa
 menjawab lain tergantung tombol mana yang ditekan. Kegagalan seperti itu
-mustahil didiagnosis dari laporan pengguna.
+mustahil didiagnosis dari laporan pengguna. Sekarang keduanya memakai frame
+utuh, dan kelompok inilah yang menjaganya tetap begitu.
 
 Fixture yang dipakai:
 
 ```
 test/fixtures/
-├── money_new/    2 tangkapan layar ponsel 720x1560 (uang kecil, tertimpa overlay UI)
-├── money_new2/   3 foto biasa 900x1600 (uang mengisi hampir selebar frame)
-├── money/        14 JPEG lama, kini tidak dipakai suite mana pun
-└── navigation/   5 PNG bahaya jalan
+├── money_new/      2 tangkapan layar ponsel 720x1560 (uang kecil, tertimpa overlay UI)
+├── money_new2/     3 foto biasa 900x1600 (uang mengisi hampir selebar frame)
+├── money/          14 JPEG lama, kini tidak dipakai suite mana pun
+├── rupiah_mobile/  Foto HP untuk tool/eval_rupiah_litert.py
+│   ├── foto_rupiah/  8 foto berlabel (5rb sampai 50rb, dua sudut per pecahan)
+│   ├── 20_ribuan/    6 foto satu pecahan, variasi jarak dan cahaya
+│   └── non_rupiah/   6 foto bukan uang, untuk menguji penolakan
+├── navigation/     5 PNG bahaya jalan
+└── object_find/    5 PNG benda, dipakai juga oleh pytest backend
 ```
+
+`backend/tests/` tidak punya folder `fixtures/` sendiri: `conftest.py` mencari
+`backend/tests/fixtures/` lebih dulu, dan karena tidak ada, ia jatuh ke
+`guidio_app/test/fixtures/`. Jadi kedua sisi menguji gambar yang sama persis.
 
 Ground-truth diambil dari nama berkas lewat regex (`5000.png` dan `5rb.png`
 sama-sama berarti Rp5.000). Tidak ada tabel hard-coded: kalau nama berkas
@@ -989,18 +1118,28 @@ hal yang salah.
 ### B. Uji lain
 
 ```bash
-flutter test                                  # semua
-flutter test test/command_parser_test.dart    # parsing perintah suara, tanpa model
-flutter test test/model_inference_test.dart   # inferensi YOLO navigasi
+flutter test                                     # semua, 26 berkas
+flutter test test/command_parser_test.dart       # parsing perintah suara, tanpa model
+flutter test test/model_inference_test.dart      # inferensi YOLO navigasi
+flutter test test/nav_pipeline_test.dart         # bentuk dan rentang tensor navigasi
 flutter test test/nav_obstacle_merger_test.dart  # gabung YOLO custom + COCO
 flutter test test/device_pace_watch_test.dart    # penurunan beban di ponsel lama
 flutter test test/luma_contrast_test.dart        # gerbang perbaikan kontras
+flutter test test/translation_service_test.dart  # ML Kit menyerah dengan jujur
+flutter test test/voice_gate_test.dart           # jawaban asisten tidak dibuang
 ```
 
-Tiga berkas terakhir menguji **kelas murni tanpa model**, mengikuti pola
-`assessScene`: logika yang menentukan apakah pengguna diberi tahu bahwa
-panduannya tertinggal, atau apakah sebuah bahaya disebut dua kali, tidak boleh
-cuma dibuktikan lewat uji lapangan.
+Selebihnya menguji alur dan kelas murni tanpa model: `mode_switch_guard_test`,
+`nav_phase_flapping_test`, `nav_card_identity_test`, `nav_guidance_wording_test`,
+`find_object_prompt_filter_test`, `find_object_announce_test`,
+`scene_plausibility_test`, `stt_locale_test`, `tts_answer_now_test`,
+`onboarding_flow_speech_test`, `permissions_flow_test`,
+`server_address_ready_test`, `detection_overlay_test`,
+`narration_scheduler_test`, `nav_pipeline_bench_test`.
+
+Polanya sama seperti `assessScene`: logika yang menentukan apakah pengguna
+diberi tahu bahwa panduannya tertinggal, atau apakah sebuah bahaya disebut dua
+kali, tidak boleh cuma dibuktikan lewat uji lapangan.
 
 ### C. Pipeline visual: `test/run_corridor_test.py`
 
@@ -1034,9 +1173,9 @@ uangnya dihapus karena dua cacat yang membuatnya tidak bisa merah:
 
 1. Ia membangun praprosesnya sendiri dengan
    `img.copyResize(source, width: 224, height: 224)`, yaitu **peregangan** ke
-   persegi tanpa center-crop. Model dilatih dengan letterbox dan aplikasi
-   memakai center-crop 0,7 lalu letterbox. Jadi suite itu mengukur pipeline
-   yang tidak pernah dijalankan siapa pun.
+   persegi tanpa letterbox. Model dilatih dengan `resize_with_pad` dan
+   aplikasi memakai letterbox atas frame utuh. Jadi suite itu mengukur
+   pipeline yang tidak pernah dijalankan siapa pun.
 2. Assert-nya dibungkus `if (confidence >= 0.85) { ... } else { print(...) }`.
    Karena model jarang menembus 0,85, cabang assert tidak pernah dieksekusi.
 
@@ -1049,18 +1188,21 @@ model menyamar jadi kegagalan parser.
 ### Hasil terakhir
 
 ```
-151 passed, 3 skipped, 10 failed
+278 passed, 24 skipped, 15 failed
 ```
 
-Sepuluh yang merah, semuanya nyata dan bukan masalah infrastruktur:
+Kelima belas yang merah, dan sebabnya masing-masing:
 
 | Jumlah | Berkas | Sebab |
 |---|---|---|
-| 6 | `money_pipeline_test.dart` kelompok B | Model belum tangguh pada framing kamera, lihat bagian 3 |
-| 4 | `model_inference_test.dart` kelompok B | Model navigasi YOLO tidak mendeteksi satu pun label yang diharapkan pada 4 dari 5 fixture. Baru terlihat sekarang karena sebelumnya selalu di-skip |
+| 1 | `money_pipeline_test.dart` prasyarat | Runtime desktop tidak sanggup menjalankan model INT8. **Ini soal runtime, bukan model.** Lihat bagian 3 |
+| 10 | `money_pipeline_test.dart` kelompok B | Akibat langsung dari baris di atas: seluruh fixture pulang di chance level. Angka model yang sebenarnya diukur lewat `tool/eval_rupiah_litert.py` atau di Android |
+| 4 | `model_inference_test.dart` kelompok B | `yolo11n_navigasi.tflite` tidak mendeteksi satu pun label yang diharapkan pada 4 dari 5 fixture navigasi |
 
-Empat kegagalan navigasi itu **temuan baru**, bukan regresi yang saya sebabkan.
-Ia sudah ada sejak lama dan tersembunyi di balik skip.
+Empat kegagalan navigasi itu **temuan lama yang akhirnya terlihat**, bukan
+regresi baru. Ia tersembunyi di balik skip selama runtime TFLite belum
+terpasang. Uji itu hanya menguji lapis FP16; lapis INT8 (`yolo11n.tflite`) yang
+sekarang menambalnya belum punya uji sendiri.
 
 ---
 
