@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../core/voice/command_parser.dart';
+import '../core/voice/voice_log.dart';
 import '../services/server_service.dart';
 import '../services/translation_service.dart';
 import '../core/speech/tts_queue.dart' show SpeechTier;
@@ -232,10 +233,17 @@ class FindObjectProvider extends ChangeNotifier {
       // penjaga ini, "tas merah" yang datang telat menimpa "dompet" yang baru
       // diminta - dan pencariannya mencari benda yang salah tanpa satu pun
       // tanda di suara maupun di layar.
-      if (_target != target) return;
+      if (_target != target) {
+        VoiceLog.route(
+          'cari-objek terjemahan "$phrase" -> "${en ?? "(null)"}" DIBUANG, '
+          'target sudah berganti jadi "$_target"',
+        );
+        return;
+      }
       _targetEn = en;
+      VoiceLog.route('cari-objek mlkit "$phrase" -> "${en ?? "(null, kamus backend dipakai)"}"');
     } catch (e) {
-      debugPrint('[FindObject] terjemahan prompt gagal: $e');
+      VoiceLog.warn('cari-objek terjemahan prompt gagal: $e');
     }
   }
 
@@ -298,6 +306,14 @@ class FindObjectProvider extends ChangeNotifier {
       // pengaman. Kalau lewat, `_targetEn` tetap null dan backend memakai
       // kamus manualnya - hasilnya lebih kasar, bukan gagal.
       await _translating?.timeout(_translateBudget, onTimeout: () {});
+
+      // Persis apa yang berangkat ke POST /api/cari-objek. Kalau hasil
+      // pencarian terasa mencari benda yang salah, jawabannya ada di baris
+      // ini - bukan di model, dan bukan di kamera.
+      VoiceLog.route(
+        'cari-objek KIRIM target="$target" prompt_en='
+        '${_targetEn == null ? "(tidak ada, backend pakai kamusnya)" : "\"$_targetEn\""}',
+      );
 
       final res = await ServerService.instance
           .cariObjek(jpeg, target, promptEn: _targetEn);

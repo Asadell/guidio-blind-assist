@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../core/speech/tts_queue.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
+import '../core/voice/voice_log.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
@@ -169,11 +170,14 @@ class VoiceProvider extends ChangeNotifier {
       onStatus: _onSttStatus,
       onError: (e) {
         _lastSttError = e.errorMsg;
-        debugPrint('[STT] error: ${e.errorMsg} (permanent: ${e.permanent})');
+        VoiceLog.warn(
+          'stt galat: ${e.errorMsg} (permanen: ${e.permanent}) '
+          'saat sesi stt#${SttSession.epoch} milik "${SttSession.owner}"',
+        );
       },
     );
     if (!_sttAvailable) {
-      debugPrint('[STT] initialize() gagal: mesin atau izin tidak tersedia.');
+      VoiceLog.warn('initialize() gagal: mesin atau izin tidak tersedia.');
       return;
     }
     await _resolveLocale();
@@ -220,15 +224,24 @@ class VoiceProvider extends ChangeNotifier {
       if (picked != null) {
         _localeId = picked;
         _indonesianConfirmed = true;
-        debugPrint('[STT] locale dipakai: $_localeId');
+        VoiceLog.route('locale dipakai: $_localeId');
         return;
       }
-      debugPrint('[STT] Bahasa Indonesia tidak ada di daftar perangkat. '
-          'Tetap mencoba $_localeId. '
-          'Tersedia: ${locales.map((l) => l.localeId).take(8).toList()}');
+      // Naik jadi peringatan, bukan catatan biasa.
+      //
+      // Selama ini barisnya terlihat seperti informasi netral, padahal ia
+      // menerangkan sebab paling sering dari perintah yang "salah masuk":
+      // ucapan Bahasa Indonesia dijalankan lewat pengenal berbahasa lain,
+      // dan yang keluar adalah kata yang bunyinya mirip tapi maknanya jauh
+      // ("carikan" -> "ceritakan"). Saat membaca log, baris ini harus
+      // terbaca lebih dulu daripada tuduhan ke parser.
+      VoiceLog.warn(
+        'Bahasa Indonesia TIDAK ADA di daftar perangkat. Tetap mencoba '
+        '$_localeId, tapi transkripnya rawan meleset. '
+        'Tersedia: ${locales.map((l) => l.localeId).take(8).toList()}',
+      );
     } catch (e) {
-      debugPrint('[STT] gagal membaca daftar locale, tetap memakai '
-          '$_localeId: $e');
+      VoiceLog.warn('gagal membaca daftar locale, tetap memakai $_localeId: $e');
     }
   }
 
@@ -303,8 +316,26 @@ class VoiceProvider extends ChangeNotifier {
       _holdCapTimer = Timer(kHoldToTalkMaxHold, _onHoldCapReached);
     }
 
+    // Nomor sesi dipegang lokal, lalu ikut dibawa closure di bawah. Dengan
+    // begitu hasil yang datang bisa dibandingkan dengan sesi yang SEDANG
+    // berjalan - lihat [SttSession] soal kenapa keduanya bisa berbeda.
+    final epoch = SttSession.begin(
+      'voice',
+      detail: 'locale=$_localeId, hold=$hold, mode=${_appMode.mode.name}',
+    );
+    var lastLogged = '';
+
     await _stt.listen(
       onResult: (result) {
+        SttSession.claim(epoch, 'voice');
+        // Parsial hanya dicatat saat teksnya berubah. Mesin pengenal
+        // memancarkannya berkali-kali per detik dengan isi yang sama, dan
+        // mencatat semuanya menenggelamkan baris FINAL yang justru dicari.
+        if (result.finalResult || result.recognizedWords != lastLogged) {
+          lastLogged = result.recognizedWords;
+          VoiceLog.heard(epoch, 'voice', result.recognizedWords,
+              isFinal: result.finalResult);
+        }
         _lastText = result.recognizedWords;
         notifyListeners();
       },
@@ -486,6 +517,38 @@ class VoiceProvider extends ChangeNotifier {
   /// semuanya bekerja. Kalau tidak, gagal. Yang menentukan cuma perlombaan.
   void _onSttStatus(String status) {
     if (status != 'done') return;
+
+    // Sesi milik layar lain TIDAK boleh diproses di sini.
+    //
+    // `SpeechToText()` adalah singleton, dan `initialize()` di paketnya
+    // berhenti lebih awal kalau sudah pernah berhasil:
+    //
+    //     if (_initWorked) return Future.value(_initWorked);
+    //
+    // Provider ini dibuat lebih dulu daripada layar mana pun, jadi DIALAH yang
+    // memasang `onStatus` - dan pemasangan itu permanen. `FindObjectScreen`
+    // memanggil `initialize()` juga, tapi panggilannya tidak melakukan apa-apa.
+    //
+    // Akibatnya: saat sesi "Sebutkan barang" di Mode Cari Objek selesai,
+    // status `done`-nya tetap mendarat di sini. Hasil ucapannya sendiri sudah
+    // benar mendarat di layar itu (ia yang terakhir memanggil `listen`, jadi
+    // dialah pemilik `onResult`), sehingga `_lastText` di sini masih kosong -
+    // dan kekosongan itu disimpulkan sebagai "tidak ada yang bicara".
+    //
+    // Yang terlihat pengguna persis seperti laporannya: nama barang sempat
+    // terpasang, lalu sepersekian detik kemudian tersapu oleh "Saya belum
+    // menangkap suaranya" milik provider ini. Targetnya sendiri tidak pernah
+    // hilang - `FindObjectProvider` masih memegangnya - jadi menekan tombol
+    // kirim sesudahnya tetap bekerja, dan itulah yang membuat bugnya terlihat
+    // seperti masalah tampilan padahal bukan.
+    if (SttSession.owner != 'voice') {
+      VoiceLog.route(
+        'status "done" diabaikan: sesi stt#${SttSession.epoch} milik '
+        '"${SttSession.owner}", bukan provider ini',
+      );
+      return;
+    }
+
     _holdCapTimer?.cancel();
     _holdCapTimer = null;
     // Sesi tekan-tahan sudah bergetar saat jari diangkat. Bergetar lagi di
@@ -509,6 +572,10 @@ class VoiceProvider extends ChangeNotifier {
   /// mengulang sama sekali.
   void _handleNothingHeard() {
     final err = _lastSttError;
+    VoiceLog.warn(
+      'tidak ada teks terkumpul di sesi stt#${SttSession.epoch} '
+      '(galat terakhir: ${err.isEmpty ? "-" : err})',
+    );
     final (message, state) = switch (err) {
       'error_busy' || 'error_client' => (
           'Mikrofon sedang dipakai aplikasi lain. Tutup aplikasi itu, lalu coba lagi.',
@@ -545,6 +612,19 @@ class VoiceProvider extends ChangeNotifier {
 
     final command = CommandParser.parse(text);
 
+    // Baris terpenting di seluruh berkas ini untuk keperluan diagnosis.
+    //
+    // Ia menjawab pertanyaan yang selama ini cuma bisa ditebak: teks yang
+    // MANA yang sampai ke router, jadi intent apa, saat mode apa. Tanpa
+    // `mode=`, perintah yang "salah masuk" tidak bisa dibedakan dari
+    // perintah yang memang diucapkan pengguna di mode itu.
+    VoiceLog.route(
+      'mode=${_appMode.mode.name} teks="$text" -> '
+      'intent=${command.intent?.name ?? "(tidak dikenali)"} '
+      'arg=${command.argument ?? "-"} '
+      'saran=[${command.suggestions.map((s) => s.name).join(", ")}]',
+    );
+
     if (!command.recognized) {
       if (command.suggestions.length >= 2) {
         // AS-19 - ambigu, pertanyaan pilihan dua.
@@ -570,6 +650,9 @@ class VoiceProvider extends ChangeNotifier {
 
     if (command.intent!.isModeChange) {
       // AS-17 - perintah ganti mode.
+      VoiceLog.route(
+        'ganti mode: ${_appMode.mode.name} -> intent ${command.intent!.name}',
+      );
       await _applyModeChange(command.intent!);
       return;
     }
@@ -594,6 +677,19 @@ class VoiceProvider extends ChangeNotifier {
 
     // Perintah deskripsi sekitar - Moondream2 via server.
     if (command.intent == VoiceIntent.describeScene) {
+      // `describeScene` TIDAK punya gerbang mode: `canDescribeScene` cuma
+      // memeriksa flag sibuk. Jadi satu kata yang salah dengar di mode mana
+      // pun ("carikan" terdengar "ceritakan") cukup untuk membajak layar,
+      // dan bagi pengguna tunanetra itu terasa seperti aplikasi melompat
+      // sendiri. Selama gerbangnya belum ada, minimal kejadiannya tercatat
+      // dengan nama yang benar alih-alih tampak seperti kesalahan Cari Objek.
+      if (_appMode.mode != AppMode.voice) {
+        VoiceLog.warn(
+          'describeScene dijalankan dari mode ${_appMode.mode.name}, '
+          'bukan dari mode voice - tidak ada gerbang mode di jalur ini. '
+          'Inilah yang membuat mode terasa melompat sendiri.',
+        );
+      }
       await _handleDescribeScene();
       return;
     }

@@ -13,6 +13,7 @@ import '../core/speech/tts_queue.dart';
 import '../core/net/frame_codec.dart';
 import '../core/voice/command_parser.dart';
 import '../core/voice/intents.dart';
+import '../core/voice/voice_log.dart';
 import '../providers/index.dart';
 import '../services/index.dart';
 import '../theme/index.dart';
@@ -371,8 +372,21 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     _holdCapTimer?.cancel();
     _holdCapTimer = Timer(kHoldToTalkMaxHold, _onHoldCapReached);
 
+    final epoch = SttSession.begin('cari-objek', detail: 'locale=id_ID, hold=true');
+    var lastLogged = '';
+
     await _stt.listen(
       onResult: (result) {
+        // Nilai baliknya sengaja tidak dipakai untuk membuang hasil. Berkas
+        // ini sedang mendiagnosis, bukan memperbaiki: menjatuhkan hasil yang
+        // nyasar mengubah perilaku, dan perubahan perilaku tidak boleh
+        // menyelinap masuk lewat penambahan log.
+        SttSession.claim(epoch, 'cari-objek');
+        if (result.finalResult || result.recognizedWords != lastLogged) {
+          lastLogged = result.recognizedWords;
+          VoiceLog.heard(epoch, 'cari-objek', result.recognizedWords,
+              isFinal: result.finalResult);
+        }
         if (!mounted) return;
         setState(() => _heardPartial = result.recognizedWords);
         if (!result.finalResult) return;
@@ -467,7 +481,20 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     // dipindai, dan dilaporkan tidak ketemu - jawaban yang membuatnya
     // menyimpulkan perintah pindah mode pun sudah rusak.
     final command = CommandParser.parse(heard);
+
+    // Penjaga di bawah HANYA memblokir `isModeChange`. Intent aksi global
+    // seperti `describeScene` lolos, dan di layar ini kelolosan itu tidak
+    // kelihatan: layar tetap memperlakukan ucapannya sebagai nama barang.
+    // Barisnya dicatat supaya saat perilaku aneh muncul, terlihat bahwa
+    // parser sebenarnya sudah menyimpulkan sesuatu yang lain.
+    VoiceLog.route(
+      'cari-objek teks="$heard" -> '
+      'intent=${command.intent?.name ?? "(tidak dikenali)"} '
+      'modeChange=${command.intent?.isModeChange ?? false}',
+    );
+
     if (command.intent?.isModeChange ?? false) {
+      VoiceLog.route('cari-objek ditolak: ini perintah ganti mode, bukan nama barang');
       TtsQueue.instance.speak(
         'Tombol ini untuk menyebut barang. Untuk pindah mode, pakai tombol '
         'bicara di tengah.',
@@ -487,6 +514,14 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     // barang jadi keyboard", dan seluruh kalimat itu yang dikirim ke YOLOE
     // sebagai nama barang.
     final target = CommandParser.extractFindObjectTarget(heard);
+
+    // Tiga bentuk teks yang sama, di tiga tahap berbeda. Kalau yang sampai ke
+    // YOLOE ternyata bukan yang diucapkan pengguna, baris ini menunjukkan di
+    // tahap mana teksnya berubah - tanpa perlu menebak isi kamus.
+    VoiceLog.route(
+      'cari-objek target="${target ?? "(kosong)"}" '
+      'frasaKeMLKit="${CommandParser.normalizeSearchPhrase(target ?? heard)}"',
+    );
 
     // `null` diteruskan sebagai string kosong: provider menjawabnya dengan
     // "Cari apa?" lalu kembali ke idle. Itu jauh lebih baik daripada memasang
