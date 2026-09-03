@@ -3,8 +3,13 @@
 /// Yang diuji di sini BUKAN kualitas terjemahannya - itu milik ML Kit dan
 /// tidak berjalan di test host. Yang diuji adalah kontrak yang dipegang
 /// `VoiceProvider._handleDescribeScene`: kapan `toIndonesian` boleh menjawab,
-/// dan kapan ia WAJIB mengembalikan null supaya deskripsinya tetap keluar
-/// dalam Bahasa Inggris alih-alih hilang sama sekali.
+/// dan kapan ia WAJIB mengembalikan null.
+///
+/// Arti null itu sudah berubah, dan uji di sini ikut menjaganya. Mode
+/// Deskripsi Sekitar tidak lagi jatuh ke Bahasa Inggris; null berarti pengguna
+/// mendengar bahwa penerjemahnya belum siap. Karena itu kesiapan service ini
+/// menentukan apakah fiturnya menghasilkan sesuatu, dan kegagalannya TIDAK
+/// BOLEH permanen dalam satu sesi.
 ///
 /// Bagi pengguna tunanetra, kegagalan yang paling mahal di jalur ini bukan
 /// terjemahan yang kaku - melainkan mode yang diam karena penerjemahnya
@@ -121,7 +126,7 @@ void main() {
     });
   });
 
-  group('menyerah dengan jujur (pemanggil jatuh ke Bahasa Inggris)', () {
+  group('menyerah dengan jujur (pemanggil TIDAK membacakan Inggris)', () {
     test('plugin tidak terpasang sama sekali', () async {
       // Tanpa mock handler, MethodChannel melempar MissingPluginException.
       final out = await TranslationService.instance.toIndonesian('a red car');
@@ -148,6 +153,29 @@ void main() {
       // Tidak menyentuh channel lagi: kalau ia mencoba ulang tiap permintaan,
       // setiap deskripsi menunggu unduhan gagal sebelum bicara.
       expect(log, isEmpty);
+    });
+
+    test('kegagalan TIDAK permanen: sesudah jedanya lewat, dicoba lagi',
+        () async {
+      // Regresi yang dijaga di sini nyata dan mahal. Sebelumnya sekali gagal
+      // berarti gagal untuk seluruh sesi, dan sebab tersering kegagalannya
+      // adalah tidak ada jaringan pada detik aplikasi dibuka. Akibatnya satu
+      // kedipan jaringan di pembukaan membuat mode Deskripsi Sekitar tidak
+      // pernah bisa menjawab sampai aplikasinya dimatikan - dan tidak ada
+      // satu pun cara bagi pengguna untuk memulihkannya.
+      installFake(downloaded: false, downloadOk: false);
+      await TranslationService.instance.toIndonesian('a red car');
+      expect(TranslationService.instance.lastAttemptFailed, isTrue);
+
+      TranslationService.instance.expireRetryCooldownForTest();
+
+      // Jaringannya kembali: unduhan yang sama sekarang berhasil.
+      installFake(downloaded: false, downloadOk: true, translation: 'mobil merah');
+      final out = await TranslationService.instance.toIndonesian('a red car');
+
+      expect(out, 'mobil merah');
+      expect(TranslationService.instance.ready, isTrue);
+      expect(TranslationService.instance.lastAttemptFailed, isFalse);
     });
 
     test('inferensi native melempar', () async {

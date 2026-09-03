@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../core/layout/zone_contract.dart';
 import '../providers/index.dart';
+import '../services/index.dart';
 import '../theme/index.dart';
 import '../widgets/index.dart';
 import 'settings_screen.dart';
@@ -66,6 +67,22 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
+
+    // Kesempatan kedua bagi model terjemahan.
+    //
+    // `main()` sudah memanggil `prewarm()` sekali, tapi pemanggilan itu jatuh
+    // pada detik aplikasi dibuka - saat WiFi sering belum tersambung kembali,
+    // atau data seluler belum aktif. Kalau ia gagal di sana dan tidak pernah
+    // dicoba lagi, mode inilah yang menanggung akibatnya: deskripsi suasana
+    // datang tapi tidak bisa diterjemahkan.
+    //
+    // Dipanggil di sini karena mode ini satu-satunya pemakai `toIndonesian`,
+    // dan masuk ke mode adalah tanda paling awal bahwa modelnya akan dipakai.
+    // Tanpa `await`: unduhannya boleh berjalan di latar selagi pengguna
+    // menyusun perintahnya.
+    if (!TranslationService.instance.ready) {
+      unawaited(TranslationService.instance.prewarm());
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;

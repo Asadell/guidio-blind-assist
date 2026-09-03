@@ -29,13 +29,23 @@
 /// yang TIDAK BISA memverifikasi jawaban dengan mata, perbedaan itu bukan soal
 /// kualitas bahasa, tapi soal keselamatan.
 ///
-/// KALAU TIDAK SIAP, IA MENYERAH
-/// -----------------------------
+/// KALAU TIDAK SIAP, IA MENYERAH - TAPI TIDAK UNTUK SELAMANYA
+/// ----------------------------------------------------------
 /// [toIndonesian] mengembalikan null - bukan melempar, bukan menunggu tanpa
 /// batas - kalau modelnya belum terunduh, unduhannya gagal, atau terjemahannya
-/// kosong. Pemanggil lalu kembali ke jalur lama: penanda "Dalam bahasa
-/// Inggris." plus caption aslinya. Deskripsi Inggris yang benar lebih berguna
-/// daripada keheningan.
+/// kosong.
+///
+/// Yang berubah dari versi sebelumnya adalah APA ARTI null itu bagi pemanggil.
+/// Dulu `VoiceProvider` membacakan caption Inggrisnya dengan penanda "Dalam
+/// bahasa Inggris."; sekarang mode Deskripsi Sekitar TIDAK PERNAH membacakan
+/// Bahasa Inggris sama sekali, dan null berarti pengguna diberi tahu bahwa
+/// penerjemahnya belum siap. Kalimat Inggris yang tidak dimengerti bukan
+/// informasi yang lebih sedikit, melainkan nol informasi yang terdengar
+/// seperti jawaban.
+///
+/// Konsekuensinya: kesiapan service ini sekarang menentukan apakah fiturnya
+/// menghasilkan sesuatu, jadi kegagalan persiapan TIDAK BOLEH permanen dalam
+/// satu sesi. Lihat [_retryCooldown].
 library;
 
 import 'dart:async';
@@ -54,11 +64,37 @@ class TranslationService {
   /// baik jatuh ke bahasa Inggris tepat waktu.
   static const Duration _translateTimeout = Duration(seconds: 6);
 
-  /// Batas menunggu unduhan model saat permintaan datang di tengah [prewarm].
-  /// Bukan batas unduhannya sendiri: unduhan tetap berjalan di latar dan
-  /// permintaan BERIKUTNYA akan menikmatinya. Ini cuma batas kesabaran satu
-  /// permintaan yang kebetulan datang duluan.
+  /// Batas menunggu unduhan model untuk permintaan LATAR, mis. `toEnglish`
+  /// yang dimulai saat target Cari Objek ditetapkan. Bukan batas unduhannya
+  /// sendiri: unduhan tetap berjalan di latar dan permintaan BERIKUTNYA akan
+  /// menikmatinya. Ini cuma batas kesabaran satu permintaan yang kebetulan
+  /// datang duluan.
   static const Duration _readyWaitTimeout = Duration(seconds: 8);
+
+  /// Batas menunggu untuk permintaan yang DIMINTA pengguna, yaitu deskripsi
+  /// suasana.
+  ///
+  /// Jauh lebih panjang dari [_readyWaitTimeout], dan itu disengaja. Pengguna
+  /// menekan tombol lalu sudah menunggu satu perjalanan jaringan ke Moondream2
+  /// sebelum sampai di sini; menyerah pada detik kedelapan berarti membuang
+  /// seluruh penantian itu demi jawaban yang tidak dia mengerti. Menunggu
+  /// lebih lama dan menjawab dalam Bahasa Indonesia adalah pertukaran yang
+  /// benar di jalur ini.
+  static const Duration _onDemandWaitTimeout = Duration(seconds: 25);
+
+  /// Jeda sebelum persiapan yang gagal boleh dicoba lagi.
+  ///
+  /// Ini yang menggantikan penanda gagal permanen. Sebab tersering kegagalan
+  /// adalah tidak ada jaringan pada detik aplikasi dibuka, dan itu keadaan
+  /// yang berubah beberapa saat kemudian. Menguncinya untuk seluruh sesi
+  /// berarti satu kegagalan sekejap di pembukaan membuat mode Deskripsi
+  /// Sekitar berbahasa Inggris sampai aplikasinya dimatikan, tanpa satu pun
+  /// cara bagi pengguna untuk memulihkannya.
+  ///
+  /// Jedanya tetap ada supaya kegagalan yang benar-benar menetap (perangkat
+  /// tanpa Play Services) tidak membuat tiap permintaan menunggu unduhan yang
+  /// pasti gagal.
+  static const Duration _retryCooldown = Duration(seconds: 15);
 
   final OnDeviceTranslatorModelManager _models =
       OnDeviceTranslatorModelManager();
@@ -79,10 +115,9 @@ class TranslationService {
 
   bool _ready = false;
 
-  /// Persiapan yang sudah pernah gagal. Tidak permanen: [prewarm] boleh
-  /// mencoba lagi, karena sebab tersering kegagalannya sementara - tidak ada
-  /// jaringan saat aplikasi dibuka pertama kali.
-  bool _lastAttemptFailed = false;
+  /// Kapan persiapan terakhir gagal. Null berarti belum pernah gagal, atau
+  /// sudah berhasil sesudahnya. Lihat [_retryCooldown].
+  DateTime? _failedAt;
 
   /// Model kedua bahasa sudah ada di perangkat dan penerjemah siap dipakai.
   bool get ready => _ready;
@@ -91,9 +126,16 @@ class TranslationService {
   /// memblokir apa pun.
   bool get preparing => _preparing != null;
 
-  /// Percobaan persiapan terakhir gagal. Selama ini true, [toIndonesian]
-  /// langsung menyerah tanpa menunggu.
-  bool get lastAttemptFailed => _lastAttemptFailed;
+  /// Percobaan persiapan terakhir gagal dan jeda coba-ulangnya belum lewat.
+  bool get lastAttemptFailed => _failedAt != null;
+
+  /// Boleh mencoba menyiapkan lagi: belum pernah gagal, atau kegagalannya
+  /// sudah cukup lama.
+  bool get _retryAllowed {
+    final failed = _failedAt;
+    if (failed == null) return true;
+    return DateTime.now().difference(failed) >= _retryCooldown;
+  }
 
   String get _en => TranslateLanguage.english.bcpCode;
   String get _id => TranslateLanguage.indonesian.bcpCode;
@@ -124,7 +166,7 @@ class TranslationService {
         final ok = await _models.downloadModel(code, isWifiRequired: wifiOnly);
         if (!ok) {
           debugPrint('[Translation] unduhan model "$code" gagal.');
-          _lastAttemptFailed = true;
+          _failedAt = DateTime.now();
           return false;
         }
       }
@@ -138,12 +180,12 @@ class TranslationService {
         targetLanguage: TranslateLanguage.english,
       );
       _ready = true;
-      _lastAttemptFailed = false;
+      _failedAt = null;
       debugPrint('[Translation] siap (en → id, on-device).');
       return true;
     } catch (e) {
       debugPrint('[Translation] persiapan gagal: $e');
-      _lastAttemptFailed = true;
+      _failedAt = DateTime.now();
       return false;
     }
   }
@@ -155,7 +197,12 @@ class TranslationService {
   /// menyiapkan jalur mundur ke teks Inggrisnya; null di sini bukan kesalahan,
   /// melainkan jawaban jujur bahwa terjemahan tidak tersedia sekarang.
   Future<String?> toIndonesian(String english) async {
-    return _translate(english, () => _enToId, rejectEcho: true);
+    return _translate(
+      english,
+      () => _enToId,
+      rejectEcho: true,
+      readyWait: _onDemandWaitTimeout,
+    );
   }
 
   /// Terjemahkan nama barang Bahasa Indonesia ke Inggris - dipakai Mode Cari
@@ -176,30 +223,38 @@ class TranslationService {
   /// "helm" - dan memulangkan null untuk itu berarti menolak terjemahan yang
   /// justru sudah benar.
   Future<String?> toEnglish(String indonesian) {
-    return _translate(indonesian, () => _idToEn, rejectEcho: false);
+    return _translate(
+      indonesian,
+      () => _idToEn,
+      rejectEcho: false,
+      readyWait: _readyWaitTimeout,
+    );
   }
 
   Future<String?> _translate(
     String input,
     OnDeviceTranslator? Function() pick, {
     required bool rejectEcho,
+    required Duration readyWait,
   }) async {
     final source = input.trim();
     if (source.isEmpty) return null;
 
     if (!_ready) {
-      // Kalau tidak ada persiapan yang berjalan dan yang terakhir gagal,
-      // menunggu tidak akan mengubah apa pun. Menyerah sekarang supaya
-      // pemanggil tetap dapat jawaban tepat waktu lewat jalur mundurnya.
-      final inFlight = _preparing;
+      var inFlight = _preparing;
       if (inFlight == null) {
-        if (_lastAttemptFailed) return null;
-        // Belum pernah disiapkan sama sekali (mis. prewarm di main() tidak
-        // sempat jalan). Mulai sekarang, tapi tetap dengan batas kesabaran.
-        unawaited(prewarm());
+        // Kegagalan yang masih hangat: menunggu tidak akan mengubah apa pun,
+        // dan menahan pemanggil di sini berarti tiap permintaan membayar
+        // ulang unduhan yang baru saja gagal. Menyerah cepat supaya jalur
+        // mundurnya tetap tepat waktu.
+        if (!_retryAllowed) return null;
+        // Belum pernah disiapkan, atau kegagalannya sudah cukup lama untuk
+        // dicoba lagi. Dimulai di sini, bukan dilewatkan: yang paling sering
+        // terjadi adalah aplikasi dibuka tanpa jaringan lalu jaringannya
+        // menyala beberapa saat kemudian.
+        inFlight = prewarm();
       }
-      final okay = await (_preparing ?? Future.value(false))
-          .timeout(_readyWaitTimeout, onTimeout: () => false);
+      final okay = await inFlight.timeout(readyWait, onTimeout: () => false);
       if (!okay || !_ready) return null;
     }
 
@@ -240,7 +295,17 @@ class TranslationService {
     _idToEn = null;
     _preparing = null;
     _ready = false;
-    _lastAttemptFailed = false;
+    _failedAt = null;
+  }
+
+  /// Majukan jeda coba-ulang seolah kegagalannya sudah lama. HANYA untuk test:
+  /// tanpa ini, menguji bahwa kegagalan TIDAK permanen berarti membuat suite
+  /// menunggu [_retryCooldown] dalam waktu nyata.
+  @visibleForTesting
+  void expireRetryCooldownForTest() {
+    if (_failedAt != null) {
+      _failedAt = DateTime.now().subtract(_retryCooldown * 2);
+    }
   }
 
   /// Lepaskan penerjemah. Model yang sudah terunduh TIDAK ikut dihapus -

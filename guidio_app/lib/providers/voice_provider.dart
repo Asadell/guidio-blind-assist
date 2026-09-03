@@ -953,7 +953,6 @@ class VoiceProvider extends ChangeNotifier {
   /// Teks deskripsi terakhir, disimpan supaya bisa dibacakan ulang sesudah
   /// dihentikan. Null berarti belum ada deskripsi sama sekali.
   String? _sceneNarration;
-  bool _sceneNarrationEnglish = false;
   String _sceneQualityNote = '';
 
   /// Sedang memotret dan menunggu jawaban server.
@@ -1033,16 +1032,14 @@ class VoiceProvider extends ChangeNotifier {
     _sceneNarrating = true;
     notifyListeners();
 
-    if (_sceneNarrationEnglish) {
-      await TtsQueue.instance.speak(
-        'Dalam bahasa Inggris.',
-        source: SpeechSource.assistant,
-      );
-    }
+    // Selalu locale Indonesia. Penanda "Dalam bahasa Inggris." dan jalur
+    // `english: true` sudah dibuang dari mode ini: deskripsi yang sampai ke
+    // sini dijamin sudah berbahasa Indonesia, karena caption yang gagal
+    // diterjemahkan tidak pernah menjadi narasi sama sekali. Lihat
+    // `_handleDescribeScene`.
     await TtsQueue.instance.speak(
       text,
       source: SpeechSource.assistant,
-      english: _sceneNarrationEnglish,
     );
     if (_sceneQualityNote.trim().isNotEmpty) {
       await TtsQueue.instance.speak(
@@ -1177,29 +1174,38 @@ class VoiceProvider extends ChangeNotifier {
       // ML Kit Translate menyelesaikan justru bagian itu: kalimat utuh atau
       // tidak sama sekali. `toIndonesian` mengembalikan null - tidak pernah
       // separuh - kalau modelnya belum terunduh atau terjemahannya tidak
-      // layak, dan di jalur itu kita kembali persis ke perilaku lama:
-      // penanda "Dalam bahasa Inggris." plus caption aslinya.
+      // layak.
+      //
+      // JALUR MUNDURNYA BUKAN LAGI BAHASA INGGRIS. Versi sebelumnya
+      // membacakan caption aslinya dengan penanda "Dalam bahasa Inggris.",
+      // dengan alasan deskripsi Inggris yang benar lebih berguna daripada
+      // keheningan. Alasan itu keliru untuk pengguna yang dituju mode ini:
+      // tunanetra di pasar dan warung Indonesia, yang kemampuan Inggris
+      // lisannya tidak bisa diasumsikan. Kalimat yang tidak dimengerti bukan
+      // informasi yang lebih sedikit, melainkan nol informasi yang terdengar
+      // seperti jawaban - dan pengguna tidak punya cara tahu bahwa yang
+      // gagal adalah penerjemahnya, bukan kameranya.
+      //
+      // Jadi kalau terjemahan tidak tersedia, yang diucapkan adalah keadaan
+      // sebenarnya, dalam Bahasa Indonesia, beserta satu tindakan berikutnya.
       final englishCaption = scene.descriptionEn;
-      final translated =
+      final description =
           await TranslationService.instance.toIndonesian(englishCaption);
-      final speakInEnglish = translated == null;
-      final description = translated ?? englishCaption;
+
+      if (description == null) {
+        debugPrint('[VoiceProvider] terjemahan gagal, caption asli: '
+            '"$englishCaption"');
+        await _handleLocal(
+          'Deskripsinya sudah didapat, tapi penerjemah Bahasa Indonesia '
+          'belum siap. Pastikan ponsel terhubung internet sebentar supaya '
+          'model bahasanya selesai diunduh, lalu coba lagi.',
+        );
+        return;
+      }
 
       _response = description;
       _setState(VoiceState.responded);
 
-      // Penanda "Dalam bahasa Inggris." hanya diucapkan di jalur mundur,
-      // dan itu bukan basa-basi.
-      //
-      // Di jalur itu TTS berpindah locale ke en-US tepat sesudah kalimat ini.
-      // Tanpa aba-aba, pengguna tunanetra mendengar suaranya tiba-tiba
-      // berganti bahasa di tengah aplikasi yang seluruhnya Bahasa Indonesia,
-      // dan kesimpulan pertama yang wajar adalah aplikasinya rusak.
-      //
-      // Sebaliknya, kalau terjemahan berhasil, penanda itu HARUS hilang:
-      // mengumumkan "Dalam bahasa Inggris" lalu berbicara Indonesia adalah
-      // kebingungan yang kita ciptakan sendiri.
-      //
       // Semuanya lewat ANTREAN, bukan langsung ke mesin.
       //
       // Dulu jalur ini memanggil `TTSService` langsung karena antrean belum
@@ -1214,7 +1220,6 @@ class VoiceProvider extends ChangeNotifier {
       // menahan gerbang sampai selesai. Bahaya kritis tetap boleh memotong,
       // tapi sekarang sisanya tetap di antrean dan tetap terucap sesudahnya.
       _sceneNarration = description;
-      _sceneNarrationEnglish = speakInEnglish;
       _sceneQualityNote = scene.message.trim();
       await _narrateScene();
     } on CaptureRejected catch (rejected) {
