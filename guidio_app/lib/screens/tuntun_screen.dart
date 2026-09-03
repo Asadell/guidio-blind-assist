@@ -492,19 +492,6 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
           else
             const ColoredBox(color: AppColors.cameraVoid),
 
-          // Peredup saat deteksi mati.
-          //
-          // Ini pembeda yang tidak mungkin terlewat: seluruh layar berubah
-          // terang-gelap, bukan satu label kecil yang berganti kata. Ia
-          // sengaja tidak membawa teks (lihat `AppColors.scrimDim`) - kalimat
-          // penjelasnya ada di DetectionStatusPill, satu tempat saja, supaya
-          // tidak ada dua sumber yang bisa saling bertentangan.
-          if (_hasCameraPermission && !_detectionActive)
-            const Positioned.fill(
-              child: IgnorePointer(
-                child: ColoredBox(color: AppColors.scrimDim),
-              ),
-            ),
 
           if (banner != null) Positioned(top: topInset, left: 0, right: 0, child: banner),
 
