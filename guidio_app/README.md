@@ -667,16 +667,19 @@ menerjemahkannya di perangkat** sebelum dibacakan, lewat Google ML Kit
 On-Device Translation (`google_mlkit_translation`).
 
 ```dart
-final translated = await TranslationService.instance.toIndonesian(captionEn);
-final speakInEnglish = translated == null;
+final description = await TranslationService.instance.toIndonesian(captionEn);
 
-if (speakInEnglish) {
-  await TtsQueue.instance.speak('Dalam bahasa Inggris.');   // penanda
+if (description == null) {
+  // TIDAK membacakan captionEn. Lihat "Tidak ada lagi jalur Inggris".
+  await _handleLocal(
+    'Deskripsinya sudah didapat, tapi penerjemah Bahasa Indonesia belum siap. '
+    'Pastikan ponsel terhubung internet sebentar supaya model bahasanya '
+    'selesai diunduh, lalu coba lagi.',
+  );
+  return;
 }
-await TtsQueue.instance.speak(
-  translated ?? captionEn,
-  english: speakInEnglish,   // id-ID kalau berhasil, en-US kalau menyerah
-);
+
+await TtsQueue.instance.speak(description, source: SpeechSource.assistant);
 ```
 
 Prinsipnya sama dengan yang membuat `narration_scheduler` dan `CommandParser`
@@ -692,11 +695,43 @@ berlawanan dengan default ML Kit: default itu berarti unduhannya diam-diam
 tidak pernah terjadi pada pengguna yang hanya punya data seluler, dan mereka
 justru mayoritas target aplikasi ini.
 
+#### Tidak ada lagi jalur Inggris
+
 Kalau modelnya belum siap, unduhannya gagal, atau terjemahannya tidak layak,
-`toIndonesian` mengembalikan **null** - tidak pernah setengah kalimat - dan
-kalimat Inggrisnya dibacakan, didahului satu penanda singkat supaya pengguna
-tahu bahasanya berganti dan tidak menyangka aplikasinya rusak. Deskripsi
-Inggris yang benar lebih berguna daripada keheningan.
+`toIndonesian` mengembalikan **null** - tidak pernah setengah kalimat.
+
+Versi sebelumnya membacakan caption Inggrisnya di jalur itu, didahului penanda
+"Dalam bahasa Inggris.", dengan alasan deskripsi Inggris yang benar lebih
+berguna daripada keheningan. **Alasan itu sudah dibuang.** Untuk pengguna yang
+dituju mode ini, tunanetra di pasar dan warung Indonesia, kalimat Inggris bukan
+informasi yang lebih sedikit melainkan nol informasi yang terdengar seperti
+jawaban - dan pengguna tidak punya cara tahu bahwa yang gagal adalah
+penerjemahnya, bukan kameranya.
+
+Sekarang mode ini **tidak pernah** membacakan Bahasa Inggris. `TtsQueue.speak`
+di jalur ini tidak lagi menerima `english: true`, dan penanda "Dalam bahasa
+Inggris." sudah dihapus. Yang keluar saat terjemahan tidak tersedia adalah
+keadaan sebenarnya, dalam Bahasa Indonesia, beserta satu tindakan berikutnya.
+
+**Konsekuensinya:** kesiapan `TranslationService` sekarang menentukan apakah
+mode ini menghasilkan sesuatu, bukan cuma menentukan bahasanya. Karena itu
+kegagalan persiapan **tidak boleh permanen dalam satu sesi**, dan dua hal
+menjaganya:
+
+| Penjaga | Apa yang dicegah |
+|---|---|
+| `_retryCooldown` 15 detik, menggantikan penanda gagal permanen | Satu kedipan jaringan di detik aplikasi dibuka mengunci mode ini berbahasa Inggris sampai aplikasinya dimatikan |
+| `prewarm()` diulang saat masuk Mode Asisten Suara | Unduhan hanya punya satu kesempatan, yaitu `main()`, yang justru jatuh pada saat jaringan paling sering belum siap |
+
+Batas menunggunya juga dibedakan: `toIndonesian` menunggu sampai **25 detik**
+(`_onDemandWaitTimeout`), jauh lebih lama dari 8 detik milik `toEnglish`.
+Pengguna di jalur ini menekan tombol lalu sudah menunggu satu perjalanan
+jaringan ke Moondream2; menyerah pada detik kedelapan berarti membuang seluruh
+penantian itu demi jawaban yang tidak dia mengerti.
+
+> **Syarat yang perlu diketahui:** unduhan model ML Kit butuh Google Play
+> Services. Di perangkat tanpa itu, terjemahan tidak akan pernah siap dan mode
+> ini akan selalu menjawab dengan pesan "penerjemah belum siap".
 
 Pendahulunya, `core/voice/scene_translator.dart`, adalah kamus kata-per-kata
 buatan sendiri. Berkas itu **sudah dihapus**. Cakupannya tidak konsisten: satu
@@ -1188,7 +1223,7 @@ model menyamar jadi kegagalan parser.
 ### Hasil terakhir
 
 ```
-278 passed, 24 skipped, 15 failed
+279 passed, 24 skipped, 15 failed
 ```
 
 Kelima belas yang merah, dan sebabnya masing-masing:

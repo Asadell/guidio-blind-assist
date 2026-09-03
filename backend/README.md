@@ -206,9 +206,14 @@ informasi posisi sama sekali.
 `POST /api/describe` mengembalikan `description_en`, caption Bahasa Inggris
 langsung dari Moondream2. **Flutter menerjemahkannya secara lokal** lewat
 `services/translation_service.dart`, yang memakai Google ML Kit On-Device
-Translation. Kalau modelnya belum siap atau terjemahannya tidak layak, kalimat
-Inggrisnya dibacakan apa adanya dengan penanda singkat lebih dulu. Tidak ada
-LLM penerjemah di alur ini, di sisi mana pun.
+Translation. Tidak ada LLM penerjemah di alur ini, di sisi mana pun.
+
+Yang dibacakan ke pengguna **selalu Bahasa Indonesia**. Kalau penerjemah di
+ponsel belum siap, aplikasi menyebutkan keadaan itu dalam Bahasa Indonesia dan
+tidak membacakan `description_en` apa adanya. Jadi jangan menilai keberhasilan
+endpoint ini dari apa yang terdengar di ponsel: `description_en` yang benar
+tetap bisa berujung pada pesan "penerjemah belum siap", dan itu masalah di sisi
+mobile, bukan di sini.
 
 > Pendahulunya, `core/voice/scene_translator.dart`, adalah kamus kata-per-kata
 > buatan sendiri dan **sudah dihapus** dari repo. Kalau dokumen lama menyebut

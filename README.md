@@ -232,10 +232,15 @@ Saat pengguna bertanya "apa yang ada di depanku", Moondream2 menghasilkan
 caption Bahasa Inggris. Flutter menerjemahkannya **di perangkat** lewat
 `services/translation_service.dart`, yang memakai Google ML Kit On-Device
 Translation: offline saat dipakai, tanpa LLM, dan tidak mengarang isi baru.
-Kalau modelnya belum siap atau terjemahannya tidak layak, `toIndonesian`
-mengembalikan null (tidak pernah setengah kalimat) dan kalimat Inggrisnya
-dibacakan, didahului penanda singkat "Dalam bahasa Inggris." supaya pengguna
-tahu bahasanya berganti dan tidak menyangka aplikasinya rusak.
+
+**Yang dibacakan ke pengguna selalu Bahasa Indonesia.** Kalau modelnya belum
+siap atau terjemahannya tidak layak, `toIndonesian` mengembalikan null (tidak
+pernah setengah kalimat) dan yang diucapkan adalah keadaan sebenarnya dalam
+Bahasa Indonesia, bukan caption Inggrisnya. Membacakan kalimat Inggris kepada
+tunanetra di pasar dan warung Indonesia bukan memberi informasi yang lebih
+sedikit, melainkan nol informasi yang terdengar seperti jawaban. Karena itu
+kesiapan penerjemah dijaga: kegagalan unduhan tidak permanen dalam satu sesi,
+dan `prewarm()` diulang saat masuk Mode Asisten Suara.
 
 Pendahulunya, `core/voice/scene_translator.dart`, adalah kamus kata-per-kata
 buatan sendiri dan sudah dihapus. Cakupannya tidak konsisten, dan pengguna yang
