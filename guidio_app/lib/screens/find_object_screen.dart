@@ -367,6 +367,21 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       return;
     }
 
+    // BUG FIX (error_busy): Pastikan sesi STT sebelumnya benar-benar berhenti
+    // sebelum membuka sesi baru. Android Speech Recognition engine menolak
+    // sesi baru dengan `error_busy` jika mikrofon masih dipakai sesi lama.
+    // Gejala: parsial masih masuk tapi `finalResult` tidak pernah datang,
+    // sehingga `_finalWaitTimer` tembak dengan string kosong → "Cari apa?".
+    if (_stt.isListening) {
+      await _stt.cancel();
+      // Beri jeda kecil supaya engine benar-benar melepas mikrofon.
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      if (!mounted) {
+        TtsQueue.instance.endVoiceSession();
+        return;
+      }
+    }
+
     provider.startListening();
 
     _holdCapTimer?.cancel();
@@ -395,7 +410,10 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
       },
       listenOptions: SpeechListenOptions(
         localeId: 'id_ID',
-        cancelOnError: true,
+        // cancelOnError: false supaya error_busy tidak membunuh sesi.
+        // Engine Android kadang melaporkan busy di awal lalu tetap berjalan;
+        // membatalkan saat error membuat parsial yang sudah masuk terbuang.
+        cancelOnError: false,
         // Sengaja melebihi batas tahan, supaya yang memotong sesi selalu
         // [_holdCapTimer] - satu penjelasan untuk satu peristiwa.
         listenFor: kHoldToTalkMaxHold + kHoldToTalkGrace,
@@ -408,6 +426,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     _holdCapTimer?.cancel();
     _holdCapTimer = null;
     HapticService.instance.warning();
+
+    // BUG FIX (error_busy / hold lepas sendiri): Simpan parsial terakhir
+    // sebelum stop, karena sesi dengan `error_busy` mungkin tidak menghasilkan
+    // `finalResult` tapi parsialnya sudah benar.
+    final lastPartial = _heardPartial.trim();
+
     if (_stt.isListening) await _stt.stop();
 
     // Gerbang dilepas begitu mikrofon tertutup, bukan setelah hasilnya tiba.
@@ -427,9 +451,28 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     _finalWaitTimer = Timer(const Duration(milliseconds: 1200), () {
       if (!mounted || _gotFinalResult) return;
       setState(() => _heardPartial = '');
-      // String kosong sengaja: provider menjawabnya dengan "Cari apa?" lalu
-      // kembali ke idle.
-      context.read<FindObjectProvider>().submitHeardText('');
+
+      final fo = context.read<FindObjectProvider>();
+
+      // BUG FIX 1 (Cari apa? muncul padahal target sudah ada):
+      // Jika parsial terakhir mengandung ucapan bermakna, gunakan itu.
+      // Ini menangani kasus error_busy di mana finalResult tidak datang
+      // tapi parsial sudah benar (misal: "carikan keyboard saya").
+      if (lastPartial.isNotEmpty) {
+        _submitHeard(lastPartial);
+        return;
+      }
+
+      // BUG FIX 1 (lanjutan): Jika parsial kosong DAN target sudah ada,
+      // jangan tanya "Cari apa?" - user mungkin hanya menekan tombol tanpa
+      // ngomong, bukan berarti target-nya harus di-reset.
+      if (fo.target != null) {
+        fo.backToIdle();
+        return;
+      }
+
+      // Benar-benar tidak ada ucapan dan belum ada target - tanya Cari apa?
+      fo.submitHeardText('');
     });
   }
 
@@ -453,6 +496,16 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
   /// dari aplikasi yang macet oleh pengguna yang tidak melihat layar.
   void _explainSpeakButton() {
     HapticService.instance.info();
+    // BUG FIX 3: Saat sedang scanning, beri feedback khusus saat tombol ditekan.
+    final fo = context.read<FindObjectProvider>();
+    if (fo.isScanning) {
+      TtsQueue.instance.speak(
+        'Sedang memproses untuk mencari gambar ini.',
+        tier: SpeechTier.info,
+        source: SpeechSource.assistant,
+      );
+      return;
+    }
     final reason = _speakButtonDisabledReason;
     TtsQueue.instance.speak(
       reason == null
@@ -463,9 +516,12 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
     );
   }
 
-  /// Null berarti tombol "Sebutkan barang" hidup.
+  /// Null berarti tombol "Sebutkan barang" / "Ganti barang" hidup.
   String? get _speakButtonDisabledReason {
     if (!_sttReady) return 'pengenalan suara belum siap di ponsel ini';
+    // BUG FIX 3: Tombol Ganti barang di-disable saat sedang memproses gambar.
+    // User tidak boleh ganti barang di tengah-tengah pencarian.
+    if (context.read<FindObjectProvider>().isScanning) return null; // handled via _explainSpeakButton
     return null;
   }
 
@@ -578,7 +634,10 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
         ? const StatusBanner(tier: AlertTier.warning, message: 'Tanpa internet, Cari Objek tidak tersedia')
         : null;
     final hasBanner = banner != null;
-    final hasTarget = _debugOverride == null && fo.target != null && fo.state != FindObjectState.idle;
+    // BUG FIX 2: Chip target tidak boleh hilang hanya karena state kembali ke
+    // idle (misal saat timer 2500ms setelah "Cari apa?"). Kondisi chip cukup
+    // bergantung pada ada-tidaknya target, bukan state mesin.
+    final hasTarget = _debugOverride == null && fo.target != null;
 
     // Tombol "Sebutkan barang" ikut hilang bersama kontennya: saat izin kamera
     // belum ada, atau saat mode ini benar-benar dimatikan karena offline.
@@ -672,14 +731,28 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
               right: AppSpacing.screenMargin,
               bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s3,
               child: HoldToTalkButton(
-                label: fo.target == null ? 'Sebutkan barang' : 'Ganti barang',
+                // BUG FIX 3: Label berubah saat scanning, tombol tetap aktif
+                // tapi onTooShort menjelaskan bahwa sedang memproses.
+                label: fo.target == null
+                    ? 'Sebutkan barang'
+                    : fo.isScanning
+                        ? 'Sedang memproses…'
+                        : 'Ganti barang',
                 listeningLabel: 'Mendengarkan…',
                 icon: Icons.record_voice_over_outlined,
                 liveTranscript: _heardPartial,
                 listening: fo.state == FindObjectState.listening,
-                onHoldStart: _speakButtonDisabledReason == null ? _onMicHoldStart : null,
-                onHoldEnd: _speakButtonDisabledReason == null ? _onMicHoldEnd : null,
-                disabledReason: _speakButtonDisabledReason,
+                // Saat scanning: hold masih diizinkan tapi diberi feedback suara
+                // melalui _explainSpeakButton yang dicek di awal.
+                onHoldStart: _speakButtonDisabledReason == null && !fo.isScanning
+                    ? _onMicHoldStart
+                    : null,
+                onHoldEnd: _speakButtonDisabledReason == null && !fo.isScanning
+                    ? _onMicHoldEnd
+                    : null,
+                disabledReason: fo.isScanning
+                    ? 'sedang memproses gambar'
+                    : _speakButtonDisabledReason,
                 onTooShort: _explainSpeakButton,
               ),
             ),
