@@ -78,7 +78,7 @@ class GateResult:
             "retry_suggested": self.reason in (
                 "sangat_buram", "terlalu_gelap", "terlalu_silau",
                 "kualitas_kurang", "resolusi_kecil",
-                "gambar_rusak", "gambar_kosong",
+                "gambar_rusak", "gambar_kosong", "format_tidak_didukung",
                 "gambar_terlalu_besar", "resolusi_terlalu_besar",
             ),
         }
@@ -225,6 +225,49 @@ MAX_UPLOAD_BYTES = 16 * 1024 * 1024
 MAX_DECODED_PIXELS = 40_000_000   # ~40 MP, jauh di atas kamera HP mana pun
 
 
+# Format yang boleh masuk, dikenali dari MAGIC BYTES - bukan dari ekstensi
+# berkas dan bukan dari `Content-Type`.
+#
+# KENAPA EKSTENSI TIDAK PERNAH DIPERIKSA
+# --------------------------------------
+# Keduanya dikirim klien dan bisa diisi apa saja. Berkas `.exe` yang dinamai
+# ulang `foto.png` akan tetap ditolak di sini, bukan karena namanya, tapi
+# karena delapan byte pertamanya bukan gambar. Sebaliknya, memeriksa ekstensi
+# tidak menambah keamanan sedikit pun: penyerang yang mengarang nama berkas
+# juga bisa mengarang ekstensinya. Itu sebabnya `file.filename` dan
+# `file.content_type` tidak pernah dibaca satu kali pun di seluruh backend ini.
+#
+# KENAPA DAFTAR PUTIH, BUKAN DAFTAR HITAM
+# ---------------------------------------
+# `cv2.imdecode` sanggup membaca jauh lebih banyak format daripada yang
+# dibutuhkan aplikasi ini: TIFF, OpenEXR, PFM, Sun raster, dan lainnya.
+# Parser-parser itu jarang dipakai, jarang diuji, dan beberapa punya riwayat
+# CVE kerusakan memori. Aplikasi hanya pernah mengirim JPEG (dan PNG di tes),
+# jadi menerima format lain berarti membuka permukaan serangan untuk
+# kemampuan yang tidak seorang pun pakai.
+#
+# Memeriksa ini SEBELUM dekode berarti byte dari format eksotis tidak pernah
+# sampai ke parser-nya sama sekali.
+_MAGIC_PREFIXES: tuple[tuple[bytes, str], ...] = (
+    (b"\xff\xd8\xff",       "JPEG"),
+    (b"\x89PNG\r\n\x1a\n",  "PNG"),
+)
+
+
+def _sniff_format(image_bytes: bytes) -> str | None:
+    """Nama format kalau dikenali dari magic bytes, kalau tidak None.
+
+    WebP perlu dua penggal terpisah: "RIFF" di offset 0 lalu "WEBP" di offset
+    8, karena RIFF juga dipakai AVI dan WAV.
+    """
+    for prefix, name in _MAGIC_PREFIXES:
+        if image_bytes.startswith(prefix):
+            return name
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "WEBP"
+    return None
+
+
 def gate(image_bytes: bytes, profile: str = "find_object",
          endpoint: str = "") -> GateResult:
     """
@@ -257,6 +300,22 @@ def gate(image_bytes: bytes, profile: str = "find_object",
             ok=False, frame=None, quality=None,
             reason="gambar_terlalu_besar",
             message="Gambarnya terlalu besar. Coba ambil ulang dengan kamera.",
+        )
+
+    fmt = _sniff_format(image_bytes)
+    if fmt is None:
+        # Ditolak sebelum satu byte pun sampai ke parser gambar. Pesannya
+        # sengaja sama dengan `gambar_rusak` di telinga pengguna: bagi orang
+        # yang memotret, "berkasnya bukan JPEG" dan "fotonya gagal" adalah
+        # kejadian yang sama, dan tindakan yang benar juga sama - potret ulang.
+        logger.warning(
+            f"[{tag}] unggahan ditolak: bukan JPEG/PNG/WebP "
+            f"(8 byte pertama: {image_bytes[:8].hex()})"
+        )
+        return GateResult(
+            ok=False, frame=None, quality=None,
+            reason="format_tidak_didukung",
+            message="Gambar tidak terbaca. Coba ambil ulang.",
         )
 
     frame = bytes_to_numpy(image_bytes)

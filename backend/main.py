@@ -14,6 +14,7 @@ from routers import (
     support,      # /api/capabilities
 )
 from services.find_object_service import FindObjectService
+from services.guard import GpuAdmission
 from services.moondream_service import MoonDreamService
 
 load_dotenv()
@@ -35,6 +36,16 @@ async def lifespan(app: FastAPI):
     # Cari Objek - YOLOE open-vocabulary, trigger-based (bukan real-time).
     # Satu dari dua fitur yang benar-benar butuh server: modelnya tidak ada
     # di ponsel.
+    # Satu pintu masuk GPU untuk KEDUA model. Sengaja dibagi, bukan satu
+    # semaphore per model: yang terbatas adalah kartunya, bukan modelnya.
+    # Dua semaphore terpisah masing-masing berisi 1 tetap membiarkan dua
+    # inferensi berjalan bersamaan di VRAM yang sama.
+    app.state.gpu = GpuAdmission()
+    logger.info(
+        f"[guard] antrean GPU: {app.state.gpu.concurrency} berjalan, "
+        f"{app.state.gpu.max_queue} menunggu"
+    )
+
     app.state.find_object_service = FindObjectService()
     logger.info("[FindObject] Service terdaftar (lazy-load model YOLOE).")
 
@@ -126,5 +137,8 @@ async def health():
         "find_object": finder is not None,
         "describe": bool(moondream and getattr(moondream, "available", False)),
     }
+    gpu = getattr(app.state, "gpu", None)
+    if gpu is not None:
+        payload["gpu_queue"] = gpu.stats()
     payload["server_time_ms"] = round((time.perf_counter() - t0) * 1000, 2)
     return payload

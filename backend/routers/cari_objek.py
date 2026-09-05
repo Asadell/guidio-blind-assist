@@ -66,6 +66,7 @@ PERUBAHAN DARI VERSI LAMA
 
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 
@@ -73,6 +74,7 @@ from fastapi import APIRouter, File, Form, Request, UploadFile
 from loguru import logger
 
 from services.find_object_constants import EXTRA_ID_TO_EN
+from services.guard import GpuBusy
 from services.image_gate import gate, quality_note
 from utils.image_utils import enhance_for_vision
 
@@ -285,7 +287,30 @@ async def cari_objek(
     resolved_prompt = svc.resolve_prompt(
         target, client_prompt_en=client_prompt_en
     )
-    result = svc.find(frame, resolved_prompt, target.strip().lower(), conf=conf)
+    # `svc.find()` sinkron dan berat: ia menahan GIL selama inferensi. Versi
+    # lama memanggilnya langsung di dalam `async def`, jadi seluruh event loop
+    # ikut berhenti - termasuk `/health`. Satu permintaan cari-objek membuat
+    # server tampak MATI bagi pemantau mana pun selama beberapa detik, padahal
+    # ia justru sedang bekerja.
+    #
+    # `to_thread` memindahkannya keluar dari event loop; `gpu.slot()` yang
+    # menjaga agar perpindahan itu tidak berubah menjadi 50 thread berebut
+    # satu kartu.
+    gpu = request.app.state.gpu
+    try:
+        async with gpu.slot("cari-objek"):
+            result = await asyncio.to_thread(
+                svc.find, frame, resolved_prompt, target.strip().lower(), conf
+            )
+    except GpuBusy:
+        return {
+            "found": False,
+            "reason": "server_sibuk",
+            "error": "server_sibuk",
+            "matches": [],
+            "message": "Server sedang sibuk. Coba lagi sebentar lagi.",
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
     # ── 4. Penalti confidence berbasis kualitas ──
     #

@@ -196,6 +196,12 @@ class MoonDreamService:
     def _describe_sync(self, image_bytes: bytes, length: str) -> Optional[str]:
         """Inferensi sinkron - dijalankan di thread pool."""
         try:
+            # Lapis dalam, bukan lapis utama: yang sampai ke sini seharusnya
+            # sudah JPEG hasil encode server sendiri. Batas ini menahan
+            # decode bomb kalau suatu saat ada pemanggil baru yang lupa
+            # melewati gerbang. Bawaan PIL (~89 MP) hanya memberi peringatan
+            # pada sebagian versi; disetel eksplisit supaya ia MENOLAK.
+            Image.MAX_IMAGE_PIXELS = 40_000_000
             pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
             # moondream VL API: encode → caption

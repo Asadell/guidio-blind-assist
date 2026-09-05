@@ -65,12 +65,23 @@ import time
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from loguru import logger
 
+from services.guard import GpuBusy
 from services.image_gate import gate, quality_note
 from utils.image_utils import enhance_for_vision, numpy_to_jpeg_bytes
 
 router = APIRouter(prefix="/api", tags=["describe"])
 
 DEFAULT_TIMEOUT = 25.0
+
+# Batas ATAS untuk `timeout` yang dikirim klien.
+#
+# `timeout` adalah field form, jadi nilainya datang dari luar dan tidak boleh
+# dipercaya. Tanpa batas ini, satu permintaan berisi `timeout=86400` menahan
+# satu slot GPU selama sehari penuh, dan hanya butuh beberapa permintaan
+# seperti itu untuk membuat kartu tidak pernah bisa dipakai siapa pun lagi.
+# Tidak diperlukan berkas jahat maupun banjir permintaan - cukup satu angka.
+MAX_TIMEOUT = 60.0
+MIN_TIMEOUT = 1.0
 
 # Caption yang secara teknis valid tapi tidak memberi informasi apa pun.
 # Moondream2 cenderung menghasilkan ini pada input yang tidak jelas.
@@ -168,9 +179,27 @@ async def describe_scene(
     if enhance:
         frame, steps = enhance_for_vision(frame, quality=quality,
                                           max_side=1024)
-        image_bytes = numpy_to_jpeg_bytes(frame, quality=92)
-    else:
-        image_bytes = raw
+
+    # Byte yang diteruskan ke Moondream SELALU hasil encode ulang dari frame
+    # yang sudah didekode gerbang, tidak pernah `raw` dari klien - termasuk
+    # saat `enhance=False`.
+    #
+    # Kenapa penting: Moondream membuka gambarnya dengan PIL, sementara
+    # gerbang memakai OpenCV. Meneruskan `raw` berarti byte yang sama dibaca
+    # DUA parser berbeda, dan dua parser tidak pernah sepakat sepenuhnya.
+    # Berkas "polyglot" - PNG sah dengan muatan ditempel di belakangnya -
+    # memanfaatkan persis celah itu: OpenCV mengabaikan ekornya dan meluluskan
+    # gambarnya, lalu PIL menerima byte penuh berikut ekornya.
+    #
+    # Encode ulang memutus rantai itu. Yang sampai ke PIL adalah JPEG yang
+    # dihasilkan server sendiri dari matriks pixel, jadi metadata, chunk
+    # tambahan, dan ekor apa pun dari berkas asli tidak ikut - bukan karena
+    # disaring satu per satu, melainkan karena tidak pernah disalin.
+    #
+    # Biayanya satu encode JPEG (beberapa milidetik) untuk menghapus seluruh
+    # kelas serangan beda-parser. `enhance=False` tetap berarti apa yang
+    # dijanjikannya: tanpa koreksi eksposur dan tanpa perubahan ukuran.
+    image_bytes = numpy_to_jpeg_bytes(frame, quality=92)
 
     # ── 3. Pastikan model siap SEBELUM jam inferensi mulai ──
     #
@@ -189,12 +218,30 @@ async def describe_scene(
     # mengurangi jatah inferensi.
     await moondream.ensure_ready()
 
-    # ── 4. Inferensi dengan timeout ──
+    # ── 4. Inferensi dengan timeout, di dalam satu slot GPU ──
+    #
+    # Batas waktunya dikurung dulu. Perhatikan juga bahwa `wait_for` hanya
+    # berhenti MENUNGGU: pekerjaan di thread pool tidak ikut berhenti saat
+    # waktunya habis. `gpu.slot()` yang memastikan pekerjaan yang tidak
+    # terlihat itu tidak pernah lebih dari satu, penjelasannya di
+    # `services/guard.py`.
+    timeout = min(max(timeout, MIN_TIMEOUT), MAX_TIMEOUT)
+    gpu = request.app.state.gpu
     try:
-        caption_en = await asyncio.wait_for(
-            moondream.describe(image_bytes, length=length),
-            timeout=timeout,
-        )
+        async with gpu.slot("describe"):
+            caption_en = await asyncio.wait_for(
+                moondream.describe(image_bytes, length=length),
+                timeout=timeout,
+            )
+    except GpuBusy:
+        return {
+            "ok": False,
+            "reason": "server_sibuk",
+            "error": "server_sibuk",
+            "description_en": "",
+            "message": "Server sedang sibuk. Coba lagi sebentar lagi.",
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
     except asyncio.TimeoutError:
         logger.warning(f"[describe] timeout setelah {timeout}s")
         return {
