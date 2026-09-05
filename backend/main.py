@@ -8,7 +8,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from db.database import init_db, is_available
 from routers import (
     cari_objek,   # /api/cari-objek - YOLOE open-vocabulary
     describe,     # /api/describe   - Moondream2
@@ -32,11 +31,6 @@ async def lifespan(app: FastAPI):
     diam-diam.
     """
     logger.info("=== Menyalakan Vinara/Guidio Backend ===")
-
-    # PostgreSQL - risk zone + capability overrides. Tabel telemetri, crash,
-    # antrean, label, dan manifest tidak lagi punya endpoint aktif; lihat
-    # `_archive/routers/support_full.py`.
-    init_db()
 
     # Cari Objek - YOLOE open-vocabulary, trigger-based (bukan real-time).
     # Satu dari dua fitur yang benar-benar butuh server: modelnya tidak ada
@@ -78,7 +72,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Vinara / Guidio Vision API",
-    version="2.0.0",
+    version="3.0.0",
     description=(
         "Backend untuk Vinara - asisten visual suara untuk pengguna tunanetra. "
         "Empat dari enam mode (Deteksi Objek, Kenali Uang, Baca Teks, "
@@ -98,13 +92,14 @@ app.add_middleware(
 
 # ── Permukaan API: 3 router, 3 endpoint + /health ────────────────────────
 #
-# Router yang diarsipkan ke `_archive/routers/` beserta alasannya:
-#   websocket, detect  → deteksi rintangan sudah on-device (SSD MobileNet)
-#   ocr                → sudah on-device (ML Kit), dan tetap begitu
-#   uang               → sudah on-device (MobileNetV2 TFLite)
-#   navigasi           → sudah on-device (PIDNet-S + YOLO11n TFLite)
+# Router yang dulu ada di sini sudah dihapus, bukan dipindah, beserta
+# alasannya:
+#   websocket, detect     → deteksi rintangan sudah on-device (SSD MobileNet)
+#   ocr                   → sudah on-device (ML Kit), dan tetap begitu
+#   uang                  → sudah on-device (MobileNetV2 TFLite)
+#   navigasi              → sudah on-device (PIDNet-S + YOLO11n TFLite)
 #   asisten, voice_router → intent parsing lokal (CommandParser), tanpa LLM
-#   risk_zone          → klien tidak pernah memanggilnya
+#   risk_zone             → klien tidak pernah memanggilnya
 #
 # Prinsipnya satu: kalau fiturnya sudah ada di ponsel, backend tidak perlu
 # menyediakannya lagi. Jalur ganda hanya menambah kode yang harus dijaga
@@ -127,7 +122,6 @@ async def health():
         "service": "Vinara Vision API",
         "version": "3.0.0",
         "uptime_seconds": round(time.time() - STARTED_AT, 1),
-        "database": is_available(),
         # Hanya dua fitur yang benar-benar dilayani server ini.
         "find_object": finder is not None,
         "describe": bool(moondream and getattr(moondream, "available", False)),

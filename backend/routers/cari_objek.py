@@ -51,11 +51,17 @@ PERUBAHAN DARI VERSI LAMA
      Pesan seperti "gambar buram" tidak berguna bagi pengguna tunanetra.
      Yang berguna: "tahan ponsel lebih diam sebentar".
 
-  5. KAMUS LABEL DI-CACHE
+  5. KAMUS LABEL SEPENUHNYA INTERNAL
      Versi lama memanggil `repo.get_searchable_labels()` pada SETIAP
      request. Untuk endpoint yang dipanggil berulang kali saat pengguna
      memutar badan (alur CO-05/CO-10), itu query database berulang untuk
-     data yang praktis tidak pernah berubah.
+     data yang praktis tidak pernah berubah - dan satu-satunya isi tabelnya
+     memang hasil seed dari kamus yang sudah ada di dalam kode.
+
+     Sekarang kamusnya dibaca langsung dari `EXTRA_ID_TO_EN`
+     (`services/find_object_constants.py`). Nama di luar kamus tetap
+     terlayani lewat `prompt_en` hasil terjemahan ML Kit on-device, jadi
+     janji open-vocabulary YOLOE tidak berkurang sedikit pun.
 """
 
 from __future__ import annotations
@@ -66,63 +72,12 @@ import time
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from loguru import logger
 
-from db.database import is_available
-from services import repository as repo
+from services.find_object_constants import EXTRA_ID_TO_EN
 from services.image_gate import gate, quality_note
 from utils.image_utils import enhance_for_vision
 
 router = APIRouter(prefix="/api", tags=["cari-objek"])
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  Cache kamus label
-# ═══════════════════════════════════════════════════════════════════════════════
-
-_LABEL_CACHE: dict = {"data": None, "ts": 0.0}
-_LABEL_TTL = 300.0  # detik
-
-
-def _get_label_map() -> dict[str, str]:
-    """
-    Ambil kamus label Indonesia -> Inggris, dengan cache 5 menit.
-
-    Kamus ini praktis statis. Memanggil database tiap request menambah
-    latency pada endpoint yang dipanggil berulang kali dalam satu sesi
-    pencarian, dan menciptakan kegagalan yang tidak perlu kalau database
-    sedang lambat.
-    """
-    now = time.time()
-    if (_LABEL_CACHE["data"] is not None
-            and now - _LABEL_CACHE["ts"] < _LABEL_TTL):
-        return _LABEL_CACHE["data"]
-
-    label_map: dict[str, str] = {}
-    if is_available():
-        try:
-            label_map = {
-                row["label_local"]: row["label_en"]
-                for row in repo.get_searchable_labels()
-            }
-        except Exception as e:
-            logger.warning(f"[cari-objek] kamus label tidak terbaca: {e}")
-            # Kalau ada cache lama, lebih baik pakai itu daripada kosong
-            if _LABEL_CACHE["data"] is not None:
-                return _LABEL_CACHE["data"]
-
-    _LABEL_CACHE["data"] = label_map
-    _LABEL_CACHE["ts"] = now
-    return label_map
-
-
-def invalidate_label_cache() -> None:
-    """Panggil ini kalau kamus label diubah lewat jalur admin."""
-    _LABEL_CACHE["data"] = None
-    _LABEL_CACHE["ts"] = 0.0
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  Endpoint
-# ═══════════════════════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  Pembersihan input
@@ -245,11 +200,12 @@ async def searchable_targets():
 
     Dipakai alur CO-12 (objek tak dikenali) untuk menawarkan barang lain
     yang memang bisa dicari.
-    """
-    from services.find_object_service import EXTRA_ID_TO_EN
 
-    label_map = _get_label_map()
-    targets = sorted(set(label_map.keys()) | set(EXTRA_ID_TO_EN.keys()))
+    Daftar ini bukan batas atas kemampuan pencarian: nama di luar kamus tetap
+    bisa dicari selama aplikasi mengirim `prompt_en`. Isinya adalah nama-nama
+    yang dijamin punya padanan prompt yang cocok dengan encoder teks YOLOE.
+    """
+    targets = sorted(EXTRA_ID_TO_EN.keys())
     return {"total": len(targets), "targets": targets}
 
 
@@ -327,7 +283,7 @@ async def cari_objek(
     svc = request.app.state.find_object_service
     client_prompt_en = _clean_prompt_en(prompt_en)
     resolved_prompt = svc.resolve_prompt(
-        target, _get_label_map(), client_prompt_en=client_prompt_en
+        target, client_prompt_en=client_prompt_en
     )
     result = svc.find(frame, resolved_prompt, target.strip().lower(), conf=conf)
 

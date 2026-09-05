@@ -1,24 +1,20 @@
 """Endpoint penunjang - tinggal satu: `/api/capabilities`.
 
 Sebelas endpoint lain (`/api/labels`, `/api/models/*`, `/api/events`,
-`/api/crash-report*`, `/api/queue/*`) dipindah ke
-`_archive/routers/support_full.py`: tidak satu pun pernah dipanggil aplikasi.
-Method kliennya ada di `ServerService`, lengkap dengan penanganan error, tapi
-tidak ada satu pun pemanggil - jadi tabel `telemetry_events`, `crash_reports`,
-`upload_queue`, `object_labels`, dan `model_manifest` tidak pernah menerima
-satu baris pun dari aplikasi.
+`/api/crash-report*`, `/api/queue/*`) sudah dihapus: tidak satu pun pernah
+dipanggil aplikasi. Method kliennya ada di `ServerService`, lengkap dengan
+penanganan error, tapi tidak ada satu pun pemanggil - jadi tabel
+`telemetry_events`, `crash_reports`, `upload_queue`, `object_labels`, dan
+`model_manifest` tidak pernah menerima satu baris pun dari aplikasi.
 
 Menyisakannya berarti memelihara permukaan API yang harus dijelaskan tapi
-tidak pernah dipakai. Berkasnya tetap ada di arsip kalau suatu saat
-telemetri benar-benar dipasang.
+tidak pernah dipakai. PostgreSQL ikut hilang bersamanya: backend ini sekarang
+stateless dan hanya melayani dua model yang tidak muat di ponsel.
 """
 
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
-
-from db.database import is_available
-from services import repository as repo
 
 router = APIRouter(prefix="/api", tags=["support"])
 
@@ -83,19 +79,9 @@ async def capabilities(request: Request):
         },
     }
 
-    # Override manual untuk demo / maintenance.
-    if is_available():
-        try:
-            for name, ov in repo.get_capability_overrides().items():
-                if name in caps and ov.get("forced_state"):
-                    caps[name]["state"] = ov["forced_state"]
-                    caps[name]["note"] = ov.get("reason") or caps[name]["note"]
-                    caps[name]["forced"] = True
-        except Exception:
-            pass
-
+    # Tidak ada lagi override manual dari database: status di sini murni
+    # dibaca dari service yang benar-benar hidup di proses ini.
     return {
         "server_time": datetime.now(timezone.utc).isoformat(),
-        "database": is_available(),
         "capabilities": caps,
     }

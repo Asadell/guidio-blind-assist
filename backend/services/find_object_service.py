@@ -204,12 +204,16 @@ class FindObjectService:
     def resolve_prompt(
         self,
         target_id: str,
-        label_map: dict[str, str],
+        label_map: dict[str, str] | None = None,
         client_prompt_en: str | None = None,
     ) -> str:
         """Ubah nama barang Bahasa Indonesia (beserta warna/kata sifat) jadi prompt Inggris untuk YOLOE.
 
-        `label_map` = {label_local: label_en} dari tabel object_labels.
+        `label_map` = {nama_id: nama_en} tambahan dari pemanggil. Dulu diisi
+        dari tabel `object_labels` di PostgreSQL; database itu sudah dihapus
+        dan tidak ada pemanggil yang mengisinya lagi, jadi nilainya opsional.
+        Parameternya dipertahankan sebagai titik sisip kalau suatu saat ada
+        kamus tambahan dari luar - bukan sebagai jalur yang masih hidup.
 
         `client_prompt_en` adalah terjemahan ML Kit on-device dari aplikasi
         ("tas merah" -> "red bag"). Nilainya dipakai sebagai LAPIS TENGAH,
@@ -235,6 +239,7 @@ class FindObjectService:
         dan pengguna cuma mendengar "tidak ketemu", tanpa satu pun petunjuk
         bahwa yang salah adalah promptnya, bukan barangnya.
         """
+        label_map = label_map or {}
         raw_key = target_id.strip().lower()
 
         # Clean search prefixes & filler words if passed directly to backend
@@ -258,7 +263,7 @@ class FindObjectService:
         if not key:
             key = raw_key
 
-        # Direct match in EXTRA_ID_TO_EN or DB label_map
+        # Direct match in EXTRA_ID_TO_EN atau label_map dari pemanggil
         if key in EXTRA_ID_TO_EN:
             return EXTRA_ID_TO_EN[key]
         if key in label_map:
