@@ -3,16 +3,26 @@ import os
 from pathlib import Path
 import cv2
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-BACKEND_DIR  = PROJECT_ROOT / "project" / "backend"
-TEST_DIR     = PROJECT_ROOT / "test" / "object_find"
-OUTPUT_DIR   = TEST_DIR / "results2"
+# Berkas ini ada di `backend/tests/`, jadi backend-nya satu tingkat di atas.
+# Versi lama merakit `tests/project/backend` - direktori yang tidak pernah
+# ada - sehingga skripnya tidak pernah bisa jalan sama sekali.
+TESTS_DIR   = Path(__file__).resolve().parent
+BACKEND_DIR = TESTS_DIR.parent
+
+# Fixture lokal kalau sudah dicopy, kalau belum ambil dari guidio_app -
+# aturan yang sama dengan conftest.py.
+_LOCAL_FIXTURES = TESTS_DIR / "fixtures" / "object_find"
+_APP_FIXTURES   = BACKEND_DIR.parent / "guidio_app" / "test" / "fixtures" / "object_find"
+TEST_DIR   = _LOCAL_FIXTURES if _LOCAL_FIXTURES.exists() else _APP_FIXTURES
+OUTPUT_DIR = TESTS_DIR / "results2"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 sys.path.insert(0, str(BACKEND_DIR))
 
-# Ensure env vars match backend
-os.environ["YOLOE_MODEL"] = str(BACKEND_DIR / "models" / "yoloe-11s-seg.pt")
+# Samakan dengan .env. Bobotnya ada di root backend, bukan di `models/`:
+# folder itu isinya model on-device (PIDNet, YOLO navigasi, Qwen) yang sudah
+# tidak dibaca backend sama sekali, jadi ikut dibersihkan.
+os.environ["YOLOE_MODEL"] = str(BACKEND_DIR / "yoloe-11s-seg.pt")
 os.environ["YOLOE_CONF"] = "0.001"
 
 from services.find_object_service import FindObjectService
@@ -45,9 +55,10 @@ def main():
     print("🔍 GUIDIO — Pengujian Mode Cari Objek (YOLOE) -> results2")
     print("=" * 70)
 
-    model_path = str(BACKEND_DIR / "models" / "yoloe-11s-seg.pt")
+    model_path = str(BACKEND_DIR / "yoloe-11s-seg.pt")
     if not os.path.exists(model_path):
-        model_path = str(BACKEND_DIR / "yoloe-11s-seg.pt")
+        print(f"[!] Bobot YOLOE tidak ada di {model_path}")
+        return
 
     print(f"Menggunakan Model: {model_path}")
     service = FindObjectService(model_path=model_path, conf=0.001)
@@ -55,7 +66,7 @@ def main():
         print("[!] Gagal memuat service YOLOE!")
         return
 
-    label_map_db = {}
+    extra_label_map: dict[str, str] = {}   # tidak ada kamus tambahan di luar EXTRA_ID_TO_EN
     summary = []
 
     for case in TEST_CASES:
@@ -72,7 +83,7 @@ def main():
         h, w = frame.shape[:2]
 
         target_id = case["target_id"]
-        prompt_en = service.resolve_prompt(target_id, label_map_db)
+        prompt_en = service.resolve_prompt(target_id, extra_label_map)
 
         print(f"\n📷 File Gambar : {case['filename']}")
         print(f"   🗣️ Target Input : \"{target_id}\"")

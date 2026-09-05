@@ -36,10 +36,9 @@ TIDAK ADA JALUR OCR DI SINI
 ---------------------------
 Mode Baca Teks berjalan sepenuhnya on-device lewat ML Kit dan tidak
 punya endpoint server sama sekali. Pipeline OCR agresif (deskew,
-koreksi perspektif, binarisasi Sauvola) sudah dipindah ke
-`_archive/utils/image_ocr_pipeline.py` sebagai rujukan - tetap berguna
-kalau nanti input ML Kit perlu diperbaiki di sisi Flutter, tapi yang
-berpindah ke sana nanti adalah algoritmanya ke Dart, bukan modul ini.
+koreksi perspektif, binarisasi Sauvola) sudah dihapus bersama arsipnya:
+kalau nanti input ML Kit perlu diperbaiki, yang dikerjakan adalah
+algoritmanya di Dart pada sisi Flutter, bukan modul ini.
 """
 
 

@@ -27,7 +27,7 @@ laptop yang menyala di mode yang justru menyangkut keselamatan.
 1. [Menjalankan](#1-menjalankan)
 2. [Pembagian tugas: on-device vs server](#2-pembagian-tugas-on-device-vs-server)
 3. [Rujukan endpoint](#3-rujukan-endpoint)
-4. [Basis data](#4-basis-data)
+4. [Basis data: tidak ada](#4-basis-data-tidak-ada)
 5. [Prinsip yang dipegang server ini](#5-prinsip-yang-dipegang-server-ini)
 6. [Struktur folder](#6-struktur-folder)
 7. [Keterbatasan yang perlu diketahui](#7-keterbatasan-yang-perlu-diketahui)
@@ -42,13 +42,14 @@ laptop yang menyala di mode yang justru menyangkut keselamatan.
 
 ### Prasyarat
 
-**PostgreSQL** bersifat **opsional**. Ia dipakai untuk zona rawan dan override
-kemampuan (demo/perawatan). Kalau tidak ada, server tetap jalan penuh dan kedua
-fitur utamanya tidak terpengaruh sama sekali.
+**Tidak ada prasyarat layanan sama sekali.** Backend ini stateless: tidak ada
+PostgreSQL, tidak ada kunci API, tidak ada proses lain yang harus hidup lebih
+dulu. Cukup Python dan bobot modelnya.
 
-```bash
-createdb -h localhost -U postgres vinara_dev   # hanya kalau dipakai
-```
+> **PostgreSQL sudah dihapus seluruhnya.** Dulu ia menyimpan zona rawan dan
+> override kemampuan; keduanya tidak pernah punya pemanggil di aplikasi. Kalau
+> dokumen lama menyuruh `createdb vinara_dev` atau mengisi `PGHOST`/`DATABASE_URL`,
+> abaikan - variabelnya sudah tidak dibaca kode mana pun.
 
 > **Tesseract tidak lagi dibutuhkan.** Baca Teks sudah pindah ke ML Kit
 > on-device di ponsel dan berjalan penuh tanpa server. Kalau dokumen lama
@@ -61,21 +62,19 @@ cd backend
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 
-cp .env.example .env  # isi kredensial PostgreSQL bila dipakai
+cp .env.example .env  # nilainya sudah benar, tidak ada yang wajib diisi
 
 venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-> **Sesudah menyalin `.env.example`, ubah `YOLOE_CONF` menjadi `0.001`.**
-> Berkas contoh itu masih berisi nilai lama `0.25`, yang membuat Cari Objek
-> gagal menemukan benda berskor rendah tanpa satu pun galat. Alasan lengkapnya
+> `.env.example` sekarang hanya berisi tiga kunci yang benar-benar dibaca kode:
+> `YOLOE_MODEL`, `YOLOE_CONF`, dan `MOONDREAM_DEVICE`. `YOLOE_CONF` sudah
+> bernilai `0.001` - tidak perlu diubah lagi. Alasan angkanya sekecil itu ada
 > di bagian 2.
 >
-> Kunci lain di `.env.example` (`YOLO_MODEL`, `SEGMENTATION_MODEL`,
-> `MONEY_MODEL`, `ANTHROPIC_API_KEY`) adalah sisa dari fitur yang sudah pindah
-> on-device atau dibuang. Tidak ada satu pun yang dibaca kode yang tersisa.
-> Yang benar-benar dipakai: `YOLOE_MODEL`, `YOLOE_CONF`, `MOONDREAM_DEVICE`,
-> dan kredensial PostgreSQL.
+> Kunci lama (`YOLO_MODEL`, `SEGMENTATION_MODEL`, `MONEY_MODEL`,
+> `ANTHROPIC_API_KEY`, dan seluruh `PG*`/`DATABASE_URL`) sudah dibuang: semua
+> fiturnya pindah on-device atau dihapus, dan tidak ada yang membacanya.
 
 Log startup yang benar:
 
@@ -102,8 +101,8 @@ Kalau muncul, berarti ada berkas lama yang tertinggal.
 
 Dokumentasi endpoint interaktif: `http://localhost:8000/docs`
 
-**Kalau PostgreSQL mati, server tetap jalan.** Kedua model utamanya tidak
-menyentuh basis data sama sekali.
+**Tidak ada basis data yang bisa mati.** Kedua model utamanya tidak pernah
+menyentuh penyimpanan apa pun - setiap permintaan berdiri sendiri.
 
 ---
 
@@ -120,7 +119,7 @@ menyentuh basis data sama sekali.
 | Cari Objek | **Server** (YOLOE) | `POST /api/cari-objek` |
 | Deskripsi suasana | **Server** (Moondream2 VLM) | `POST /api/describe` |
 
-Router yang diarsipkan ke `_archive/routers/` beserta alasannya:
+Router yang sudah dihapus beserta alasannya:
 
 | Berkas | Kenapa dibuang |
 |---|---|
@@ -411,7 +410,6 @@ supaya penaltinya terlihat, bukan tersembunyi.
   "service": "Vinara Vision API",
   "version": "3.0.0",
   "uptime_seconds": 128.4,
-  "database": true,
   "find_object": true,
   "describe": false,
   "server_time_ms": 0.21
@@ -426,9 +424,9 @@ alasannya ada di log.
 Aplikasi memakai `server_time_ms` untuk membacakan waktu tempuh di layar
 Pengaturan.
 
-> `/health` mengembalikan `"version": "3.0.0"`, sementara `FastAPI(version=...)`
-> di `main.py` masih `"2.0.0"`, jadi `/docs` menampilkan angka yang berbeda.
-> Keduanya di kode, bukan di dokumen ini.
+> `/health` dan `FastAPI(version=...)` di `main.py` sekarang sama-sama
+> `"3.0.0"`. Sebelumnya berbeda (`3.0.0` versus `2.0.0`), sehingga `/docs`
+> menampilkan angka yang tidak cocok dengan `/health`.
 
 ### `GET /api/capabilities`
 
@@ -440,7 +438,6 @@ kebingungan di tempat yang salah.
 ```json
 {
   "server_time": "2026-08-23T07:39:41+00:00",
-  "database": true,
   "capabilities": {
     "detection":   {"state": "up", "on_device": true,  "note": "..."},
     "money":       {"state": "up", "on_device": true,  "note": "..."},
@@ -457,26 +454,28 @@ bermasalah akan mengunci pengguna dari mode yang sebenarnya sehat.
 
 ---
 
-## 4. Basis data
+## 4. Basis data: tidak ada
 
-PostgreSQL bersifat **opsional** dan hanya dua kelompok tabel yang masih punya
-pemakai:
+Backend ini **stateless**. PostgreSQL sudah dihapus seluruhnya bersama
+`db/`, `services/repository.py`, dan dependensi `sqlalchemy` + `psycopg`.
 
-| Tabel | Isi |
-|---|---|
-| `risk_zones` | Lokasi yang sering dilaporkan ada hambatan |
-| `capability_overrides` | Paksa status fitur, untuk demo atau perawatan |
+Dua tabel yang sempat punya pemakai - `risk_zones` (lokasi yang sering
+dilaporkan berhambatan) dan `capability_overrides` (paksa status fitur untuk
+demo) - ikut hilang. Keduanya melayani endpoint yang tidak pernah dipanggil
+aplikasi. Sisanya (`telemetry_events`, `crash_reports`, `upload_queue`,
+`object_labels`, `model_manifest`, `assistant_sessions`, `voice_intents`)
+memang tidak pernah menerima satu baris pun: method kliennya ada di
+`ServerService` lengkap dengan penanganan error, tapi tidak satu pun punya
+pemanggil.
 
-Tabel lain di `db/schema.sql` (`telemetry_events`, `crash_reports`,
-`upload_queue`, `object_labels`, `model_manifest`, `assistant_sessions`,
-`voice_intents`) **tidak lagi punya endpoint aktif**. Method kliennya sempat
-ada di `ServerService`, lengkap dengan penanganan error, tapi tidak satu pun
-pernah dipanggil, jadi tabel-tabel itu tidak pernah menerima satu baris pun
-dari aplikasi. Skemanya dipertahankan kalau suatu saat telemetri benar-benar
-dipasang; endpoint-nya diarsipkan ke `_archive/routers/support_full.py`.
+Kamus nama barang yang dulu diseed ke `object_labels` sekarang dibaca langsung
+dari `EXTRA_ID_TO_EN` di `services/find_object_constants.py` - satu-satunya
+sumbernya sejak awal memang berkas itu. Nama di luar kamus tetap terlayani
+lewat `prompt_en` hasil terjemahan ML Kit on-device, jadi janji
+open-vocabulary YOLOE tidak berkurang sedikit pun.
 
-Tanpa autentikasi. Identifikasi cukup memakai `device_id` anonim yang dibuat
-aplikasi sendiri.
+Konsekuensi yang terasa: tidak ada layanan yang harus hidup sebelum `uvicorn`
+bisa melayani, dan tidak ada mode kegagalan "server nyala tapi separuh mati".
 
 ---
 
@@ -509,12 +508,9 @@ dikerjakan di sisi Flutter, offline, tanpa latensi jaringan.
 backend/
 ├── main.py                  Titik masuk, 3 router + /health
 ├── requirements.txt         Dependensi (lihat catatan di dalamnya)
-├── .env / .env.example      Konfigurasi
-├── export_tflite.py         Skrip sekali pakai, bukan bagian server
-├── db/
-│   ├── database.py          Koneksi PostgreSQL, aman kalau DB mati
-│   ├── schema.sql           Definisi tabel
-│   └── seed.py              Data rujukan
+├── .env / .env.example      Konfigurasi: 3 kunci, semuanya dibaca kode
+├── yoloe-11s-seg.pt         Bobot YOLOE (27 MB)
+├── mobileclip_blt.ts        Encoder teks YOLOE (572 MB) - lihat catatan di bawah
 ├── routers/
 │   ├── cari_objek.py        POST /api/cari-objek, GET /api/cari-objek/targets
 │   ├── describe.py          POST /api/describe (Moondream2, output EN)
@@ -523,16 +519,24 @@ backend/
 │   ├── find_object_service.py   YOLOE prompt teks
 │   ├── moondream_service.py     Deskripsi suasana (VLM), warm_up + ensure_ready
 │   ├── image_gate.py            Gerbang gambar: batas sumber daya, catatan kualitas
-│   ├── find_object_constants.py Kamus nama barang ID ke EN
-│   └── repository.py            Akses basis data
+│   └── find_object_constants.py Kamus nama barang ID ke EN
 ├── utils/
 │   └── image_utils.py       Konversi, penilaian kualitas, koreksi eksposur
-├── tests/                   pytest, lihat bagian 9
-└── _archive/
-    ├── routers/             Router lama, fiturnya sudah pindah on-device
-    ├── services/            Service pendampingnya (OCR, uang, YOLO, segmentasi)
-    └── utils/               Pipeline OCR lama
+└── tests/                   pytest, lihat bagian 9
 ```
+
+> **Jangan hapus `mobileclip_blt.ts`.** Ukurannya membuatnya tampak seperti
+> bobot sisa, padahal itu encoder teks yang dipakai YOLOE setiap kali
+> `resolve_prompt` menghasilkan prompt baru (`model.get_text_pe(...)`).
+> Ultralytics mencarinya di direktori kerja lebih dulu; kalau tidak ada, ia
+> mengunduh ulang ~572 MB dari GitHub pada permintaan pertama - dan gagal total
+> kalau demo berjalan tanpa internet. Berkas ini sudah masuk `.gitignore`, jadi
+> beratnya hanya di disk lokal, bukan di repo.
+
+> `db/`, `_archive/`, `services/repository.py`, `export_tflite.py`, `models/`,
+> dan bobot lama (`yolo11n.*`, `yoloe-11s-seg*.onnx`) sudah dihapus. Isi
+> `models/` seluruhnya melayani fitur yang kini on-device di Flutter (PIDNet,
+> YOLO navigasi) atau sisa era Qwen, dan tidak satu pun dibaca kode backend.
 
 > Tidak ada berkas LLM di folder ini. `narasi.py` dan `qwen_service.py` telah
 > dihapus.
@@ -726,7 +730,8 @@ Backend hanya memuat dua model. Sisanya ada di ponsel.
 | Komponen | Ukuran | Eksekusi | Keterangan |
 |---|---|---|---|
 | `vikhyatk/moondream2` | ~1,85 GB | Laptop GPU | Deskripsi suasana (FP16), unduh saat panggilan pertama |
-| `yoloe-11s-seg.pt` | ~30 MB | Laptop GPU | Cari Objek, open-vocabulary |
+| `yoloe-11s-seg.pt` | ~27 MB | Laptop GPU | Cari Objek, open-vocabulary |
+| `mobileclip_blt.ts` | ~572 MB | Laptop GPU | Encoder teks YOLOE, wajib ada (lihat bagian 6) |
 | PyTorch + CUDA | ~1,8 GB | Disk | Runtime |
 | Ultralytics, Transformers, OpenCV, FastAPI | ~300 MB | Disk | Framework |
 

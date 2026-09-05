@@ -2,7 +2,7 @@
 test_health.py - Tes endpoint /health dan /api/capabilities.
 
 Grup A dari VERIFIKASI_FITUR.md, versi pytest otomatis.
-Tidak membutuhkan database atau model hidup - semua dicek strukturnya saja.
+Tidak membutuhkan model hidup - semua dicek strukturnya saja.
 """
 
 
@@ -19,8 +19,18 @@ class TestHealth:
         r = client.get("/health")
         body = r.json()
         for field in ("status", "service", "version", "uptime_seconds",
-                      "database", "find_object", "describe", "server_time_ms"):
+                      "find_object", "describe", "server_time_ms"):
             assert field in body, f"Field '{field}' tidak ada di /health"
+
+    def test_no_database_field(self, client):
+        """Backend sudah stateless - `/health` tidak boleh melaporkan DB lagi.
+
+        Field `database` dulu selalu ada di sini. Membiarkannya (walau isinya
+        `false`) membuat klien menyimpulkan ada database yang sedang mati,
+        padahal tidak ada database yang perlu hidup sama sekali.
+        """
+        body = client.get("/health").json()
+        assert "database" not in body
 
     def test_uptime_positive(self, client):
         """Uptime harus bilangan positif."""

@@ -1,10 +1,23 @@
+"""Skrip manual untuk memukul `/api/cari-objek` pada server yang SUDAH hidup.
+
+Bukan tes pytest: jalankan `python tests/run_api_cases.py` setelah
+`python -m uvicorn main:app` menyala. Nama fungsinya sengaja tidak diawali
+`test_` supaya pytest tidak mengoleksinya - versi lama bernama
+`test_single_case(case)` dan pytest selalu gagal di situ mencari fixture
+`case` yang memang tidak pernah ada.
+"""
+
 import json
 import urllib.request
 import urllib.error
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-TEST_DIR = PROJECT_ROOT / "test" / "object_find"
+TESTS_DIR = Path(__file__).resolve().parent
+# Fixture lokal kalau sudah dicopy, kalau belum ambil dari guidio_app -
+# sama persis dengan aturan di conftest.py.
+_LOCAL = TESTS_DIR / "fixtures" / "object_find"
+_APP = TESTS_DIR.parent.parent / "guidio_app" / "test" / "fixtures" / "object_find"
+TEST_DIR = _LOCAL if _LOCAL.exists() else _APP
 BASE_URL = "http://localhost:8000"
 
 TEST_CASES = [
@@ -40,7 +53,7 @@ TEST_CASES = [
     },
 ]
 
-def test_single_case(case):
+def run_single_case(case):
     img_path = TEST_DIR / case["filename"]
     if not img_path.exists():
         return {"error": f"File {case['filename']} tidak ada"}
@@ -92,7 +105,7 @@ def main():
     print("Testing API /api/cari-objek live...")
     for c in TEST_CASES:
         print(f"\n--- Testing {c['label']} ({c['filename']}) ---")
-        res = test_single_case(c)
+        res = run_single_case(c)
         results.append({
             "case": c,
             "response": res
