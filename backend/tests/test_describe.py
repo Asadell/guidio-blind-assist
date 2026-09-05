@@ -88,7 +88,7 @@ class TestDescribeInvalidInput:
         """
         body = _post_describe(client, b"bukan_gambar").json()
         assert body.get("ok") is False
-        assert body.get("reason") == "gambar_rusak"
+        assert body.get("reason") == "format_tidak_didukung"
         assert body.get("message"), "Pesan Bahasa Indonesia untuk TTS wajib ada"
         assert not body.get("description_en"), \
             "Tidak boleh ada deskripsi dari gambar yang tidak terbaca"

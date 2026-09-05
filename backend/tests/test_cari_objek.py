@@ -58,7 +58,9 @@ class TestCariObjekInvalidInput:
         assert r.status_code == 200
         body = r.json()
         assert body["found"] is False
-        assert body.get("reason") == "gambar_rusak"
+        # `bukan_gambar_valid` bahkan tidak punya magic byte gambar, jadi ia
+        # berhenti di daftar putih format sebelum sempat didekode.
+        assert body.get("reason") == "format_tidak_didukung"
 
     def test_empty_bytes(self, client):
         """Gambar kosong harus balas found=False."""

@@ -28,6 +28,7 @@ laptop yang menyala di mode yang justru menyangkut keselamatan.
 2. [Pembagian tugas: on-device vs server](#2-pembagian-tugas-on-device-vs-server)
 3. [Rujukan endpoint](#3-rujukan-endpoint)
 4. [Basis data: tidak ada](#4-basis-data-tidak-ada)
+4b. [Keamanan unggahan](#4b-keamanan-unggahan)
 5. [Prinsip yang dipegang server ini](#5-prinsip-yang-dipegang-server-ini)
 6. [Struktur folder](#6-struktur-folder)
 7. [Keterbatasan yang perlu diketahui](#7-keterbatasan-yang-perlu-diketahui)
@@ -476,6 +477,77 @@ open-vocabulary YOLOE tidak berkurang sedikit pun.
 
 Konsekuensi yang terasa: tidak ada layanan yang harus hidup sebelum `uvicorn`
 bisa melayani, dan tidak ada mode kegagalan "server nyala tapi separuh mati".
+
+---
+
+## 4b. Keamanan unggahan
+
+Setiap permintaan ke kedua endpoint membawa berkas dari luar. Tiga lapis
+menjaga jalur itu, dan semuanya dikunci `tests/test_security_upload.py`.
+
+**1. Nama berkas tidak pernah dibaca.** `file.filename` dan
+`file.content_type` tidak muncul satu kali pun di seluruh backend. Keduanya
+dikirim klien, jadi memeriksanya tidak menambah keamanan apa pun: penyerang
+yang mengarang isi berkas juga bisa mengarang namanya. Kode yang memeriksa
+ekstensi terlihat seperti sedang mengamankan sesuatu, padahal keputusannya
+diambil dari data penyerang. Ada tes yang gagal kalau suatu saat ada yang
+menambahkannya.
+
+**2. Isinya yang diperiksa, dua tahap.** Delapan byte pertama harus cocok
+dengan JPEG, PNG, atau WebP; kalau tidak, ditolak `format_tidak_didukung`
+sebelum satu parser gambar pun tersentuh. Ini daftar putih, bukan daftar
+hitam, karena `cv2.imdecode` sanggup membaca TIFF, OpenEXR, PFM, dan lainnya
+yang tidak pernah dipakai aplikasi tapi punya riwayat CVE. Yang lolos magic
+byte masih harus benar-benar bisa didekode jadi matriks pixel, kalau gagal
+ditolak `gambar_rusak`.
+
+**3. Tidak ada yang dijalankan atau disimpan.** Byte unggahan tidak pernah
+ditulis ke disk, tidak pernah diserahkan ke shell, dan tidak pernah
+dideserialisasi. Ia hanya pernah menjadi array angka. Inilah lapis yang
+paling menentukan: berkas `.exe` yang entah bagaimana lolos sekalipun tetap
+tidak punya jalan untuk dieksekusi, karena tidak ada satu baris pun yang
+menjalankan apa pun.
+
+Diuji dengan berkas jahat sungguhan: PE Windows, ELF Linux, webshell PHP,
+skrip shell, SVG berisi `<script>`, ZIP, dan PDF, semuanya dinamai `.png`
+atau `.jpg`. Semua ditolak.
+
+### Polyglot dan encode ulang
+
+Satu kelas berkas memang LOLOS gerbang, dan itu benar: PNG sah dengan muatan
+ditempel di belakangnya sungguh gambar yang bisa didekode. OpenCV mengabaikan
+ekornya.
+
+Yang penting bukan menolaknya, melainkan memastikan ekornya tidak ikut ke
+mana-mana. Karena itu byte yang diteruskan ke Moondream selalu hasil encode
+ulang server dari matriks pixel, tidak pernah `raw` dari klien, termasuk saat
+`enhance=false`. Tanpa itu, byte yang sama dibaca dua parser berbeda (OpenCV
+di gerbang, PIL di Moondream), dan dua parser tidak pernah sepakat sepenuhnya.
+Encode ulang memutus rantai itu: metadata, chunk tambahan, dan ekor apa pun
+tidak ikut, bukan karena disaring satu per satu, melainkan karena tidak pernah
+disalin.
+
+### Antrean GPU
+
+`GPU_CONCURRENCY` (bawaan 1) dan `GPU_MAX_QUEUE` (bawaan 4) di
+`services/guard.py`. Selebihnya ditolak seketika dengan
+`reason="server_sibuk"`.
+
+Kenapa batas waktu saja tidak cukup: inferensi berjalan di thread lewat
+`run_in_executor`, dan thread Python tidak bisa dibatalkan dari luar. Saat
+`asyncio.wait_for` menyerah, ia hanya berhenti MENUNGGU; pekerjaan GPU-nya
+tetap jalan sampai selesai. Tanpa kendali penerimaan, 50 permintaan serentak
+menjadi 50 thread yang berebut satu kartu sementara semua kliennya menerima
+"timeout" lalu mencoba lagi. Batas waktu tanpa kendali penerimaan bukan rem,
+melainkan pengeras suara.
+
+Diukur pada 12 permintaan serentak: 5 dilayani, 7 ditolak dalam milidetik,
+dan `/health` tetap menjawab dalam 6 ms selama GPU sibuk. Yang terakhir itu
+berkat `asyncio.to_thread` di `cari_objek`: versi lama memanggil inferensi
+langsung di dalam `async def`, jadi satu permintaan membekukan seluruh event
+loop dan membuat server tampak MATI bagi pemantau mana pun.
+
+Statistik antreannya ikut di `/health` sebagai `gpu_queue`.
 
 ---
 

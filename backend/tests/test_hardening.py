@@ -93,20 +93,31 @@ class TestDecodeBomb:
 class TestMasukanBukanGambar:
     """Berkas yang formatnya sama sekali bukan gambar."""
 
-    @pytest.mark.parametrize("payload,nama", [
-        (b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", "pdf"),
-        (b"\x00\x00\x00\x18ftypmp42", "video mp4"),
-        (b"PK\x03\x04" + b"\x00" * 64, "zip"),
-        (b"bukan gambar sama sekali", "teks polos"),
-        (b"\xff\xd8\xff\xe0" + b"\x00" * 32, "JPEG terpotong"),
+    # `harapan` membedakan DI MANA berkas berhenti, dan bedanya bermakna:
+    #
+    #   format_tidak_didukung  Magic byte-nya bukan JPEG/PNG/WebP, jadi ia
+    #                          ditolak SEBELUM parser gambar mana pun
+    #                          menyentuhnya. Inilah lapis termurah sekaligus
+    #                          teraman.
+    #   gambar_rusak           Magic byte-nya benar, tapi isinya gagal
+    #                          didekode. Hanya bisa diketahui dengan mencoba.
+    @pytest.mark.parametrize("payload,nama,harapan", [
+        (b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", "pdf", "format_tidak_didukung"),
+        (b"\x00\x00\x00\x18ftypmp42", "video mp4", "format_tidak_didukung"),
+        (b"PK\x03\x04" + b"\x00" * 64, "zip", "format_tidak_didukung"),
+        (b"bukan gambar sama sekali", "teks polos", "format_tidak_didukung"),
+        (b"\xff\xd8\xff\xe0" + b"\x00" * 32, "JPEG terpotong", "gambar_rusak"),
     ])
-    def test_dijawab_bukan_dilempar(self, client, payload, nama):
+    def test_dijawab_bukan_dilempar(self, client, payload, nama, harapan):
         r = _post_cari(client, payload, "dompet")
         assert r.status_code == 200, f"{nama} menyebabkan {r.status_code}"
         body = r.json()
         assert body["found"] is False
-        assert body["reason"] == "gambar_rusak"
+        assert body["reason"] == harapan
         assert body["message"]
+        # Apa pun lapis yang menolaknya, penggunanya harus tetap diberi tahu
+        # bahwa memotret ulang itu langkah yang benar.
+        assert body.get("retry_suggested") is True
 
 
 class TestTargetAneh:
