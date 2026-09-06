@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 
+import '../core/a11y/screen_reader.dart';
 import '../core/layout/zone_contract.dart';
 import '../mock/ocr_mock_data.dart';
 import '../providers/index.dart';
@@ -67,6 +68,21 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     _cam = context.read<CameraProvider>();
     _voice = context.read<VoiceProvider>();
   }
+
+  /// Node semantik kartu hasil - tujuan fokus TalkBack begitu hasil siap.
+  ///
+  /// Inilah yang memperbaiki keluhan paling mendasar mode ini saat dipakai
+  /// dengan TalkBack: hasil OCR sudah tergambar di layar, tapi yang dibacakan
+  /// justru komponen di atasnya - "Mode aktif: Baca Teks", banner, tombol -
+  /// karena tidak ada yang pernah menyuruh TalkBack pindah ke kartu hasil.
+  /// TalkBack menaruh fokusnya di tempat yang menurutnya masuk akal, dan
+  /// tempat itu hampir tidak pernah kartu yang baru muncul di sepertiga bawah
+  /// layar.
+  ///
+  /// Sekarang kartu hasil punya alamat, dan setiap jalan keluar dari
+  /// pemindaian - berhasil, tidak ada teks, kelamaan - berakhir dengan fokus
+  /// yang mendarat di sana.
+  final GlobalKey _resultKey = GlobalKey();
 
   bool _hasCameraPermission = true;
   bool _scanning = false;
@@ -231,7 +247,6 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     // Mode Navigasi offline.
 
     final cameraProvider = context.read<CameraProvider>();
-    final ttsProvider = context.read<TtsProvider>();
 
     setState(() {
       _scanning = true;
@@ -261,7 +276,10 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         _nearTimeout = false;
         _fail = _FailKind.timeout;
       });
-      ttsProvider.speak('Terlalu lama, coba lagi.', tier: SpeechTier.warning);
+      // Kartu kegagalannya baru terpasang di frame berikutnya, jadi
+      // pemindahan fokus di dalam `_deliverToResultCard` yang menunggu
+      // frame itu - bukan pemanggil ini.
+      unawaited(_deliverToResultCard('Terlalu lama, coba lagi.'));
     });
 
     try {
@@ -276,10 +294,10 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       if (result.isEmpty) {
         // BT-11 - instruksi jarak konkret, bukan "tidak ada teks".
         setState(() => _fail = _FailKind.zeroText);
-        await context.read<TtsProvider>().speak(
-              'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal, pastikan seluruh tulisan masuk ke layar.',
-              tier: SpeechTier.warning,
-            );
+        await _deliverToResultCard(
+          'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal, '
+          'pastikan seluruh tulisan masuk ke layar.',
+        );
         return;
       }
 
@@ -297,7 +315,12 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       // BT-08 - kalau bacaannya panjang, sebut durasinya SEBELUM mulai,
       // supaya pengguna sempat memilih ringkasan.
       final secs = result.estimatedDuration.inSeconds;
-      if (secs > 90) {
+      // Peringatan durasi hanya berlaku kalau mesin suara APLIKASI yang akan
+      // membaca. Dengan TalkBack menyala, kecepatan membaca ditentukan
+      // penggunanya sendiri - dia menyapu maju kapan mau dan berhenti kapan
+      // mau - jadi "sekitar tiga menit dibacakan" bukan cuma tidak relevan,
+      // ia satu kalimat tambahan yang menunda kabar yang dia tunggu.
+      if (secs > 90 && !ScreenReader.isOn(context)) {
         await context.read<TtsProvider>().speak(
               'Teksnya panjang, sekitar ${(secs / 60).round()} menit dibacakan. '
               'Ucapkan "ringkas" kalau mau ringkasannya saja.',
@@ -323,6 +346,10 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         _scanning = false;
         _fail = _FailKind.zeroText;
       });
+      // Instruksi perbaikannya sudah diucapkan saat penolakan terjadi, jadi
+      // di sini tidak ada kalimat baru - yang tersisa cuma memastikan fokus
+      // TalkBack mendarat di kartunya, bukan di komponen paling atas layar.
+      if (ScreenReader.isOn(context)) ScreenReader.focusOn(_resultKey);
     } catch (e) {
       _hardTimeoutTimer?.cancel();
       _elapsedTicker?.cancel();
@@ -333,15 +360,34 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
         _scanning = false;
         _fail = _FailKind.zeroText;
       });
-      await context.read<TtsProvider>().speak(
-            'Gagal membaca gambar. Coba ambil ulang.',
-            tier: SpeechTier.warning,
-          );
+      await _deliverToResultCard('Gagal membaca gambar. Coba ambil ulang.');
     }
   }
 
   Future<void> _speak() async {
     if (_blocks.isEmpty) return;
+
+    // ── TalkBack menyala: TalkBack yang membacakan hasilnya ──────────────
+    //
+    // Fokus digeser ke kartu hasil, yang label semantiknya memang seluruh
+    // teks yang barusan dikenali. Mesin suara aplikasi sengaja tidak ikut
+    // bicara di sini; lihat alasannya di [_deliverToResultCard].
+    //
+    // `_speaking` karena itu tetap false, dan itu benar: tombol Jeda dan Stop
+    // milik mesin suara aplikasi, dan tidak ada yang bisa mereka hentikan.
+    // Menampilkannya hanya menawarkan kendali yang tidak berpengaruh apa-apa
+    // atas suara yang benar-benar sedang berbunyi.
+    if (mounted && ScreenReader.isOn(context)) {
+      ScreenReader.focusOn(_resultKey);
+      setState(() {
+        _speaking = false;
+        _paused = false;
+        _activeSentenceGlobal = -1;
+        _completedAt = DateTime.now();
+      });
+      return;
+    }
+
     final epoch = ++_speechEpoch;
     setState(() {
       _speaking = true;
@@ -685,6 +731,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
           ResultPanel(
             text: 'Pembacaan terlalu lama. Coba foto ulang.',
             failed: true,
+            announceOnAppear: false,
             onRetry: _scan,
             onDismiss: _dismissResult,
           ),
@@ -698,6 +745,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
           ResultPanel(
             text: 'Tidak ada teks terdeteksi. Dekatkan sekitar satu jengkal.',
             failed: true,
+            announceOnAppear: false,
             onRetry: _scan,
             onDismiss: _dismissResult,
           ),
@@ -716,6 +764,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
           ResultPanel(
             text: 'Hasil sudah lebih dari 15 menit. Foto ulang untuk membaca lagi.',
             failed: true,
+            announceOnAppear: false,
             onRetry: _scan,
             onDismiss: _dismissResult,
           ),
@@ -750,6 +799,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
             text: text,
             speaking: _speaking,
             paused: _paused,
+            announceOnAppear: false,
             onReplay: _replay,
             onTogglePlayback: _togglePause,
             onStop: _stopSpeaking,
@@ -808,6 +858,7 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
       paused: _paused,
       progress: progress,
       muted: false,
+      announceOnAppear: false,
       vertical: _isFontScale200,
       onTogglePlayback: _togglePause,
       onStop: _stopSpeaking,
@@ -818,13 +869,44 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Semua kartu hasil mode ini lewat sini - termasuk kartu kegagalan.
+  ///
+  /// Kuncinya dipasang di satu tempat dengan sengaja: apa pun yang muncul di
+  /// slot ini adalah "kabar yang ditunggu pengguna sesudah menekan tombol",
+  /// dan semuanya berhak mendapat fokus TalkBack. Kegagalan justru paling
+  /// berhak - kartu yang tidak pernah dibacakan tidak bisa dibedakan dari
+  /// tombol yang tidak menekan.
   Widget _bottomPanel(double bottomInset, Widget child) {
     return Positioned(
       left: AppSpacing.screenMargin,
       right: AppSpacing.screenMargin,
       bottom: bottomInset + AppSizes.bottomActionBarHeight + AppSpacing.s2,
-      child: child,
+      child: KeyedSubtree(key: _resultKey, child: child),
     );
+  }
+
+  /// Sampaikan kabar yang SUDAH tertulis di kartu hasil.
+  ///
+  /// Dengan TalkBack mati, mesin suara aplikasi yang membacakannya - seperti
+  /// selama ini. Dengan TalkBack menyala, fokus digeser ke kartunya dan
+  /// TalkBack yang membaca.
+  ///
+  /// Dua mesin suara membacakan kalimat yang sama ke telinga yang sama tidak
+  /// menghasilkan kalimat yang lebih jelas; ia menghasilkan dua kalimat
+  /// bertumpuk yang keduanya tidak terdengar. Salah satu harus mengalah, dan
+  /// yang mengalah adalah yang tidak bisa dihentikan pengguna: mesin suara
+  /// aplikasi. TalkBack punya gestur berhentinya sendiri yang sudah dihafal
+  /// penggunanya.
+  Future<void> _deliverToResultCard(
+    String spoken, {
+    SpeechTier tier = SpeechTier.warning,
+  }) async {
+    if (!mounted) return;
+    if (ScreenReader.isOn(context)) {
+      ScreenReader.focusOn(_resultKey);
+      return;
+    }
+    await context.read<TtsProvider>().speak(spoken, tier: tier);
   }
 
   Widget _renderDebug(BuildContext context, double bottomInset, String id) {
