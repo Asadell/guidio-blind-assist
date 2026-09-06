@@ -22,6 +22,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _kFontScale = 'font_scale';
   static const _kOnboardingDone = 'onboarding_done';
   static const _kServerHost = 'server_host';
+  static const _kAutoTorch = 'auto_torch';
 
   double _speechRate = 0.5;
   Verbosity _verbosity = Verbosity.sedang;
@@ -31,6 +32,7 @@ class SettingsProvider extends ChangeNotifier {
   double _fontScale = 1.0; // 1.0..2.0 (200%)
   bool _onboardingDone = false;
   String _serverHost = kDefaultServerHost;
+  bool _autoTorch = true;
 
   double get speechRate => _speechRate;
   Verbosity get verbosity => _verbosity;
@@ -40,6 +42,21 @@ class SettingsProvider extends ChangeNotifier {
   double get fontScale => _fontScale;
   bool get onboardingDone => _onboardingDone;
   String get serverHost => _serverHost;
+
+  /// Lampu senter menyala dan mati sendiri mengikuti kondisi cahaya.
+  ///
+  /// **Bawaannya menyala.** Pengguna tunanetra tidak punya cara tahu bahwa
+  /// sekitarnya gelap sampai aplikasi memberitahunya, dan saat itu terjadi ia
+  /// masih harus menemukan tombol lampu. Fitur yang harus dinyalakan lebih
+  /// dulu tidak akan pernah menolong orang yang belum tahu bahwa ia
+  /// membutuhkannya.
+  ///
+  /// **Kenapa tetap bisa dimatikan.** Lampu yang menyala sendiri di bioskop,
+  /// di angkutan umum, atau di kamar orang yang sedang tidur bukan sekadar
+  /// tidak sopan - ia menarik perhatian ke pemakainya, dan pengguna tunanetra
+  /// tidak bisa melihat bahwa dirinya sedang jadi perhatian. Saklar ini yang
+  /// membuat keputusannya kembali ke tangan pengguna.
+  bool get autoTorch => _autoTorch;
 
   /// Apakah alamat server boleh terbaca di layar.
   ///
@@ -84,6 +101,7 @@ class SettingsProvider extends ChangeNotifier {
     _fontScale = _prefs!.getDouble(_kFontScale) ?? 1.0;
     _onboardingDone = _prefs!.getBool(_kOnboardingDone) ?? false;
     _serverHost = _prefs!.getString(_kServerHost) ?? kDefaultServerHost;
+    _autoTorch = _prefs!.getBool(_kAutoTorch) ?? true;
     await TTSService.instance.setRate(_speechRate);
     // Tanpa baris ini, pilihan "Getar: Mati" tersimpan ke disk tapi tidak
     // mematikan apa pun.
@@ -135,6 +153,18 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setOnboardingDone(bool done) async {
     _onboardingDone = done;
     await _prefs?.setBool(_kOnboardingDone, done);
+    notifyListeners();
+  }
+
+  Future<void> setAutoTorch(bool value) async {
+    _autoTorch = value;
+    // Disimpan lalu diumumkan. Penerapannya ke kamera TIDAK terjadi di sini:
+    // CameraProvider yang mendengarkan lewat proxy di main.dart, sama seperti
+    // DetectionProvider mendengarkan ambang jarak. SettingsProvider hanya
+    // boleh memanggil singleton (TTS, Haptic, Server) - memberinya rujukan ke
+    // provider lain akan membuat urutan pendaftaran di main.dart menentukan
+    // benar atau tidaknya aplikasi berjalan.
+    await _prefs?.setBool(_kAutoTorch, value);
     notifyListeners();
   }
 

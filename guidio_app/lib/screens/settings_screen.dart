@@ -87,6 +87,16 @@ class SettingsScreen extends StatelessWidget {
               onSelectionChanged: (s) => context.read<SettingsProvider>().setVibrationMode(s.first),
             ),
           ),
+          // Ditaruh tepat di bawah "Getar" dan di atas ambang jarak dengan
+          // sengaja: ketiganya adalah pengaturan yang mengubah apa yang
+          // DILAKUKAN ponsel di sekitar orang lain, bukan bagaimana aplikasi
+          // terlihat. Pengguna yang buru-buru mematikan lampu di dalam
+          // bioskop mencari di kelompok itu.
+          _SettingsRow(
+            title: 'Lampu senter otomatis',
+            value: settings.autoTorch ? 'Aktif' : 'Mati',
+            child: _AutoTorchSwitch(enabled: settings.autoTorch),
+          ),
           _SettingsRow(
             title: 'Ambang jarak peringatan',
             value: '${settings.distanceThresholdM.toStringAsFixed(1)} m',
@@ -208,6 +218,80 @@ class SettingsScreen extends StatelessWidget {
 /// PG-11 - kartu error penyimpanan penuh. Tetap di atas: perannya memberi
 /// tahu, dan pemberitahuan harus terbaca lebih dulu. Aksinya diulang di
 /// `zone/page-action` oleh [SettingsScreen], bukan hanya ada di sini.
+/// Saklar "Lampu senter otomatis".
+///
+/// Punya widget sendiri karena satu-satunya hal yang rumit di sini adalah
+/// URUTAN, dan urutan itu tidak muat di dalam sebuah `onChanged` sebaris.
+class _AutoTorchSwitch extends StatelessWidget {
+  final bool enabled;
+  const _AutoTorchSwitch({required this.enabled});
+
+  Future<void> _toggle(BuildContext context, bool value) async {
+    final cam = context.read<CameraProvider>();
+    final settings = context.read<SettingsProvider>();
+
+    // Kamera dulu, penyimpanan belakangan.
+    //
+    // `setAutoTorchEnabled` mengembalikan apakah lampunya IKUT PADAM, dan
+    // hanya jawaban itu yang membuat kalimat konfirmasi di bawah bisa jujur.
+    // Kalau urutannya dibalik, `setSettings` memberi tahu pendengar, proxy di
+    // main.dart menjalankan hal yang sama lebih dulu, dan panggilan ini
+    // pulang dengan `false` untuk lampu yang sebenarnya baru saja dipadamkan.
+    final lampuIkutPadam = await cam.setAutoTorchEnabled(value);
+    await settings.setAutoTorch(value);
+    if (!context.mounted) return;
+
+    // Satu kalimat, bukan dua yang saling menyusul. Pengguna tunanetra
+    // menekan saklar ini lalu menunggu satu jawaban; dua kalimat berurutan
+    // membuatnya ragu apakah yang kedua menjawab tekanan yang sama atau ada
+    // sesuatu yang berubah lagi sesudahnya.
+    //
+    // Tier warning, bukan info: mematikan fitur ini adalah keputusan yang
+    // diambil justru di tempat yang menuntut ketenangan (bioskop, angkutan
+    // umum), dan konfirmasi yang tertelan antrean di sana berarti pengguna
+    // menekan saklarnya lagi - lalu menyalakannya kembali tanpa sadar.
+    await TtsQueue.instance.speak(
+      value
+          ? 'Lampu senter otomatis aktif. Lampu akan menyala sendiri saat gelap.'
+          : lampuIkutPadam
+              ? 'Lampu senter otomatis mati. Lampunya ikut dimatikan.'
+              : 'Lampu senter otomatis mati.',
+      tier: SpeechTier.warning,
+      source: SpeechSource.assistant,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            enabled
+                ? 'Menyala sendiri saat gelap, mati sendiri saat terang.'
+                : 'Lampu hanya menyala kalau kamu menyalakannya sendiri.',
+            style: AppTypography.body(color: AppColors.ink2),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s3),
+        Semantics(
+          // Label lengkap dipasang di sini, bukan diserahkan ke baris judul
+          // di atasnya. `Switch` telanjang dibacakan TalkBack hanya sebagai
+          // keadaannya ("aktif") tanpa menyebut aktifnya apa - dan pengguna
+          // yang menyapu langsung ke saklarnya tidak pernah mendengar
+          // judulnya.
+          label: 'Lampu senter otomatis',
+          toggled: enabled,
+          child: Switch(
+            value: enabled,
+            onChanged: (v) => _toggle(context, v),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _StorageFullCard extends StatelessWidget {
   const _StorageFullCard();
 

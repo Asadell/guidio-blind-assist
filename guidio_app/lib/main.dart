@@ -51,7 +51,25 @@ class GuidioApp extends StatelessWidget {
 
         // Providers tanpa dependency
         ChangeNotifierProvider(create: (_) => InferenceProvider()),
-        ChangeNotifierProvider(create: (_) => CameraProvider()),
+        // CameraProvider mendengarkan SettingsProvider hanya untuk satu hal:
+        // saklar "Lampu Senter Otomatis". Polanya sama dengan DetectionProvider
+        // di bawah - pengaturan yang tidak disambungkan ke sini akan tersimpan
+        // rapi ke disk dan tidak mengubah apa pun.
+        //
+        // Pendaftarannya WAJIB tetap di atas DetectionProvider dan
+        // VoiceProvider: keduanya membaca `ctx.read<CameraProvider>()` saat
+        // dibuat.
+        ChangeNotifierProxyProvider<SettingsProvider, CameraProvider>(
+          create: (_) => CameraProvider(),
+          update: (_, settings, prev) {
+            final cam = prev ?? CameraProvider();
+            // Tidak ditunggu, dan tidak boleh ditunggu: ini berjalan di tengah
+            // build. Aman karena pemanggilan dengan nilai yang sama - yaitu
+            // hampir semua pemanggilan - pulang seketika tanpa efek apa pun.
+            unawaited(cam.setAutoTorchEnabled(settings.autoTorch));
+            return cam;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => TtsProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => MoneyProvider()),

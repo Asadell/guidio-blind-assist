@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vibration/vibration.dart';
 import '../core/speech/tts_queue.dart';
+import '../services/auto_torch_controller.dart';
 import '../services/camera_capture_service.dart';
 import '../services/camera_health_service.dart';
 import '../services/tflite_service.dart';
@@ -59,6 +60,45 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   /// True saat flashlight sedang menyala.
   bool get isTorchOn => _isTorchOn;
+
+  // ── Lampu Senter Otomatis ───────────────────────────────────────────────
+  //
+  // Seluruh aturan kapan menyala dan kapan mati ada di
+  // [AutoTorchController] - berkas terpisah supaya bisa diuji tanpa kamera.
+  // Yang tersisa di sini cuma menjalankan keputusannya dan mengucapkannya.
+  final AutoTorchController _autoTorch = AutoTorchController();
+
+  /// Keadaan pengendali lampu otomatis - dibaca uji dan panel debug.
+  AutoTorchState get autoTorchState => _autoTorch.state;
+
+  /// Apakah fitur lampu otomatis sedang aktif.
+  bool get autoTorchEnabled => _autoTorch.enabled;
+
+  /// Terapkan saklar "Lampu Senter Otomatis" dari Pengaturan.
+  ///
+  /// Mengembalikan **true kalau lampunya ikut padam** karena fitur dimatikan
+  /// selagi ia yang menyalakannya. Pemanggil (layar Pengaturan) memakainya
+  /// untuk menyusun satu kalimat konfirmasi yang utuh alih-alih dua kalimat
+  /// yang saling menyusul.
+  ///
+  /// Lampunya dipadamkan DIAM-DIAM di sini. Pengguna baru saja menekan
+  /// saklarnya sendiri, jadi dia tidak perlu diberi tahu ulang oleh suara
+  /// kedua - dan mematikan fitur ini paling sering dilakukan justru di tempat
+  /// yang menuntut aplikasi diam.
+  /// Aman dipanggil dari `ProxyProvider.update`, yaitu DI TENGAH build.
+  ///
+  /// Dua hal yang menjaganya: pemanggilan dengan nilai yang sama pulang
+  /// seketika tanpa menyentuh apa pun, dan satu-satunya jalur yang
+  /// memberitahu pendengar ([_applyTorch]) baru melakukannya sesudah `await`
+  /// - yaitu sesudah frame yang sedang dibangun selesai. `notifyListeners`
+  /// yang terpanggil di tengah build melempar "setState called during build"
+  /// dan mematikan seluruh layar.
+  Future<bool> setAutoTorchEnabled(bool value) async {
+    if (_autoTorch.enabled == value) return false;
+    final action = _autoTorch.setEnabled(value);
+    if (action != AutoTorchAction.confirmOff) return false;
+    return _applyTorch(false, byAuto: true);
+  }
 
   // Callback - dipanggil dari CameraProvider ketika frame siap
   // DetectionProvider/InferenceProvider yang subscribe
@@ -201,7 +241,12 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
       // lampu tidak saling membantah.
       if (_isTorchOn) {
         _isTorchOn = false;
-        final restored = await setTorch(true);
+        // `_applyTorch`, bukan `setTorch`: ini pemulihan internal, bukan jari
+        // pengguna. Lewat `setTorch`, lampu yang dinyalakan lampu otomatis
+        // akan berpindah kepemilikan ke "pengguna" setiap kali preset kamera
+        // berganti - dan sesudah itu tidak ada lagi yang akan mematikannya
+        // saat pagi datang.
+        final restored = await _applyTorch(true, byAuto: true);
         if (!restored) {
           debugPrint('[CameraProvider] senter tidak bisa dipulihkan setelah '
               'kamera dibangun ulang');
@@ -251,8 +296,13 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
 
       _frameCount++;
 
-      // [1] On-device brightness check setiap frame - O(100) sangat ringan
-      final tooDark = _isTooDark(image);
+      // [1] On-device brightness check setiap frame - O(100) sangat ringan.
+      // Nilainya dipakai DUA kali: untuk `isDark` yang menggerakkan tawaran
+      // lampu di layar, dan untuk pengendali lampu otomatis di bawah. Diukur
+      // sekali, bukan dua kali - keduanya wajib melihat angka yang sama,
+      // kalau tidak layar bisa berkata gelap sementara lampu diam saja.
+      final luma = _averageLuma(image);
+      final tooDark = luma < kAutoTorchDarkLuma;
       if (tooDark != _isDark) {
         _isDark = tooDark;
         if (tooDark) {
@@ -271,6 +321,12 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
       // Fix 2.1: JANGAN return di sini - inference tetap berjalan di kondisi gelap.
       // Pengguna perlu tahu ada rintangan meski gelap.
       // UI yang memutuskan apakah tawaran lampu tampil (isDark && !darkDismissed).
+
+      // [1b] Lampu senter otomatis. Sengaja SESUDAH pembaruan `_isDark` di
+      // atas: kalau lampunya menyala di sini, frame berikutnya sudah terang
+      // dan peringatan "Terlalu gelap, nyalakan lampu" membatalkan dirinya
+      // sendiri lewat penjaga `if (!_isDark) return;` di dalam timernya.
+      unawaited(_driveAutoTorch(luma));
 
       // [2] Cek orientasi dari accelerometer setiap 30 frame
       if (_frameCount % 30 == 0) {
@@ -302,10 +358,76 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Jalankan keputusan [AutoTorchController] atas satu frame.
+  ///
+  /// Dibuat `async` tapi TIDAK ditunggu pemanggilnya: `_onFrame` berjalan di
+  /// jalur frame kamera, dan menahannya untuk `setFlashMode` berarti frame
+  /// deteksi berikutnya tertunda - di mode yang tugasnya memperingatkan
+  /// rintangan.
+  ///
+  /// Penjaga `_autoTorchBusy` yang menggantikan penungguan itu. Tanpa ia,
+  /// frame kedua dan ketiga masuk selagi perintah pertama masih di perjalanan
+  /// ke perangkat keras, dan pengendali mengambil keputusan di atas keadaan
+  /// lampu yang sudah usang - tiga perintah nyala berturut-turut untuk satu
+  /// keadaan gelap yang sama, dan tiga kali kalimat yang sama diucapkan.
+  bool _autoTorchBusy = false;
+
+  Future<void> _driveAutoTorch(double luma) async {
+    if (_autoTorchBusy) return;
+    final action = _autoTorch.update(luma: luma, now: DateTime.now());
+    if (action == AutoTorchAction.none) return;
+
+    _autoTorchBusy = true;
+    try {
+      switch (action) {
+        case AutoTorchAction.turnOn:
+          final ok = await _applyTorch(true, byAuto: true);
+          if (!ok) {
+            // Perangkatnya tidak punya lampu, atau menolak menyalakannya.
+            // TIDAK diumumkan: kalimat "Lampu otomatis dinyalakan" untuk
+            // lampu yang tetap padam adalah kebohongan tentang satu-satunya
+            // hal yang tidak bisa diperiksa sendiri oleh pengguna tunanetra.
+            // Peringatan "Terlalu gelap" milik `_startDarkWarningTimer` tetap
+            // berjalan karena `_isDark` tidak pernah jatuh ke false.
+            _autoTorch.onTorchFailed(action);
+            return;
+          }
+          TtsQueue().speak(
+            'Lampu otomatis dinyalakan karena kondisi gelap.',
+            tier: SpeechTier.info,
+          );
+
+        case AutoTorchAction.probeOff:
+          // Diam-diam. Ini pengukuran, bukan keputusan - lihat catatan panjang
+          // di auto_torch_controller.dart.
+          final ok = await _applyTorch(false, byAuto: true);
+          if (!ok) _autoTorch.onTorchFailed(action);
+
+        case AutoTorchAction.revertOn:
+          // Juga diam-diam: bagi pengguna, tidak ada yang pernah terjadi.
+          final ok = await _applyTorch(true, byAuto: true);
+          if (!ok) _autoTorch.onTorchFailed(action);
+
+        case AutoTorchAction.confirmOff:
+          TtsQueue().speak('Lampu dimatikan.', tier: SpeechTier.info);
+
+        case AutoTorchAction.none:
+          break;
+      }
+    } finally {
+      _autoTorchBusy = false;
+    }
+  }
+
   /// Dismiss tawaran lampu tanpa mematikan deteksi (Fix 2.1).
   /// Dipanggil saat pengguna menekan "Lewati" di ContextualActionSlot.
   void dismissDarkOffer() {
     _darkDismissed = true;
+    // "Lewati" adalah penolakan terhadap lampu, bukan cuma terhadap kartunya.
+    // Tanpa baris ini, tawaran yang barusan ditolak akan dijawab sendiri oleh
+    // lampu otomatis dua detik kemudian - dan pengguna yang menolak sesuatu
+    // lalu mendapatkannya juga berhenti percaya pada pilihan yang ditawarkan.
+    _autoTorch.onLightDeclined();
     notifyListeners();
   }
 
@@ -328,6 +450,14 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
       debugPrint('[CameraProvider] stopImageStream error: $e');
     }
     _cancelDarkWarningTimer();
+    // Pengukuran lampu otomatis yang sedang berjalan dibereskan DI SINI.
+    // Tanpa ini, aliran yang berhenti tepat di tengah pengukuran meninggalkan
+    // lampu dalam keadaan mati sementara, dan tidak ada satu frame pun lagi
+    // yang akan datang untuk menyalakannya kembali - pengguna ditinggal di
+    // ruangan gelap oleh fitur yang ada untuk meneranginya.
+    if (_autoTorch.onFramesStopped() == AutoTorchAction.revertOn) {
+      await _applyTorch(true, byAuto: true);
+    }
     // Reset dark state saat stream berhenti
     if (_isDark) {
       _isDark = false;
@@ -385,6 +515,25 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// kurang tepat, melainkan pesan yang **berbohong** tentang satu-satunya
   /// hal yang tidak bisa dia periksa sendiri: apakah sekitarnya sudah terang.
   Future<bool> setTorch(bool on) async {
+    // Perbuatan pengguna selalu menang atas lampu otomatis.
+    //
+    // Ditandai SEBELUM perintahnya dikirim, bukan sesudah berhasil. Kalau
+    // ditandai belakangan, satu frame yang menyelinap di sela-sela ini cukup
+    // untuk membuat lampu otomatis menyalakan kembali lampu yang sedang
+    // dimatikan pengguna - dan yang dia alami adalah tombol yang tidak
+    // bekerja, di satu-satunya kontrol yang tidak bisa dia periksa dengan
+    // mata.
+    _autoTorch.onManualTorchChange(on);
+    return _applyTorch(on, byAuto: false);
+  }
+
+  /// Jalur tunggal ke perangkat keras lampu.
+  ///
+  /// [byAuto] true berarti perintahnya datang dari lampu otomatis atau dari
+  /// pemulihan internal (kamera dibangun ulang), jadi kepemilikan lampu di
+  /// [AutoTorchController] TIDAK disentuh. Yang boleh menggeser kepemilikan
+  /// hanya jari pengguna, lewat [setTorch].
+  Future<bool> _applyTorch(bool on, {required bool byAuto}) async {
     if (_controller == null || !_initialized) {
       debugPrint('[CameraProvider] setTorch($on) diabaikan: kamera belum siap');
       return false;
@@ -538,11 +687,20 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// On-device brightness check - sample 100 piksel dari plane Y (YUV420).
   /// O(100) sangat ringan, aman dipanggil setiap frame.
   ///
+  /// Mengembalikan rata-rata luma 0..255, bukan lagi `bool` "terlalu gelap".
+  /// Yang membutuhkan angkanya sekarang dua: penanda `isDark` untuk layar, dan
+  /// [AutoTorchController] yang perlu membedakan "gelap", "agak terang", dan
+  /// "benar-benar terang" - tiga tingkat yang tidak muat di satu bool.
+  ///
+  /// Frame yang tidak bisa disampel mengembalikan nilai netral yang aman:
+  /// 255 (terang). Mengembalikan 0 akan berarti setiap frame cacat
+  /// menyalakan lampu senter pengguna di tengah keramaian.
+  ///
   /// Fix dari doc 5 masalah 12.
-  bool _isTooDark(CameraImage image) {
+  double _averageLuma(CameraImage image) {
     final yPlane = image.planes[0].bytes;
     final step   = yPlane.length ~/ 100;
-    if (step <= 0) return false;
+    if (step <= 0) return 255;
 
     // Pembaginya adalah jumlah sampel yang BENAR-BENAR diambil, bukan 100.
     // `step` dibulatkan ke bawah, jadi jumlah putaran hampir selalu sedikit
@@ -555,9 +713,8 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
       total += yPlane[i] & 0xFF;
       samples++;
     }
-    if (samples == 0) return false;
-    final avgBrightness = total / samples;
-    return avgBrightness < 30; // < 30/255 = sangat gelap
+    if (samples == 0) return 255;
+    return total / samples;
   }
 
   @override
@@ -670,11 +827,22 @@ class CameraProvider extends ChangeNotifier with WidgetsBindingObserver {
     // sini berarti kamera tidak pernah dibangun ulang lagi sesudahnya.
     _presetSebelumSuspend = _activePreset ?? _presetSebelumSuspend;
     _mengalirSebelumSuspend = _streaming || _mengalirSebelumSuspend;
-    _torchSebelumSuspend = _isTorchOn;
 
-    if (_controller == null) return;
+    if (_controller == null) {
+      _torchSebelumSuspend = _isTorchOn;
+      return;
+    }
 
     await stopStream();
+
+    // Keadaan lampu dicatat SESUDAH `stopStream`, bukan sebelumnya.
+    //
+    // `stopStream` membereskan pengukuran lampu otomatis yang mungkin sedang
+    // berjalan, dan pembereskan itu MENYALAKAN lampunya kembali. Dicatat
+    // sebelum itu, aplikasi yang ditinggalkan tepat di tengah pengukuran akan
+    // kembali dengan lampu padam sementara pengendali mengira lampunya
+    // menyala - dan sesudah itu tidak ada lagi yang akan menyalakannya.
+    _torchSebelumSuspend = _isTorchOn;
 
     // Diberitahukan SESUDAH aliran berhenti, supaya tidak ada frame baru yang
     // menyusul mengisi ulang apa yang barusan dikosongkan.
