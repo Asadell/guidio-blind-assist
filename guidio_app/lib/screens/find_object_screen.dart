@@ -904,7 +904,10 @@ class _FindObjectScreenState extends State<FindObjectScreen> with WidgetsBinding
 
   Widget _pill(String text) {
     return Semantics(
-      liveRegion: true,
+      // liveRegion dimatikan - tiap kalimat pill ini ("Cari apa?", "Sebutkan
+      // barang yang kamu cari") sudah diucapkan FindObjectProvider di
+      // peralihan keadaan yang sama. Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: text,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

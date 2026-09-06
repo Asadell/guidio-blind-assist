@@ -10,6 +10,19 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Terjemahan bawaan Material/Cupertino/Widgets ke Bahasa Indonesia.
+  #
+  # Tanpa ini, MaterialApp memakai DefaultMaterialLocalizations yang HANYA
+  # berbahasa Inggris - dan yang dibacakan TalkBack bukan cuma teks yang kita
+  # tulis sendiri. Label bawaan seperti "Dismiss", "Close", "Back",
+  # "Bottom sheet", "Popup menu", dan nama peran tombol ikut keluar dalam
+  # bahasa Inggris di tengah kalimat Bahasa Indonesia. Untuk pengguna
+  # tunanetra Indonesia, kalimat campur itu bukan sekadar tidak rapi: ia
+  # dibacakan mesin suara Indonesia dengan fonetik Indonesia, jadi hasilnya
+  # tidak bisa dipahami sebagai kata bahasa mana pun.
+  flutter_localizations:
+    sdk: flutter
+
   # State Management
   provider: ^6.1.2
 

@@ -120,7 +120,42 @@ class Detection {
   double get bboxH    => (bbox['y2']! - bbox['y1']!).toDouble();
   double get bboxArea => bboxW * bboxH;
 
-  /// Kalimat TTS singkat sesuai PRD UX
+  /// Nama objek yang layak diucapkan.
+  ///
+  /// Model sesekali mengembalikan kelas tanpa padanan Bahasa Indonesia, dan
+  /// kalimat "Ada  di depan" yang bolong di tengah terdengar seperti mesin
+  /// suara yang macet, bukan seperti objek yang tidak dikenal.
+  String get _spokenLabel => labelId.isEmpty ? 'objek' : labelId;
+
+  String get _spokenDistance => distanceMeter < 1.0
+      ? 'kurang dari satu meter'
+      : 'sekitar ${distanceMeter.toStringAsFixed(0)} meter';
+
+  /// Kalimat untuk **Mode Deteksi Objek** - laporan, bukan peringatan.
+  ///
+  /// Mode itu menyebutkan apa yang ada di depan kamera: orang, laptop, kursi.
+  /// Ia tidak tahu apakah benda itu berbahaya, dan tidak punya cara tahu -
+  /// yang dimilikinya cuma nama kelas, kotak, dan jarak perkiraan. Menyebut
+  /// "Bahaya!" atas dasar jarak saja berarti mengeluarkan penilaian yang
+  /// tidak pernah dibuat siapa pun.
+  ///
+  /// Biayanya nyata dan menumpuk. Orang yang lewat di depan kamera adalah
+  /// kejadian paling sering di mode ini, dan setiap kalinya dulu berbunyi
+  /// "Bahaya! Ada orang". Pengguna yang mendengar itu puluhan kali sehari
+  /// belajar satu hal: kata "bahaya" dari aplikasi ini tidak berarti apa-apa.
+  /// Yang rusak sesudahnya bukan mode ini - melainkan Mode Navigasi, satu-
+  /// satunya tempat kata itu benar-benar berarti lubang di depan kaki.
+  ///
+  /// [ttsMessage] sengaja TIDAK ikut diubah: ia dipakai Mode Navigasi, yang
+  /// memang mengawasi bahaya jalanan dan memang harus terdengar mendesak.
+  String get objectMessage => 'Ada $_spokenLabel di $direction, $_spokenDistance';
+
+  /// Kalimat TTS singkat sesuai PRD UX - **Mode Navigasi**.
+  ///
+  /// Nada mendesaknya disengaja dan tetap dipertahankan di sini: yang
+  /// diperingatkan mode itu adalah lubang, got terbuka, dan tangga, tepat di
+  /// jalur kaki pengguna. Untuk sekadar menyebut isi ruangan, pakai
+  /// [objectMessage].
   String get ttsMessage {
     final dist = distanceMeter < 1.0
         ? 'kurang dari 1 meter'

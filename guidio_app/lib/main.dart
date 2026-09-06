@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -106,6 +107,38 @@ class GuidioApp extends StatelessWidget {
           return MaterialApp(
             title: 'Guidio',
             debugShowCheckedModeBanner: false,
+
+            // ── Bahasa antarmuka DIKUNCI ke Bahasa Indonesia ───────────────
+            //
+            // Bukan preferensi gaya. Seluruh antarmuka aplikasi ini adalah
+            // SUARA, dan suaranya Bahasa Indonesia (`TTSService.localeId`).
+            // Tanpa baris-baris ini MaterialApp jatuh ke
+            // `DefaultMaterialLocalizations`, yang hanya punya bahasa
+            // Inggris, dan setiap label bawaan yang tidak kita tulis sendiri
+            // ikut keluar dalam bahasa itu: pengumuman lembar bawah, tombol
+            // tutup dialog, label dismiss di balik scrim, nama peran kontrol.
+            //
+            // Yang membaca label-label itu adalah TalkBack lewat mesin suara
+            // Bahasa Indonesia. "Dismiss" dibacakan dengan fonetik Indonesia
+            // bukan menjadi kata Inggris beraksen - ia menjadi bunyi yang
+            // bukan kata dalam bahasa mana pun. Pengguna tunanetra Indonesia
+            // tidak punya layar untuk memeriksa apa yang barusan disebut.
+            //
+            // `locale` sengaja dipatok, bukan dibiarkan mengikuti perangkat:
+            // ponsel yang bahasanya masih Inggris tetap harus menjalankan
+            // aplikasi ini dalam Bahasa Indonesia, karena suaranya memang
+            // hanya ada dalam Bahasa Indonesia.
+            locale: const Locale('id', 'ID'),
+            supportedLocales: const [
+              Locale('id', 'ID'),
+              Locale('en', 'US'),
+            ],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+
             theme: AppTheme.light,
             darkTheme: switch (settings.themeMode) {
               AppThemeMode.dark => AppTheme.dark,

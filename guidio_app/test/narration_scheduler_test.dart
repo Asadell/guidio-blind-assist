@@ -36,6 +36,78 @@ Detection _det({
     );
 
 void main() {
+  group('Mode Deteksi Objek melaporkan, tidak memvonis', () {
+    // Mode ini menjalankan pengenal objek COCO. Ia tahu ada orang satu meter
+    // di depan; ia tidak tahu, dan tidak punya cara tahu, apakah itu
+    // berbahaya. Kata "Bahaya" dan "Awas" karena itu tidak boleh keluar dari
+    // jalur ini sama sekali.
+    //
+    // Yang dijaga bukan kerapian bahasa. Orang yang lewat di depan kamera
+    // adalah kejadian paling sering di mode ini; peringatan bahaya yang
+    // terucap puluhan kali sehari mengajari pengguna mengabaikan kata itu,
+    // dan yang ikut runtuh adalah Mode Navigasi - satu-satunya tempat kata
+    // itu benar-benar berarti lubang di depan kaki.
+    const vonis = ['bahaya', 'awas', 'hati-hati'];
+
+    test('objek sangat dekat pun disebut "Ada ...", bukan "Awas ..."', () {
+      final s = NarrationScheduler()..beginSession();
+      final d = s.process([
+        _det(labelId: 'orang', direction: 'depan', danger: 'critical',
+            meter: 0.8, trackId: 1),
+      ]);
+
+      expect(d.shouldSpeak, isTrue);
+      expect(d.message, startsWith('Ada orang'),
+          reason: 'kalimatnya laporan: "Ada orang tepat di depan"');
+      for (final kata in vonis) {
+        expect(d.message!.toLowerCase(), isNot(contains(kata)),
+            reason: 'mode deteksi objek tidak berhak mengeluarkan vonis '
+                '"$kata" - yang dimilikinya cuma nama kelas dan jarak.');
+      }
+      // Yang TETAP dipertahankan: kecepatannya. Objek sedekat ini masih
+      // memotong antrean; ia cuma tidak lagi dibungkus vonis.
+      expect(d.tier, SpeechTier.critical);
+      expect(d.interruptible, isFalse);
+    });
+
+    test('Detection.objectMessage menyebut objek dan lokasinya, tanpa vonis',
+        () {
+      final dekat = _det(labelId: 'orang', direction: 'depan',
+          danger: 'critical', meter: 0.8);
+      expect(dekat.objectMessage,
+          'Ada orang di depan, kurang dari satu meter');
+
+      final jauh = _det(labelId: 'laptop', direction: 'kiri',
+          danger: 'warning', meter: 2.4);
+      expect(jauh.objectMessage, 'Ada laptop di kiri, sekitar 2 meter');
+
+      for (final d in [dekat, jauh]) {
+        for (final kata in vonis) {
+          expect(d.objectMessage.toLowerCase(), isNot(contains(kata)));
+        }
+      }
+    });
+
+    test('kelas tanpa nama Indonesia tidak menghasilkan kalimat bolong', () {
+      // "Ada  di depan" terdengar seperti mesin suara yang macet, bukan
+      // seperti objek yang tidak dikenal - dan pengguna tidak punya layar
+      // untuk memeriksa mana di antara keduanya yang terjadi.
+      final anonim = _det(labelId: '', direction: 'kanan',
+          danger: 'info', meter: 3);
+      expect(anonim.objectMessage, 'Ada objek di kanan, sekitar 3 meter');
+    });
+
+    test('Mode Navigasi TETAP boleh mendesak - ttsMessage tidak ikut berubah',
+        () {
+      // Pemisahan inilah gunanya dua getter. Kalau suatu saat keduanya
+      // disatukan "supaya konsisten", yang hilang adalah nada mendesak pada
+      // satu-satunya kalimat yang memang harus menghentikan langkah kaki.
+      final lubang = _det(labelId: 'lubang', direction: 'depan',
+          danger: 'critical', meter: 0.9);
+      expect(lubang.ttsMessage, startsWith('Bahaya!'));
+    });
+  });
+
   group('NarrationScheduler - masa tenang', () {
     test('menahan non-kritis tapi meloloskan bahaya kritis', () {
       final s = NarrationScheduler()..beginSession();

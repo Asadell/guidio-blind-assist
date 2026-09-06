@@ -1096,7 +1096,9 @@ class _NavCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      liveRegion: true,
+      // liveRegion dimatikan - instruksi langkah ini sudah diucapkan
+      // NavigationProvider. Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: step.instruction,
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.s4),

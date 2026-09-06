@@ -338,11 +338,24 @@ class NarrationScheduler {
     };
     final m = d.distanceMeter;
     // Di bawah 1,5 meter, angka justru memperlambat pemahaman. Yang
-    // dibutuhkan pengguna saat itu adalah "berhenti", bukan aritmetika.
+    // dibutuhkan pengguna saat itu adalah tahu ada sesuatu di situ, bukan
+    // aritmetika.
+    //
+    // Kalimatnya dibuka "Ada", bukan "Awas". Yang berjalan di sini adalah
+    // pengenal objek COCO: ia tahu ada orang satu meter di depan, dan tidak
+    // tahu apa pun tentang apakah itu berbahaya. Orang yang lewat adalah
+    // kejadian paling sering di mode ini, dan "Awas" yang terucap puluhan
+    // kali sehari mengajari pengguna mengabaikan kata itu - termasuk saat
+    // Mode Navigasi memakainya untuk lubang di depan kaki.
+    //
+    // Yang tetap dipertahankan adalah kecepatannya: keadaan ini masih
+    // memotong antrean dan masih berangkat lebih dulu daripada ringkasan.
+    // Objek sedekat ini tetap kabar yang tidak boleh menunggu, ia cuma tidak
+    // perlu dibungkus vonis.
     if (m < 1.5) {
-      return 'Awas, ${_labelId(d)} tepat $arah';
+      return 'Ada ${_labelId(d)} tepat $arah';
     }
-    return 'Awas, ${_labelId(d)} ${m.round()} meter $arah';
+    return 'Ada ${_labelId(d)} ${m.round()} meter $arah';
   }
 
   /// Gabungkan beberapa objek jadi satu kalimat ringkas.
