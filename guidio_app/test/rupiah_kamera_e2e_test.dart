@@ -25,8 +25,13 @@ import 'helpers/camera_frame.dart';
 ///       -> MoneyTFLiteService.classifyCameraImage()
 ///       -> gerbang keyakinan + margin
 ///       -> voting 3 frame
-///       -> MoneyProvider.snapAndAnnounce()  (tombol kiri "Kenali Uang")
+///       -> pengumuman OTOMATIS                (tidak ada tombol lagi)
 ///       -> teks yang benar-benar diucapkan ke pengguna
+///
+/// Tidak ada lagi tekanan tombol di rantai ini, dan itu yang membuat suite
+/// ini jauh lebih penting daripada sebelumnya. Selama masih ada tombol,
+/// tebakan yang keliru butuh satu perbuatan sadar pengguna sebelum terucap.
+/// Sekarang tidak: apa pun yang lolos gerbang langsung sampai ke telinganya.
 ///
 /// Yang di-assert adalah KALIMAT YANG TERDENGAR, bukan angka di dalam tensor.
 /// Itu satu-satunya keluaran yang dipakai pengguna tunanetra.
@@ -118,7 +123,7 @@ class _Sesi {
 }
 
 /// Jalankan mode Kenali Uang atas satu foto, persis seperti pengguna:
-/// kamera mengalirkan frame, lalu pengguna menekan tombol kiri.
+/// kamera mengalirkan frame, dan pengguna tidak menyentuh apa pun.
 Future<_Sesi> _pakaiAplikasi(img.Image foto) async {
   final provider = MoneyProvider();
   final diucapkan = <String>[];
@@ -138,9 +143,7 @@ Future<_Sesi> _pakaiAplikasi(img.Image foto) async {
     await provider.submitFrame(frame);
   }
 
-  // Pengguna menekan tombol kiri "Kenali Uang".
-  provider.snapAndAnnounce();
-
+  // Tidak ada yang ditekan. Kalau nominalnya terucap, ia terucap sendiri.
   final sesi = _Sesi(provider.state, provider.lastAmount, List.of(diucapkan));
   provider.dispose();
   return sesi;
@@ -237,6 +240,17 @@ void main() {
         if (sesi.menyebutNominal && !k.uang) {
           fail('BOCOR: ${k.label} bukan uang, tapi aplikasi mengucapkan '
               '"${sesi.kalimat}" (${_rp(sesi.lastAmount)}).');
+        }
+
+        // Pagar kedua mode nol sentuhan: hasil yang BELUM yakin harus benar-
+        // benar bisu. Assert di atas hanya memeriksa keadaan mesin state;
+        // yang ini memeriksa telinga pengguna. Keduanya perlu, karena satu
+        // jalur bicara yang lolos tanpa mengubah state akan lulus assert
+        // pertama tanpa satu pun tanda.
+        if (!sesi.menyebutNominal) {
+          expect(sesi.diucapkan, isEmpty,
+              reason: 'BOCOR SUARA: ${k.label} tidak lolos gerbang keyakinan '
+                  'tapi aplikasi tetap mengucapkan "${sesi.kalimat}".');
         }
       });
     }

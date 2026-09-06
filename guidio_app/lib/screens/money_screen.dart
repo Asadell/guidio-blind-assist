@@ -12,8 +12,21 @@ import '../theme/index.dart';
 import '../widgets/index.dart';
 
 /// Mode Kenali Uang - bagian 9 IMPLEMENTASI.md, 18 state (UG-01..UG-18).
-/// Sepenuhnya on-device, nol sentuhan: [MoneyProvider] menjalankan siklus
-/// deteksi mock sendiri lewat Timer, layar ini murni merender.
+/// Sepenuhnya on-device dan benar-benar nol sentuhan: kamera mengalir terus,
+/// [MoneyProvider] mengklasifikasi tiap frame, dan nominal yang lolos gerbang
+/// keyakinan diumumkan sendiri. Layar ini murni merender.
+///
+/// **Tidak ada lagi tombol "Kenali Uang".** Ia dihapus, bukan disembunyikan
+/// di balik `ExcludeSemantics` - tombol yang tidak terbaca TalkBack tapi
+/// masih menempati 48 dp di dasar layar hanyalah jebakan sentuh untuk
+/// pengguna awas dan sumber kebingungan bagi yang menyapu layar dengan jari.
+///
+/// Yang menggantikannya di slot tombol kiri adalah SAKLAR SUARA, pola yang
+/// sama persis dengan Mode Navigasi dan Mode Deteksi Objek: hijau berarti
+/// tekan untuk menyalakan, merah berarti sedang hidup dan tekan untuk
+/// mematikan. Bedanya cuma keadaan awalnya - di sini suara menyala sejak
+/// masuk, karena mendengar nominal adalah satu-satunya alasan mode ini
+/// dibuka.
 class MoneyScreen extends StatefulWidget {
   const MoneyScreen({super.key});
 
@@ -192,10 +205,19 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             : tts.speak(text, tier: tier));
       };
 
+      // Pengamat akhir ucapan - inilah yang membuat jeda satu detik antara
+      // dua pengumuman dihitung dari SELESAINYA kalimat sebelumnya, bukan
+      // dari mulainya. Tanpa ini nominal kedua menimpa ekor nominal pertama.
+      final ttsForWatch = context.read<TtsProvider>();
+      money.isSpeaking = () => ttsForWatch.isActive;
+
       // Kontrak tombol kiri: "jepret" lewat suara = menekan tombol kiri.
+      // Tombol kirinya sekarang saklar suara, jadi perintah suaranya ikut.
       final voice = context.read<VoiceProvider>();
-      voice.onPrimaryAction = money.snapAndAnnounce;
-      voice.primaryActionLabel = () => 'mengenali uang';
+      voice.onPrimaryAction = _toggleVoice;
+      voice.primaryActionLabel = () => money.voiceOn
+          ? 'mematikan suara nominal'
+          : 'menyalakan suara nominal';
       voice.onRepeatLast = () {
         // "Ulangi" juga perbuatan pengguna, jadi ia menimpa, bukan mengantre.
         if (money.lastAmount > 0) {
@@ -239,6 +261,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     _offlineHideTimer?.cancel();
     _money.onSpeak = null;
     _money.onHaptic = null;
+    _money.isSpeaking = null;
     _money.pause();
     _voice.clearModeHandlers();
     _cam.onFrameReady = null;
@@ -313,6 +336,33 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         },
       ),
     );
+  }
+
+  /// Tombol kiri BottomActionBar - saklar suara nominal.
+  ///
+  /// **Hanya suaranya.** Klasifikasi tetap berjalan tiap 600 ms dan kartu di
+  /// layar tetap hidup, jadi menyalakannya kembali langsung menjawab dengan
+  /// lembar yang sedang dihadapi kamera - bukan memulai lagi dari nol dan
+  /// menunggu tiga frame kesepakatan.
+  ///
+  /// Konfirmasinya diucapkan SEBELUM suaranya dimatikan. Kalau urutannya
+  /// dibalik, kalimat ini ikut tertelan dan pengguna yang tidak melihat layar
+  /// tidak punya cara tahu tombolnya bekerja - yang dia dengar cuma
+  /// keheningan yang sama persis dengan tombol yang tidak menekan.
+  void _toggleVoice() {
+    final money = context.read<MoneyProvider>();
+    final tts = context.read<TtsProvider>();
+    if (money.voiceOn) {
+      tts.answerNow(
+        'Suara nominal dimatikan. Tekan tombol kiri bawah lagi untuk menyalakan.',
+        tier: SpeechTier.warning,
+      );
+      money.setVoiceOn(false);
+    } else {
+      money.setVoiceOn(true);
+      tts.answerNow('Suara nominal dinyalakan.', tier: SpeechTier.warning);
+    }
+    _fireHaptic(_positivePattern);
   }
 
   /// Putar ulang nominal terakhir.
@@ -504,7 +554,21 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
             child: MediaQuery(
               data: media.copyWith(textScaler: fontScaleDemo ? const TextScaler.linear(2.0) : media.textScaler),
               child: BottomActionBar(
-                cameraLabel: 'Kenali Uang',
+                // Saklar, bukan pemicu. Labelnya menyebut apa yang terjadi
+                // kalau ditekan, bukan keadaan yang sedang berlaku - itu
+                // aturan yang sama di Navigasi dan Deteksi Objek, dan
+                // pengguna TalkBack menghafalnya lintas mode.
+                cameraLabel: money.voiceOn ? 'Matikan Suara' : 'Nyalakan Suara',
+                // Ikon bicara soal SUARA, bukan play/pause: yang dimatikan
+                // tombol ini cuma pengumumannya. Kamera dan klasifikasi tetap
+                // berjalan, dan ikon "pause" akan menjanjikan bahwa semuanya
+                // berhenti.
+                cameraIcon: money.voiceOn
+                    ? Icons.volume_off_rounded
+                    : Icons.volume_up_rounded,
+                cameraFill: money.voiceOn
+                    ? AppColors.criticalFill
+                    : AppColors.positiveFill,
                 cameraEnabled: !showPermissionCard && !money.isUnavailable,
                 cameraDisabledReason: showPermissionCard
                     ? 'izin kamera belum diberikan'
@@ -515,7 +579,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
                     money.start();
                     return;
                   }
-                  money.snapAndAnnounce();
+                  _toggleVoice();
                 },
               ),
             ),
@@ -531,7 +595,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
     switch (p.state) {
       case MoneyState.idle:
         return const _RenderSpec(
-          hint: 'Arahkan kamera ke uang, lalu tekan Kenali Uang',
+          hint: 'Arahkan kamera ke uang, nominalnya disebut sendiri',
           cardPlacement: _CardPlacement.bottomSlot,
         );
       case MoneyState.noCandidate:
@@ -541,7 +605,7 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       case MoneyState.folded:
         return const _RenderSpec(hint: 'Ratakan uangnya, ada bagian yang tertekuk');
       case MoneyState.fit:
-        return const _RenderSpec(hint: 'Uang terlihat, tekan Kenali Uang');
+        return const _RenderSpec(hint: 'Uang terlihat, tahan posisinya sebentar');
       case MoneyState.glare:
         return const _RenderSpec(hint: 'Miringkan sedikit, ada pantulan cahaya');
       case MoneyState.dark:
@@ -564,14 +628,15 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
           ),
         );
       case MoneyState.uncertain:
-        // Pratinjau, BUKAN penghalang. Sebelumnya keadaan ini memunculkan
-        // kartu peringatan "Belum yakin" yang menutup layar tanpa memberi
-        // jalan keluar - uang yang tergeletak di meja lalu difoto sambil
-        // berdiri hampir selalu berakhir di sini. Sekarang cuma pill netral:
-        // tombolnya tetap bisa ditekan, dan tetap menjawab dengan nominal
-        // berpagar.
+        // Pratinjau, dan SATU-SATUNYA keadaan yang sengaja dibiarkan bisu.
+        //
+        // Panduannya karena itu harus memberi jalan keluar yang konkret -
+        // "dekatkan sedikit" - bukan sekadar melaporkan keraguan. Pengguna
+        // tunanetra tidak melihat pill ini; yang dia alami dari keadaan ini
+        // cuma kamera yang mengarah ke uang dan tidak ada yang terucap, dan
+        // satu-satunya yang bisa dia ubah adalah jaraknya.
         return const _RenderSpec(
-          hint: 'Uang terlihat, tekan tombol untuk membaca nominal',
+          hint: 'Uang terlihat, tapi belum yakin - dekatkan sedikit',
         );
       case MoneyState.notMoney:
         return _RenderSpec(
@@ -597,11 +662,11 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
   _RenderSpec _specForDebug(MoneyDebugState d) {
     switch (d) {
       case MoneyDebugState.ug01:
-        return const _RenderSpec(hint: 'Arahkan kamera ke uang, lalu tekan Kenali Uang');
+        return const _RenderSpec(hint: 'Arahkan kamera ke uang, nominalnya disebut sendiri');
       case MoneyDebugState.ug02:
         return const _RenderSpec(hint: 'Uangnya belum terlihat utuh, mundur sedikit');
       case MoneyDebugState.ug03:
-        return const _RenderSpec(hint: 'Uang terlihat, tekan Kenali Uang');
+        return const _RenderSpec(hint: 'Uang terlihat, tahan posisinya sebentar');
       case MoneyDebugState.ug04:
         return const _RenderSpec(badgeBusy: true);
       case MoneyDebugState.ug05:

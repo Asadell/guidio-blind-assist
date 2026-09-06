@@ -11,10 +11,33 @@ import '../widgets/nominal_card.dart' show terbilangRupiah;
 /// State machine Mode Kenali Uang - bagian 9 IMPLEMENTASI.md
 /// (UG-01..UG-12, UG-18). Sepenuhnya on-device.
 ///
+/// **Nol sentuhan.** Mode ini tidak menunggu tombol. Selama layarnya terbuka,
+/// setiap frame kamera diklasifikasi dan nominal yang lolos gerbang keyakinan
+/// diumumkan sendiri. Alasannya sederhana dan tidak bisa disiasati dari sisi
+/// antarmuka: pengguna yang memegang lembar uang di satu tangan dan ponsel di
+/// tangan lain tidak punya jari ketiga untuk mencari tombol, dan mencari
+/// tombol berarti menggoyang kamera tepat pada saat gambarnya harus diam.
+///
+/// Dua pagar menjaga supaya "bicara sendiri" tidak berubah jadi "bicara
+/// terus-menerus":
+///
+/// 1. **Hanya hasil yang YAKIN yang bersuara.** Tebakan berpagar
+///    ("sepertinya") tetap tergambar di layar untuk pengguna awas, tapi tidak
+///    pernah diucapkan. Nominal yang salah sebut berarti kerugian uang nyata,
+///    dan pengguna tunanetra tidak punya cara memeriksanya.
+/// 2. **Jeda [_announceGap] sesudah ucapan sebelumnya SELESAI.** Bukan sejak
+///    ucapan sebelumnya dimulai - kalau dihitung dari mulainya, kalimat
+///    berikutnya menimpa ekor kalimat sebelumnya dan angkanya justru jadi
+///    paling sulit didengar.
+///
+/// Suaranya bisa dimatikan lewat [voiceOn] (tombol kiri bawah), sama seperti
+/// saklar suara Mode Navigasi. Deteksi tetap berjalan saat dimatikan, jadi
+/// menyalakannya kembali langsung berbunyi tanpa perlu mengarahkan ulang.
+///
 /// **Tidak ada akumulasi sesi.** Mode ini menjawab satu pertanyaan saja:
 /// "lembar yang sedang saya hadapkan ke kamera ini nominalnya berapa?"
-/// Tombol kiri mengumumkan nominal frame saat itu, lalu selesai - tidak ada
-/// total berjalan, tidak ada rincian lembar, tidak ada kartu "total direset".
+/// Yang diumumkan selalu nominal frame saat itu - tidak ada total berjalan,
+/// tidak ada rincian lembar, tidak ada kartu "total direset".
 /// Penjumlahan otomatis justru berbahaya di sini: pengguna tunanetra tidak
 /// bisa melihat lembar mana yang sudah terhitung, jadi satu lembar yang
 /// ter-scan dua kali menghasilkan total yang salah tanpa satu pun tanda.
@@ -95,6 +118,84 @@ class MoneyProvider extends ChangeNotifier {
   void Function(String text, SpeechTier tier, {bool langsung})? onSpeak;
   void Function(MoneyHaptic pattern)? onHaptic;
 
+  /// Ditanya berkala: apakah mesin suara MASIH berbunyi?
+  ///
+  /// Disuntik layar (dari `TtsProvider.isActive`) supaya provider ini tetap
+  /// tidak menyentuh BuildContext maupun TtsQueue langsung - pola yang sama
+  /// dengan [onSpeak]. Kalau tidak dipasang, jeda antar pengumuman jatuh
+  /// kembali ke jarak waktu murni, yang lebih longgar tapi tidak pernah
+  /// berbahaya.
+  bool Function()? isSpeaking;
+
+  // ── Saklar suara ────────────────────────────────────────────────────────
+  //
+  // Menyala sejak awal, dan itu keputusan yang disengaja: mode ini dibuka
+  // justru untuk mendengar nominalnya. Mode Deteksi Objek memilih sebaliknya
+  // (mulai mati) karena ia layar pertama aplikasi dan peringatan pertama dari
+  // ponsel yang masih di saku hampir selalu keliru. Di sini tidak ada
+  // taruhan seperti itu: pengguna sudah sengaja masuk sambil memegang uang.
+  bool _voiceOn = true;
+  bool get voiceOn => _voiceOn;
+
+  /// Nyalakan / matikan pengumuman otomatis.
+  ///
+  /// Deteksi TIDAK ikut berhenti. Yang dimatikan hanya suaranya, jadi
+  /// menyalakannya lagi langsung menjawab dengan lembar yang sedang dihadapi
+  /// kamera alih-alih menunggu tiga frame kesepakatan dari nol.
+  void setVoiceOn(bool value) {
+    if (_voiceOn == value) return;
+    _voiceOn = value;
+    // Jeda dihitung ulang dari sekarang: kalimat konfirmasi saklarnya sendiri
+    // ("Suara dinyalakan") adalah ucapan, dan nominal yang menyusulnya harus
+    // ikut menunggu gilirannya seperti ucapan lain.
+    _speechEndedAt = DateTime.now();
+    notifyListeners();
+  }
+
+  /// Jeda minimum antara satu pengumuman nominal dan pengumuman berikutnya,
+  /// dihitung sejak ucapan sebelumnya SELESAI.
+  static const _announceGap = Duration(seconds: 1);
+
+  Timer? _speechWatch;
+  bool _wasSpeaking = false;
+  DateTime _speechEndedAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Pengamat akhir ucapan.
+  ///
+  /// Dipisah dari siklus inferensi karena keduanya berdenyut pada laju yang
+  /// berbeda: inferensi tiap 600 ms, sementara "kapan persisnya kalimat tadi
+  /// selesai" butuh resolusi yang lebih halus. Tanpa pengamat sendiri, jeda
+  /// satu detik akan diukur dari titik pemeriksaan terdekat dan melar jadi
+  /// satu setengah detik yang terasa seperti mode ini berhenti bekerja.
+  void _startSpeechWatch() {
+    _speechWatch?.cancel();
+    _speechWatch = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      final now = isSpeaking?.call() ?? false;
+      if (_wasSpeaking && !now) _speechEndedAt = DateTime.now();
+      _wasSpeaking = now;
+    });
+  }
+
+  /// Umumkan nominal kalau semua pagarnya lolos.
+  ///
+  /// Diam adalah hasil yang sah di sini, dan sengaja tidak diberi tanda apa
+  /// pun: getar atau nada tiap kali jeda belum lewat justru mengembalikan
+  /// kebisingan yang jedanya ada untuk menghilangkan.
+  void _maybeAutoAnnounce(int amount) {
+    if (!_voiceOn) return;
+    if (_wasSpeaking || (isSpeaking?.call() ?? false)) return;
+    final now = DateTime.now();
+    if (now.difference(_speechEndedAt) < _announceGap) return;
+
+    // Dicatat SEBELUM bicara, bukan sesudah. Mesin suara butuh waktu untuk
+    // benar-benar mulai berbunyi, dan selama tenggang itu `isSpeaking` masih
+    // false - tanpa catatan ini, pemeriksaan berikutnya 600 ms kemudian
+    // melihat "tidak ada yang bicara, jedanya sudah lewat" dan mengucapkan
+    // nominal kedua di atas nominal pertama yang baru saja dimulai.
+    _speechEndedAt = now;
+    _enterDetected(amount);
+  }
+
   Timer? _stepTimer;
   Timer? _hintRotateTimer;
   bool _running = false;
@@ -128,6 +229,9 @@ class MoneyProvider extends ChangeNotifier {
     _running = true;
     _lastAmount = 0;
     _lastAnswerCertain = true;
+    _speechEndedAt = DateTime.fromMillisecondsSinceEpoch(0);
+    _wasSpeaking = false;
+    _startSpeechWatch();
     _set(MoneyState.idle);
     if (!_useRealModel) _fallbackWhenModelMissing();
   }
@@ -151,27 +255,9 @@ class MoneyProvider extends ChangeNotifier {
     _running = false;
     _stepTimer?.cancel();
     _hintRotateTimer?.cancel();
-  }
-
-  /// Dipanggil dari tombol kamera BottomActionBar - "paksa deteksi ulang".
-  void forceRedetect() {
-    if (!_running) return;
-    _stepTimer?.cancel();
-    _hintRotateTimer?.cancel();
-    if (_useRealModel) {
-      _consecutiveMiss = 0;
-      _set(MoneyState.fit);
-      return;
-    }
-    if (!_mockAllowed) {
-      _speak(
-        'Pengenalan uang tidak tersedia saat ini.',
-        tier: SpeechTier.warning,
-        langsung: true,
-      );
-      return;
-    }
-    _enterFit();
+    _speechWatch?.cancel();
+    _speechWatch = null;
+    _wasSpeaking = false;
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -199,17 +285,17 @@ class MoneyProvider extends ChangeNotifier {
   // hanya menambah ~1,2 detik penundaan dalam kasus terburuk.
   //
   // Trade-off yang diterima: user yang menggerakkan kamera cepat perlu sedikit
-  // lebih lama menunggu panduan "Uang terlihat, tekan Kenali Uang".
-  // Manfaatnya: prediksi sesaat pada foto yang susah (50rb_a yang terdeteksi
-  // sebagai 10rb) tidak pernah memunculkan panduan itu dan mendorong user
-  // menekan tombol snap.
+  // lebih lama sebelum nominalnya terucap.
+  //
+  // Manfaatnya jauh lebih besar sesudah mode ini jadi nol sentuhan. Dulu
+  // prediksi sesaat yang keliru cuma memunculkan panduan yang salah dan
+  // pengguna masih harus menekan tombol untuk mendengar angkanya. Sekarang
+  // tidak ada tombol yang menyaring apa pun: satu frame yang salah tebak
+  // langsung terucap sebagai nominal. Kesepakatan tiga frame inilah yang
+  // menggantikan perbuatan sadar menekan tombol.
   static const int _kRequiredConsecutive = 3;
   int _consecutiveDetections = 0;
   int? _lastDetectedValue;
-
-  /// Hasil buffer terbaru dari model - diperbarui tiap frame, dipakai saat
-  /// snapAndAnnounce() dipanggil. Tidak pernah auto-diumumkan.
-  MoneyResult? _latestResult;
 
   /// Jeda antar inferensi. Klasifikasi 224x224 ringan, tapi tidak ada
   /// gunanya berjalan tiap frame: pengguna butuh waktu memposisikan uang.
@@ -246,11 +332,6 @@ class MoneyProvider extends ChangeNotifier {
   void _applyRealResult(MoneyResult result) {
     if (!_running) return;
 
-    // Selalu perbarui buffer - snapAndAnnounce() akan membaca ini saat user
-    // menekan tombol, sehingga hasilnya selalu mencerminkan apa yang kamera
-    // lihat saat itu tanpa delay inferensi tambahan.
-    _latestResult = result;
-
     if (result.detected && result.valueIdr != null) {
       _consecutiveMiss = 0;
 
@@ -263,27 +344,58 @@ class MoneyProvider extends ChangeNotifier {
         _lastDetectedValue = result.valueIdr;
       }
 
-      // State `fit` tetap dijaga ketat: hanya untuk hasil yang YAKIN dan
-      // sudah stabil N frame. Ia yang memunculkan panduan "Uang terlihat,
-      // tekan Kenali Uang" - sebuah janji visual "posisi pas", dan janji itu
-      // tidak boleh diberikan pada tebakan berpagar.
-      //
-      // Dulu janji itu berupa bingkai panduan yang berubah hijau. Bingkainya
-      // sudah dihapus (kamera memotret seluruh gambar, tidak ada area yang
-      // harus dibidik), yang tersisa kalimat panduannya.
-      //
-      // Yang berubah: hasil berpagar tidak lagi memblokir apa pun. Dulu ia
-      // memunculkan kartu "Belum yakin" yang menutup layar dan membuat
-      // pengguna mengulang gerakan tanpa tahu apa yang salah. Sekarang ia
-      // cuma pratinjau bernada netral - tombolnya tetap bisa ditekan kapan
-      // saja dan tetap menjawab.
+      // Gerbangnya sekarang menentukan BOLEH ATAU TIDAKNYA BICARA, bukan
+      // sekadar kalimat panduan mana yang tampil. Itu menaikkan taruhannya:
+      // yakin + stabil N frame berarti nominalnya langsung terucap tanpa ada
+      // perbuatan pengguna di antaranya, jadi keduanya dijaga apa adanya dan
+      // tidak boleh dilonggarkan "supaya lebih responsif".
       final steady = _consecutiveDetections >= _kRequiredConsecutive;
-      if (_state == MoneyState.detected) return;
 
       if (result.certain && steady) {
+        // Nol sentuhan: kesepakatan tiga frame pada nominal yang sama sudah
+        // cukup untuk menjawab. `fit` bukan lagi terminal yang menunggu
+        // tombol - ia cuma jendela penghitungan yang dilewati, dan keadaan
+        // ini langsung menyusul di frame berikutnya.
+        //
+        // Pagar jedanya ada di dalam [_maybeAutoAnnounce]; kalau belum
+        // waktunya bicara, keadaannya tetap berpindah supaya kartu di layar
+        // tidak tertinggal di belakang apa yang dilihat kamera.
+        _maybeAutoAnnounce(result.valueIdr!);
+        // Kartu di layar disamakan dengan apa yang dilihat kamera SEKARANG,
+        // tidak menunggu jedanya lewat. Kalau pengguna berganti lembar di
+        // detik yang sama, kartu yang masih menampilkan nominal sebelumnya
+        // akan dibaca pendamping awas sebagai jawaban untuk lembar yang baru.
+        if (_lastAmount != result.valueIdr || _state != MoneyState.detected) {
+          _lastAmount = result.valueIdr!;
+          _lastAnswerCertain = true;
+          _set(MoneyState.detected);
+        }
+      } else if (result.certain) {
+        // Yakin tapi belum stabil tiga frame. Ini jendela sekitar 1,8 detik,
+        // dan dulu tidak terlihat sama sekali - layar tetap berbunyi "Arahkan
+        // kamera ke uang" sementara uangnya sudah tepat di depan kamera dan
+        // sistem sebenarnya sedang menghitung. Pengguna yang membaca panduan
+        // itu justru menggeser kameranya dan menghapus kesepakatan frame yang
+        // hampir terkumpul.
         if (_state != MoneyState.fit) _set(MoneyState.fit);
-      } else if (!result.certain && _state != MoneyState.uncertain) {
-        _set(MoneyState.uncertain);
+      } else {
+        // Kategori "sepertinya" LEWAT TANPA SUARA - ini pagar utama mode ini.
+        //
+        // Layar tetap memberi panduan tertulis ("dekatkan sedikit") untuk
+        // pengguna awas, tapi tidak satu kata pun diucapkan. Pengumuman
+        // otomatis menghapus satu hal yang dulu
+        // selalu ada: perbuatan sadar pengguna menekan tombol, yang menandai
+        // bahwa dia siap menilai jawabannya sendiri. Tanpa penanda itu,
+        // tebakan yang diucapkan dengan nada yang sama dengan kepastian tidak
+        // bisa dibedakan darinya, dan salah menyebut nominal berarti kerugian
+        // uang yang nyata.
+        //
+        // [_lastAmount] sengaja TIDAK ikut diperbarui di sini. Ia yang dibaca
+        // perintah "ulangi", dan mengulang berarti mengucapkan - menaruh
+        // tebakan yang belum pernah lolos gerbang ke dalamnya membuka pintu
+        // belakang untuk menyebut nominal yang justru diputuskan tidak layak
+        // disebut.
+        if (_state != MoneyState.uncertain) _set(MoneyState.uncertain);
       }
       return;
     }
@@ -308,54 +420,35 @@ class MoneyProvider extends ChangeNotifier {
     }
   }
 
-  /// Dipanggil saat user menekan tombol kiri - umumkan hasil buffer terbaru.
+  /// UG-08 - panduan berputar saat kamera tidak menemukan uang sama sekali.
   ///
-  /// Tidak ada delay inferensi: model sudah berjalan di background tiap 600ms,
-  /// jadi _latestResult selalu segar. User mendapat jawaban instan.
-  void snapAndAnnounce() {
-    if (!_running) return;
-
-    if (!_useRealModel) {
-      // Tanpa model: di debug jatuh ke simulasi, di rilis mengaku tidak bisa.
-      // Yang tidak pernah terjadi di rilis adalah menyebut angka.
-      forceRedetect();
-      return;
-    }
-
-    final result = _latestResult;
-    if (result == null || !result.detected || result.valueIdr == null) {
-      _speak(_noReadingAdvice(result),
-          tier: SpeechTier.warning, langsung: true);
-      return;
-    }
-
-    // Selalu menjawab. Yang membedakan cuma nadanya, dan itu dibawa
-    // `result.certain` sampai ke kalimat TTS dan kartu di layar.
-    _enterDetected(result.valueIdr!, certain: result.certain, langsung: true);
-  }
-
-  /// Instruksi saat model TIDAK mengeluarkan hasil apa pun.
+  /// Pillnya berganti kalimat tiap 5 detik untuk mata, dan tiap panduan
+  /// KEDUA diucapkan - jadi satu kalimat tiap 10 detik.
   ///
-  /// Cakupannya sekarang sempit dan itu disengaja. Keraguan model bukan lagi
-  /// urusan fungsi ini: hasil berpagar tetap dijawab dengan nominalnya lewat
-  /// [_enterDetected]. Yang tersisa di sini hanya dua keadaan yang benar-benar
-  /// tidak punya angka untuk disampaikan - model belum siap, atau belum ada
-  /// satu pun frame yang selesai diproses.
-  String _noReadingAdvice(MoneyResult? result) {
-    if (result == null) {
-      return 'Belum ada yang terbaca. Arahkan kamera ke uang, lalu tekan lagi.';
-    }
-    if (result.failure == MoneyFailure.modelUnavailable) {
-      return 'Pengenalan uang tidak tersedia saat ini.';
-    }
-    return 'Gambar belum bisa dibaca. Arahkan kamera ke uang, lalu tekan lagi.';
-  }
-
+  /// Bagian yang diucapkan ini wajib ada sejak mode ini kehilangan tombolnya.
+  /// Selama masih ada tombol, keheningan punya arti yang jelas: pengguna
+  /// belum menekan apa pun. Tanpa tombol, keheningan adalah satu-satunya
+  /// keluaran mode ini saat gagal, dan pengguna tunanetra tidak punya cara
+  /// membedakan "kamera tidak melihat uang" dari "aplikasinya berhenti
+  /// bekerja". Yang pertama bisa dia perbaiki; yang kedua membuatnya keluar
+  /// dari mode dan berhenti percaya.
+  ///
+  /// Sepuluh detik, bukan lima: kalimat panduan yang datang tiap lima detik
+  /// menempati hampir separuh waktu bicara mode ini, dan pengumuman nominal
+  /// yang menyusul harus menunggu di belakangnya.
   void _startHintRotation() {
     _hintRotateTimer?.cancel();
+    var tick = 0;
     _hintRotateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _noCandidateHintIndex = (_noCandidateHintIndex + 1) % _kNoCandidateHints.length;
+      _noCandidateHintIndex =
+          (_noCandidateHintIndex + 1) % _kNoCandidateHints.length;
       notifyListeners();
+      tick++;
+      if (tick.isOdd) return;
+      if (!_voiceOn || _state != MoneyState.noCandidate) return;
+      if (_wasSpeaking || (isSpeaking?.call() ?? false)) return;
+      _speechEndedAt = DateTime.now();
+      _speak(noCandidateHint, tier: SpeechTier.info);
     });
   }
 
@@ -366,6 +459,7 @@ class MoneyProvider extends ChangeNotifier {
   @override
   void dispose() {
     pause();
+    _speechWatch?.cancel();
     super.dispose();
   }
 
@@ -492,14 +586,19 @@ class MoneyProvider extends ChangeNotifier {
 
   // -------------------------------------------------------------- detected
 
-  /// Satu lembar, satu jawaban. Menekan tombol lagi pada lembar yang sama
-  /// hanya mengulang nominal yang sama - tidak pernah menambah apa pun.
+  /// Satu lembar, satu jawaban. Lembar yang sama yang terus terlihat hanya
+  /// mengulang nominal yang sama - tidak pernah menambah apa pun.
   ///
   /// [certain] menentukan NADA, bukan boleh atau tidaknya menjawab. Pagarnya
-  /// harus terdengar di kalimat pertama, bukan disimpan di akhir: pengguna
-  /// tunanetra sering menekan tombol berikutnya sebelum kalimat selesai, jadi
-  /// "Sepertinya" wajib jadi kata pembuka. Tier warning ikut dipakai supaya
-  /// antrean suara tidak menyamakannya dengan jawaban yang pasti.
+  /// harus terdengar di kalimat pertama, bukan disimpan di akhir, dan tier
+  /// warning ikut dipakai supaya antrean suara tidak menyamakannya dengan
+  /// jawaban yang pasti.
+  ///
+  /// Di jalur nyata `certain: false` sudah tidak pernah sampai ke sini -
+  /// [_applyRealResult] membiarkan hasil berpagar lewat tanpa suara. Parameter
+  /// ini tinggal dipakai jalur mock, dan sengaja tidak dihapus: kalau suatu
+  /// saat ada yang memutuskan tebakan boleh diucapkan lagi, kalimatnya harus
+  /// tetap membuka dengan "Sepertinya", bukan disusun ulang dari nol.
   void _enterDetected(int amount,
       {bool certain = true, bool langsung = false}) {
     _lastAmount = amount;
