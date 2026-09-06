@@ -24,7 +24,10 @@ class CameraHealthToast extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      liveRegion: true,
+      // liveRegion dimatikan - CameraProvider sudah mengucapkan pesan
+      // kesehatan kamera yang sama saat keadaannya berubah.
+      // Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: issue.message,
       focusable: false,
       child: Container(

@@ -28,7 +28,12 @@ class _SpeakingIndicatorState extends State<SpeakingIndicator> with SingleTicker
     final label = widget.silent ? 'Getar saja' : 'Vinara bicara';
 
     return Semantics(
-      liveRegion: true,
+      // liveRegion dimatikan, dan di sini ia paling merusak: pil ini muncul
+      // TEPAT saat mesin suara aplikasi mulai bicara, jadi pengumumannya
+      // ("Vinara bicara") selalu jatuh di atas kalimat yang baru dimulai -
+      // TalkBack mengabarkan bahwa ada yang sedang bicara sambil menutupi
+      // apa yang dibicarakan. Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: label,
       child: Container(
         height: AppSizes.modeBadgeHeight,

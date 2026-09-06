@@ -14,6 +14,35 @@ class AlertCard extends StatelessWidget {
   final double? distanceMeter;
   final bool dense;
 
+  /// Umumkan sendiri begitu kartu ini muncul (`liveRegion`).
+  ///
+  /// **Bawaannya MATI**, kebalikan dari bawaan Flutter, dan itu disengaja:
+  /// setiap kartu ini di seluruh aplikasi muncul berbarengan dengan mesin
+  /// suara mode yang mengucapkan isinya. Dinyalakan, TalkBack membacakan
+  /// kalimat yang sama untuk kedua kalinya sambil memotong yang pertama.
+  ///
+  /// Di Mode Deteksi Objek akibatnya paling parah: kartunya digambar ulang
+  /// beberapa kali per detik mengikuti aliran deteksi, jadi TalkBack terus
+  /// memotong dirinya sendiri dan tidak satu pun kalimat pernah selesai.
+  ///
+  /// Kartunya tetap punya label dan tetap dibacakan begitu fokus mendarat di
+  /// sana. Lihat aturan lengkapnya di `core/a11y/screen_reader.dart`.
+  final bool announceOnAppear;
+
+  /// Kata di baris eyebrow, menggantikan [AlertTier.label].
+  ///
+  /// Warna dan bentuk ikon tetap mengikuti [tier] - keduanya menyampaikan
+  /// "seberapa mendesak", dan itu memang informasi yang sah. Yang bisa
+  /// dilepaskan dari tier adalah KATANYA, karena kata "Bahaya" adalah sebuah
+  /// vonis, dan tidak semua pemakai kartu ini berhak mengeluarkannya.
+  ///
+  /// Mode Deteksi Objek memakainya. Ia menyebutkan isi ruangan - orang,
+  /// laptop, kursi - dan yang dimilikinya cuma nama kelas serta jarak
+  /// perkiraan; tidak ada di dalamnya yang bisa menyimpulkan bahaya. Mode
+  /// Navigasi tidak memakainya dan tetap berbunyi "Bahaya", karena di sana
+  /// yang dimaksud memang lubang di depan kaki.
+  final String? eyebrow;
+
   const AlertCard({
     super.key,
     required this.tier,
@@ -21,7 +50,11 @@ class AlertCard extends StatelessWidget {
     this.description,
     this.distanceMeter,
     this.dense = false,
+    this.eyebrow,
+    this.announceOnAppear = false,
   });
+
+  String get _eyebrowText => eyebrow ?? tier.label;
 
   String get _liveLabel {
     final dist = distanceMeter == null
@@ -29,7 +62,7 @@ class AlertCard extends StatelessWidget {
         : distanceMeter! < 1
             ? ', kurang dari satu meter'
             : ', ${distanceMeter!.toStringAsFixed(1)} meter';
-    return '${tier.label}. $title$dist';
+    return '$_eyebrowText. $title$dist';
   }
 
   @override
@@ -38,7 +71,7 @@ class AlertCard extends StatelessWidget {
     final pad = dense ? 14.0 : 16.0;
 
     return Semantics(
-      liveRegion: true,
+      liveRegion: announceOnAppear,
       label: _liveLabel,
       child: Container(
         width: double.infinity,
@@ -79,7 +112,7 @@ class AlertCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(tier.label.toUpperCase(),
+                      Text(_eyebrowText.toUpperCase(),
                           style: AppTypography.eyebrow(color: tier.labelColor)),
                       const SizedBox(height: 2),
                       Text(

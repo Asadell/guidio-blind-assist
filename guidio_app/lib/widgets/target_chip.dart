@@ -16,7 +16,9 @@ class TargetChip extends StatelessWidget {
     return Semantics(
       // Urutan fokus 4 - bagian 10, baris sendiri di bawah ModeBadge.
       sortKey: const OrdinalSortKey(4),
-      liveRegion: true,
+      // liveRegion dimatikan - target baru sudah dikonfirmasi lisan oleh
+      // FindObjectProvider. Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: 'Mencari: $itemName',
       child: Container(
         width: double.infinity,

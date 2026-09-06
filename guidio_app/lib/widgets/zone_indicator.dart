@@ -75,7 +75,10 @@ class ZoneIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      liveRegion: true,
+      // liveRegion dimatikan - arahan zonanya sudah diucapkan
+      // NavigationProvider, dan indikator ini berubah tiap frame segmentasi.
+      // Lihat aturan `liveRegion` di core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: _liveLabel,
       child: Row(
         children: [

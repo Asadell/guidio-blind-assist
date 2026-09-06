@@ -21,7 +21,10 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      liveRegion: isLatest,
+      // liveRegion dimatikan - jawaban asisten dibacakan mesin suara
+      // aplikasi begitu ia tiba, dan gelembung ini cuma salinan tertulisnya.
+      // Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       child: MergeSemantics(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 14),

@@ -294,7 +294,12 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
     // AS-25 - Critical dari mode lain menyela jawaban yang sedang dibacakan.
     if (voice.state == VoiceState.responded && det.detections.any((d) => d.isCritical) && !_hasCameraPermission == false) {
       final critical = det.detections.firstWhere((d) => d.isCritical);
-      context.read<TtsProvider>().speak(critical.ttsMessage, tier: SpeechTier.critical);
+      // Sumbernya DetectionProvider - pengenal objek COCO, bukan pengawas
+      // bahaya jalanan. Ia menyebutkan apa yang ada, tidak menilai. Tier-nya
+      // tetap Critical karena objek sedekat ini memang harus memotong jawaban
+      // yang sedang dibacakan; yang berubah cuma kalimatnya, dari vonis jadi
+      // laporan. Lihat [Detection.objectMessage].
+      context.read<TtsProvider>().speak(critical.objectMessage, tier: SpeechTier.critical);
     }
 
     if (voice.state == VoiceState.responded && !_longAnswerOffer && voice.response.length > 220) {
@@ -620,7 +625,11 @@ class _VoiceScreenState extends State<VoiceScreen> with WidgetsBindingObserver {
 
   Widget _pill(String text) {
     return Semantics(
-      liveRegion: true,
+      // liveRegion dimatikan - pill ini muncul berbarengan dengan kalimat
+      // VoiceProvider yang isinya sama, dan sebagiannya ("Terlalu berisik...")
+      // muncul justru saat mikrofon sedang menyala - suara TalkBack di situ
+      // ikut terekam. Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: text,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -654,7 +663,9 @@ class _StaticNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      liveRegion: true,
+      // liveRegion dimatikan - pemberitahuan ini selalu menyusul kalimat
+      // VoiceProvider yang isinya sama. Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: text,
       child: Container(
         width: double.infinity,

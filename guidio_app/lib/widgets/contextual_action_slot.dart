@@ -64,7 +64,10 @@ class ContextualActionSlot extends StatelessWidget {
         children: [
           if (message != null) ...[
             Semantics(
-              liveRegion: true,
+              // liveRegion dimatikan - tawaran dan konfirmasi slot ini sudah
+              // diucapkan pemanggilnya (lihat TorchSlot).
+              // Aturan lengkapnya di core/a11y/screen_reader.dart.
+              liveRegion: false,
               label: message,
               child: Container(
                 padding: const EdgeInsets.symmetric(

@@ -23,7 +23,11 @@ class VoiceOrb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      liveRegion: state != VoiceOrbState.idle,
+      // liveRegion dimatikan - tiap peralihan keadaan orb ini sudah punya
+      // kalimatnya sendiri dari VoiceProvider, dan keadaan "mendengarkan"
+      // justru keadaan yang paling tidak boleh disela suara apa pun.
+      // Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: _label,
       child: SizedBox(
         width: size,

@@ -261,7 +261,7 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     final dets = det.detections;
     if (dets.isNotEmpty) {
       TtsQueue().speak(
-        dets.map((d) => d.ttsMessage).join('. '),
+        dets.map((d) => d.objectMessage).join('. '),
         tier: SpeechTier.warning,
       );
       return;
@@ -645,7 +645,10 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
             if (extra > 0) ...[
               const SizedBox(height: AppSpacing.s2),
               Semantics(
-                liveRegion: true,
+                // liveRegion dimatikan - NarrationScheduler sudah menutup
+                // ringkasannya dengan "dan N lainnya", dan pil ini berubah
+                // tiap frame deteksi. Lihat core/a11y/screen_reader.dart.
+                liveRegion: false,
                 label: 'dan $extra objek lain',
                 child: Container(
                   width: double.infinity,

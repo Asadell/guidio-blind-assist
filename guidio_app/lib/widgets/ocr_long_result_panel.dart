@@ -62,6 +62,14 @@ class OcrLongResultPanel extends StatelessWidget {
   final String? tertiaryLabel; // mis. "Bicara ke Asisten"
   final VoidCallback? onTertiary;
 
+  /// Umumkan sendiri begitu panel ini muncul (`liveRegion`).
+  ///
+  /// Dimatikan oleh Mode Baca Teks, yang memindahkan fokus TalkBack ke panel
+  /// ini secara eksplisit. Panel inilah yang paling panjang di seluruh
+  /// aplikasi: dibiarkan menyala berbarengan dengan pemindahan fokus, satu
+  /// halaman penuh dibacakan dua kali berturut-turut.
+  final bool announceOnAppear;
+
   const OcrLongResultPanel({
     super.key,
     required this.blocks,
@@ -78,6 +86,7 @@ class OcrLongResultPanel extends StatelessWidget {
     this.onReplay,
     this.tertiaryLabel,
     this.onTertiary,
+    this.announceOnAppear = true,
   });
 
   int get _controlSize => vertical ? 56 : 48;
@@ -93,7 +102,7 @@ class OcrLongResultPanel extends StatelessWidget {
     final failedCount = blocks.where((b) => !b.ok).length;
 
     return Semantics(
-      liveRegion: true,
+      liveRegion: announceOnAppear,
       label: '$eyebrow. ${blocks.where((b) => b.ok).map((b) => b.sentences.join(' ')).join(' ')}',
       child: Container(
         width: double.infinity,
@@ -180,7 +189,7 @@ class OcrLongResultPanel extends StatelessWidget {
   Widget _progressBar() {
     final v = progress!.clamp(0.0, 1.0);
     return Semantics(
-      label: 'Progres baca ${(v * 100).round()} persen',
+      label: 'Kemajuan pembacaan ${(v * 100).round()} persen',
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: LinearProgressIndicator(
@@ -337,7 +346,7 @@ class OcrLongResultPanel extends StatelessWidget {
         onTap: onTogglePlayback,
       ),
       if ((speaking || paused) && onStop != null)
-        _pill(label: 'Stop', icon: Icons.stop_rounded, filled: false, onTap: onStop),
+        _pill(label: 'Hentikan', icon: Icons.stop_rounded, filled: false, onTap: onStop),
       _pill(label: 'Ulangi', icon: Icons.replay_rounded, filled: false, onTap: onReplay),
       if (tertiaryLabel != null) _pill(label: tertiaryLabel!, icon: Icons.mic_none_rounded, filled: false, onTap: onTertiary),
     ];

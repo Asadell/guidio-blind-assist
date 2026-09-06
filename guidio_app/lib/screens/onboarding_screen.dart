@@ -22,7 +22,14 @@ const _steps = [
   _Step(
     icon: Icons.apps_rounded,
     title: 'Tiga tombol yang tidak pernah pindah',
-    body: 'Ambil gambar, Bicara, dan Pilih mode selalu ada di posisi yang sama, di bawah layar.',
+    // "Ambil gambar" sudah tidak pernah jadi label tombol kiri di mode mana
+    // pun: ia berganti mengikuti mode (Matikan Suara, Baca teks, Mulai,
+    // Kirim). Menyebut nama lama di kalimat pembuka aplikasi mengajari
+    // pengguna satu peta yang tidak cocok dengan apa yang nanti dia dengar
+    // dari TalkBack di setiap mode.
+    body: 'Tombol kiri untuk aksi utama mode, tombol tengah untuk Bicara, '
+        'tombol kanan untuk Pilih mode. Ketiganya selalu di posisi yang sama, '
+        'di dasar layar.',
   ),
   _Step(
     icon: Icons.mic_none_rounded,

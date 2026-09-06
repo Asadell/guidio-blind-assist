@@ -33,6 +33,18 @@ class ResultPanel extends StatelessWidget {
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
 
+  /// Umumkan sendiri begitu panel ini muncul (`liveRegion`).
+  ///
+  /// Bawaannya menyala - untuk layar yang tidak mengurus fokus pembaca layar
+  /// sendiri, inilah satu-satunya yang membuat kemunculan panel terdengar.
+  ///
+  /// Mode Baca Teks mematikannya, dan itu bukan penghematan: mode itu
+  /// MEMINDAHKAN fokus TalkBack ke panel ini secara eksplisit (lihat
+  /// `_resultKey` di ocr_screen.dart). Dua mekanisme sekaligus berarti satu
+  /// halaman penuh teks dibacakan dua kali berturut-turut, dan pengguna tidak
+  /// punya cara tahu bahwa yang kedua bukan bagian baru.
+  final bool announceOnAppear;
+
   const ResultPanel({
     super.key,
     this.title = 'Hasil baca',
@@ -47,6 +59,7 @@ class ResultPanel extends StatelessWidget {
     this.onRetry,
     this.secondaryLabel,
     this.onSecondary,
+    this.announceOnAppear = true,
   });
 
   @override
@@ -252,7 +265,7 @@ class ResultPanel extends StatelessWidget {
 
   Widget _panel({required Widget child, required String semanticsLabel}) {
     return Semantics(
-      liveRegion: true,
+      liveRegion: announceOnAppear,
       label: semanticsLabel,
       child: Container(
         width: double.infinity,

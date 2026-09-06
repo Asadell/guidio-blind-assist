@@ -86,7 +86,13 @@ class NominalCard extends StatelessWidget {
 
     return Semantics(
       header: true,
-      liveRegion: true,
+      // liveRegion dimatikan. Nominalnya SELALU diucapkan MoneyProvider lebih
+      // dulu, dan sejak mode ini jadi nol sentuhan kartunya diperbarui tiap
+      // beberapa detik selama uang masih terlihat - TalkBack yang ikut
+      // mengumumkan tiap pembaruan akan memotong angka yang sedang berbunyi,
+      // tiap kali. Kartunya tetap dibacakan begitu jari mendarat di sana.
+      // Aturan lengkapnya di core/a11y/screen_reader.dart.
+      liveRegion: false,
       label: certain
           ? '$formatted, $words'
           : 'Sepertinya $formatted, $words. '

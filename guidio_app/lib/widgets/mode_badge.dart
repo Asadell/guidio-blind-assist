@@ -73,7 +73,12 @@ class _ModeBadgeState extends State<ModeBadge> {
       sortKey: const OrdinalSortKey(3),
       header: true,
       label: _label,
-      liveRegion: widget.transitioning || widget.busy,
+      // liveRegion dimatikan - masuk mode sudah diumumkan
+      // `AppModeProvider.announceEntry`, dan keadaan sibuk sudah terdengar
+      // dari hasilnya sendiri. Pil ini duduk di puncak layar, jadi
+      // pengumumannya justru yang paling sering menimpa kabar yang ditunggu
+      // pengguna di kartu bawah. Lihat core/a11y/screen_reader.dart.
+      liveRegion: false,
       child: GestureDetector(
         onTap: _onTap,
         behavior: HitTestBehavior.opaque,

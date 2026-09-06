@@ -75,7 +75,12 @@ class SettingsScreen extends StatelessWidget {
             child: SegmentedButton<VibrationMode>(
               segments: const [
                 ButtonSegment(value: VibrationMode.active, label: Text('Aktif')),
-                ButtonSegment(value: VibrationMode.criticalOnly, label: Text('Critical saja')),
+                // "Critical" adalah kosakata kode, bukan kosakata pengguna.
+                // Ia dibacakan TalkBack lewat mesin suara Bahasa Indonesia,
+                // jadi yang terdengar bukan kata Inggris beraksen melainkan
+                // bunyi yang bukan kata dalam bahasa mana pun - dan ini
+                // pilihan yang menentukan kapan ponsel bergetar di jalan.
+                ButtonSegment(value: VibrationMode.criticalOnly, label: Text('Bahaya saja')),
                 ButtonSegment(value: VibrationMode.off, label: Text('Mati')),
               ],
               selected: {settings.vibrationMode},
@@ -189,7 +194,7 @@ class SettingsScreen extends StatelessWidget {
 
   String _vibrationLabel(VibrationMode m) => switch (m) {
         VibrationMode.active => 'Aktif',
-        VibrationMode.criticalOnly => 'Hanya Critical',
+        VibrationMode.criticalOnly => 'Hanya saat bahaya',
         VibrationMode.off => 'Mati',
       };
 
