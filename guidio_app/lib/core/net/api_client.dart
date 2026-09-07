@@ -74,7 +74,12 @@ class ApiClient {
   /// langsung berlaku pada permintaan berikutnya tanpa membangun ulang klien.
   late String Function() hostProvider;
 
-  String get _base => 'http://${hostProvider()}';
+  /// Skema protokol ("http" atau "https"). Dibaca ulang tiap permintaan -
+  /// sama seperti [hostProvider] - sehingga perubahan langsung berlaku tanpa
+  /// membangun ulang klien.
+  late String Function() schemeProvider;
+
+  String get _base => '${schemeProvider()}://${hostProvider()}';
 
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);

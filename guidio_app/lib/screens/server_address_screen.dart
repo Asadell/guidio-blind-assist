@@ -34,8 +34,10 @@ enum ServerFieldState { idle, testing, valid, invalid, failed }
 class _ServerAddressScreenState extends State<ServerAddressScreen> {
   late final TextEditingController _ctrl;
   late final String _savedHost;
+  late String _savedScheme;
   ServerFieldState _state = ServerFieldState.idle;
   int? _latencyMs;
+  String _scheme = 'http';
 
   /// Ikon mata TIDAK lagi punya status sendiri di sini.
   ///
@@ -44,12 +46,17 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
   /// Pengaturan. Satu saklar untuk satu rahasia - lihat
   /// `SettingsProvider.serverHostVisible`.
 
-  static final _hostPattern = RegExp(r'^[\w.-]+:\d{2,5}$');
+  // Port opsional: mendukung domain seperti `be-vinara.rima-app.com` (HTTPS
+  // tanpa port) maupun IP lokal seperti `192.168.1.5:8000`.
+  static final _hostPattern = RegExp(r'^[\w.-]+(:\d{2,5})?$');
 
   @override
   void initState() {
     super.initState();
-    _savedHost = context.read<SettingsProvider>().serverHost;
+    final settings = context.read<SettingsProvider>();
+    _savedHost = settings.serverHost;
+    _savedScheme = settings.serverScheme;
+    _scheme = _savedScheme;
     _ctrl = TextEditingController(text: _savedHost);
   }
 
@@ -69,7 +76,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
         _latencyMs = null;
       });
       await TtsQueue.instance.speak(
-        'Format alamat salah. Alamat butuh titik dua dan nomor port. Contoh benar: 127.0.0.1 titik dua 8000.',
+        'Format alamat salah. Isi dengan alamat IP atau nama domain, '
+        'boleh diikuti titik dua dan nomor port. '
+        'Contoh: 192.168.1.5 titik dua 8000, atau be-vinara.rima-app.com.',
         source: SpeechSource.assistant,
       );
       return;
@@ -83,7 +92,7 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
     // GET /health ke alamat KANDIDAT, tanpa mengubah alamat aktif. PG-08e
     // mensyaratkan alamat lama tetap dipakai kalau uji gagal, jadi alamat
     // aktif hanya berpindah lewat "Simpan alamat" sesudah uji berhasil.
-    final result = await ServerService.instance.healthAt(host);
+    final result = await ServerService.instance.healthAt(host, scheme: _scheme);
     if (!mounted) return;
 
     if (result != null) {
@@ -117,8 +126,10 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
     // saja sudah dilepas dan `context`-nya tidak lagi sah.
     final globals = context.read<GlobalConditionsProvider>();
     final caps = context.read<CapabilitiesProvider>();
+    final settings = context.read<SettingsProvider>();
 
-    await context.read<SettingsProvider>().setServerHost(host);
+    await settings.setServerHost(host);
+    await settings.setServerScheme(_scheme);
     if (!mounted) return;
 
     // ── Mode yang butuh server harus hidup SEKARANG, bukan nanti ──
@@ -174,16 +185,16 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
             icon: Icons.check_circle_outline_rounded,
           ),
         ServerFieldState.invalid => (
-            text: 'Format salah - alamat butuh titik dua dan nomor port. Contoh benar: 127.0.0.1:8000',
+            text: 'Format salah - isi dengan alamat IP atau nama domain, '
+                'boleh diikuti titik dua dan nomor port. '
+                'Contoh: 192.168.1.5:8000 atau be-vinara.rima-app.com',
             color: AppColors.criticalLabel,
             icon: Icons.error_outline_rounded,
           ),
         ServerFieldState.failed => (
             // Alamat lama ikut disamarkan kalau matanya sedang tertutup.
-            // Pesan gagal adalah tempat paling mudah terlewat saat menutupi
-            // alamat: yang disembunyikan di kolom isian muncul kembali di sini.
             text: 'Gagal terhubung. Alamat lama '
-                '(${_visible ? _savedHost : "tersembunyi"}) tetap dipakai.',
+                '(${_visible ? "$_savedScheme://$_savedHost" : "tersembunyi"}) tetap dipakai.',
             color: AppColors.criticalLabel,
             icon: Icons.cloud_off_rounded,
           ),
@@ -235,10 +246,45 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                   style: AppTypography.body(color: AppColors.ink2),
                 ),
                 const SizedBox(height: AppSpacing.s4),
+                // ── Toggle HTTP / HTTPS ──────────────────────────────────
+                Semantics(
+                  label: 'Protokol koneksi server',
+                  child: SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'http',
+                        label: Text('HTTP'),
+                        icon: Icon(Icons.lock_open_rounded, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: 'https',
+                        label: Text('HTTPS'),
+                        icon: Icon(Icons.lock_rounded, size: 16),
+                      ),
+                    ],
+                    selected: {_scheme},
+                    onSelectionChanged: (Set<String> selection) {
+                      setState(() {
+                        _scheme = selection.first;
+                        // Isian berubah → hasil uji lama tidak berlaku lagi.
+                        if (_state != ServerFieldState.idle) {
+                          _state = ServerFieldState.idle;
+                          _latencyMs = null;
+                        }
+                      });
+                    },
+                    style: ButtonStyle(
+                      textStyle: WidgetStatePropertyAll(
+                        AppTypography.bodyStrong(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.s3),
                 Semantics(
                   sortKey: const OrdinalSortKey(8),
                   textField: true,
-                  label: 'Alamat server, isi dengan host dan port',
+                  label: 'Alamat server, isi dengan host atau host:port',
                   child: TextField(
                     controller: _ctrl,
                     autocorrect: false,
@@ -248,7 +294,9 @@ class _ServerAddressScreenState extends State<ServerAddressScreen> {
                     obscureText: !_visible,
                     obscuringCharacter: '•',
                     decoration: InputDecoration(
-                      hintText: 'host:port, mis. 127.0.0.1:8000',
+                      hintText: _scheme == 'https'
+                          ? 'domain, mis. be-vinara.rima-app.com'
+                          : 'host:port, mis. 192.168.1.5:8000',
                       isDense: true,
                       suffixIcon: Semantics(
                         label: _visible

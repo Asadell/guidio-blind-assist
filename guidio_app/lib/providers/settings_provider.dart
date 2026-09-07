@@ -22,6 +22,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _kFontScale = 'font_scale';
   static const _kOnboardingDone = 'onboarding_done';
   static const _kServerHost = 'server_host';
+  static const _kServerScheme = 'server_scheme';
   static const _kAutoTorch = 'auto_torch';
 
   double _speechRate = 0.5;
@@ -32,6 +33,9 @@ class SettingsProvider extends ChangeNotifier {
   double _fontScale = 1.0; // 1.0..2.0 (200%)
   bool _onboardingDone = false;
   String _serverHost = kDefaultServerHost;
+  /// Skema protokol server: `"http"` (jaringan lokal) atau `"https"` (server
+  /// yang sudah di-deploy dengan TLS, misal `be-vinara.rima-app.com`).
+  String _serverScheme = 'http';
   bool _autoTorch = true;
 
   double get speechRate => _speechRate;
@@ -42,6 +46,7 @@ class SettingsProvider extends ChangeNotifier {
   double get fontScale => _fontScale;
   bool get onboardingDone => _onboardingDone;
   String get serverHost => _serverHost;
+  String get serverScheme => _serverScheme;
 
   /// Lampu senter menyala dan mati sendiri mengikuti kondisi cahaya.
   ///
@@ -101,6 +106,7 @@ class SettingsProvider extends ChangeNotifier {
     _fontScale = _prefs!.getDouble(_kFontScale) ?? 1.0;
     _onboardingDone = _prefs!.getBool(_kOnboardingDone) ?? false;
     _serverHost = _prefs!.getString(_kServerHost) ?? kDefaultServerHost;
+    _serverScheme = _prefs!.getString(_kServerScheme) ?? 'http';
     _autoTorch = _prefs!.getBool(_kAutoTorch) ?? true;
     await TTSService.instance.setRate(_speechRate);
     // Tanpa baris ini, pilihan "Getar: Mati" tersimpan ke disk tapi tidak
@@ -109,6 +115,7 @@ class SettingsProvider extends ChangeNotifier {
     // Alamat tersimpan diterapkan ke service SEBELUM permintaan pertama -
     // tanpa ini, alamat kustom baru berlaku setelah pengguna membukanya lagi.
     ServerService.instance.setHost(_serverHost);
+    ServerService.instance.setScheme(_serverScheme);
     notifyListeners();
   }
 
@@ -175,6 +182,13 @@ class SettingsProvider extends ChangeNotifier {
     // perubahan yang benar-benar terjadi (bagian 4.1).
     ServerService.instance.setHost(host);
     await _prefs?.setString(_kServerHost, host);
+    notifyListeners();
+  }
+
+  Future<void> setServerScheme(String scheme) async {
+    _serverScheme = scheme;
+    ServerService.instance.setScheme(scheme);
+    await _prefs?.setString(_kServerScheme, scheme);
     notifyListeners();
   }
 }

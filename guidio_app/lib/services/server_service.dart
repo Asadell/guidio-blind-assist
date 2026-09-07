@@ -48,10 +48,25 @@ class ServerService {
     _host = next;
   }
 
-  /// Satu klien HTTP untuk seluruh aplikasi - koneksi dipakai ulang
+  /// Skema protokol aktif: `"http"` untuk jaringan lokal,
+  /// `"https"` untuk server yang sudah di-deploy dengan TLS.
+  String _scheme = 'http';
+  String get scheme => _scheme;
+
+  /// Mengganti skema. Permintaan berikutnya langsung memakai skema baru
+  /// karena [ApiClient] membaca [_scheme] lewat `schemeProvider`.
+  void setScheme(String value) {
+    final next = value.trim().toLowerCase();
+    if (next != 'http' && next != 'https') return;
+    _scheme = next;
+  }
+
+  /// Satu klien HTTP/HTTPS untuk seluruh aplikasi - koneksi dipakai ulang
   /// (keep-alive) alih-alih handshake baru tiap permintaan. Lihat
   /// [ApiClient] untuk alasan lengkapnya.
-  late final ApiClient _api = ApiClient()..hostProvider = (() => _host);
+  late final ApiClient _api = ApiClient()
+    ..hostProvider = (() => _host)
+    ..schemeProvider = (() => _scheme);
   ApiClient get api => _api;
 
   // ── Deteksi rintangan: TIDAK ADA jalur server ───────────────────────────
@@ -137,9 +152,16 @@ class ServerService {
   /// PG-08b untuk menguji kandidat sebelum disimpan. Memisahkan "menguji" dari
   /// "memakai" itulah yang membuat PG-08e mungkin: uji boleh gagal tanpa
   /// merusak sambungan yang sedang bekerja.
-  Future<Map<String, dynamic>?> healthAt(String host, {Duration? timeout}) async {
-    // Klien sementara dengan host tetap - tidak menyentuh alamat aktif.
-    final probe = ApiClient()..hostProvider = (() => host);
+  Future<Map<String, dynamic>?> healthAt(
+    String host, {
+    String scheme = 'http',
+    Duration? timeout,
+  }) async {
+    // Klien sementara dengan host dan skema tetap - tidak menyentuh
+    // konfigurasi aktif.
+    final probe = ApiClient()
+      ..hostProvider = (() => host)
+      ..schemeProvider = (() => scheme);
     final sw = Stopwatch()..start();
     try {
       final json = await probe.getJson('/health', retries: 0);
