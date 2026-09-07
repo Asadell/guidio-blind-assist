@@ -84,6 +84,12 @@ class ApiClient {
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);
 
+  /// Header autentikasi yang disertakan di setiap permintaan.
+  /// Key ini cocokkan dengan VINARA_API_KEY di backend.
+  static const Map<String, String> _authHeader = {
+    'X-API-Key': 'vnr-2026-k1m1pn-s3cur3',
+  };
+
   // ── GET / POST JSON ─────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getJson(
@@ -93,7 +99,7 @@ class ApiClient {
     int retries = 2,
   }) async {
     final res = await _send(
-      () => _inner.get(_uri(path, query)),
+      () => _inner.get(_uri(path, query), headers: _authHeader),
       path: path,
       op: op,
       // GET selalu idempoten - aman diulang.
@@ -111,7 +117,7 @@ class ApiClient {
     final res = await _send(
       () => _inner.post(
         _uri(path),
-        headers: const {'Content-Type': 'application/json'},
+        headers: const {'Content-Type': 'application/json', ..._authHeader},
         body: jsonEncode(body),
       ),
       path: path,
@@ -142,7 +148,7 @@ class ApiClient {
     final res = await _send(
       () => _inner.post(
         _uri(path),
-        headers: {'Content-Type': contentType, ...?headers},
+        headers: {'Content-Type': contentType, ..._authHeader, ...?headers},
         body: bytes,
       ),
       path: path,
@@ -165,6 +171,7 @@ class ApiClient {
     ApiOp op = ApiOp.frame,
   }) async {
     final req = http.MultipartRequest('POST', _uri(path))
+      ..headers.addAll(_authHeader)
       ..fields.addAll(fields)
       ..files.add(http.MultipartFile.fromBytes(fileField, bytes, filename: filename));
 

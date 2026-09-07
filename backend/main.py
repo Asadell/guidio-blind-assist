@@ -4,8 +4,9 @@ import time
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from loguru import logger
 
 from routers import (
@@ -20,6 +21,13 @@ from services.moondream_service import MoonDreamService
 load_dotenv()
 
 STARTED_AT = time.time()
+
+# ── Autentikasi API ───────────────────────────────────────────────────────
+# Dibaca sekali saat startup. Kosong = autentikasi dimatikan (dev only).
+_API_KEY: str = os.getenv("VINARA_API_KEY", "")
+
+# Endpoint yang dibebaskan dari autentikasi (untuk monitoring & debugging).
+_AUTH_EXEMPT: set[str] = {"/health", "/openapi.json", "/docs", "/redoc"}
 
 
 @asynccontextmanager
@@ -100,6 +108,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    """Tolak request tanpa X-API-Key yang benar.
+
+    Exempt: /health, /openapi.json, /docs, /redoc - supaya monitoring
+    dan dokumentasi tetap bisa diakses tanpa key.
+    """
+    if _API_KEY and request.url.path not in _AUTH_EXEMPT:
+        incoming = request.headers.get("X-API-Key", "")
+        if incoming != _API_KEY:
+            logger.warning(
+                f"[auth] Ditolak: {request.method} {request.url.path} "
+                f"| key={'(kosong)' if not incoming else '(salah)'}"
+            )
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "API key tidak valid atau tidak disertakan."},
+            )
+    return await call_next(request)
 
 # ── Permukaan API: 3 router, 3 endpoint + /health ────────────────────────
 #
