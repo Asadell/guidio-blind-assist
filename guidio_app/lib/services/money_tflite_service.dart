@@ -80,7 +80,7 @@ class MoneyTFLiteService {
   /// Ambang keyakinan sengaja tinggi. Precedent Seeing AI menyetel presisi
   /// pada confidence sangat tinggi justru untuk menekan false positive pada
   /// alat bantu uang.
-  static const double confidenceThreshold = 0.85;
+  static const double confidenceThreshold = 0.75;
 
   // ── Gerbang kedua: MARGIN ke juara dua ──────────────────────────────────
   //
@@ -167,7 +167,7 @@ class MoneyTFLiteService {
   /// tepi jurang, pada sampel yang cuma 20 gambar. Kalau nanti ada ratusan
   /// foto lapangan, titik ini layak diukur ulang - jangan diwarisi begitu
   /// saja. Ukur dengan `tool/eval_rupiah_litert.py` (bawaannya jalur kamera).
-  static const double marginPathMinConfidence = 0.80;
+  static const double marginPathMinConfidence = 0.70;
 
   /// Urutan kelas sesuai `idx_to_class` di
   /// `assets/models/rupiah_class_info.json`, yang ikut diturunkan bersama
@@ -315,9 +315,6 @@ class MoneyTFLiteService {
     final passesMargin =
         margin >= marginThreshold && confidence >= marginPathMinConfidence;
 
-    // Gerbang ini TIDAK LAGI menahan jawaban, hanya menentukan nadanya.
-    // Lihat catatan panjang di dokumentasi kelas: menahan jawaban membuat
-    // mode ini buntu pada kasus pemakaian yang paling umum.
     return MoneyResult.detected(
       valueIdr: classValues[bestIndex],
       confidence: confidence,
