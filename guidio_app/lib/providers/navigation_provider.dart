@@ -774,16 +774,26 @@ class NavigationProvider extends ChangeNotifier {
   /// yang selesai.
   (String, SpeechTier, bool, String) _composeGuidance(
       ZoneAnalysis zones, List<Detection> obstacles) {
+    // Dihitung DULU, sebelum cabang rintangan, karena jalan keluar yang
+    // ditempelkan ke peringatan rintangan berasal dari frame yang sama - dan
+    // frame yang tidak layak jadi dasar arahan berjalan juga tidak layak jadi
+    // dasar jalan keluar. Fungsinya murni, jadi memajukannya tidak mengubah
+    // apa pun selain urutan pembacaan.
+    final doubtMessage = _doubtMessage(zones);
+    final jalanKeluar = doubtMessage == null ? zones.stepCommand : null;
+
     final critical = obstacles.where((d) => d.dangerLevel == 'critical').toList();
     if (critical.isNotEmpty) {
       final d = critical.first;
-      return (d.ttsMessage, SpeechTier.critical, true, _obstacleIdentity(d));
+      return _peringatanDenganJalanKeluar(
+          d, SpeechTier.critical, true, jalanKeluar, zones);
     }
 
     final warning = obstacles.where((d) => d.dangerLevel == 'warning').toList();
     if (warning.isNotEmpty) {
       final d = warning.first;
-      return (d.ttsMessage, SpeechTier.warning, false, _obstacleIdentity(d));
+      return _peringatanDenganJalanKeluar(
+          d, SpeechTier.warning, false, jalanKeluar, zones);
     }
 
     // ── Frame tidak layak jadi dasar arahan berjalan ──
@@ -802,7 +812,6 @@ class NavigationProvider extends ChangeNotifier {
     //
     // Peringatan rintangan tetap di atasnya: motor mendekat dan lubang di
     // depan harus lewat terlepas dari apakah jalurnya terbaca yakin.
-    final doubtMessage = _doubtMessage(zones);
     if (doubtMessage != null) {
       // Warning, bukan Info: pengguna sedang berjalan dan perlu tahu bahwa
       // panduannya sedang tidak bekerja. Tapi juga bukan Critical - tidak ada
@@ -943,6 +952,57 @@ class NavigationProvider extends ChangeNotifier {
   /// sama tetap lubang yang sama entah terbaca 1,4 atau 1,6 meter.
   static String _obstacleIdentity(Detection d) =>
       '${d.labelEn}|${d.direction}|${d.dangerLevel}';
+
+  /// Peringatan rintangan yang SEKALIGUS menyebut jalan keluarnya.
+  ///
+  /// Ini cacat yang paling terlihat di tangkapan layar lapangan, dan paling
+  /// mudah terlewat karena kedua bagiannya masing-masing sudah benar. YOLO
+  /// menemukan lubang; PIDNet, pada frame yang sama, sudah menghitung koridor
+  /// yang menikung melewati lubang itu dan menggambarnya sebagai garis hijau.
+  /// Tapi cabang rintangan mengembalikan kalimatnya sendiri lalu keluar, jadi
+  /// yang terucap hanya "Bahaya! Ada lubang kurang dari 1 meter di depan".
+  ///
+  /// Peringatan tanpa jalan keluar adalah kalimat yang cuma bisa dikerjakan
+  /// orang yang bisa melihat sisanya. Pengguna awas melihat sendiri bahwa
+  /// tikungan hijaunya ke kiri; pengguna tunanetra mendengar ada bahaya, lalu
+  /// berhenti di depan lubang tanpa satu pun langkah berikutnya - padahal
+  /// langkah itu sudah dihitung, tinggal diucapkan.
+  ///
+  /// Dua hal yang sengaja TIDAK dilakukan di sini:
+  ///
+  /// **Tidak pernah menyuruh maju lurus.** Kalau [ZoneAnalysis.stepCommand]
+  /// null - pemeriksaan bahu bilang badan masih muat lurus ke depan - yang
+  /// ditempelkan bukan "maju lurus", karena rintangannya justru ada di sana.
+  /// Untuk bahaya tepat di depan, yang ditempelkan "Berhenti dulu."
+  ///
+  /// **Identitasnya ikut arah, bukan jaraknya.** Arah jalan keluar berubah
+  /// hanya kalau koridornya benar-benar pindah sisi, jadi ia aman jadi bagian
+  /// identitas; jumlah langkahnya bergoyang tiap frame dan sengaja tidak
+  /// ikut - lihat catatan di [_composeGuidance] soal kenapa jarak tidak boleh
+  /// mengubah identitas.
+  static (String, SpeechTier, bool, String) _peringatanDenganJalanKeluar(
+    Detection d,
+    SpeechTier tier,
+    bool takeover,
+    String? jalanKeluar,
+    ZoneAnalysis zones,
+  ) {
+    final identitas = _obstacleIdentity(d);
+
+    if (jalanKeluar != null) {
+      return ('${d.ttsMessage}. $jalanKeluar', tier, takeover,
+          '$identitas|geser-${zones.stepDirection}');
+    }
+
+    // Tidak ada geseran yang disarankan. Menyuruh maju lurus di sini salah:
+    // koridornya memang lurus, tapi rintangannya ada di dalam koridor itu.
+    if (tier == SpeechTier.critical && d.direction == 'depan') {
+      return ('${d.ttsMessage}. Berhenti dulu.', tier, takeover,
+          '$identitas|berhenti');
+    }
+
+    return (d.ttsMessage, tier, takeover, identitas);
+  }
 
   void _emitGuidance(String message, SpeechTier tier,
       {required bool takeover, required String identity}) {

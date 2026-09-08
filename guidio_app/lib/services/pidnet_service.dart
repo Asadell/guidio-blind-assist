@@ -144,25 +144,75 @@ class ZoneAnalysis {
   /// tengah trotoar tanpa jalan keluar.
   bool get adaJalur => path.isNotEmpty;
 
-  /// Seberapa jauh jalurnya dari lurus di depan, dalam kata.
+  /// Seberapa jauh harus bergeser, dalam LANGKAH.
   ///
-  /// `pathShift` sudah dinolkan oleh pemeriksaan bahu di `_computeZones`
-  /// setiap kali badan pengguna MASIH MUAT kalau dia terus lurus. Jadi nilai
-  /// yang bukan nol tidak pernah berarti "sumbu jalur bergoyang sedikit" -
-  /// artinya selalu "kalau lurus, kamu tidak muat". Itu yang membuat
-  /// pembagian di bawah ini boleh sehalus ini tanpa jadi cerewet.
-  String get _seberapaGeser {
-    final besar = pathShift.abs();
-    // 0,12 adalah ambang tunggal versi lama - di bawahnya dulu selalu
-    // dijawab "jalan lurus". Angkanya dipertahankan, artinya yang berubah:
-    // bukan lagi batas antara "diam" dan "bergeser", melainkan antara
-    // "sedikit" dan "agak".
-    if (besar < 0.12) return 'sedikit';
-    if (besar < 0.28) return 'agak';
-    return 'jauh';
+  /// `pathShift` adalah pecahan lebar frame, dan pecahan lebar frame bukan
+  /// satuan yang bisa dijalani siapa pun. Pengguna tunanetra yang mendengar
+  /// "agak ke kiri" tidak punya cara tahu apakah itu berarti menggeser badan
+  /// sejengkal atau berpindah ke sisi trotoar yang lain - dan dua kesalahan
+  /// itu berlawanan arah akibatnya: yang pertama membuatnya tetap menginjak
+  /// lubang, yang kedua membuatnya keluar dari trotoar.
+  ///
+  /// Langkah adalah satuan yang dimiliki tubuh sendiri, tidak perlu alat ukur
+  /// dan tidak perlu penglihatan. Karena itu arahannya diucapkan dalam
+  /// langkah, bukan dalam meter dan bukan dalam kata sifat.
+  ///
+  /// Dibulatkan ke setengah langkah terdekat. Ketelitian yang lebih halus
+  /// dari itu palsu - lihat [_frameWidthMeters], skalanya sendiri perkiraan -
+  /// dan "geser nol koma tujuh langkah" bukan kalimat yang bisa dikerjakan
+  /// orang yang sedang berjalan.
+  double get lateralSteps {
+    final meter = pathShift.abs() * _frameWidthMeters;
+    final langkah = (meter / _stepMeters * 2).round() / 2;
+    return langkah < 0.5 ? 0.5 : langkah;
   }
 
-  String get _arahGeser => pathShift < 0 ? 'kiri' : 'kanan';
+  /// [lateralSteps] sebagai kata, bukan angka.
+  ///
+  /// TTS Bahasa Indonesia membaca "1.5" sebagai "satu titik lima". Angkanya
+  /// dieja di sini supaya yang terdengar tetap kalimat manusia.
+  String get _jarakGeser => switch (lateralSteps) {
+        <= 0.5 => 'setengah langkah',
+        <= 1.0 => 'satu langkah',
+        <= 1.5 => 'satu setengah langkah',
+        <= 2.0 => 'dua langkah',
+        _ => 'dua sampai tiga langkah',
+      };
+
+  /// Sisi mana badan harus digeser: `'kiri'`, `'kanan'`, atau `null` kalau
+  /// tidak perlu bergeser sama sekali.
+  ///
+  /// Dipisah dari [stepCommand] karena pemanggil yang menyusun kalimatnya
+  /// sendiri - peringatan rintangan di `NavigationProvider` - butuh arahnya
+  /// saja sebagai bagian identitas pesan, tanpa jumlah langkahnya yang
+  /// bergoyang tiap frame.
+  String? get stepDirection {
+    if (!adaJalur || pathShift == 0) return null;
+    return pathShift < 0 ? 'kiri' : 'kanan';
+  }
+
+  /// Perintah langkah, tanpa penilaian keadaan apa pun. `null` kalau frame ini
+  /// tidak punya satu pun langkah yang layak disarankan.
+  ///
+  /// Dipisah dari [ttsMessage] karena ada satu keadaan yang paling sering
+  /// terjadi di lapangan dan dulu justru tidak pernah kebagian arah: saat YOLO
+  /// menemukan lubang, peringatannya mengambil alih seluruh kalimat, dan yang
+  /// terucap cuma "Bahaya! Ada lubang kurang dari 1 meter di depan". Di layar,
+  /// pada frame yang sama, garis jalur sudah jelas menikung melewati lubang
+  /// itu - jalan keluarnya sudah dihitung, cuma tidak pernah diucapkan.
+  ///
+  /// Pengguna awas melihat tikungan hijaunya sendiri. Pengguna tunanetra hanya
+  /// mendengar bahwa ada bahaya, lalu berdiri diam di depan lubang tanpa tahu
+  /// bahwa tinggal menggeser badan satu langkah ke kiri.
+  ///
+  /// Nol berarti pemeriksaan bahu di `_computeZones` sudah memutuskan badan
+  /// pengguna masih muat lurus ke depan; menyuruhnya bergeser saat itu justru
+  /// mendorongnya keluar dari koridor.
+  String? get stepCommand {
+    final arah = stepDirection;
+    if (arah == null) return null;
+    return 'Geser $_jarakGeser ke $arah.';
+  }
 
   /// Arahan suara. SELALU menyebut ke mana harus melangkah kalau masih ada
   /// jalur, bukan cuma menilai apa yang di depan.
@@ -176,23 +226,19 @@ class ZoneAnalysis {
   /// Karena itu "berhenti" hanya diucapkan kalau [path] benar-benar kosong.
   /// Selama masih ada ruas, yang keluar adalah arah.
   ///
-  /// ## Kenapa dibagi tiga tingkat, bukan satu ambang
+  /// ## Kenapa kata sifat diganti langkah
   ///
-  /// Versi sebelumnya cuma punya satu ambang, 0,12. Di bawah itu, apa pun
-  /// yang terjadi, kalimatnya "Jalur aman, jalan lurus."
+  /// Versi sebelumnya membagi besarnya geseran jadi tiga kata - "sedikit",
+  /// "agak", lalu "ambil sebelah kanan". Tiga-tiganya menilai, tidak satu pun
+  /// menyuruh: "sedikit ke kiri" tidak memberi tahu sejauh apa, dan "ambil
+  /// sebelah kanan" tidak memberi tahu bahwa yang dimaksud adalah menggeser
+  /// badan, bukan berbelok ke kanan lalu berjalan menyamping keluar trotoar.
   ///
-  /// Itu keliru justru di pita yang paling sering muncul. `pathShift` bernilai
-  /// 0,00 KHUSUS saat pemeriksaan bahu memutuskan badan pengguna masih muat
-  /// lurus ke depan. Nilai seperti -0,10 karena itu bukan derau: ia berarti
-  /// pemeriksaan bahu sudah menjawab "tidak muat", tapi kalimatnya tetap
-  /// menyuruh jalan lurus. Terekam apa adanya di log perangkat:
-  ///
-  ///     [PIDNet] L=0.15 C=0.69 R=0.24 jalur=14 geser=-0.10 → rec=1
-  ///
-  /// Di layar, jalurnya jelas menikung ke kiri melewati lubang; yang terucap
-  /// "jalan lurus". Sekarang pita itu punya kalimatnya sendiri, "Sedikit ke
-  /// kiri", dan hanya `pathShift` yang benar-benar nol yang berhak berkata
-  /// lurus.
+  /// Sekarang keempat arah yang mungkin diucapkan cuma dua bentuk, dan
+  /// keduanya perintah: "Maju lurus ke depan" atau "Geser N langkah ke
+  /// kiri/kanan". Tidak ada arah menyamping, tidak ada mata angin - keduanya
+  /// menuntut pengguna menerjemahkan sendiri arah peta menjadi gerakan badan,
+  /// dan itu justru yang tidak bisa dilakukan sambil berjalan tanpa melihat.
   String get ttsMessage {
     if (!adaJalur) {
       return 'Berhenti dulu. Tidak ada jalur aman di sekitar sini.';
@@ -201,25 +247,14 @@ class ZoneAnalysis {
     final tertutup = center == ZoneStatus.danger;
 
     // Nol berarti pemeriksaan bahu lolos: badan muat kalau terus lurus.
-    if (pathShift == 0) {
+    final perintah = stepCommand;
+    if (perintah == null) {
       return tertutup
-          ? 'Jalur menyempit di depan. Terus lurus, pelan-pelan.'
-          : 'Jalur aman, jalan lurus.';
+          ? 'Jalur menyempit di depan. Maju lurus ke depan, pelan-pelan.'
+          : 'Jalur aman. Maju lurus ke depan.';
     }
 
-    final arah = _arahGeser;
-    return switch (_seberapaGeser) {
-      'sedikit' => tertutup
-          ? 'Jalur di depan tertutup. Geser sedikit ke $arah.'
-          : 'Sedikit ke $arah.',
-      'agak' => tertutup
-          ? 'Jalur di depan tertutup. Ambil sebelah $arah.'
-          : 'Agak ke $arah.',
-      _ => tertutup
-          ? 'Jalur di depan tertutup. Jalannya ada di sebelah $arah, '
-              'geser ke sana.'
-          : 'Ambil sebelah $arah.',
-    };
+    return tertutup ? 'Jalur di depan tertutup. $perintah' : perintah;
   }
 
   ZoneStatus get recommendedStatus => switch (recommendedZone) {
@@ -406,6 +441,33 @@ const double _pathGapFrac = 0.04;
 /// sedikit, dan pengguna terus-menerus disuruh "agak ke kanan" lalu "agak ke
 /// kiri" untuk jalan yang sebenarnya lurus.
 const double _shoulderFrac = 0.10;
+
+/// Perkiraan lebar dunia nyata yang tercakup satu lebar frame, di kedalaman
+/// tempat arahan diambil (irisan ke-5 dari 14, kira-kira dua langkah di depan
+/// kaki).
+///
+/// Ini SATU-SATUNYA tempat pecahan lebar frame berubah jadi satuan yang bisa
+/// dijalani, jadi angkanya sengaja ditulis terbuka beserta asalnya, bukan
+/// disembunyikan di dalam rumus.
+///
+/// Asalnya: ponsel dipegang setinggi dada dengan sudut pandang mendatar
+/// ~65 derajat, dan irisan panduan jatuh sekitar 1,5-2 meter di depan kaki.
+/// Lebar dunia yang terlihat di situ `2 x jarak x tan(fov/2)` ≈ 2 meter.
+///
+/// Angka ini TIDAK dipakai untuk mengaku-ngaku ketelitian: keluarannya
+/// dibulatkan ke setengah langkah di [ZoneAnalysis.lateralSteps] justru
+/// supaya perkiraan kasar ini tidak pernah terdengar seperti hasil ukur.
+/// Kalau uji lapangan menunjukkan arahannya konsisten terlalu jauh atau
+/// terlalu dekat, inilah satu angka yang perlu disetel.
+const double _frameWidthMeters = 2.0;
+
+/// Panjang satu langkah orang dewasa yang sedang berjalan hati-hati.
+///
+/// Lebih pendek dari langkah normal (~0,75 m) dengan sengaja: pengguna mode
+/// ini sedang berjalan di tempat yang belum dikenalnya, dan langkahnya memang
+/// lebih pendek. Melebihkan panjang langkah berarti menyuruh bergeser lebih
+/// jauh dari yang dibutuhkan - ke arah tepi trotoar.
+const double _stepMeters = 0.65;
 
 // Normalisasi ImageNet-nya sekarang dikerjakan NavFrameConverter, sekaligus
 // dengan rotasi dan penskalaan, dalam satu lintasan di isolate.

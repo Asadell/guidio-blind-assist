@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guidio_app/models/detection.dart';
 import 'package:guidio_app/providers/navigation_provider.dart';
 import 'package:guidio_app/services/pidnet_service.dart';
 import 'package:guidio_app/widgets/zone_indicator.dart' show ZoneStatus;
@@ -46,25 +47,46 @@ ZoneAnalysis _zona({
       pathShift: geser,
     );
 
-List<String> _ucapanUntuk(ZoneAnalysis zona) {
+List<String> _ucapanUntuk(ZoneAnalysis zona,
+    [List<Detection> rintangan = const []]) {
   final ucapan = <String>[];
   final p = NavigationProvider();
   p.onSpeak = (teks, _) => ucapan.add(teks);
-  p.debugApplyResult(zona, const []);
+  p.debugApplyResult(zona, rintangan);
   return ucapan;
 }
+
+/// Satu lubang di depan kaki - deteksi yang paling sering memicu peringatan
+/// di mode ini, dan yang tangkapan layarnya memulai perbaikan ini.
+Detection _lubang({
+  String arah = 'depan',
+  double jarak = 0.6,
+  String bahaya = 'critical',
+}) =>
+    Detection(
+      labelEn: 'pothole',
+      labelId: 'lubang',
+      confidence: 0.8,
+      distanceMeter: jarak,
+      direction: arah,
+      dangerLevel: bahaya,
+      bbox: const {'x1': 100, 'y1': 400, 'x2': 380, 'y2': 620},
+      inferenceMs: 12,
+      frameWidth: 480,
+      frameHeight: 640,
+    );
 
 void main() {
   _ujiTeksArahan();
 
-  group('ZoneAnalysis.ttsMessage - arah bertingkat', () {
-    test('geser nol berarti benar-benar lurus', () {
+  group('ZoneAnalysis.ttsMessage - perintah langkah, bukan kata sifat', () {
+    test('geser nol berarti maju lurus ke depan', () {
       final m = _zona(
         kiri: ZoneStatus.safe,
         tengah: ZoneStatus.safe,
         kanan: ZoneStatus.safe,
       ).ttsMessage;
-      expect(m, 'Jalur aman, jalan lurus.');
+      expect(m, 'Jalur aman. Maju lurus ke depan.');
     });
 
     test('geser kecil TIDAK boleh jadi "jalan lurus"', () {
@@ -77,28 +99,68 @@ void main() {
         geser: -0.10,
       ).ttsMessage;
       expect(m, isNot(contains('lurus')));
-      expect(m, contains('kiri'));
-      expect(m, contains('Sedikit'));
+      expect(m, 'Geser setengah langkah ke kiri.');
     });
 
-    test('geser sedang menyebut arah dengan kata "agak"', () {
-      final m = _zona(
+    test('geser besar menuntut langkah yang lebih banyak', () {
+      // Yang membedakan arahan dari penilaian: jumlahnya ikut naik, bukan
+      // cuma kata sifatnya.
+      final dekat = _zona(
         kiri: ZoneStatus.safe,
         tengah: ZoneStatus.caution,
         kanan: ZoneStatus.danger,
-        geser: -0.20,
+        geser: -0.10,
       ).ttsMessage;
-      expect(m, 'Agak ke kiri.');
-    });
-
-    test('geser besar menyuruh pindah sisi', () {
-      final m = _zona(
+      final jauh = _zona(
         kiri: ZoneStatus.safe,
         tengah: ZoneStatus.caution,
         kanan: ZoneStatus.danger,
-        geser: 0.40,
+        geser: -0.50,
       ).ttsMessage;
-      expect(m, 'Ambil sebelah kanan.');
+
+      expect(dekat, 'Geser setengah langkah ke kiri.');
+      expect(jauh, 'Geser satu setengah langkah ke kiri.');
+    });
+
+    test('arahnya cuma kiri, kanan, atau depan - tidak pernah menyamping', () {
+      // Mata angin dan "serong" menuntut pengguna menerjemahkan sendiri arah
+      // peta jadi gerakan badan, dan itu yang tidak bisa dilakukan sambil
+      // berjalan tanpa melihat.
+      final semua = [
+        for (final g in [0.0, -0.1, -0.3, 0.1, 0.3, 0.5])
+          _zona(
+            kiri: ZoneStatus.safe,
+            tengah: ZoneStatus.safe,
+            kanan: ZoneStatus.safe,
+            geser: g,
+          ).ttsMessage,
+      ];
+
+      for (final m in semua) {
+        for (final terlarang in [
+          'barat',
+          'timur',
+          'utara',
+          'selatan',
+          'serong',
+          'menyamping',
+          'samping',
+        ]) {
+          expect(m.toLowerCase(), isNot(contains(terlarang)), reason: m);
+        }
+      }
+    });
+
+    test('jumlah langkah dieja, bukan ditulis sebagai angka', () {
+      // TTS Bahasa Indonesia membaca "1.5" sebagai "satu titik lima".
+      final m = _zona(
+        kiri: ZoneStatus.safe,
+        tengah: ZoneStatus.safe,
+        kanan: ZoneStatus.safe,
+        geser: 0.50,
+      ).ttsMessage;
+      expect(m, isNot(matches(RegExp(r'\d'))));
+      expect(m, contains('satu setengah langkah'));
     });
 
     test('tengah tertutup tetap menyebut sisi mana yang bisa dilewati', () {
@@ -187,6 +249,106 @@ void main() {
       }
     });
   });
+
+  group('peringatan rintangan HARUS menyebut jalan keluarnya', () {
+    test('lubang di depan ikut menyebut ke mana badan digeser', () {
+      // Keadaan persis di tangkapan layar lapangan: YOLO menemukan lubang
+      // kurang dari satu meter, dan pada frame yang SAMA garis jalur sudah
+      // menikung ke kiri melewati lubang itu. Yang dulu terucap cuma
+      // peringatannya; tikungan yang sudah dihitung tidak pernah diucapkan.
+      final ucapan = _ucapanUntuk(
+        _zona(
+          kiri: ZoneStatus.safe,
+          tengah: ZoneStatus.danger,
+          kanan: ZoneStatus.caution,
+          geser: -0.20,
+        ),
+        [_lubang()],
+      );
+
+      expect(ucapan, isNotEmpty);
+      expect(ucapan.last, contains('lubang'));
+      expect(ucapan.last, contains('Geser'));
+      expect(ucapan.last, contains('ke kiri'));
+    });
+
+    test('jalan keluar ke kanan diucapkan ke kanan', () {
+      final ucapan = _ucapanUntuk(
+        _zona(
+          kiri: ZoneStatus.danger,
+          tengah: ZoneStatus.danger,
+          kanan: ZoneStatus.safe,
+          geser: 0.30,
+        ),
+        [_lubang()],
+      );
+
+      expect(ucapan.last, contains('ke kanan'));
+      expect(ucapan.last, isNot(contains('ke kiri')));
+    });
+
+    test('rintangan hati-hati juga dapat jalan keluar', () {
+      final ucapan = _ucapanUntuk(
+        _zona(
+          kiri: ZoneStatus.safe,
+          tengah: ZoneStatus.caution,
+          kanan: ZoneStatus.caution,
+          geser: -0.30,
+        ),
+        [_lubang(bahaya: 'warning', arah: 'kanan', jarak: 2.0)],
+      );
+
+      // Warning butuh dua frame berturut-turut lewat histeresis, jadi yang
+      // diperiksa cukup: kalau sampai terucap, jalan keluarnya ikut.
+      for (final u in ucapan) {
+        if (u.contains('lubang')) expect(u, contains('Geser'));
+      }
+    });
+
+    test('bahaya tepat di depan tanpa geseran menyuruh berhenti, bukan maju',
+        () {
+      // `pathShift` nol berarti pemeriksaan bahu bilang badan muat lurus ke
+      // depan - tapi rintangannya justru ada DI DALAM koridor lurus itu.
+      // Menempelkan "maju lurus" di sini akan menuntun pengguna masuk lubang.
+      final ucapan = _ucapanUntuk(
+        _zona(
+          kiri: ZoneStatus.safe,
+          tengah: ZoneStatus.safe,
+          kanan: ZoneStatus.safe,
+        ),
+        [_lubang()],
+      );
+
+      expect(ucapan.last, contains('Berhenti'));
+      expect(ucapan.last, isNot(contains('Maju')));
+    });
+
+    test('frame yang tidak terbaca tidak menempelkan jalan keluar', () {
+      // Jalan keluar diambil dari sumbu jalur, dan sumbu jalur dari frame
+      // yang tidak terbaca tidak berarti apa-apa. Peringatan lubangnya tetap
+      // harus lewat - itu datang dari YOLO, bukan dari segmentasi.
+      final ucapan = _ucapanUntuk(
+        const ZoneAnalysis(
+          leftRatio: 0,
+          centerRatio: 0,
+          rightRatio: 0,
+          left: ZoneStatus.unknown,
+          center: ZoneStatus.unknown,
+          right: ZoneStatus.unknown,
+          recommendedZone: 1,
+          inferenceMs: 10,
+          path: _adaJalur,
+          pathShift: -0.20,
+          doubt: SceneDoubt.degenerate,
+        ),
+        [_lubang()],
+      );
+
+      expect(ucapan.last, contains('lubang'));
+      expect(ucapan.last, isNot(contains('Geser')));
+    });
+  });
+
 }
 
 /// ─────────────────────────────────────────────────────────────────────────
