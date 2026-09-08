@@ -23,7 +23,7 @@ class DetectionFilter {
   // flash 1 frame lalu hilang). Minimal 2 frame berturut-turut memastikan
   // deteksi stabil sebelum popup muncul dan TTS disuarakan.
   static const int    _streakRequired = 2;
-  static const double _minConfidence  = 0.5;  // SSD lebih noisy, threshold lebih tinggi dari YOLO
+  static const double _minConfidence  = 0.8;  // SSD lebih noisy, threshold lebih tinggi dari YOLO
 
   /// PG-06 "Ambang jarak peringatan" (1–5 m) - objek lebih jauh dari ini tidak
   /// diumumkan. Diisi `SettingsProvider`; dulu nilainya konstanta 10 m dan

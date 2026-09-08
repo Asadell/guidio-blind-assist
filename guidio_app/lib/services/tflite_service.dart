@@ -322,7 +322,7 @@ class TFLiteService {
     List<double> scores,
     _FrameGeometry geo,
   ) {
-    const double confThreshold = 0.5;
+    const double confThreshold = 0.8;
     // Fokus per-perangkat, dihitung ulang dari lebar frame yang benar-benar
     // dipakai - bukan konstanta yang mengasumsikan satu lensa untuk semua HP.
     final focalPx = CameraIntrinsics.instance.focalPxForUprightFrame(geo.srcW);
