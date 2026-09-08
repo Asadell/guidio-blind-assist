@@ -239,6 +239,22 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
         }
       };
 
+      // Kamera dan siklus MoneyProvider dinyalakan LEBIH DULU, sebelum model
+      // dimuat. Pemuatan model bisa ratusan milidetik, dan selama itu mode ini
+      // TAMPAK MATI: tidak ada pengumuman, tidak ada preview, tidak ada
+      // respons. Untuk pengguna tunanetra yang baru saja meminta pindah mode,
+      // itu tidak bisa dibedakan dari "perintahnya tidak terbaca".
+      //
+      // `money.start()` aman dipanggil sebelum model siap: `submitFrame`
+      // memeriksa `_useRealModel` sendiri, jadi frame yang datang saat model
+      // belum ada hanya lewat tanpa inferensi. Begitu model selesai dimuat dan
+      // `onFrameReady` dipasang, frame berikutnya langsung diklasifikasi.
+      if (_hasCameraPermission) {
+        final cam = context.read<CameraProvider>();
+        cam.startStream();
+        money.start();
+      }
+
       // Klasifikasi nominal berjalan SEPENUHNYA di perangkat. Kalau file
       // model belum ada, provider otomatis jatuh ke siklus mock supaya
       // seluruh 18 state tetap bisa diperiksa.
@@ -246,11 +262,11 @@ class _MoneyScreenState extends State<MoneyScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       debugPrint('[MoneyScreen] model on-device: ${realModel ? "aktif" : "belum ada, pakai mock"}');
 
-      if (_hasCameraPermission) {
+      // Hook frame ke provider SESUDAH model siap - sebelumnya frame hanya
+      // menghidupi preview tanpa inferensi.
+      if (_hasCameraPermission && realModel) {
         final cam = context.read<CameraProvider>();
-        if (realModel) cam.onFrameReady = money.submitFrame;
-        cam.startStream();
-        money.start();
+        cam.onFrameReady = money.submitFrame;
       }
     });
   }

@@ -180,9 +180,9 @@ class _TuntunScreenState extends State<TuntunScreen> with WidgetsBindingObserver
     _speakingPoll?.cancel();
     _pausedReminder?.cancel();
     _cam.removeListener(_onCameraDarkChanged);
+    _voice.clearModeHandlers();
     _detection.stopRealtime();
     _cam.stopStream();
-    _voice.clearModeHandlers();
     super.dispose();
   }
 

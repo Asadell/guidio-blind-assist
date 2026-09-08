@@ -189,8 +189,8 @@ class _OcrScreenState extends State<OcrScreen> with WidgetsBindingObserver {
     if (_speaking || _paused) {
       unawaited(_tts.stop());
     }
-    _cam.stopStream();
     _voice.clearModeHandlers();
+    _cam.stopStream();
     // ML Kit memegang sumber daya native yang TIDAK ikut dibersihkan pengumpul
     // sampah Dart. Ditutup saat keluar mode, bukan dibiarkan hidup sepanjang
     // umur aplikasi: Mode Navigasi menjalankan tiga model sekaligus, dan di
