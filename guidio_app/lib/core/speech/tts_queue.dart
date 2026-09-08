@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart';
+
 import '../../services/tts_service.dart';
 
 /// Prioritas tier suara.
@@ -160,10 +162,30 @@ class TtsQueue {
     }
   }
 
+  /// Menghentikan mesin, dan TIDAK PERNAH melempar.
+  ///
+  /// Setiap pemanggil `_engineStop` melanjutkan dengan pekerjaan yang harus
+  /// jalan entah mesinnya berhasil dibungkam atau tidak: membereskan
+  /// pembukuan antrean, lalu mengucapkan kalimat penggantinya. Kalau galat
+  /// dari `flutter_tts` dibiarkan naik, pekerjaan itu batal di tengah jalan.
+  ///
+  /// Akibat terburuknya bukan di antrean, melainkan di navigasi.
+  /// `AppModeProvider.setMode` menunggu [silenceForModeChange] SEBELUM
+  /// `notifyListeners()`; satu `MissingPluginException` dari mesin TTS di situ
+  /// berarti modenya tidak pernah berpindah sama sekali. Pengguna tunanetra
+  /// memilih mode, tidak ada yang terjadi, dan tidak ada satu pun kalimat yang
+  /// menjelaskan kenapa - persis kebuntuan yang sudah dijaga `confirmLeave`
+  /// di sisi lain.
+  ///
+  /// Jadi arahnya sama: gagal-terbuka. Mesin yang gagal berhenti paling buruk
+  /// menyisakan satu kalimat yang terlanjur jalan; mesin yang menggagalkan
+  /// perpindahan mode mengunci seluruh aplikasi.
   Future<void> _engineStop() async {
     _inEngineCall = true;
     try {
       await TTSService.instance.stop();
+    } catch (e, st) {
+      debugPrint('[TtsQueue] mesin TTS gagal dihentikan, diteruskan: $e\n$st');
     } finally {
       _inEngineCall = false;
     }
@@ -604,19 +626,39 @@ class TtsQueue {
   /// Sumbernya selalu [SpeechSource.assistant]: ini jawaban atas perbuatan
   /// pengguna, jadi ia tidak boleh ikut dibungkam gerbang mikrofon dan tidak
   /// boleh pernah dianggap basi.
+  ///
+  /// [replaces] menandai ucapan ini sebagai anggota satu golongan yang hanya
+  /// boleh punya SATU wakil di antrean - dipakai pengumuman masuk mode lewat
+  /// [modeEntryTag].
+  ///
+  /// Perlu karena satu-satunya jalur di mana [answerNow] TIDAK menimpa adalah
+  /// saat peringatan bahaya yang tidak bisa dipotong sedang diucapkan: di situ
+  /// jawabannya ikut mengantre. Pengguna yang berpindah mode dua kali selama
+  /// kalimat bahaya itu berjalan akan meninggalkan dua pengumuman di antrean,
+  /// dan yang pertama menyebut mode yang sudah dia tinggalkan. Untuk pengguna
+  /// yang seluruh antarmukanya suara, pengumuman mode yang salah lebih buruk
+  /// daripada tidak ada pengumuman sama sekali - dia menyangka berada di
+  /// tempat yang bukan tempatnya.
   Future<void> answerNow(
     String message, {
     SpeechTier tier = SpeechTier.info,
     bool english = false,
+    String? replaces,
   }) async {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return;
+
+    // Wakil lama dari golongan yang sama keluar duluan, entah jalur mana pun
+    // yang ditempuh di bawah.
+    if (replaces != null) {
+      _pending.removeWhere((q) => q.dedupKey == replaces);
+    }
 
     // Bahaya yang sedang diucapkan dan ditandai tidak bisa dipotong: jawaban
     // ini menunggu, bukan menimpa.
     if (_speakingTier == SpeechTier.critical && !_currentInterruptible) {
       _enqueue(trimmed, tier, SpeechSource.assistant, true, null,
-          english: english);
+          english: english, dedupKey: replaces);
       unawaited(_drain());
       return;
     }
@@ -649,6 +691,49 @@ class TtsQueue {
     _maybeReleaseAfterAnswer();
 
     unawaited(_drain());
+  }
+
+  /// Penanda golongan untuk pengumuman masuk mode - lihat [answerNow].
+  static const String modeEntryTag = 'mode-entry';
+
+  /// Mode baru saja berganti: bungkam suara mode yang ditinggalkan, SEKARANG.
+  ///
+  /// Dipanggil `AppModeProvider.setMode` tepat saat modenya benar-benar
+  /// berpindah, bukan menunggu layar tujuan terpasang. Bedanya terasa: yang
+  /// menahan suara lama bukan lagi giliran antrean, melainkan perpindahannya
+  /// sendiri.
+  ///
+  /// Tanpa ini, narasi mode lama tetap terdengar sesudah modenya berganti.
+  /// Antrean tidak tahu apa-apa soal mode: "ada motor di kanan" yang disusun
+  /// setengah detik sebelum pengguna memilih Kenali Uang akan tetap keluar
+  /// dari mulut aplikasi, kini di dalam mode yang tidak punya motor sama
+  /// sekali. Pengguna tunanetra tidak punya layar untuk memeriksa mana yang
+  /// benar; yang dia dengar adalah aplikasi yang menyangkal perintahnya.
+  ///
+  /// Yang dibuang HANYA yang non-kritis. Peringatan bahaya menggambarkan
+  /// lantai tempat pengguna berdiri, dan lantai itu tidak ikut berganti saat
+  /// modenya berganti. Kalimat bahaya yang ditandai tidak bisa dipotong pun
+  /// dibiarkan selesai - persis aturan yang sudah dipakai [answerNow].
+  ///
+  /// Pengumumannya sendiri TIDAK diucapkan di sini. Ia tetap milik
+  /// `announceEntry` layar tujuan, supaya tidak pernah ada suara "mode X
+  /// aktif" mendahului mode X yang benar-benar terpasang.
+  Future<void> silenceForModeChange() async {
+    if (_speakingTier == SpeechTier.critical && !_currentInterruptible) {
+      _pending.removeWhere((q) => q.tier != SpeechTier.critical);
+      _warningHeldSince = null;
+      return;
+    }
+
+    _drainGeneration++;
+    _pending.removeWhere((q) => q.tier != SpeechTier.critical);
+    _warningHeldSince = null;
+
+    await _engineStop();
+    _lastUtteranceEndedAt = DateTime.now();
+    _speakingTier = null;
+    _speakingSource = null;
+    _currentInterruptible = true;
   }
 
   /// Pengguna menimpa TTS yang sedang jalan (barge-in).

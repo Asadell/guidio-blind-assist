@@ -198,19 +198,41 @@ class AppModeProvider extends ChangeNotifier {
       introOverride: introOverride,
       withIntro: withIntro,
     );
-    // Lewat antrean, tier Warning: pengumuman "di mana saya sekarang" tidak
-    // boleh dibuang sebagai Info basi, tapi juga tidak boleh menahan
-    // peringatan bahaya yang datang saat mode baru terpasang.
+    // MENIMPA, bukan mengantre - dan itu inti perbaikan ini.
     //
-    // Sumbernya ASISTEN, bukan mode. Kalimat inilah jawaban atas perintah
-    // "pindah ke navigasi" yang barusan diucapkan pengguna; membungkamnya
-    // bersama narasi mode berarti perpindahan mode terjadi tanpa satu pun
-    // tanda bahwa perintahnya sampai. Ia juga tetap terdengar saat mode
-    // dipilih lewat lembar Pilih Mode, di mana tidak ada gerbang sama sekali.
-    await TtsQueue().speak(
+    // Dulu baris ini memanggil `speak(tier: warning)`. Aturan antrean bilang
+    // Warning memotong Info tapi TIDAK memotong Warning lain, dan pengumuman
+    // mode sebelumnya juga bertier Warning. Akibatnya persis kebalikan dari
+    // yang dibutuhkan: pengguna memilih Kenali Uang di tengah kalimat
+    // "Deteksi Objek aktif. Arahkan ponsel ke depan, saya akan menyebut
+    // rintangan di jalurmu." - dan yang dia dengar adalah kalimat itu
+    // DISELESAIKAN sampai habis, jeda 700 ms, baru "Kenali Uang aktif."
+    //
+    // Selama beberapa detik itu satu-satunya informasi yang dia punya
+    // menyebut mode yang sudah dia tinggalkan. Dia menyimpulkan pilihannya
+    // tidak terbaca, lalu memilih lagi - dan pilihan kedua itu mengulang
+    // masalah yang sama.
+    //
+    // `answerNow` memberi perilaku yang sudah dipakai halaman Onboarding
+    // saat berganti langkah: berhenti, lalu bacakan yang baru. Itu memang
+    // benar untuk kalimat ini, karena pengumuman mode bukan narasi yang
+    // datang sendiri - ia jawaban langsung atas perbuatan pengguna yang
+    // barusan berpindah, dan perbuatan itulah yang membatalkan kalimat lama.
+    //
+    // Tier Warning dipertahankan: pengumuman "di mana saya sekarang" tidak
+    // boleh dibuang sebagai Info basi, tapi juga tidak boleh menahan
+    // peringatan bahaya yang datang saat mode baru terpasang. Sumbernya
+    // ASISTEN (dipasang `answerNow` sendiri) supaya tidak ikut dibungkam
+    // gerbang mikrofon - tanpa itu, "pindah ke navigasi" berpindah tanpa satu
+    // pun tanda bahwa perintahnya sampai.
+    //
+    // [TtsQueue.modeEntryTag] menjaga satu-satunya jalur di mana kalimat ini
+    // bisa mengantre - saat peringatan bahaya yang tidak bisa dipotong sedang
+    // berjalan - tetap menyisakan pengumuman TERBARU saja.
+    await TtsQueue().answerNow(
       announcement,
       tier: SpeechTier.warning,
-      source: SpeechSource.assistant,
+      replaces: TtsQueue.modeEntryTag,
     );
   }
 
@@ -261,6 +283,24 @@ class AppModeProvider extends ChangeNotifier {
     _previousMode = _mode; // simpan mode sebelumnya untuk goBack()
     _pendingPrefix = spokenPrefix;
     _mode = mode;
+
+    // Suara mode yang ditinggalkan berhenti di sini, di titik perpindahannya
+    // sendiri - bukan menunggu layar tujuan terpasang dan memanggil
+    // `announceEntry`.
+    //
+    // Dua hal berbeda, dan keduanya perlu. `announceEntry` menimpa apa yang
+    // sedang DIUCAPKAN satu frame kemudian; panggilan ini mengosongkan apa
+    // yang sudah MENGANTRE, termasuk narasi yang disusun mode lama sepersekian
+    // detik sebelum pengguna memilih. Tanpa ini, kalimat "ada motor di kanan"
+    // milik Deteksi Objek tetap keluar setelah Kenali Uang terpasang, dan
+    // tidak ada satu pun cara bagi pengguna tunanetra untuk tahu bahwa
+    // kalimat itu berasal dari mode yang sudah tidak ada.
+    //
+    // DITUNGGU, dan urutannya penting: kalau dilepas tanpa `await`, penghentian
+    // mesinnya bisa selesai SESUDAH `announceEntry` mulai bicara di frame
+    // berikutnya - dan yang terbungkam justru pengumuman mode baru.
+    await TtsQueue.instance.silenceForModeChange();
+
     notifyListeners();
     // Pengumuman kedatangan diucapkan `announceEntry` dari layar tujuan -
     // sesudah layarnya benar-benar terpasang.
