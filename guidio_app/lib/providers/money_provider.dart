@@ -199,10 +199,13 @@ class MoneyProvider extends ChangeNotifier {
   Timer? _stepTimer;
   Timer? _hintRotateTimer;
   bool _running = false;
+  int _epoch = 0;
 
   void _speak(String text,
-          {SpeechTier tier = SpeechTier.info, bool langsung = false}) =>
-      onSpeak?.call(text, tier, langsung: langsung);
+          {SpeechTier tier = SpeechTier.info, bool langsung = false}) {
+    if (!_running) return;
+    onSpeak?.call(text, tier, langsung: langsung);
+  }
   void _haptic(MoneyHaptic p) => onHaptic?.call(p);
 
   void _set(MoneyState s) {
@@ -252,6 +255,7 @@ class MoneyProvider extends ChangeNotifier {
 
   /// Keluar mode - hentikan semua timer, jangan bicara lagi.
   void pause() {
+    _epoch++;
     _running = false;
     _stepTimer?.cancel();
     _hintRotateTimer?.cancel();
@@ -321,8 +325,13 @@ class MoneyProvider extends ChangeNotifier {
 
     _inferring = true;
     _lastInference = DateTime.now();
+    final myEpoch = _epoch;
     try {
       final result = await MoneyTFLiteService.instance.classifyCameraImage(image);
+      if (_epoch != myEpoch) {
+        _inferring = false;
+        return;
+      }
       _applyRealResult(result);
     } finally {
       _inferring = false;

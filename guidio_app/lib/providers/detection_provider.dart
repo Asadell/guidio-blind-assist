@@ -224,6 +224,7 @@ class DetectionProvider extends ChangeNotifier {
   }
 
   void _updateAndSpeak(List<Detection> filtered) {
+    if (!_realtimeActive) return;
     _detections = filtered;
     _notify();
 

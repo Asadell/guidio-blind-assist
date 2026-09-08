@@ -221,6 +221,7 @@ class NavigationProvider extends ChangeNotifier {
   final _pacer = FramePacer(minInterval: const Duration(milliseconds: 700));
 
   Timer? _loopTimer;
+  int _epoch = 0;
   int _consecutiveFailures = 0;
 
   /// Frame BERTURUT-TURUT yang benar-benar layak dipercaya.
@@ -555,6 +556,7 @@ class NavigationProvider extends ChangeNotifier {
 
   // ── On-Device: PIDNet + YOLO + SSD COCO di HP ───────────────
   Future<void> _tickOnDevice() async {
+    final myEpoch = _epoch;
     final camGrab = cameraSource;
     if (camGrab == null) return;
     final frame = await camGrab();
@@ -578,6 +580,7 @@ class NavigationProvider extends ChangeNotifier {
         frame,
         pidnetBchw: PidnetService.instance.wantsBchw,
       );
+      if (_epoch != myEpoch) return;
 
       // Tiga model berjalan paralel dari SATU frame yang sama.
       //
@@ -655,6 +658,8 @@ class NavigationProvider extends ChangeNotifier {
       // baru hasilnya digabung dengan COCO.
       final customPlusInt8 = mergeNavObstacles(custom, int8);
       final obstacles      = mergeNavObstacles(customPlusInt8, coco);
+
+      if (_epoch != myEpoch) return;
 
       _consecutiveFailures = 0;
       _applyOnDeviceResult(zoneAnalysis, obstacles);
@@ -1135,6 +1140,7 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   void stopNavigation() {
+    _epoch++;
     _navigating = false;
     _destination = null;
     _steps = [];
