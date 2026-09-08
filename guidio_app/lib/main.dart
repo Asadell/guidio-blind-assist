@@ -17,6 +17,22 @@ void main() async {
   // Portrait-only - sesuai PRD
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  // Status bar (jam/WiFi/baterai) dan system navigation bar (Back/Home/Recent)
+  // keduanya dibuat transparan agar tidak terlihat hitam/gelap.
+  //
+  // - statusBarColor transparan → warna bar ikut konten di bawahnya
+  // - statusBarIconBrightness.light → ikon putih, terlihat di atas layar kamera gelap
+  // - Layar terang (Settings, Onboarding) override ke Brightness.dark lewat
+  //   AppBarTheme.systemOverlayStyle di AppTheme.light
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+
   // Init TTS di awal
   await TTSService.instance.init();
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 import 'app_spacing.dart';
@@ -35,6 +36,16 @@ abstract final class AppTheme {
         foregroundColor: AppColors.ink1,
         elevation: 0,
         titleTextStyle: AppTypography.title(),
+        // Layar terang (Settings, Onboarding, Server Address) punya AppBar,
+        // dan AppBar secara otomatis menerapkan systemOverlayStyle ini saat
+        // ia tampil - ikon jam/WiFi/baterai menjadi gelap (terlihat di bg putih).
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
       ),
       iconTheme: const IconThemeData(color: AppColors.ink1, size: 24),
       dividerTheme: const DividerThemeData(color: AppColors.hairline, thickness: 1, space: 1),
