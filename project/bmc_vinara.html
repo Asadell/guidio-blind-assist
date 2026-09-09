@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BMC — Vinara (GUIDIO)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0f1e;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 28px; }
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; font-size: 11px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 4px 14px; border-radius: 999px; margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: clamp(22px, 4vw, 36px); font-weight: 800;
+      background: linear-gradient(135deg, #c7d2fe, #a5b4fc, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.2;
+    }
+    .header p { color: #64748b; font-size: 13px; margin-top: 8px; }
+    .tags { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+    }
+    .tag-green { background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.3); color: #6ee7b7; }
+    .tag-blue  { background: rgba(99,102,241,.15);  border: 1px solid rgba(99,102,241,.3);  color: #a5b4fc; }
+    .tag-amber { background: rgba(245,158,11,.15);  border: 1px solid rgba(245,158,11,.3);  color: #fcd34d; }
+
+    /* ── Canvas ── */
+    .canvas-wrap { overflow-x: auto; padding-bottom: 12px; }
+    .canvas {
+      display: grid;
+      min-width: 960px;
+      max-width: 1440px;
+      margin: 0 auto;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr;
+      grid-template-rows: auto auto auto;
+    }
+
+    /* ── Cell ── */
+    .cell {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px; padding: 18px 16px;
+      transition: border-color .25s, transform .2s, box-shadow .25s;
+      position: relative; overflow: hidden;
+    }
+    .cell::before {
+      content: ''; position: absolute; inset: 0;
+      border-radius: inherit; opacity: 0;
+      transition: opacity .3s; pointer-events: none;
+    }
+    .cell:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+    .cell:hover::before { opacity: 1; }
+
+    /* accent colours */
+    .c-partner  { border-color: rgba(99,102,241,.3); }
+    .c-partner::before  { background: radial-gradient(ellipse at top left,  rgba(99,102,241,.14),  transparent 65%); }
+    .c-partner:hover    { border-color: rgba(99,102,241,.65); }
+
+    .c-activity { border-color: rgba(139,92,246,.3); }
+    .c-activity::before { background: radial-gradient(ellipse at top left,  rgba(139,92,246,.14), transparent 65%); }
+    .c-activity:hover   { border-color: rgba(139,92,246,.65); }
+
+    .c-value    { border-color: rgba(245,158,11,.35); }
+    .c-value::before    { background: radial-gradient(ellipse at top,       rgba(245,158,11,.13), transparent 65%); }
+    .c-value:hover      { border-color: rgba(245,158,11,.75); }
+
+    .c-relation { border-color: rgba(59,130,246,.3); }
+    .c-relation::before { background: radial-gradient(ellipse at top right, rgba(59,130,246,.13),  transparent 65%); }
+    .c-relation:hover   { border-color: rgba(59,130,246,.65); }
+
+    .c-segment  { border-color: rgba(16,185,129,.3); }
+    .c-segment::before  { background: radial-gradient(ellipse at top right, rgba(16,185,129,.14),  transparent 65%); }
+    .c-segment:hover    { border-color: rgba(16,185,129,.65); }
+
+    .c-resource { border-color: rgba(236,72,153,.3); }
+    .c-resource::before { background: radial-gradient(ellipse at bottom left, rgba(236,72,153,.14),transparent 65%); }
+    .c-resource:hover   { border-color: rgba(236,72,153,.65); }
+
+    .c-channel  { border-color: rgba(20,184,166,.3); }
+    .c-channel::before  { background: radial-gradient(ellipse at bottom right,rgba(20,184,166,.14),transparent 65%); }
+    .c-channel:hover    { border-color: rgba(20,184,166,.65); }
+
+    .c-cost     { border-color: rgba(239,68,68,.3); }
+    .c-cost::before     { background: radial-gradient(ellipse at bottom left, rgba(239,68,68,.13),  transparent 65%); }
+    .c-cost:hover       { border-color: rgba(239,68,68,.65); }
+
+    .c-revenue  { border-color: rgba(34,197,94,.3); }
+    .c-revenue::before  { background: radial-gradient(ellipse at bottom right,rgba(34,197,94,.13), transparent 65%); }
+    .c-revenue:hover    { border-color: rgba(34,197,94,.65); }
+
+    /* grid positions */
+    .partner  { grid-column: 1;   grid-row: 1 / 3; }
+    .activity { grid-column: 2;   grid-row: 1; }
+    .value    { grid-column: 3;   grid-row: 1 / 3; }
+    .relation { grid-column: 4;   grid-row: 1; }
+    .segment  { grid-column: 5;   grid-row: 1 / 3; }
+    .resource { grid-column: 2;   grid-row: 2; }
+    .channel  { grid-column: 4;   grid-row: 2; }
+    .cost     { grid-column: 1 / 4; grid-row: 3; }
+    .revenue  { grid-column: 3 / 6; grid-row: 3; }
+
+    /* ── Cell header ── */
+    .cell-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 13px; padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .cell-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+    .cell-title { font-size: 11px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; color: rgba(255,255,255,.75); }
+    .cell-num   { margin-left: auto; font-size: 10px; font-weight: 700; color: rgba(255,255,255,.18); }
+
+    .c-partner  .cell-icon { background: rgba(99,102,241,.2);  color: #a5b4fc; }
+    .c-activity .cell-icon { background: rgba(139,92,246,.2);  color: #c4b5fd; }
+    .c-value    .cell-icon { background: rgba(245,158,11,.2);  color: #fcd34d; }
+    .c-relation .cell-icon { background: rgba(59,130,246,.2);  color: #93c5fd; }
+    .c-segment  .cell-icon { background: rgba(16,185,129,.2);  color: #6ee7b7; }
+    .c-resource .cell-icon { background: rgba(236,72,153,.2);  color: #f9a8d4; }
+    .c-channel  .cell-icon { background: rgba(20,184,166,.2);  color: #5eead4; }
+    .c-cost     .cell-icon { background: rgba(239,68,68,.2);   color: #fca5a5; }
+    .c-revenue  .cell-icon { background: rgba(34,197,94,.2);   color: #86efac; }
+
+    /* ── Typography ── */
+    .items { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .items li { font-size: 12px; line-height: 1.55; color: #94a3b8; display: flex; gap: 7px; align-items: flex-start; }
+    .items li .dot { width: 5px; height: 5px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+    .items li strong { color: #e2e8f0; font-weight: 600; }
+
+    .sub { margin-top: 13px; }
+    .sub-label {
+      font-size: 9.5px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: rgba(255,255,255,.28); margin-bottom: 7px;
+    }
+
+    /* pill */
+    .pill {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 999px; margin-right: 3px; margin-bottom: 3px;
+    }
+    .p-green  { background: rgba(16,185,129,.2);  color: #6ee7b7; border: 1px solid rgba(16,185,129,.35); }
+    .p-orange { background: rgba(245,158,11,.15); color: #fcd34d; border: 1px solid rgba(245,158,11,.35); }
+    .p-purple { background: rgba(139,92,246,.2);  color: #c4b5fd; border: 1px solid rgba(139,92,246,.35); }
+    .p-blue   { background: rgba(59,130,246,.2);  color: #93c5fd; border: 1px solid rgba(59,130,246,.35); }
+    .p-red    { background: rgba(239,68,68,.2);   color: #fca5a5; border: 1px solid rgba(239,68,68,.35); }
+    .p-teal   { background: rgba(20,184,166,.2);  color: #5eead4; border: 1px solid rgba(20,184,166,.35); }
+
+    /* big quote */
+    .big-quote {
+      background: rgba(245,158,11,.09);
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 13px;
+      font-size: 13px; font-weight: 600; color: #fde68a; line-height: 1.55;
+      margin-bottom: 12px;
+    }
+
+    /* comparison table */
+    .cmp { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
+    .cmp th { color: rgba(255,255,255,.3); font-weight: 600; text-align: left; padding: 4px 5px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .cmp td { padding: 5px 5px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
+    .cmp td:first-child { color: #e2e8f0; font-weight: 500; }
+    .yes { color: #4ade80 !important; }
+    .no  { color: #f87171 !important; }
+
+    /* segment card */
+    .seg-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 10px; padding: 10px 11px; margin-bottom: 8px;
+    }
+    .seg-card .seg-name { font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 3px; }
+    .seg-card .seg-detail { font-size: 11px; color: #64748b; line-height: 1.5; }
+    .seg-card .seg-trigger { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+    .seg-card .seg-trigger span { color: #fbbf24; font-weight: 600; }
+
+    /* feature free list */
+    .feat-free { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .feat-item {
+      background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.25);
+      color: #6ee7b7; font-size: 10px; font-weight: 600;
+      padding: 3px 9px; border-radius: 6px;
+    }
+
+    /* cost / revenue horizontal */
+    .cost-grid, .rev-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+    .cost-card, .rev-card {
+      flex: 1 1 160px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 10px; padding: 10px 12px;
+    }
+    .cost-card .cc-title, .rev-card .rc-title {
+      font-size: 11px; font-weight: 700; color: #e2e8f0; margin-bottom: 5px;
+    }
+    .cost-card .cc-val { font-size: 13px; font-weight: 800; color: #f87171; }
+    .rev-card .rc-val  { font-size: 13px; font-weight: 800; color: #4ade80; }
+    .cost-card p, .rev-card p { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+
+    /* note box */
+    .note {
+      background: rgba(245,158,11,.07);
+      border: 1px solid rgba(245,158,11,.2);
+      border-radius: 8px; padding: 8px 10px;
+      font-size: 11px; color: #fde68a; margin-top: 10px; line-height: 1.5;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      max-width: 1440px; margin: 14px auto 0;
+      display: flex; flex-wrap: wrap; gap: 10px;
+      justify-content: center; font-size: 11px; color: #475569;
+    }
+    .legend span { display: flex; align-items: center; gap: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="badge">Business Model Canvas · Update v3</div>
+  <h1>Vinara — GUIDIO</h1>
+  <p>Platform Asistensi Visual AI untuk Disabilitas Netra · Tim Guidio – PENS 2026</p>
+  <div class="tags">
+    <span class="tag tag-green">✅ 6 Fitur Existing = GRATIS Selamanya</span>
+    <span class="tag tag-blue">📍 Fokus Awal: Surabaya</span>
+    <span class="tag tag-amber">🖥️ Server GPU RTX A2000 · Rp 500K/bln</span>
+  </div>
+</div>
+
+<div class="canvas-wrap">
+<div class="canvas">
+
+  <!-- ══════════ 1. KEY PARTNERS ══════════ -->
+  <div class="cell c-partner partner">
+    <div class="cell-header">
+      <div class="cell-icon">🤝</div>
+      <span class="cell-title">Key Partnerships</span>
+      <span class="cell-num">8</span>
+    </div>
+
+    <div class="sub-label">⭐ Kritis — Tanpa Ini, Gagal</div>
+    <ul class="items">
+      <li><span class="dot" style="background:#818cf8"></span>
+        <div><strong>PERTUNI Surabaya</strong><br>Akses langsung ke komunitas tunanetra Surabaya, validasi produk nyata, distribusi awal via pertemuan rutin</div>
+      </li>
+      <li><span class="dot" style="background:#818cf8"></span>
+        <div><strong>SLB-A Surabaya</strong> (SLB-A YPAB, SLB Karya Mulia)<br>Channel edukasi & onboarding; guru sebagai trusted agent adopsi</div>
+      </li>
+      <li><span class="dot" style="background:#818cf8"></span>
+        <div><strong>Bank / FinTech Nasional</strong><br>BNI, BRI, GoPay — revenue B2B & distribusi SDK aksesibilitas</div>
+      </li>
+    </ul>
+
+    <div class="sub">
+      <div class="sub-label">Pendukung (Bisa Diganti)</div>
+      <ul class="items">
+        <li><span class="dot" style="background:#334155"></span><div>PENS Sky Venture (inkubator kampus)</div></li>
+        <li><span class="dot" style="background:#334155"></span><div>GPU Cloud backup jika A2000 overload</div></li>
+        <li><span class="dot" style="background:#334155"></span><div>Media lokal Surabaya (Surya, JawaPos) untuk PR</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ 7. KEY ACTIVITIES ══════════ -->
+  <div class="cell c-activity activity">
+    <div class="cell-header">
+      <div class="cell-icon">⚙️</div>
+      <span class="cell-title">Key Activities</span>
+      <span class="cell-num">7</span>
+    </div>
+
+    <div class="sub-label">⭐ Inti — Harus Dilakukan Tim Sendiri</div>
+    <ul class="items">
+      <li><span class="dot" style="background:#a78bfa"></span>
+        <div><strong>Demo tatap muka komunitas</strong><br>Datang ke pertemuan PERTUNI Surabaya, ajak coba langsung</div>
+      </li>
+      <li><span class="dot" style="background:#a78bfa"></span>
+        <div><strong>Training & update model AI</strong><br>Retrain dari feedback pengguna nyata Surabaya (kondisi trotoar lokal)</div>
+      </li>
+      <li><span class="dot" style="background:#a78bfa"></span>
+        <div><strong>Onboarding & pendampingan user baru</strong><br>Tutorial audio in-app + sesi belajar 1-on-1 via ambassador</div>
+      </li>
+      <li><span class="dot" style="background:#a78bfa"></span>
+        <div><strong>Pengembangan & maintain app Flutter</strong><br>VUI, TTS pipeline, 6 fitur inti</div>
+      </li>
+    </ul>
+
+    <div class="sub">
+      <div class="sub-label">Pendukung — Bisa Di-outsource</div>
+      <ul class="items">
+        <li><span class="dot" style="background:#334155"></span><div>Hosting & DevOps server A2000</div></li>
+        <li><span class="dot" style="background:#334155"></span><div>Desain materi sosialisasi (poster Braille)</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ 2. VALUE PROPOSITION ══════════ -->
+  <div class="cell c-value value">
+    <div class="cell-header">
+      <div class="cell-icon">💡</div>
+      <span class="cell-title">Value Proposition</span>
+      <span class="cell-num">2</span>
+    </div>
+
+    <div class="sub-label">Untuk Tunanetra Surabaya</div>
+    <div class="big-quote">
+      "Pertama kalinya bisa jalan ke Pasar Atom sendiri, bayar, dan pulang — tanpa minta tolong siapa pun."
+    </div>
+
+    <ul class="items" style="margin-bottom:10px">
+      <li><span class="dot" style="background:#f59e0b"></span>
+        <div>Bukan soal OCR → soal <strong>tidak perlu malu minta kasir bacain harga</strong></div>
+      </li>
+      <li><span class="dot" style="background:#f59e0b"></span>
+        <div>Bukan soal deteksi → soal <strong>jalan di trotoar Surabaya tanpa takut tersandung got atau tiang</strong></div>
+      </li>
+      <li><span class="dot" style="background:#f59e0b"></span>
+        <div>Offline = <strong>"HP-ku tetap jaga aku walau sinyal hilang"</strong></div>
+      </li>
+    </ul>
+
+    <div class="sub-label">6 Fitur FREE — Daya Tarik Utama</div>
+    <div class="feat-free">
+      <span class="feat-item">🛡️ Deteksi Rintangan</span>
+      <span class="feat-item">💰 Kenali Uang Rupiah</span>
+      <span class="feat-item">📖 Baca Teks (OCR)</span>
+      <span class="feat-item">🛤️ Segmentasi Trotoar</span>
+      <span class="feat-item">🔍 Cari Objek</span>
+      <span class="feat-item">🎙️ Perintah Suara (VUI)</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-label">vs Kompetitor — Bukan Klaim Kosong</div>
+      <table class="cmp">
+        <tr><th>Aspek</th><th>Seeing AI</th><th>Vinara</th></tr>
+        <tr><td>Got terbuka sby</td><td class="no">✗</td><td class="yes">✓</td></tr>
+        <tr><td>Rupiah emisi 2022</td><td class="no">✗</td><td class="yes">✓</td></tr>
+        <tr><td>100% offline</td><td class="no">Partial</td><td class="yes">5/6 fitur</td></tr>
+        <tr><td>Operasi 1 tangan</td><td class="no">✗</td><td class="yes">VUI penuh</td></tr>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-label">Untuk B2B (Bank / Fintech)</div>
+      <ul class="items">
+        <li><span class="dot" style="background:#f59e0b"></span>
+          <div><strong>SDK siap pakai</strong> penuhi POJK aksesibilitas tanpa bangun dari nol</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ 4. CUSTOMER RELATIONSHIP ══════════ -->
+  <div class="cell c-relation relation">
+    <div class="cell-header">
+      <div class="cell-icon">💬</div>
+      <span class="cell-title">Customer Relationship</span>
+      <span class="cell-num">4</span>
+    </div>
+
+    <div class="sub-label">Akuisisi</div>
+    <ul class="items">
+      <li><span class="dot" style="background:#60a5fa"></span>
+        <div><strong>Demo langsung PERTUNI Surabaya</strong><br>Satu orang coba → cerita ke seluruh grup WA-nya malam itu juga</div>
+      </li>
+    </ul>
+
+    <div class="sub">
+      <div class="sub-label">Retensi — "Kenapa Buka Lagi?"</div>
+      <ul class="items">
+        <li><span class="dot" style="background:#60a5fa"></span>
+          <div><strong>Masalah mereka berulang tiap hari</strong> — jalan, belanja, baca — bukan fitur canggih yang bikin balik, tapi masalah nyata yang datang lagi esok pagi</div>
+        </li>
+        <li><span class="dot" style="background:#60a5fa"></span>
+          <div><strong>Mode favorit langsung aktif</strong> tanpa navigasi — otot sudah hafal, buka app langsung kerja</div>
+        </li>
+        <li><span class="dot" style="background:#60a5fa"></span>
+          <div><strong>Update fitur via suara</strong> saat buka app — tidak ada pop-up visual</div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sub">
+      <div class="sub-label">Growth</div>
+      <ul class="items">
+        <li><span class="dot" style="background:#60a5fa"></span>
+          <div><strong>Rekam testimoni audio</strong> 1 kalimat → share ke WA grup komunitas (lebih natural dari tombol "share")</div>
+        </li>
+        <li><span class="dot" style="background:#60a5fa"></span>
+          <div><strong>Feedback suara</strong> dari dalam app → fitur terbanyak diminta jadi prioritas update</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ 1. CUSTOMER SEGMENTS ══════════ -->
+  <div class="cell c-segment segment">
+    <div class="cell-header">
+      <div class="cell-icon">🎯</div>
+      <span class="cell-title">Customer Segments</span>
+      <span class="cell-num">1</span>
+    </div>
+
+    <div class="sub-label">⭐ Primer — Fokus Surabaya Dulu</div>
+
+    <div class="seg-card">
+      <div class="seg-name">Tunanetra Aktif Smartphone · 18–40 th</div>
+      <div class="seg-detail">Sudah pakai TalkBack, aktif di WA komunitas PERTUNI Surabaya, bisa pegang HP sendiri.</div>
+      <div class="seg-trigger"><span>Trigger:</span> Mau keluar rumah sendiri, belanja di pasar/warung, naik angkot tanpa pendamping.</div>
+    </div>
+
+    <div class="seg-card">
+      <div class="seg-name">Low Vision (Glaukoma, Diabetik Retinopati) · 35–60 th</div>
+      <div class="seg-detail">Masih ada sisa penglihatan tapi kabur. Butuh bantuan baca teks kecil & kenali uang.</div>
+      <div class="seg-trigger"><span>Trigger:</span> Di apotek baca resep, bayar tunai, baca tagihan listrik.</div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-label">Sekunder — Sumber Revenue</div>
+      <div class="seg-card">
+        <div class="seg-name">Bank / Fintech (Tim ESG / Digital)</div>
+        <div class="seg-detail">Wajib penuhi POJK aksesibilitas, belum punya solusi teknis tunanetra yang siap pakai.</div>
+      </div>
+      <div class="seg-card" style="margin-bottom:0">
+        <div class="seg-name">Dinas Sosial Kota Surabaya</div>
+        <div class="seg-detail">Punya anggaran program disabilitas, wajib jalankan UU 8/2016 & PP 42/2020.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 6. KEY RESOURCES ══════════ -->
+  <div class="cell c-resource resource">
+    <div class="cell-header">
+      <div class="cell-icon">🔑</div>
+      <span class="cell-title">Key Resources</span>
+      <span class="cell-num">6</span>
+    </div>
+
+    <div class="sub-label">⭐ Paling Kritis — Pengungkit Value</div>
+    <ul class="items">
+      <li><span class="dot" style="background:#f472b6"></span>
+        <div><strong>Dataset Lokal — DATA MOAT</strong><br>Vinara-Sidewalk (trotoar Indonesia, 1.850 img) + Rupiah Vision (4.200 img). Susah ditiru tanpa fieldwork lokal.</div>
+      </li>
+      <li><span class="dot" style="background:#f472b6"></span>
+        <div><strong>Model AI On-device TFLite (4MB)</strong><br>Sudah terlatih konteks Indonesia, berjalan 32ms tanpa internet.</div>
+      </li>
+      <li><span class="dot" style="background:#f472b6"></span>
+        <div><strong>Jaringan PERTUNI Surabaya</strong><br>Akses langsung ke pengguna nyata — tidak bisa dibeli iklan, dibangun lewat kepercayaan.</div>
+      </li>
+      <li><span class="dot" style="background:#f472b6"></span>
+        <div><strong>Tim Multidisiplin PENS</strong><br>AI/ML, Flutter, + pemahaman kebutuhan aksesibilitas dari interaksi langsung komunitas.</div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ══════════ 3. CHANNELS ══════════ -->
+  <div class="cell c-channel channel">
+    <div class="cell-header">
+      <div class="cell-icon">📢</div>
+      <span class="cell-title">Channels</span>
+      <span class="cell-num">3</span>
+    </div>
+
+    <div class="sub-label">Fase Awal Surabaya — Komunitas Langsung</div>
+    <ul class="items">
+      <li><span class="dot" style="background:#2dd4bf"></span>
+        <div><strong>Pertemuan rutin PERTUNI Surabaya</strong><br>Demo tatap muka → testimoni menyebar organik via WA grup malam itu juga</div>
+      </li>
+      <li><span class="dot" style="background:#2dd4bf"></span>
+        <div><strong>SLB-A Surabaya</strong> (YPAB, Karya Mulia)<br>Guru ajarkan ke murid → murid cerita ke orang tua</div>
+      </li>
+      <li><span class="dot" style="background:#2dd4bf"></span>
+        <div><strong>WhatsApp Group Komunitas</strong><br>Distribusi APK langsung — lebih efektif dari Play Store untuk segmen ini</div>
+      </li>
+    </ul>
+
+    <div class="sub">
+      <div class="sub-label">Fase Selanjutnya (Setelah Traction)</div>
+      <ul class="items">
+        <li><span class="dot" style="background:#14b8a6"></span><div>Google Play Store + media lokal Surabaya</div></li>
+        <li><span class="dot" style="background:#14b8a6"></span><div>LKPP e-Katalog → jalur B2G Dinas Sosial</div></li>
+        <li><span class="dot" style="background:#14b8a6"></span><div>Perluas ke kota lain setelah Surabaya solid</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ 9. COST STRUCTURE ══════════ -->
+  <div class="cell c-cost cost">
+    <div class="cell-header">
+      <div class="cell-icon">💸</div>
+      <span class="cell-title">Cost Structure</span>
+      <span class="cell-num">9</span>
+    </div>
+
+    <div class="cost-grid">
+      <div class="cost-card">
+        <div class="cc-title">🖥️ Server GPU RTX A2000</div>
+        <div class="cc-val">Rp 500K / bulan</div>
+        <p>Untuk fitur premium cloud (VinScene, GPS, Live Assistance). Fitur 6 gratis = nol biaya server.</p>
+      </div>
+      <div class="cost-card">
+        <div class="cc-title">🔬 R&D & Training AI</div>
+        <div class="cc-val">Rp 0 / bulan</div>
+        <p>GPU RTX 3050 milik tim sudah ada. Biaya utama: waktu fieldwork & anotasi data.</p>
+      </div>
+      <div class="cost-card">
+        <div class="cc-title">🚗 Go-to-Market Surabaya</div>
+        <div class="cc-val">Rp 1–3 Jt / bulan</div>
+        <p>Transport demo ke PERTUNI & SLB-A, poster Braille, event aksesibilitas lokal.</p>
+      </div>
+      <div class="cost-card">
+        <div class="cc-title">📋 Legalitas & Sertifikasi</div>
+        <div class="cc-val">~Rp 10–15 Jt (sekali)</div>
+        <p>Verifikasi TKDN, audit WCAG 2.2, pendaftaran Play Store ($25).</p>
+      </div>
+    </div>
+
+    <div class="note">
+      💡 <strong>Break-even Premium:</strong> Server A2000 = Rp 500K/bln → hanya butuh <strong>~34 subscriber</strong> @ Rp 15K/bln untuk cover biaya server sepenuhnya.
+      Fase awal 6 fitur gratis = <strong>Rp 0 biaya server</strong> — semua berjalan on-device.
+    </div>
+  </div>
+
+  <!-- ══════════ 5. REVENUE STREAMS ══════════ -->
+  <div class="cell c-revenue revenue">
+    <div class="cell-header">
+      <div class="cell-icon">💰</div>
+      <span class="cell-title">Revenue Streams</span>
+      <span class="cell-num">5</span>
+    </div>
+
+    <div class="rev-grid">
+      <div class="rev-card">
+        <div class="rc-title">🆓 6 Fitur Existing</div>
+        <div class="rc-val">GRATIS Selamanya</div>
+        <p>Daya tarik utama adopsi. Deteksi, uang, OCR, trotoar, cari objek, VUI — semua offline.</p>
+      </div>
+
+      <div class="rev-card">
+        <div class="rc-title">🔒 B2C Premium</div>
+        <div class="rc-val">Rp 15K / bulan</div>
+        <p><strong>Fitur baru berbayar:</strong> VinScene cloud (Moondream2), navigasi GPS real-time, Live Remote Assistance (video call pendamping darurat)</p>
+        <p style="margin-top:5px;color:#fbbf24">Selaras VP: orang bayar karena masalah nyata (darurat/GPS) — bukan fitur acak</p>
+      </div>
+
+      <div class="rev-card">
+        <div class="rc-title">🏦 B2B SDK License</div>
+        <div class="rc-val">Kontrak Tahunan</div>
+        <p>Modul VinCash + deteksi rintangan embed ke app Bank/FinTech. Penuhi POJK aksesibilitas tanpa bangun dari nol.</p>
+      </div>
+
+      <div class="rev-card">
+        <div class="rc-title">🏛️ B2G Pengadaan</div>
+        <div class="rc-val">Kontrak Proyek</div>
+        <p>Paket lisensi + pelatihan ke Dinas Sosial Kota Surabaya via LKPP e-Katalog. Jalur TKDN produk lokal.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      ⚠️ <strong>Fallback jika B2G lambat:</strong> API endpoint YOLOE + VinScene dijual per-call ke developer aksesibilitas lain (Rp 50–200/request).
+    </div>
+  </div>
+
+</div><!-- /canvas -->
+</div><!-- /canvas-wrap -->
+
+<div class="legend">
+  <span>⭐ = Sumber daya / mitra paling kritis</span>
+  <span>·</span>
+  <span>Hover tiap kotak untuk highlight</span>
+  <span>·</span>
+  <span>Update v3 — Mentor feedback + fokus Surabaya + server RTX A2000</span>
+</div>
+
+</body>
+</html>
